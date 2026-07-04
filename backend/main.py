@@ -3,8 +3,7 @@
 ║              TRADEUP — BACKEND API                          ║
 ║              FastAPI + Yahoo Finance + Binance              ║
 ║                                                              ║
-║   v1.2 — Cache em memória + batch + paralelismo             ║
-║          + endpoint de backtest                             ║
+║   v1.3 — Cache em memória + batch + paralelismo             ║
 ╚══════════════════════════════════════════════════════════════╝
 
 INSTALAÇÃO:
@@ -15,12 +14,13 @@ RODAR:
 
 ENDPOINTS:
     GET /mercado                    → resumo do mercado (página inicial)
-    GET /ativo/{ticker}             → candles + padrões de um ativo
+    GET /ativo/{ticker}             → candles de um ativo
     GET /ativos                     → lista TODOS os ativos disponíveis
     GET /ativos/batch?tickers=...   → vários ativos numa só request
     GET /ativos/buscar?q=...        → busca de ativos
-    GET /padroes/{ticker}           → só os padrões detectados
-    GET /backtest/{ticker}          → taxa de confiabilidade histórica do OCO
+
+    POST /admin/auth/magic-link     → login admin via Supabase (magic link)
+    GET/POST/PUT/DELETE /admin/templates → CRUD de templates OCO (marcação manual)
 """
 
 import asyncio
@@ -31,13 +31,14 @@ from typing import Optional
 import uvicorn
 
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
-from patterns.classicos import detectar_padroes_classicos
+from admin_auth import router as admin_auth_router
+from admin_templates import router as admin_templates_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
     title="TradeUp API",
     description="Backend de análise técnica educacional — padrões gráficos",
-    version="1.2.0"
+    version="1.3.0"
 )
 
 # CORS — permite o frontend React conectar
@@ -48,13 +49,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(admin_auth_router)
+app.include_router(admin_templates_router)
+
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }
 _cache: dict = {}
 TTL_CURTO    = 300    # 5 min  — resumo de mercado
 TTL_MEDIO    = 1800   # 30 min — candles diários
 TTL_LONGO    = 3600   # 1h    — candles semanais/mensais
-TTL_BACKTEST = 3600   # 1h    — resultados de backtest (histórico muda pouco)
 
 def cache_get(chave: str, ttl: int):
     if chave in _cache:
@@ -65,20 +68,6 @@ def cache_get(chave: str, ttl: int):
 
 def cache_set(chave: str, dados):
     _cache[chave] = (time.time(), dados)
-
-
-# ── JANELA DE PIVÔS POR TIMEFRAME ─────────────────────────────
-# Controla a "sensibilidade" do detector: janela maior = pivôs mais espaçados
-# = padrões maiores e mais confiáveis, mas detecta menos
-# Timeframes suportados: 60m, 1d, 1wk
-JANELA_POR_INTERVALO = {
-    "60m": 8,   # 8 candles de 60min ~ 1.5 dia de buffer por lado
-    "1h":  8,   # alias do 60m
-    "1d":  10,  # 10 candles diários ~ 2 semanas por lado
-    "1wk": 6,   # 6 semanas ~ 1.5 mês por lado
-    "1mo": 5,   # fallback — pouco usado
-}
-JANELA_PADRAO = 7  # caso chegue algum intervalo inesperado
 
 
 # ── LISTA COMPLETA DE ATIVOS DISPONÍVEIS ──────────────────────
@@ -214,7 +203,7 @@ def dados_ativo(
     intervalo: str = Query("1d", description="1d, 60m, 1wk")
 ):
     """
-    Retorna candles + padrões detectados para um ativo.
+    Retorna candles de um ativo.
     Timeframes suportados: 60m, 1d, 1wk
     Exemplo: /ativo/PETR4.SA?periodo=5y&intervalo=1d
     """
@@ -230,8 +219,6 @@ def dados_ativo(
         if not candles:
             raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
 
-        janela = JANELA_POR_INTERVALO.get(intervalo, JANELA_PADRAO)
-        padroes_classicos = detectar_padroes_classicos(candles, janela=janela)
         info = buscar_ativo_info(ticker)
 
         resposta = {
@@ -242,158 +229,9 @@ def dados_ativo(
             "intervalo": intervalo,
             "total_candles": len(candles),
             "candles": candles,
-            "padroes": padroes_classicos,
-            "total_padroes": len(padroes_classicos)
         }
         cache_set(chave_cache, resposta)
         return {**resposta, "cache": False}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/padroes/{ticker}")
-def padroes_ativo(
-    ticker: str,
-    periodo: str = Query("5y"),
-    intervalo: str = Query("1d")
-):
-    """
-    Retorna apenas os padrões detectados, sem os candles completos.
-    Mais leve — útil pra atualizar marcações sem recarregar o gráfico.
-    """
-    try:
-        candles = buscar_candles(ticker, periodo, intervalo)
-        if not candles:
-            raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
-
-        janela = JANELA_POR_INTERVALO.get(intervalo, JANELA_PADRAO)
-        padroes = detectar_padroes_classicos(candles, janela=janela)
-
-        return {
-            "status": "ok",
-            "ticker": ticker.upper(),
-            "padroes": padroes,
-            "total": len(padroes)
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/backtest/{ticker}")
-def backtest_ativo(
-    ticker: str,
-    periodo: str = Query("5y", description="Período histórico: 2y, 5y, max"),
-    intervalo: str = Query("1d", description="Timeframe: 60m, 1d, 1wk"),
-):
-    """
-    Calcula a confiabilidade histórica real do detector de OCO pra um ativo.
-
-    Usa os resultados já calculados pelo detector (sucesso/falhou/pendente).
-    Padrões pendentes são excluídos da estatística — ainda não têm veredicto.
-
-    Retorna:
-      - total de padrões detectados
-      - quantos já têm veredicto (exclui pendentes)
-      - taxa de sucesso geral
-      - taxa por faixa de score (alta ≥75, media 60-74, baixa <60)
-      - lista completa dos padrões com resultado
-    """
-    chave_cache = f"backtest:{ticker}:{periodo}:{intervalo}"
-    em_cache = cache_get(chave_cache, TTL_BACKTEST)
-    if em_cache is not None:
-        return {**em_cache, "cache": True}
-
-    try:
-        candles = buscar_candles(ticker, periodo, intervalo)
-        if not candles:
-            raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
-
-        janela = JANELA_POR_INTERVALO.get(intervalo, JANELA_PADRAO)
-        padroes = detectar_padroes_classicos(candles, janela=janela)
-
-        # ── Agrupa por resultado e faixa de score ─────────────
-        # Faixas: alta (≥75), media (60-74), baixa (<60)
-        def faixa_score(score: int) -> str:
-            if score >= 75: return "alta"
-            if score >= 60: return "media"
-            return "baixa"
-
-        contagem = {
-            "alta":  {"sucessos": 0, "falhos": 0, "pendentes": 0},
-            "media": {"sucessos": 0, "falhos": 0, "pendentes": 0},
-            "baixa": {"sucessos": 0, "falhos": 0, "pendentes": 0},
-        }
-
-        total_sucessos  = 0
-        total_falhos    = 0
-        total_pendentes = 0
-
-        for p in padroes:
-            resultado = p.get("resultado", "pendente")
-            faixa     = faixa_score(p.get("confiabilidade", 0))
-
-            if resultado == "sucesso":
-                contagem[faixa]["sucessos"] += 1
-                total_sucessos += 1
-            elif resultado == "falhou":
-                contagem[faixa]["falhos"] += 1
-                total_falhos += 1
-            else:  # pendente
-                contagem[faixa]["pendentes"] += 1
-                total_pendentes += 1
-
-        # ── Calcula taxas (exclui pendentes do denominador) ───
-        total_com_veredicto = total_sucessos + total_falhos
-
-        def taxa(suc, fal):
-            total = suc + fal
-            return round(suc / total * 100, 1) if total > 0 else None
-
-        por_faixa = {}
-        for nome, c in contagem.items():
-            com_veredicto = c["sucessos"] + c["falhos"]
-            por_faixa[nome] = {
-                "sucessos":       c["sucessos"],
-                "falhos":         c["falhos"],
-                "pendentes":      c["pendentes"],
-                "com_veredicto":  com_veredicto,
-                "taxa_sucesso":   taxa(c["sucessos"], c["falhos"]),
-            }
-
-        # ── Resumo por padrão (sem os candles — resposta leve) ─
-        resumo_padroes = [
-            {
-                "resultado":      p.get("resultado"),
-                "confiabilidade": p.get("confiabilidade"),
-                "faixa":          faixa_score(p.get("confiabilidade", 0)),
-                "intervalo":      p.get("intervalo_candles"),
-                "neckline":       p.get("neckline"),
-                "resultado_detalhe": p.get("resultado_detalhe"),
-            }
-            for p in padroes
-        ]
-
-        resposta = {
-            "status":               "ok",
-            "ticker":               ticker.upper(),
-            "periodo":              periodo,
-            "intervalo":            intervalo,
-            "total_padroes":        len(padroes),
-            "com_veredicto":        total_com_veredicto,
-            "pendentes":            total_pendentes,
-            "sucessos":             total_sucessos,
-            "falhos":               total_falhos,
-            "taxa_sucesso_geral":   taxa(total_sucessos, total_falhos),
-            "por_faixa":            por_faixa,
-            "padroes":              resumo_padroes,
-        }
-        cache_set(chave_cache, resposta)
-        return {**resposta, "cache": False}
-
     except HTTPException:
         raise
     except Exception as e:
@@ -441,8 +279,6 @@ async def ativos_batch(
             if not candles:
                 return {"status": "erro", "ticker": ticker, "erro": "não encontrado"}
 
-            janela = JANELA_POR_INTERVALO.get(intervalo, JANELA_PADRAO)
-            padroes = detectar_padroes_classicos(candles, janela=janela)
             info = buscar_ativo_info(ticker)
             resposta = {
                 "status": "ok",
@@ -452,8 +288,6 @@ async def ativos_batch(
                 "intervalo": intervalo,
                 "total_candles": len(candles),
                 "candles": candles,
-                "padroes": padroes,
-                "total_padroes": len(padroes),
             }
             cache_set(chave, resposta)
             return {**resposta, "cache": False}

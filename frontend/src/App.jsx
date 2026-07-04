@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { createChart, ColorType, CrosshairMode, LineStyle, AreaSeries, LineSeries, CandlestickSeries, HistogramSeries, createSeriesMarkers } from "lightweight-charts";
+import AdminLogin from "./admin/AdminLogin.jsx";
+import AdminCallback from "./admin/AdminCallback.jsx";
+import AdminTemplates from "./admin/AdminTemplates.jsx";
+import RequireAdmin from "./admin/RequireAdmin.jsx";
 
 const API = "http://localhost:8000";
 
@@ -1821,6 +1825,13 @@ function AppInner(){
 function Router(){
   const location = useLocation();
   const naAbertura = location.pathname === "/";
+
+  if (location.pathname === "/admin/login") return <AdminLogin/>;
+  if (location.pathname === "/admin/callback") return <AdminCallback/>;
+  if (location.pathname === "/admin/templates") {
+    return <RequireAdmin><AdminTemplates/></RequireAdmin>;
+  }
+
   return (
     <>
       <AppInner/>
