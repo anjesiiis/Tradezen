@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
-import { fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
+import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
 const STEPS = [
-  { key: "ombro_esq", label: "Ombro Esquerdo", short: "OE", color: "#3D7EFF" },
-  { key: "cabeca", label: "Cabeça", short: "C", color: "#F5A623" },
-  { key: "ombro_dir", label: "Ombro Direito", short: "OD", color: "#3D7EFF" },
-  { key: "neck1", label: "Neckline 1", short: "N1", color: "#9B6DFF" },
-  { key: "neck2", label: "Neckline 2", short: "N2", color: "#9B6DFF" },
+  { key: "topo1", label: "Topo 1", short: "T1", color: "#3D7EFF" },
+  { key: "vale", label: "Vale", short: "V", color: "#9B6DFF" },
+  { key: "topo2", label: "Topo 2", short: "T2", color: "#3D7EFF" },
 ];
-const LINE_PAIRS = [["neck1", "neck2"]];
 const PASSOS = STEPS.map((s) => s.key);
 
 function janelaDoPadrao(candlesContexto, pontos) {
@@ -37,7 +34,7 @@ function Campo({ label, children }) {
   );
 }
 
-export default function AdminTemplates() {
+export default function AdminTemplatesTopoDuplo() {
   const [ticker, setTicker] = useState("PETR4.SA");
   const [periodo, setPeriodo] = useState("1y");
   const [intervalo, setIntervalo] = useState("1d");
@@ -57,7 +54,7 @@ export default function AdminTemplates() {
 
   async function carregarTemplates() {
     try {
-      setTemplates(await templatesOcoApi.list());
+      setTemplates(await templatesTopoDuploApi.list());
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível carregar os templates." });
     }
@@ -86,7 +83,7 @@ export default function AdminTemplates() {
     setMensagem(null);
     try {
       const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
-      await templatesOcoApi.create({
+      await templatesTopoDuploApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         candles,
@@ -118,7 +115,7 @@ export default function AdminTemplates() {
     setSalvando(true);
     setMensagem(null);
     try {
-      await templatesOcoApi.update(editando.id, {
+      await templatesTopoDuploApi.update(editando.id, {
         pontos: editando.pontosEdit,
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
@@ -136,7 +133,7 @@ export default function AdminTemplates() {
   async function remover(id) {
     if (!window.confirm("Excluir este template?")) return;
     try {
-      await templatesOcoApi.remove(id);
+      await templatesTopoDuploApi.remove(id);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao excluir o template." });
@@ -153,8 +150,8 @@ export default function AdminTemplates() {
       <div className="admin-header">
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo">Trade<span>Up</span></span>
-          <span className="admin-header-title">Admin · Templates OCO</span>
-          <AdminPatternNav active="oco" />
+          <span className="admin-header-title">Admin · Templates Topo Duplo</span>
+          <AdminPatternNav active="topo-duplo" />
         </div>
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
@@ -176,7 +173,6 @@ export default function AdminTemplates() {
             <TemplateMarkerChart
               candles={editando.candles}
               steps={STEPS}
-              linePairs={LINE_PAIRS}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
             />
@@ -229,7 +225,7 @@ export default function AdminTemplates() {
 
             {candlesContexto && (
               <>
-                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linePairs={LINE_PAIRS} onChange={setPontos} />
+                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} onChange={setPontos} />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">

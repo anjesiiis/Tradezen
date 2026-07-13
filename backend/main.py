@@ -20,7 +20,8 @@ ENDPOINTS:
     GET /ativos/buscar?q=...        → busca de ativos
 
     POST /admin/auth/magic-link     → login admin via Supabase (magic link)
-    GET/POST/PUT/DELETE /admin/templates → CRUD de templates OCO (marcação manual)
+    GET/POST/PUT/DELETE /admin/templates             → CRUD de templates OCO (marcação manual)
+    GET/POST/PUT/DELETE /admin/templates-topo-duplo  → CRUD de templates Topo Duplo (marcação manual)
 """
 
 import asyncio
@@ -33,6 +34,7 @@ import uvicorn
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
 from admin_auth import router as admin_auth_router
 from admin_templates import router as admin_templates_router
+from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
@@ -51,6 +53,7 @@ app.add_middleware(
 
 app.include_router(admin_auth_router)
 app.include_router(admin_templates_router)
+app.include_router(admin_templates_topo_duplo_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }
@@ -159,6 +162,16 @@ ATIVOS_DISPONIVEIS = [
     {"ticker": "GBPUSD=X",  "nome": "Libra / Dólar",     "mercado": "FOREX", "simbolo": "GBP/USD"},
     {"ticker": "USDJPY=X",  "nome": "Dólar / Iene",      "mercado": "FOREX", "simbolo": "USD/JPY"},
     {"ticker": "USDCNY=X",  "nome": "Dólar / Yuan",      "mercado": "FOREX", "simbolo": "USD/CNY"},
+    {"ticker": "GBPJPY=X",  "nome": "Libra / Iene",           "mercado": "FOREX", "simbolo": "GBP/JPY"},
+    {"ticker": "EURJPY=X",  "nome": "Euro / Iene",            "mercado": "FOREX", "simbolo": "EUR/JPY"},
+    {"ticker": "EURGBP=X",  "nome": "Euro / Libra",           "mercado": "FOREX", "simbolo": "EUR/GBP"},
+    {"ticker": "AUDUSD=X",  "nome": "Dólar Australiano / Dólar", "mercado": "FOREX", "simbolo": "AUD/USD"},
+    {"ticker": "NZDUSD=X",  "nome": "Dólar Neozelandês / Dólar", "mercado": "FOREX", "simbolo": "NZD/USD"},
+    {"ticker": "USDCAD=X",  "nome": "Dólar / Dólar Canadense", "mercado": "FOREX", "simbolo": "USD/CAD"},
+    {"ticker": "USDCHF=X",  "nome": "Dólar / Franco Suíço",   "mercado": "FOREX", "simbolo": "USD/CHF"},
+    {"ticker": "AUDJPY=X",  "nome": "Dólar Australiano / Iene", "mercado": "FOREX", "simbolo": "AUD/JPY"},
+    {"ticker": "CHFJPY=X",  "nome": "Franco Suíço / Iene",    "mercado": "FOREX", "simbolo": "CHF/JPY"},
+    {"ticker": "USDMXN=X",  "nome": "Dólar / Peso Mexicano",  "mercado": "FOREX", "simbolo": "USD/MXN"},
 
     # ── AÇÕES INTERNACIONAIS (big techs/blue chips) ──────────
     {"ticker": "AAPL",      "nome": "Apple",              "mercado": "NASDAQ", "simbolo": "AAPL"},

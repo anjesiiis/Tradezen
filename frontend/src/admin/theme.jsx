@@ -23,7 +23,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-link-btn:hover{color:var(--text)}
 
 .admin-center{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
-.admin-main{flex:1;padding:24px;max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.admin-main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
 
 .admin-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:left}
 .admin-card h1{font-size:17px;font-weight:600;margin:0 0 4px;color:var(--text)}
@@ -61,6 +61,11 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.admin-nav{display:flex;gap:4px;margin-left:20px}
+.admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none}
+.admin-nav a:hover{color:var(--text)}
+.admin-nav a.active{background:var(--s2);color:var(--text)}
 `;
 
 export default function AdminShell({ children }) {
@@ -69,5 +74,23 @@ export default function AdminShell({ children }) {
       <style>{ADMIN_CSS}</style>
       {children}
     </div>
+  );
+}
+
+// Navegação entre as páginas de padrões — cada padrão tem sua própria
+// página/tabela/endpoint; isso só troca de tela, não mistura os dados.
+export function AdminPatternNav({ active }) {
+  const links = [
+    { key: "oco", label: "OCO", href: "/admin/templates" },
+    { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
+  ];
+  return (
+    <nav className="admin-nav">
+      {links.map((l) => (
+        <a key={l.key} href={l.href} className={active === l.key ? "active" : ""}>
+          {l.label}
+        </a>
+      ))}
+    </nav>
   );
 }

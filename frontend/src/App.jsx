@@ -5,6 +5,7 @@ import { createChart, ColorType, CrosshairMode, LineStyle, AreaSeries, LineSerie
 import AdminLogin from "./admin/AdminLogin.jsx";
 import AdminCallback from "./admin/AdminCallback.jsx";
 import AdminTemplates from "./admin/AdminTemplates.jsx";
+import AdminTemplatesTopoDuplo from "./admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "./admin/RequireAdmin.jsx";
 
 const API = "http://localhost:8000";
@@ -1830,6 +1831,9 @@ function Router(){
   if (location.pathname === "/admin/callback") return <AdminCallback/>;
   if (location.pathname === "/admin/templates") {
     return <RequireAdmin><AdminTemplates/></RequireAdmin>;
+  }
+  if (location.pathname === "/admin/templates/topo-duplo") {
+    return <RequireAdmin><AdminTemplatesTopoDuplo/></RequireAdmin>;
   }
 
   return (

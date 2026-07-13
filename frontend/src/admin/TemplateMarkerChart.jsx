@@ -1,30 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
 
-const STEPS = [
-  { key: "ombro_esq", label: "Ombro Esquerdo", short: "OE", color: "#3D7EFF" },
-  { key: "cabeca", label: "Cabeça", short: "C", color: "#F5A623" },
-  { key: "ombro_dir", label: "Ombro Direito", short: "OD", color: "#3D7EFF" },
-  { key: "neck1", label: "Neckline 1", short: "N1", color: "#9B6DFF" },
-  { key: "neck2", label: "Neckline 2", short: "N2", color: "#9B6DFF" },
-];
-
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
 }
 
-export default function TemplateMarkerChart({ candles, initialPontos, onChange }) {
+// Componente genérico: não sabe nada sobre nenhum padrão específico.
+// Quem chama decide os `steps` (quais pontos marcar) e `linePairs`
+// (quais pares de pontos ligar com uma linha, ex: a neckline do OCO).
+export default function TemplateMarkerChart({ candles, steps, linePairs = [], initialPontos, onChange }) {
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
   const markersApiRef = useRef();
-  const necklineSeriesRef = useRef();
+  const lineSeriesRef = useRef([]);
   const timeToIndexRef = useRef(new Map());
-  const activeStepRef = useRef(STEPS[0].key);
+  const activeStepRef = useRef(steps[0].key);
 
   const [pontos, setPontos] = useState(initialPontos || {});
   const [activeStep, setActiveStep] = useState(() => {
-    const primeiroFaltando = STEPS.find((s) => !(initialPontos || {})[s.key]);
+    const primeiroFaltando = steps.find((s) => !(initialPontos || {})[s.key]);
     return primeiroFaltando ? primeiroFaltando.key : null;
   });
 
@@ -37,7 +32,7 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
-      height: 420,
+      height: 620,
       layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#5A7299" },
       grid: {
         vertLines: { color: "rgba(255,255,255,0.04)" },
@@ -57,18 +52,19 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
       wickDownColor: "#FF4560",
     });
 
-    const necklineSeries = chart.addSeries(LineSeries, {
-      color: "#9B6DFF",
-      lineWidth: 2,
-      lineStyle: 2,
-      crosshairMarkerVisible: false,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
+    lineSeriesRef.current = linePairs.map(() =>
+      chart.addSeries(LineSeries, {
+        color: "#9B6DFF",
+        lineWidth: 2,
+        lineStyle: 2,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      })
+    );
 
     chartRef.current = chart;
     seriesRef.current = series;
-    necklineSeriesRef.current = necklineSeries;
     markersApiRef.current = createSeriesMarkers(series, []);
 
     chart.subscribeClick((param) => {
@@ -78,13 +74,13 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
       const step = activeStepRef.current;
       if (!step) return;
 
-      const price = series.coordinateToPrice(param.point.y);
-      if (price === null || price === undefined) return;
+      const preco = series.coordinateToPrice(param.point.y);
+      if (preco === null || preco === undefined) return;
 
-      const novoPonto = { i: idx, preco: Math.round(price * 10000) / 10000 };
+      const novoPonto = { i: idx, preco: Math.round(preco * 10000) / 10000 };
       setPontos((prev) => {
         const atualizado = { ...prev, [step]: novoPonto };
-        const proximo = STEPS.find((s) => !atualizado[s.key]);
+        const proximo = steps.find((s) => !atualizado[s.key]);
         activeStepRef.current = proximo ? proximo.key : null;
         setActiveStep(activeStepRef.current);
         return atualizado;
@@ -100,6 +96,7 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
       observer.disconnect();
       chart.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -122,9 +119,10 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
   useEffect(() => {
     if (!markersApiRef.current || !candles?.length) return;
 
-    const marcadores = STEPS.filter((s) => pontos[s.key]).map((s) => ({
+    const marcadores = steps.filter((s) => pontos[s.key]).map((s) => ({
       time: toChartTime(candles[pontos[s.key].i]),
-      position: "inBar",
+      position: "atPriceMiddle",
+      price: pontos[s.key].preco,
       color: s.color,
       shape: "circle",
       text: s.short,
@@ -132,30 +130,35 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
 
-    if (pontos.neck1 && pontos.neck2 && necklineSeriesRef.current) {
-      const p1 = { time: toChartTime(candles[pontos.neck1.i]), value: pontos.neck1.preco };
-      const p2 = { time: toChartTime(candles[pontos.neck2.i]), value: pontos.neck2.preco };
-      const [a, b] = p1.time <= p2.time ? [p1, p2] : [p2, p1];
-      necklineSeriesRef.current.setData([a, b]);
-    } else {
-      necklineSeriesRef.current?.setData([]);
-    }
+    linePairs.forEach(([keyA, keyB], idx) => {
+      const lineSeries = lineSeriesRef.current[idx];
+      if (!lineSeries) return;
+      if (pontos[keyA] && pontos[keyB]) {
+        const pA = { time: toChartTime(candles[pontos[keyA].i]), value: pontos[keyA].preco };
+        const pB = { time: toChartTime(candles[pontos[keyB].i]), value: pontos[keyB].preco };
+        const [a, b] = pA.time <= pB.time ? [pA, pB] : [pB, pA];
+        lineSeries.setData([a, b]);
+      } else {
+        lineSeries.setData([]);
+      }
+    });
 
     onChange?.(pontos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pontos, candles]);
 
   function limpar() {
     setPontos({});
-    setActiveStep(STEPS[0].key);
+    setActiveStep(steps[0].key);
   }
 
-  const completo = STEPS.every((s) => pontos[s.key]);
+  const completo = steps.every((s) => pontos[s.key]);
 
   return (
     <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {STEPS.map((s) => {
+          {steps.map((s) => {
             const marcado = pontos[s.key];
             const ativo = activeStep === s.key;
             return (
@@ -177,7 +180,7 @@ export default function TemplateMarkerChart({ candles, initialPontos, onChange }
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
         {completo
           ? "Todos os pontos marcados. Clique em um chip acima para refazer algum ponto."
-          : `Clique no gráfico para marcar: ${STEPS.find((s) => s.key === activeStep)?.label}`}
+          : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label}`}
       </p>
 
       <div ref={containerRef} style={{ padding: "8px" }} />

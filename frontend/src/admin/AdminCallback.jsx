@@ -20,7 +20,7 @@ export default function AdminCallback() {
     }
 
     setAdminToken(accessToken);
-    window.location.replace("/admin/templates");
+    window.location.replace("/admin/templates/topo-duplo");
   }, []);
 
   return (

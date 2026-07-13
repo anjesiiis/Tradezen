@@ -53,27 +53,28 @@ export async function fetchAtivoCandles(ticker, periodo = "1y", intervalo = "1d"
   return data;
 }
 
-export async function listTemplates() {
-  const data = await adminFetch("/admin/templates");
-  return data.templates;
+// Fábrica de CRUD genérico — cada padrão instancia a sua, apontando pro
+// próprio endpoint. Não compartilha dado nenhum entre padrões, só o
+// código de "fazer um GET/POST/PUT/DELETE".
+function makeTemplateApi(basePath) {
+  return {
+    async list() {
+      const data = await adminFetch(basePath);
+      return data.templates;
+    },
+    async create(payload) {
+      const data = await adminFetch(basePath, { method: "POST", body: JSON.stringify(payload) });
+      return data.template;
+    },
+    async update(id, payload) {
+      const data = await adminFetch(`${basePath}/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+      return data.template;
+    },
+    async remove(id) {
+      await adminFetch(`${basePath}/${id}`, { method: "DELETE" });
+    },
+  };
 }
 
-export async function createTemplate(payload) {
-  const data = await adminFetch("/admin/templates", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return data.template;
-}
-
-export async function updateTemplate(id, payload) {
-  const data = await adminFetch(`/admin/templates/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-  return data.template;
-}
-
-export async function deleteTemplate(id) {
-  await adminFetch(`/admin/templates/${id}`, { method: "DELETE" });
-}
+export const templatesOcoApi = makeTemplateApi("/admin/templates");
+export const templatesTopoDuploApi = makeTemplateApi("/admin/templates-topo-duplo");
