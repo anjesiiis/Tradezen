@@ -53,6 +53,13 @@ export async function fetchAtivoCandles(ticker, periodo = "1y", intervalo = "1d"
   return data;
 }
 
+export async function fetchAtivos() {
+  const res = await fetch(`${API}/ativos`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.detail || "Erro ao buscar ativos.");
+  return data;
+}
+
 // Fábrica de CRUD genérico — cada padrão instancia a sua, apontando pro
 // próprio endpoint. Não compartilha dado nenhum entre padrões, só o
 // código de "fazer um GET/POST/PUT/DELETE".
@@ -78,3 +85,5 @@ function makeTemplateApi(basePath) {
 
 export const templatesOcoApi = makeTemplateApi("/admin/templates");
 export const templatesTopoDuploApi = makeTemplateApi("/admin/templates-topo-duplo");
+export const templatesSuporteApi = makeTemplateApi("/admin/templates-suporte");
+export const templatesResistenciaApi = makeTemplateApi("/admin/templates-resistencia");

@@ -6,6 +6,8 @@ import AdminLogin from "./admin/AdminLogin.jsx";
 import AdminCallback from "./admin/AdminCallback.jsx";
 import AdminTemplates from "./admin/AdminTemplates.jsx";
 import AdminTemplatesTopoDuplo from "./admin/AdminTemplatesTopoDuplo.jsx";
+import AdminTemplatesSuporte from "./admin/AdminTemplatesSuporte.jsx";
+import AdminTemplatesResistencia from "./admin/AdminTemplatesResistencia.jsx";
 import RequireAdmin from "./admin/RequireAdmin.jsx";
 
 const API = "http://localhost:8000";
@@ -50,6 +52,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .search-item{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s}
 .search-item:last-child{border-bottom:none}
 .search-item.hi,.search-item:hover{background:var(--s2)}
+.search-group-head{padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--s1)}
 .sbox{flex:1;max-width:440px;position:relative}
 .sw{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;transition:border-color .2s}
 .sw:focus-within{border-color:var(--accent)}
@@ -319,12 +322,15 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 `;
 
 const MKTC={"B3":"#009C3B","CRIPTO":"#F7931A","FOREX":"#3D7EFF","NASDAQ":"#9B6DFF","NYSE":"#E8B84B","COMMODITY":"#F5A623","—":"#5A7299"};
+const MERCADOS_ORDEM=["B3","CRIPTO","FOREX","NASDAQ","NYSE","COMMODITY"];
 
 const TOOLS=[
   // GRÁTIS
   {id:"oco",           name:"Ombro-Cabeça-Ombro", type:"Reversão",    free:true,  plano:"free"},
   {id:"tri_simetrico", name:"Triângulo Simétrico", type:"Continuação", free:true,  plano:"free"},
   {id:"topo_duplo",    name:"Topo Duplo",          type:"Reversão",    free:true,  plano:"free"},
+  {id:"suporte",       name:"Suporte",             type:"Nível",       free:true,  plano:"free"},
+  {id:"resistencia",   name:"Resistência",         type:"Nível",       free:true,  plano:"free"},
   // PREMIUM
   {id:"bandeira",        name:"Bandeira",              type:"Continuação", free:false, plano:"premium"},
   {id:"tri_descendente", name:"Triângulo Descendente", type:"Continuação", free:false, plano:"premium"},
@@ -522,6 +528,17 @@ const toLWSeries = (candles) =>
     value: c.fechamento,
   })).sort((a,b) => a.time - b.time);
 
+// ── Estilo das linhas de Suporte/Resistência (rank mais forte = mais nítido) ──
+const NIVEL_COR = { suporte: "0,214,143", resistencia: "255,69,96" };
+const nivelChave = (nivel) => `${nivel.tipo}:${nivel.preco}`;
+const estiloNivel = (nivel, selecionado) => {
+  const rgb = NIVEL_COR[nivel.tipo];
+  if(selecionado) return { color:`rgba(${rgb},1)`, lineWidth:3 };
+  const alpha = nivel.rank===0 ? 0.9 : 0.4;
+  const lineWidth = nivel.rank===0 ? 2 : 1;
+  return { color:`rgba(${rgb},${alpha})`, lineWidth };
+};
+
 // ── Mini Line (canvas simples pra cards) ─────────────────────
 function MiniLine({data,color}){
   const ref=useRef(null);
@@ -626,7 +643,7 @@ function HomeLineChart({data, color}){
 }
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-function CandleChart({candles, padroes, activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos}){
+function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos}){
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -640,6 +657,8 @@ function CandleChart({candles, padroes, activeTools, selPat, setSelPat, setHover
   const markersRef   = useRef(null);
   const canvasRef    = useRef(null);
   const redrawRef    = useRef(null);
+  const nivelLinesRef = useRef([]);
+  const [nivelSel, setNivelSel] = useState(null);
 
   // Inicializa o gráfico
   useEffect(()=>{
@@ -890,6 +909,61 @@ function CandleChart({candles, padroes, activeTools, selPat, setSelPat, setHover
     return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
   },[padroes, candles, activeTools, setSelPat]);
 
+  // Suportes/Resistências — linhas de preço nativas (recalculadas a cada troca de timeframe/ticker,
+  // e filtradas pelos toggles "Suporte"/"Resistência" na lista de indicadores)
+  useEffect(()=>{
+    if(!candleRef.current) return;
+    nivelLinesRef.current.forEach(({priceLine})=>{
+      try{ candleRef.current.removePriceLine(priceLine); }catch(e){}
+    });
+    const niveisAtivos = niveis.filter(nv=>activeTools.has(nv.tipo));
+    nivelLinesRef.current = niveisAtivos.map(nivel=>{
+      const {color, lineWidth} = estiloNivel(nivel, false);
+      const priceLine = candleRef.current.createPriceLine({
+        price: nivel.preco,
+        color,
+        lineWidth,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: `${nivel.tipo==="suporte" ? "Suporte" : "Resistência"} · ${nivel.toques}x`,
+      });
+      return { nivel, priceLine };
+    });
+    setNivelSel(null);
+  },[niveis, activeTools]);
+
+  // Clique → realça um nível de suporte/resistência (clique de novo pra desfazer)
+  useEffect(()=>{
+    if(!chartRef.current || !candleRef.current) return;
+    const handler = (param) => {
+      if(!param.point || !nivelLinesRef.current.length) return;
+      const precoClicado = candleRef.current.coordinateToPrice(param.point.y);
+      if(precoClicado===null || precoClicado===undefined) return;
+      let melhor = null, menorDiff = Infinity;
+      for(const {nivel} of nivelLinesRef.current){
+        const diff = Math.abs(nivel.preco - precoClicado) / precoClicado;
+        if(diff < 0.003 && diff < menorDiff){
+          menorDiff = diff;
+          melhor = nivel;
+        }
+      }
+      setNivelSel(prev=>{
+        const chave = melhor ? nivelChave(melhor) : null;
+        return (chave && chave!==prev) ? chave : null;
+      });
+    };
+    chartRef.current.subscribeClick(handler);
+    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
+  },[niveis]);
+
+  // Reestiliza as linhas quando a seleção muda
+  useEffect(()=>{
+    nivelLinesRef.current.forEach(({nivel, priceLine})=>{
+      const {color, lineWidth} = estiloNivel(nivel, nivelChave(nivel)===nivelSel);
+      try{ priceLine.applyOptions({color, lineWidth}); }catch(e){}
+    });
+  },[nivelSel]);
+
   // Canvas — desenha padrões via _desenharOCO
   useEffect(()=>{
     const redraw = () => {
@@ -952,12 +1026,30 @@ function CandleChart({candles, padroes, activeTools, selPat, setSelPat, setHover
 
 
 // ── Search ────────────────────────────────────────────────────
-function SearchBar({onSelect}){
+function SearchItem({a,hi,onHover,onClick}){
+  return(
+    <div
+      className={`search-item ${hi?"hi":""}`}
+      onMouseEnter={onHover}
+      onClick={onClick}
+    >
+      <span style={{display:"flex",flexDirection:"column",gap:2}}>
+        <span style={{fontWeight:600,color:"var(--text)",fontSize:12}}>{a.simbolo}</span>
+        <span style={{fontSize:10,color:"var(--text2)"}}>{a.nome}</span>
+      </span>
+      <span style={{fontSize:9,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{a.mercado}</span>
+    </div>
+  );
+}
+
+function SearchBar({onSelect, mercado=[]}){
   const [q,setQ]=useState("");
   const [res,setRes]=useState([]);
   const [open,setOpen]=useState(false);
   const [hi,setHi]=useState(0);
   const boxRef=useRef(null);
+
+  const buscando = q.trim().length>0;
 
   useEffect(()=>{
     if(!q.trim()){ setRes([]); return; }
@@ -983,12 +1075,17 @@ function SearchBar({onSelect}){
   };
 
   const handleKey=(e)=>{
-    if(!open||res.length===0) return;
+    if(!open||!buscando||res.length===0) return;
     if(e.key==="ArrowDown"){ e.preventDefault(); setHi(h=>Math.min(h+1,res.length-1)); }
     else if(e.key==="ArrowUp"){ e.preventDefault(); setHi(h=>Math.max(h-1,0)); }
     else if(e.key==="Enter"){ e.preventDefault(); res[hi]&&escolher(res[hi]); }
     else if(e.key==="Escape"){ setOpen(false); }
   };
+
+  // Sem texto digitado: navega por mercado, listando tudo que temos.
+  const grupos = MERCADOS_ORDEM
+    .map(m=>({ mercado:m, ativos: mercado.filter(a=>a.mercado===m) }))
+    .filter(g=>g.ativos.length>0);
 
   return(
     <div className="search" ref={boxRef}>
@@ -996,24 +1093,25 @@ function SearchBar({onSelect}){
       <input
         value={q}
         onChange={e=>setQ(e.target.value)}
-        onFocus={()=>q&&setOpen(true)}
+        onFocus={()=>setOpen(true)}
         onKeyDown={handleKey}
         placeholder="Buscar... PETR4, BTC, OURO, EUR/USD, AAPL"
       />
-      {open&&res.length>0&&(
+      {open&&buscando&&res.length>0&&(
         <div className="search-dd">
           {res.map((a,i)=>(
-            <div
-              key={a.ticker}
-              className={`search-item ${i===hi?"hi":""}`}
-              onMouseEnter={()=>setHi(i)}
-              onClick={()=>escolher(a)}
-            >
-              <span style={{display:"flex",flexDirection:"column",gap:2}}>
-                <span style={{fontWeight:600,color:"var(--text)",fontSize:12}}>{a.simbolo}</span>
-                <span style={{fontSize:10,color:"var(--text2)"}}>{a.nome}</span>
-              </span>
-              <span style={{fontSize:9,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{a.mercado}</span>
+            <SearchItem key={a.ticker} a={a} hi={i===hi} onHover={()=>setHi(i)} onClick={()=>escolher(a)}/>
+          ))}
+        </div>
+      )}
+      {open&&!buscando&&grupos.length>0&&(
+        <div className="search-dd">
+          {grupos.map(g=>(
+            <div key={g.mercado}>
+              <div className="search-group-head" style={{color:MKTC[g.mercado]||"#5A7299"}}>{g.mercado}</div>
+              {g.ativos.map(a=>(
+                <SearchItem key={a.ticker} a={a} hi={false} onHover={()=>{}} onClick={()=>escolher(a)}/>
+              ))}
             </div>
           ))}
         </div>
@@ -1206,6 +1304,7 @@ function AppInner(){
   const [selAtivo,setSel]    = useState(null);
   const [candles,setCandles] = useState([]);
   const [padroes,setPadroes] = useState([]);
+  const [niveis,setNiveis]   = useState([]);
   const [loading,setLoading] = useState(false);
   const [tools,setTools]     = useState(new Set());
   const [usosDiarios,setUsosDiarios] = useState({});
@@ -1306,11 +1405,13 @@ function AppInner(){
     setTooltipAberto(false);
     setCandles([]);
     setPadroes([]);
+    setNiveis([]);
     fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
       .then(r=>r.json())
       .then(d=>{
         setCandles(d.candles||[]);
         setPadroes(d.padroes||[]);
+        setNiveis(d.niveis||[]);
         // Atualiza info do ativo com dados do backend se disponível
         if(d.info){
           setSel(prev=>({...prev, ...d.info, ticker: tickerUrl}));
@@ -1328,10 +1429,10 @@ function AppInner(){
   // Atualiza dados manualmente (botão refresh)
   const atualizarAtivo = () => {
     if(!selAtivo) return;
-    setLoading(true);setCandles([]);setPadroes([]);
+    setLoading(true);setCandles([]);setPadroes([]);setNiveis([]);
     fetch(`${API}/ativo/${selAtivo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
       .then(r=>r.json())
-      .then(d=>{setCandles(d.candles||[]);setPadroes(d.padroes||[]);setLoading(false);})
+      .then(d=>{setCandles(d.candles||[]);setPadroes(d.padroes||[]);setNiveis(d.niveis||[]);setLoading(false);})
       .catch(()=>setLoading(false));
   };
 
@@ -1374,7 +1475,7 @@ function AppInner(){
       {path!=="/"&&(
       <nav className="nav">
         <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>TEC</span></div>
-        <SearchBar onSelect={abrirAtivo}/>
+        <SearchBar onSelect={abrirAtivo} mercado={mercado}/>
         <div style={{flex:1}}/>
         <div className="nav-r">
           <button className="nav-ic" title="Tema claro/escuro">
@@ -1646,6 +1747,7 @@ function AppInner(){
                 <CandleChart
                   candles={candles}
                   padroes={padroes}
+                  niveis={niveis}
                   activeTools={tools}
                   selPat={selPat}
                   setSelPat={setSelPat}
@@ -1834,6 +1936,12 @@ function Router(){
   }
   if (location.pathname === "/admin/templates/topo-duplo") {
     return <RequireAdmin><AdminTemplatesTopoDuplo/></RequireAdmin>;
+  }
+  if (location.pathname === "/admin/templates/suporte") {
+    return <RequireAdmin><AdminTemplatesSuporte/></RequireAdmin>;
+  }
+  if (location.pathname === "/admin/templates/resistencia") {
+    return <RequireAdmin><AdminTemplatesResistencia/></RequireAdmin>;
   }
 
   return (

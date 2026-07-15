@@ -1,14 +1,14 @@
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from admin_auth import require_admin
 from supabase_client import supabase
 
 router = APIRouter(
-    prefix="/admin/templates",
-    tags=["admin-templates"],
+    prefix="/admin/templates-suporte",
+    tags=["admin-templates-suporte"],
     dependencies=[Depends(require_admin)],
 )
 
@@ -18,14 +18,8 @@ class Ponto(BaseModel):
     preco: float
 
 
-class PontosOCO(BaseModel):
-    comeco: Ponto
-    topo_ombro_esq: Ponto
-    fundo_ombro_esq: Ponto
-    topo_cabeca: Ponto
-    fundo_cabeca: Ponto
-    inicio_ombro_dir: Ponto
-    topo_ombro_dir: Ponto
+class PontosNivel(BaseModel):
+    toques: List[Ponto] = Field(min_length=2)
 
 
 class TemplateCreate(BaseModel):
@@ -33,26 +27,26 @@ class TemplateCreate(BaseModel):
     timeframe: str
     candles: List[Dict[str, Any]]
     candles_contexto: List[Dict[str, Any]]
-    pontos: PontosOCO
+    pontos: PontosNivel
     resultado: Optional[str] = None
     observacao: Optional[str] = None
 
 
 class TemplateUpdate(BaseModel):
-    pontos: Optional[PontosOCO] = None
+    pontos: Optional[PontosNivel] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
 
 
 @router.get("")
 def listar_templates():
-    resp = supabase.table("templates_oco").select("*").order("criado_em", desc=True).execute()
+    resp = supabase.table("templates_suporte").select("*").order("criado_em", desc=True).execute()
     return {"status": "ok", "templates": resp.data, "total": len(resp.data)}
 
 
 @router.get("/{template_id}")
 def obter_template(template_id: int):
-    resp = supabase.table("templates_oco").select("*").eq("id", template_id).limit(1).execute()
+    resp = supabase.table("templates_suporte").select("*").eq("id", template_id).limit(1).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok", "template": resp.data[0]}
@@ -61,7 +55,7 @@ def obter_template(template_id: int):
 @router.post("")
 def criar_template(payload: TemplateCreate):
     body = payload.model_dump()
-    resp = supabase.table("templates_oco").insert(body).execute()
+    resp = supabase.table("templates_suporte").insert(body).execute()
     return {"status": "ok", "template": resp.data[0]}
 
 
@@ -71,7 +65,7 @@ def atualizar_template(template_id: int, payload: TemplateUpdate):
     if not body:
         raise HTTPException(status_code=400, detail="Nada para atualizar.")
 
-    resp = supabase.table("templates_oco").update(body).eq("id", template_id).execute()
+    resp = supabase.table("templates_suporte").update(body).eq("id", template_id).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok", "template": resp.data[0]}
@@ -79,7 +73,7 @@ def atualizar_template(template_id: int, payload: TemplateUpdate):
 
 @router.delete("/{template_id}")
 def remover_template(template_id: int):
-    resp = supabase.table("templates_oco").delete().eq("id", template_id).execute()
+    resp = supabase.table("templates_suporte").delete().eq("id", template_id).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok"}

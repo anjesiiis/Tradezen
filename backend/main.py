@@ -22,6 +22,8 @@ ENDPOINTS:
     POST /admin/auth/magic-link     → login admin via Supabase (magic link)
     GET/POST/PUT/DELETE /admin/templates             → CRUD de templates OCO (marcação manual)
     GET/POST/PUT/DELETE /admin/templates-topo-duplo  → CRUD de templates Topo Duplo (marcação manual)
+    GET/POST/PUT/DELETE /admin/templates-suporte     → CRUD de templates Suporte (marcação manual)
+    GET/POST/PUT/DELETE /admin/templates-resistencia → CRUD de templates Resistência (marcação manual)
 """
 
 import asyncio
@@ -32,9 +34,12 @@ from typing import Optional
 import uvicorn
 
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
+from patterns.niveis import detectar_niveis
 from admin_auth import router as admin_auth_router
 from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
+from admin_templates_suporte import router as admin_templates_suporte_router
+from admin_templates_resistencia import router as admin_templates_resistencia_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
@@ -54,6 +59,8 @@ app.add_middleware(
 app.include_router(admin_auth_router)
 app.include_router(admin_templates_router)
 app.include_router(admin_templates_topo_duplo_router)
+app.include_router(admin_templates_suporte_router)
+app.include_router(admin_templates_resistencia_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }
@@ -242,6 +249,7 @@ def dados_ativo(
             "intervalo": intervalo,
             "total_candles": len(candles),
             "candles": candles,
+            "niveis": detectar_niveis(candles),
         }
         cache_set(chave_cache, resposta)
         return {**resposta, "cache": False}

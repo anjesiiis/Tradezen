@@ -1,34 +1,21 @@
 import { useEffect, useState } from "react";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
-import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
+import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
-import { fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
+import { fetchAtivoCandles, templatesResistenciaApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
+const COR = "#FF4560";
 
-const STEPS = [
-  { key: "comeco", label: "Começo", short: "I", color: "#5A7299" },
-  { key: "topo_ombro_esq", label: "Topo Ombro Esquerdo", short: "TOE", color: "#3D7EFF" },
-  { key: "fundo_ombro_esq", label: "Fundo Ombro Esquerdo", short: "FOE", color: "#9B6DFF" },
-  { key: "topo_cabeca", label: "Topo Cabeça", short: "TC", color: "#F5A623" },
-  { key: "fundo_cabeca", label: "Fundo Cabeça", short: "FC", color: "#9B6DFF" },
-  { key: "inicio_ombro_dir", label: "Início Ombro Direito", short: "IOD", color: "#00D68F" },
-  { key: "topo_ombro_dir", label: "Topo Ombro Direito", short: "TOD", color: "#3D7EFF" },
-];
-const LINE_PAIRS = [["fundo_ombro_esq", "fundo_cabeca"]];
-const PASSOS = STEPS.map((s) => s.key);
-
-function janelaDoPadrao(candlesContexto, pontos) {
-  const indices = Object.values(pontos).map((p) => p.i);
+function janelaDoPadrao(candlesContexto, toques) {
+  const indices = toques.map((t) => t.i);
   const minIdx = Math.max(0, Math.min(...indices) - PADDING);
   const maxIdx = Math.min(candlesContexto.length - 1, Math.max(...indices) + PADDING);
   const candles = candlesContexto.slice(minIdx, maxIdx + 1);
-  const pontosAjustados = Object.fromEntries(
-    Object.entries(pontos).map(([k, p]) => [k, { i: p.i - minIdx, preco: p.preco }])
-  );
-  return { candles, pontosAjustados };
+  const toquesAjustados = toques.map((t) => ({ i: t.i - minIdx, preco: t.preco }));
+  return { candles, toquesAjustados };
 }
 
 function Campo({ label, children }) {
@@ -40,13 +27,13 @@ function Campo({ label, children }) {
   );
 }
 
-export default function AdminTemplates() {
+export default function AdminTemplatesResistencia() {
   const [ticker, setTicker] = useState("PETR4.SA");
   const [periodo, setPeriodo] = useState("1y");
   const [intervalo, setIntervalo] = useState("1d");
   const [candlesContexto, setCandlesContexto] = useState(null);
   const [carregando, setCarregando] = useState(false);
-  const [pontos, setPontos] = useState({});
+  const [toques, setToques] = useState([]);
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -60,7 +47,7 @@ export default function AdminTemplates() {
 
   async function carregarTemplates() {
     try {
-      setTemplates(await templatesOcoApi.list());
+      setTemplates(await templatesResistenciaApi.list());
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível carregar os templates." });
     }
@@ -72,7 +59,7 @@ export default function AdminTemplates() {
     try {
       const data = await fetchAtivoCandles(ticker.trim(), periodo, intervalo);
       setCandlesContexto(data.candles);
-      setPontos({});
+      setToques([]);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${ticker}'.` });
       setCandlesContexto(null);
@@ -81,26 +68,26 @@ export default function AdminTemplates() {
     }
   }
 
-  const completo = PASSOS.every((k) => pontos[k]);
+  const completo = toques.length >= 2;
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
-      await templatesOcoApi.create({
+      const { candles, toquesAjustados } = janelaDoPadrao(candlesContexto, toques);
+      await templatesResistenciaApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         candles,
         candles_contexto: candlesContexto,
-        pontos: pontosAjustados,
+        pontos: { toques: toquesAjustados },
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
       });
       setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
       setCandlesContexto(null);
-      setPontos({});
+      setToques([]);
       setResultado("");
       setObservacao("");
       carregarTemplates();
@@ -112,7 +99,7 @@ export default function AdminTemplates() {
   }
 
   function iniciarEdicao(template) {
-    setEditando({ ...template, pontosEdit: template.pontos });
+    setEditando({ ...template, toquesEdit: template.pontos?.toques || [] });
     setMensagem(null);
   }
 
@@ -121,8 +108,8 @@ export default function AdminTemplates() {
     setSalvando(true);
     setMensagem(null);
     try {
-      await templatesOcoApi.update(editando.id, {
-        pontos: editando.pontosEdit,
+      await templatesResistenciaApi.update(editando.id, {
+        pontos: { toques: editando.toquesEdit },
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
       });
@@ -139,7 +126,7 @@ export default function AdminTemplates() {
   async function remover(id) {
     if (!window.confirm("Excluir este template?")) return;
     try {
-      await templatesOcoApi.remove(id);
+      await templatesResistenciaApi.remove(id);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao excluir o template." });
@@ -156,8 +143,8 @@ export default function AdminTemplates() {
       <div className="admin-header">
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo">Trade<span>Up</span></span>
-          <span className="admin-header-title">Admin · Templates OCO</span>
-          <AdminPatternNav active="oco" />
+          <span className="admin-header-title">Admin · Templates Resistência</span>
+          <AdminPatternNav active="resistencia" />
         </div>
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
@@ -176,12 +163,11 @@ export default function AdminTemplates() {
               <button onClick={() => setEditando(null)} className="admin-link-btn">Cancelar</button>
             </div>
 
-            <TemplateMarkerChart
+            <NivelMarkerChart
               candles={editando.candles}
-              steps={STEPS}
-              linePairs={LINE_PAIRS}
-              initialPontos={editando.pontos}
-              onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
+              cor={COR}
+              initialToques={editando.toquesEdit}
+              onChange={(t) => setEditando((prev) => ({ ...prev, toquesEdit: t }))}
             />
 
             <div className="admin-grid2">
@@ -232,7 +218,7 @@ export default function AdminTemplates() {
 
             {candlesContexto && (
               <>
-                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linePairs={LINE_PAIRS} onChange={setPontos} />
+                <NivelMarkerChart candles={candlesContexto} cor={COR} onChange={setToques} />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">

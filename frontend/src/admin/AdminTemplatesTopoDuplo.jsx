@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
+import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
@@ -206,7 +207,7 @@ export default function AdminTemplatesTopoDuplo() {
 
             <div className="admin-row">
               <Campo label="Ticker">
-                <input value={ticker} onChange={(e) => setTicker(e.target.value)} className="admin-input" style={{ width: 160 }} />
+                <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={setTicker} /></div>
               </Campo>
               <Campo label="Período">
                 <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">

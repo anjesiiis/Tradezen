@@ -136,6 +136,14 @@ def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d"):
                 "volume": int(float(row.get("Volume", 0))),
                 "fonte": "yahoo",
             })
+
+        # Yahoo às vezes publica o candle do pregão ainda em formação (ex: B3
+        # antes do fechamento oficial do dia) com abertura/máxima/mínima
+        # zeradas e só o último preço no fechamento — descarta esse candle
+        # incompleto pra não virar um "marubozo" indo até zero no gráfico.
+        if candles and candles[-1]["maxima"] == 0 and candles[-1]["minima"] == 0:
+            candles.pop()
+
         return candles
     except Exception as e:
         print(f"[Yahoo] Erro {ticker}: {e}")

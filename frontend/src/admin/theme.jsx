@@ -66,6 +66,16 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none}
 .admin-nav a:hover{color:var(--text)}
 .admin-nav a.active{background:var(--s2);color:var(--text)}
+
+.admin-picker{position:relative}
+.admin-picker-btn{width:100%;text-align:left;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--font-b);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.admin-picker-btn:hover{border-color:var(--accent)}
+.admin-picker-btn .ph{color:var(--text3)}
+.admin-picker-dd{position:absolute;top:calc(100% + 6px);left:0;min-width:280px;max-height:360px;overflow-y:auto;background:var(--s1);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:300}
+.admin-picker-group{padding:8px 12px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--s1)}
+.admin-picker-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)}
+.admin-picker-item:last-child{border-bottom:none}
+.admin-picker-item:hover{background:var(--s2)}
 `;
 
 export default function AdminShell({ children }) {
@@ -83,6 +93,8 @@ export function AdminPatternNav({ active }) {
   const links = [
     { key: "oco", label: "OCO", href: "/admin/templates" },
     { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
+    { key: "suporte", label: "Suporte", href: "/admin/templates/suporte" },
+    { key: "resistencia", label: "Resistência", href: "/admin/templates/resistencia" },
   ];
   return (
     <nav className="admin-nav">
