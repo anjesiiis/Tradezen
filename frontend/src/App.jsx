@@ -6,8 +6,7 @@ import AdminLogin from "./admin/AdminLogin.jsx";
 import AdminCallback from "./admin/AdminCallback.jsx";
 import AdminTemplates from "./admin/AdminTemplates.jsx";
 import AdminTemplatesTopoDuplo from "./admin/AdminTemplatesTopoDuplo.jsx";
-import AdminTemplatesSuporte from "./admin/AdminTemplatesSuporte.jsx";
-import AdminTemplatesResistencia from "./admin/AdminTemplatesResistencia.jsx";
+import AdminTemplatesNiveis from "./admin/AdminTemplatesNiveis.jsx";
 import RequireAdmin from "./admin/RequireAdmin.jsx";
 
 const API = "http://localhost:8000";
@@ -1937,11 +1936,8 @@ function Router(){
   if (location.pathname === "/admin/templates/topo-duplo") {
     return <RequireAdmin><AdminTemplatesTopoDuplo/></RequireAdmin>;
   }
-  if (location.pathname === "/admin/templates/suporte") {
-    return <RequireAdmin><AdminTemplatesSuporte/></RequireAdmin>;
-  }
-  if (location.pathname === "/admin/templates/resistencia") {
-    return <RequireAdmin><AdminTemplatesResistencia/></RequireAdmin>;
+  if (location.pathname === "/admin/templates/niveis") {
+    return <RequireAdmin><AdminTemplatesNiveis/></RequireAdmin>;
   }
 
   return (

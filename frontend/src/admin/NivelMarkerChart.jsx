@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, BaselineSeries, createSeriesMarkers } from "lightweight-charts";
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
+}
+
+function hexToRgba(hex, alpha) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Marcação de nível (suporte/resistência): diferente do TemplateMarkerChart
@@ -43,10 +51,19 @@ export default function NivelMarkerChart({ candles, cor = "#00D68F", initialToqu
       wickDownColor: "#FF4560",
     });
 
-    nivelLineRef.current = chart.addSeries(LineSeries, {
-      color: cor,
-      lineWidth: 2,
-      lineStyle: 2,
+    // Baseline preenche a área entre a linha de dados (topo da faixa) e o
+    // baseValue (fundo da faixa) — usamos isso pra desenhar a faixa de
+    // preço em vez de uma reta única. O lado "bottom" fica transparente
+    // porque a linha nunca cruza pra baixo do baseValue.
+    nivelLineRef.current = chart.addSeries(BaselineSeries, {
+      baseValue: { type: "price", price: 0 },
+      topLineColor: cor,
+      topFillColor1: hexToRgba(cor, 0.25),
+      topFillColor2: hexToRgba(cor, 0.08),
+      bottomLineColor: "rgba(0,0,0,0)",
+      bottomFillColor1: "rgba(0,0,0,0)",
+      bottomFillColor2: "rgba(0,0,0,0)",
+      lineWidth: 1,
       crosshairMarkerVisible: false,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -113,11 +130,20 @@ export default function NivelMarkerChart({ candles, cor = "#00D68F", initialToqu
     markersApiRef.current.setMarkers(marcadores);
 
     if (nivelLineRef.current) {
+      nivelLineRef.current.applyOptions({
+        topLineColor: cor,
+        topFillColor1: hexToRgba(cor, 0.25),
+        topFillColor2: hexToRgba(cor, 0.08),
+      });
+
       if (ordenados.length >= 2) {
-        const media = ordenados.reduce((s, t) => s + t.preco, 0) / ordenados.length;
+        const precos = ordenados.map((t) => t.preco);
+        const min = Math.min(...precos);
+        const max = Math.max(...precos);
+        nivelLineRef.current.applyOptions({ baseValue: { type: "price", price: min } });
         nivelLineRef.current.setData([
-          { time: toChartTime(candles[ordenados[0].i]), value: media },
-          { time: toChartTime(candles[ordenados[ordenados.length - 1].i]), value: media },
+          { time: toChartTime(candles[ordenados[0].i]), value: max },
+          { time: toChartTime(candles[ordenados[ordenados.length - 1].i]), value: max },
         ]);
       } else {
         nivelLineRef.current.setData([]);
@@ -126,7 +152,7 @@ export default function NivelMarkerChart({ candles, cor = "#00D68F", initialToqu
 
     onChange?.(toques);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toques, candles]);
+  }, [toques, candles, cor]);
 
   function removerUltimo() {
     setToques((prev) => prev.slice(0, -1));
@@ -137,12 +163,17 @@ export default function NivelMarkerChart({ candles, cor = "#00D68F", initialToqu
   }
 
   const completo = toques.length >= 2;
+  const precos = toques.map((t) => t.preco);
+  const faixa = completo ? { min: Math.min(...precos), max: Math.max(...precos) } : null;
 
   return (
     <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
         <span style={{ fontSize: 12, color: "#8FA3C7" }}>
           Toques marcados: <strong style={{ color: cor }}>{toques.length}</strong> (mínimo 2)
+          {faixa && (
+            <> · Faixa: <strong style={{ color: cor }}>{faixa.min.toFixed(4)} – {faixa.max.toFixed(4)}</strong></>
+          )}
         </span>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={removerUltimo} disabled={!toques.length} className="admin-link-btn">Remover último</button>
@@ -152,7 +183,7 @@ export default function NivelMarkerChart({ candles, cor = "#00D68F", initialToqu
 
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
         {completo
-          ? "Nível pronto. Clique no gráfico pra adicionar mais toques, ou salve."
+          ? "Faixa pronta. Clique no gráfico pra adicionar mais toques, ou salve."
           : "Clique no gráfico em cada ponto onde o preço tocou/repicou nesse nível."}
       </p>
 

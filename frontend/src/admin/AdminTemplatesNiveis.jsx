@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
-import { fetchAtivoCandles, templatesSuporteApi, clearAdminToken } from "./adminApi";
+import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
-const COR = "#00D68F";
+
+// Convenção deste projeto: resistência = verde, suporte = vermelho.
+const corDoTipo = (tipo) => (tipo === "resistencia" ? "#00D68F" : "#FF4560");
 
 function janelaDoPadrao(candlesContexto, toques) {
   const indices = toques.map((t) => t.i);
@@ -27,10 +29,33 @@ function Campo({ label, children }) {
   );
 }
 
-export default function AdminTemplatesSuporte() {
+function TipoToggle({ value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      {["suporte", "resistencia"].map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onChange(t)}
+          className="admin-chip"
+          style={
+            value === t
+              ? { borderColor: corDoTipo(t), color: corDoTipo(t), background: "rgba(255,255,255,.06)" }
+              : undefined
+          }
+        >
+          {t === "suporte" ? "Suporte" : "Resistência"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function AdminTemplatesNiveis() {
   const [ticker, setTicker] = useState("PETR4.SA");
   const [periodo, setPeriodo] = useState("1y");
   const [intervalo, setIntervalo] = useState("1d");
+  const [tipo, setTipo] = useState("suporte");
   const [candlesContexto, setCandlesContexto] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [toques, setToques] = useState([]);
@@ -47,7 +72,7 @@ export default function AdminTemplatesSuporte() {
 
   async function carregarTemplates() {
     try {
-      setTemplates(await templatesSuporteApi.list());
+      setTemplates(await templatesNiveisApi.list());
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível carregar os templates." });
     }
@@ -76,9 +101,10 @@ export default function AdminTemplatesSuporte() {
     setMensagem(null);
     try {
       const { candles, toquesAjustados } = janelaDoPadrao(candlesContexto, toques);
-      await templatesSuporteApi.create({
+      await templatesNiveisApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
+        tipo,
         candles,
         candles_contexto: candlesContexto,
         pontos: { toques: toquesAjustados },
@@ -108,7 +134,8 @@ export default function AdminTemplatesSuporte() {
     setSalvando(true);
     setMensagem(null);
     try {
-      await templatesSuporteApi.update(editando.id, {
+      await templatesNiveisApi.update(editando.id, {
+        tipo: editando.tipo,
         pontos: { toques: editando.toquesEdit },
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
@@ -126,7 +153,7 @@ export default function AdminTemplatesSuporte() {
   async function remover(id) {
     if (!window.confirm("Excluir este template?")) return;
     try {
-      await templatesSuporteApi.remove(id);
+      await templatesNiveisApi.remove(id);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao excluir o template." });
@@ -143,8 +170,8 @@ export default function AdminTemplatesSuporte() {
       <div className="admin-header">
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo">Trade<span>Up</span></span>
-          <span className="admin-header-title">Admin · Templates Suporte</span>
-          <AdminPatternNav active="suporte" />
+          <span className="admin-header-title">Admin · Templates Suporte/Resistência</span>
+          <AdminPatternNav active="niveis" />
         </div>
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
@@ -163,9 +190,13 @@ export default function AdminTemplatesSuporte() {
               <button onClick={() => setEditando(null)} className="admin-link-btn">Cancelar</button>
             </div>
 
+            <Campo label="Tipo">
+              <TipoToggle value={editando.tipo} onChange={(t) => setEditando((prev) => ({ ...prev, tipo: t }))} />
+            </Campo>
+
             <NivelMarkerChart
               candles={editando.candles}
-              cor={COR}
+              cor={corDoTipo(editando.tipo)}
               initialToques={editando.toquesEdit}
               onChange={(t) => setEditando((prev) => ({ ...prev, toquesEdit: t }))}
             />
@@ -211,6 +242,9 @@ export default function AdminTemplatesSuporte() {
                   {INTERVALOS.map((i) => <option key={i} value={i}>{i}</option>)}
                 </select>
               </Campo>
+              <Campo label="Tipo">
+                <TipoToggle value={tipo} onChange={setTipo} />
+              </Campo>
               <button onClick={carregarGrafico} disabled={carregando || !ticker.trim()} className="admin-btn">
                 {carregando ? "Carregando..." : "Carregar gráfico"}
               </button>
@@ -218,7 +252,7 @@ export default function AdminTemplatesSuporte() {
 
             {candlesContexto && (
               <>
-                <NivelMarkerChart candles={candlesContexto} cor={COR} onChange={setToques} />
+                <NivelMarkerChart candles={candlesContexto} cor={corDoTipo(tipo)} onChange={setToques} />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">
@@ -254,6 +288,7 @@ export default function AdminTemplatesSuporte() {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Tipo</th>
                   <th>Ticker</th>
                   <th>Timeframe</th>
                   <th>Resultado</th>
@@ -265,6 +300,7 @@ export default function AdminTemplatesSuporte() {
                 {templates.map((t) => (
                   <tr key={t.id}>
                     <td>{t.id}</td>
+                    <td style={{ color: corDoTipo(t.tipo) }}>{t.tipo === "resistencia" ? "Resistência" : "Suporte"}</td>
                     <td>{t.ticker}</td>
                     <td>{t.timeframe}</td>
                     <td>{t.resultado || "—"}</td>
@@ -276,7 +312,7 @@ export default function AdminTemplatesSuporte() {
                   </tr>
                 ))}
                 {templates.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text2)", padding: 24 }}>Nenhum template ainda.</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text2)", padding: 24 }}>Nenhum template ainda.</td></tr>
                 )}
               </tbody>
             </table>

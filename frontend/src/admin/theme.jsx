@@ -93,8 +93,7 @@ export function AdminPatternNav({ active }) {
   const links = [
     { key: "oco", label: "OCO", href: "/admin/templates" },
     { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
-    { key: "suporte", label: "Suporte", href: "/admin/templates/suporte" },
-    { key: "resistencia", label: "Resistência", href: "/admin/templates/resistencia" },
+    { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
   ];
   return (
     <nav className="admin-nav">
