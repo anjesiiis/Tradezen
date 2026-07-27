@@ -107,10 +107,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .dd-item:hover{background:var(--s2)}
 .dd-item:last-child{border-bottom:none}
 
-/* FULLSCREEN */
-.analysis.fullscreen .abody .achart{width:100%}
-.analysis.fullscreen .rpanel{display:none}
-
 .ac{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s;overflow:hidden}
 .ac:hover{border-color:rgba(61,126,255,.4);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .ac-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -134,15 +130,21 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* ANALYSIS */
 .analysis{display:flex;flex-direction:column;height:calc(100vh - 52px);min-width:960px;position:relative}
+/* Multitelas: 2 .analysis lado a lado — cada uma vira metade da largura, com
+   um min-width bem menor (senão 2×960px nunca cabe numa tela comum). */
+.analysis-row{display:flex;height:calc(100vh - 52px);overflow:hidden}
+.analysis-row .analysis{flex:1;min-width:480px;height:100%}
+.analysis-row .analysis:not(:last-child){border-right:1px solid var(--border)}
 .atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;position:relative;z-index:20}
 .bbtn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 8px 2px 0;line-height:1}
 .bbtn:hover{color:var(--text)}
-.atick{font-family:var(--font-h);font-size:21px;letter-spacing:2px;color:#fff;flex-shrink:0}
+.atick{font-family:var(--font-h);font-size:21px;letter-spacing:2px;color:#fff;flex-shrink:0;cursor:pointer;user-select:none}
+.atick:hover{color:var(--accent)}
+.pane-btn{margin-left:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all .15s}
+.pane-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pane-btn.danger:hover{background:var(--down);border-color:var(--down)}
 .apr{font-family:var(--font-m);font-size:14px;color:var(--text);flex-shrink:0}
 .achg{font-size:11px;padding:2px 8px;border-radius:5px;flex-shrink:0;font-weight:700}
-.tfg{display:flex;gap:4px;margin-left:10px;flex-shrink:0}
-.tfb{background:none;border:1px solid var(--border);color:var(--text2);font-family:var(--font-m);font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;transition:all .15s}
-.tfb.active,.tfb:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .sep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}
 .ohlc{display:flex;gap:14px;font-size:10px;font-family:var(--font-m);color:var(--text2);flex-shrink:0;margin-left:8px}
 
@@ -340,10 +342,20 @@ const TOOLS=[
 
 const LIMITE_DIARIO_FREE = 5;
 
+// Só 1D por enquanto (60m e 1S removidos da UI). "max" (não "5y"): os
+// padrões marcados no admin (OCO/Topo Duplo/S-R) vêm de qualquer ponto do
+// histórico do ativo, às vezes lá em 2000 — com um período curto o candle
+// do padrão simplesmente não entra na janela carregada e
+// resolverPadroesPorTimestamp descarta ele em silêncio.
 const TFS=[
-  {label:"60m",periodo:"2y",  intervalo:"60m"},
-  {label:"1D", periodo:"5y",  intervalo:"1d"},
-  {label:"1S", periodo:"3y",  intervalo:"1wk"},
+  {label:"1D", periodo:"max", intervalo:"1d"},
+];
+
+const INDICADORES = [
+  {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},
+  {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
+  {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
+  {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
 ];
 
 const ATIVOS=[
@@ -509,6 +521,251 @@ function _desenharOCO(ctx, toX, toY, p, isSel, cw){
   }
 
   ctx.restore();
+}
+
+// Desenho do Topo Duplo — mesma linguagem visual do OCO (lâmpada, linha
+// tracejada, neckline), só que com 3 pontos (Topo 1 → Vale → Topo 2) em vez
+// dos 7 do OCO.
+function _desenharTopoDuplo(ctx, toX, toY, p, isSel){
+  const P = p.pontos;
+  if(!P) return;
+
+  const pts    = [P.topo1, P.vale, P.topo2];
+  const labels = ["Topo 1", "Vale", "Topo 2"];
+
+  const coords = pts.map(pt => {
+    if(!pt) return null;
+    const x = toX(pt.i), y = toY(pt.preco);
+    return (x == null || y == null) ? null : {x, y};
+  });
+
+  ctx.save();
+
+  const headC = coords[2]; // Topo 2 é a referência da lâmpada
+  const resultado = p.resultado || "pendente";
+  const simbolo = resultado === "sucesso" ? "💡"
+                : resultado === "falhou"  ? "❌"
+                : "⏳";
+  const corLinha = resultado === "sucesso" ? "#F5A623"
+                 : resultado === "falhou"  ? "#FF2D55"
+                 : "#888888";
+
+  if(!isSel){
+    if(headC){
+      ctx.globalAlpha = resultado === "falhou" ? 0.7 : 1;
+      ctx.font = "20px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(simbolo, headC.x, headC.y - 30);
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = corLinha;
+  ctx.lineWidth   = 2.5;
+  ctx.lineJoin    = "round";
+  ctx.setLineDash([8, 5]);
+  ctx.shadowColor = resultado === "falhou" ? "rgba(255,45,85,0.5)" : "rgba(245,166,35,0.4)";
+  ctx.shadowBlur  = 8;
+  ctx.beginPath();
+  let started = false;
+  for(const c of coords){
+    if(!c){ started = false; continue; }
+    if(!started){ ctx.moveTo(c.x, c.y); started = true; }
+    else ctx.lineTo(c.x, c.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
+
+  if(headC){
+    ctx.globalAlpha = 1;
+    ctx.font = "22px serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(simbolo, headC.x, headC.y - 32);
+  }
+
+  coords.forEach((c, i) => {
+    if(!c) return;
+    const isVale = i === 1;
+    const radius = isVale ? 3.5 : 5;
+
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle   = "#F5A623";
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle    = "#FFFFFF";
+    ctx.font         = `bold ${isVale ? 9 : 10}px 'JetBrains Mono',monospace`;
+    ctx.textAlign    = "center";
+    if(isVale){
+      ctx.textBaseline = "top";
+      ctx.fillText(labels[i], c.x, c.y + radius + 4);
+    } else {
+      ctx.textBaseline = "bottom";
+      ctx.fillText(labels[i], c.x, c.y - radius - 4);
+    }
+  });
+
+  // Neckline tracejada no preço do vale, entre os dois topos
+  const valeC = coords[1];
+  if(coords[0] && coords[2] && valeC){
+    ctx.globalAlpha = 0.55;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = "rgba(200,216,247,0.55)";
+    ctx.lineWidth   = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(coords[0].x, valeC.y);
+    ctx.lineTo(coords[2].x, valeC.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = "#8B949E";
+    ctx.font = "bold 9px 'JetBrains Mono',monospace";
+    ctx.textAlign = "left";
+    ctx.fillText("NECK " + fmtP(P.vale.preco), coords[2].x + 8, valeC.y - 4);
+  }
+
+  ctx.restore();
+}
+
+// Suporte/Resistência marcado manualmente — diferente da reta infinita do
+// antigo detector automático, aqui é uma FAIXA sombreada limitada aos
+// candles entre o primeiro e o último toque (igual a marcação no admin).
+function _desenharNivel(ctx, toX, toY, p, isSel){
+  const toques = p.toquesResolvidos;
+  if(!toques || toques.length < 2) return;
+
+  const coords = toques.map(t => {
+    const x = toX(t.i), y = toY(t.preco);
+    return (x == null || y == null) ? null : {x, y, preco: t.preco};
+  }).filter(Boolean);
+  if(coords.length < 2) return;
+
+  const precos = coords.map(c => c.preco);
+  const precoMin = Math.min(...precos), precoMax = Math.max(...precos);
+  const xMin = Math.min(...coords.map(c => c.x));
+  const xMax = Math.max(...coords.map(c => c.x));
+  const yTopo = toY(precoMax);
+  const yFundo = toY(precoMin);
+  if(yTopo == null || yFundo == null) return;
+
+  ctx.save();
+
+  const resultado = p.resultado || "pendente";
+  const simbolo = resultado === "sucesso" ? "💡" : resultado === "falhou" ? "❌" : "⏳";
+  const cor = p.tipo === "resistencia" ? "#00D68F" : "#FF4560";
+  const lampC = coords[coords.length - 1];
+
+  if(!isSel){
+    if(lampC){
+      ctx.globalAlpha = resultado === "falhou" ? 0.7 : 1;
+      ctx.font = "20px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(simbolo, lampC.x, yTopo - 16);
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = cor;
+  ctx.fillRect(xMin, yTopo, xMax - xMin, Math.max(1, yFundo - yTopo));
+
+  ctx.globalAlpha = 0.75;
+  ctx.strokeStyle = cor;
+  ctx.lineWidth = 1.3;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(xMin, yTopo, xMax - xMin, Math.max(1, yFundo - yTopo));
+  ctx.setLineDash([]);
+
+  coords.forEach(c => {
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = cor;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  if(lampC){
+    ctx.globalAlpha = 1;
+    ctx.font = "22px serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(simbolo, lampC.x, yTopo - 18);
+  }
+
+  ctx.globalAlpha = 0.7;
+  ctx.fillStyle = "#8B949E";
+  ctx.font = "bold 9px 'JetBrains Mono',monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(`${p.nome} ${fmtP(precoMin)}–${fmtP(precoMax)}`, xMax + 8, (yTopo + yFundo) / 2);
+
+  ctx.restore();
+}
+
+// ── Templates marcados manualmente no admin (OCO/Topo Duplo/Suporte-Resistência),
+// plugados no gráfico principal — não é detecção automática, é o histórico
+// real já confirmado. Os pontos vêm com timestamp (não índice), porque foram
+// marcados num recorte de candles diferente do que o usuário está vendo
+// agora; resolvemos pro índice certo aqui.
+async function fetchPadroesMarcados(ticker, timeframe){
+  try {
+    const r = await fetch(`${API}/padroes-marcados/${encodeURIComponent(ticker)}?timeframe=${timeframe}`);
+    if(!r.ok) return { padroes: [], niveis: [] };
+    const d = await r.json();
+    return { padroes: d.padroes || [], niveis: d.niveis || [] };
+  } catch {
+    return { padroes: [], niveis: [] };
+  }
+}
+
+function resolverPadroesPorTimestamp(padroesBrutos, candles){
+  const tsParaIdx = new Map(candles.map((c,i) => [Math.floor(c.timestamp/1000), i]));
+  const resolverPonto = (pt) => {
+    if(!pt) return null;
+    const idx = tsParaIdx.get(Math.floor(pt.timestamp/1000));
+    return idx === undefined ? null : { i: idx, preco: pt.preco };
+  };
+
+  return padroesBrutos.map(p => {
+    // Suporte/Resistência marcados vêm como uma LISTA de toques (2+), não
+    // pontos fixos nomeados — a faixa só existe entre o primeiro e o
+    // último toque, nunca uma reta infinita.
+    if(p.pontos?.toques){
+      const toquesResolvidos = p.pontos.toques.map(resolverPonto);
+      if(toquesResolvidos.length < 2 || toquesResolvidos.some(v => !v)) return null;
+
+      const indices = toquesResolvidos.map(t => t.i);
+      return {
+        ...p,
+        toquesResolvidos,
+        lampada: toquesResolvidos[toquesResolvidos.length - 1],
+        intervalo_candles: { inicio: Math.min(...indices), fim: Math.max(...indices) },
+      };
+    }
+
+    const pontosResolvidos = Object.fromEntries(
+      Object.entries(p.pontos || {}).map(([k,v]) => [k, resolverPonto(v)])
+    );
+    const lampada = resolverPonto(p.lampada);
+    // Se algum ponto (ou a lâmpada) caiu fora da janela de candles visível
+    // agora, o padrão inteiro não aparece — evita desenhar pela metade.
+    if(!lampada || Object.values(pontosResolvidos).some(v => !v)) return null;
+
+    const indices = Object.values(pontosResolvidos).map(pt => pt.i);
+    return {
+      ...p,
+      pontos: pontosResolvidos,
+      lampada,
+      intervalo_candles: { inicio: Math.min(...indices), fim: Math.max(...indices) },
+    };
+  }).filter(Boolean);
 }
 
 // ── Converte candles do backend pro formato Lightweight Charts ──
@@ -785,14 +1042,22 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     const volData = [...volMap.values()].sort((a,b)=>a.time-b.time);
     volRef.current?.setData(volData);
 
-    // Mostra os últimos 100 candles por padrão — usuário pode arrastar pra ver o histórico
+    // Mostra os últimos 100 candles por padrão — usuário pode arrastar pra ver
+    // o histórico. Se tiver padrão marcado manualmente mais antigo que isso,
+    // estende o começo da janela pra incluir ele — senão a marcação fica
+    // escondida fora da vista, sem o usuário saber que precisa rolar pra trás.
     const totalCandles = candles.length;
     const visibleCount = 100;
+    let from = Math.max(0, totalCandles - visibleCount);
+    const iniciosMarcados = padroes.map(p => p.intervalo_candles?.inicio).filter(i => i != null);
+    if(iniciosMarcados.length){
+      from = Math.min(from, Math.max(0, Math.min(...iniciosMarcados) - 10));
+    }
     chartRef.current?.timeScale().setVisibleLogicalRange({
-      from: Math.max(0, totalCandles - visibleCount),
+      from,
       to: totalCandles + 5,
     });
-  },[candles]);
+  },[candles, padroes]);
 
   // SMAs
   useEffect(()=>{
@@ -963,6 +1228,29 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     });
   },[nivelSel]);
 
+  // Enquadra o gráfico nos padrões marcados atualmente ativos — sem isso,
+  // um padrão marcado há anos (ex: candle de 2023 num histórico de 3200+
+  // candles) fica desenhado fora da faixa visível por padrão (o gráfico
+  // abre mostrando só os candles mais recentes), e some inteiro pro
+  // usuário mesmo já estando corretamente plotado nas coordenadas reais.
+  useEffect(()=>{
+    const chart = chartRef.current;
+    if(!chart || !candles.length || !padroes.length) return;
+
+    const relevantes = padroes.filter(p => activeTools.has(normalizarTipo(p.tipo)));
+    if(!relevantes.length) return;
+
+    const indices = relevantes.flatMap(p => {
+      if(p.toquesResolvidos) return p.toquesResolvidos.map(pt => pt.i);
+      return Object.values(p.pontos || {}).filter(Boolean).map(pt => pt.i);
+    });
+    if(!indices.length) return;
+
+    const from = Math.max(0, Math.min(...indices) - 10);
+    const to   = Math.min(candles.length - 1, Math.max(...indices) + 10);
+    try{ chart.timeScale().setVisibleLogicalRange({ from, to }); }catch(e){}
+  },[activeTools, padroes, candles]);
+
   // Canvas — desenha padrões via _desenharOCO
   useEffect(()=>{
     const redraw = () => {
@@ -988,7 +1276,10 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         if(!activeTools.has(normalizarTipo(p.tipo))) continue;
         const isSel = selPat?.tipo === p.tipo &&
           selPat?.intervalo_candles?.inicio === p.intervalo_candles?.inicio;
-        _desenharOCO(ctx, toX, toY, p, isSel, canvas.width);
+        const tipoNorm = normalizarTipo(p.tipo);
+        if(tipoNorm === "topo_duplo") _desenharTopoDuplo(ctx, toX, toY, p, isSel);
+        else if(tipoNorm === "suporte" || tipoNorm === "resistencia") _desenharNivel(ctx, toX, toY, p, isSel);
+        else _desenharOCO(ctx, toX, toY, p, isSel, canvas.width);
       }
 
       // Emite posição da lâmpada do padrão selecionado pro pai
@@ -1295,27 +1586,32 @@ function EmBreve({ titulo }){
   );
 }
 
-function AppInner(){
+// Um gráfico de análise completo e independente: ativo, candles, padrões
+// marcados, indicadores ativos e o padrão selecionado são todos estado
+// local desta instância — é isso que permite abrir duas telas lado a lado
+// (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
+// pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose }){
   const navigate = useNavigate();
-  const location = useLocation();
+  const tf = TFS[0];
 
-  const [mercado,setMercado] = useState([]);
-  const [selAtivo,setSel]    = useState(null);
-  const [candles,setCandles] = useState([]);
-  const [padroes,setPadroes] = useState([]);
-  const [niveis,setNiveis]   = useState([]);
-  const [loading,setLoading] = useState(false);
-  const [tools,setTools]     = useState(new Set());
-  const [usosDiarios,setUsosDiarios] = useState({});
-  const [tf,setTf]           = useState(TFS[0]);
-  const [selPat,setSelPat]   = useState(null);
-  const [lampPos,setLampPos] = useState(null);   // {x,y} em pixels na tela
+  const [selAtivo,setSel]     = useState(null);
+  const [candles,setCandles]  = useState([]);
+  const [padroes,setPadroes]  = useState([]);
+  const [niveis,setNiveis]    = useState([]);
+  const [loading,setLoading]  = useState(false);
+  const [tools,setTools]      = useState(new Set());
+  const [selPat,setSelPat]    = useState(null);
+  const [lampPos,setLampPos]  = useState(null);   // {x,y} em pixels na tela
   const [tooltipAberto,setTooltipAberto] = useState(false);
-  const [indOpen,setIndOpen] = useState(false);
+  const [indOpen,setIndOpen]  = useState(false);
   const indBtnRef = useRef(null);
-  const [indPos,setIndPos]   = useState({top:0,left:0});
+  const [indPos,setIndPos]    = useState({top:0,left:0});
+  const [hoverC,setHoverC]    = useState(null);
+  const [painelAberto,setPainelAberto] = useState(true);
+  const [switcherAberto,setSwitcherAberto] = useState(false);
 
-  // Fecha dropdown ao clicar fora
+  // Fecha dropdown de indicadores ao clicar fora
   useEffect(()=>{
     if(!indOpen) return;
     const h = e => { if(!e.target.closest(".ind-wrap")) setIndOpen(false); };
@@ -1323,13 +1619,322 @@ function AppInner(){
     return ()=>document.removeEventListener("mousedown", h);
   },[indOpen]);
 
-  const INDICADORES = [
-    {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},
-    {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
-    {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
-    {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
-  ];
-  const [hoverC,setHoverC]   = useState(null);
+  // Busca candles + padrões marcados sempre que o ticker DESTA tela muda —
+  // cada ChartPane tem o seu próprio ciclo de fetch, independente das outras.
+  useEffect(()=>{
+    if(!ticker) return;
+    // Guarda contra corrida: se o ticker mudar de novo antes desse fetch
+    // terminar (troca rápida no switcher), a resposta antiga não pode
+    // pisar no estado da nova — sem isso, o "info" (nome/símbolo/mercado)
+    // de um ticker desatualizado podia chegar depois e ficar colado com o
+    // preço do ticker novo.
+    let cancelado = false;
+
+    let ativo = mercado.find(m=>m.ticker===ticker);
+    if(!ativo){
+      ativo = { ticker, simbolo: ticker.split(".")[0].split("-")[0], nome: ticker, mercado: "—", moeda: "—" };
+    }
+    setSel(ativo);
+    setLoading(true);
+    setSelPat(null);
+    setLampPos(null);
+    setTooltipAberto(false);
+    setCandles([]);
+    setPadroes([]);
+    setNiveis([]);
+    Promise.all([
+      fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`).then(r=>r.json()),
+      fetchPadroesMarcados(ativo.ticker, tf.intervalo),
+    ])
+      .then(([d, marcados])=>{
+        if(cancelado) return;
+        const candlesRecebidos = d.candles||[];
+        setCandles(candlesRecebidos);
+        setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
+        setNiveis(d.niveis||[]);
+        if(d.info){
+          setSel(prev=>({...prev, ...d.info, ticker}));
+        }
+        setLoading(false);
+      })
+      .catch(()=>{ if(!cancelado) setLoading(false); });
+
+    return () => { cancelado = true; };
+  },[ticker]);
+
+  const toggleTool=id=>{
+    setTools(prev=>{
+      const n=new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      // Se desmarcou o padrão que estava selecionado, limpa seleção
+      if(selPat && normalizarTipo(selPat.tipo) === id && !n.has(id)){
+        setSelPat(null);
+        setTooltipAberto(false);
+      }
+      return n;
+    });
+  };
+
+  if(!selAtivo) return null;
+
+  return (
+    <div className="analysis">
+      <div className="atb">
+        {!onClose && <button className="bbtn" onClick={()=>navigate("/mercados")} title="Voltar pra home">←</button>}
+
+        <span className="atick" onClick={()=>setSwitcherAberto(v=>!v)} title="Trocar ativo desta tela">
+          {selAtivo.simbolo} <span style={{fontSize:11}}>▾</span>
+        </span>
+
+        {selAtivo.preco>0&&<>
+          <span className="apr">{fmtP(selAtivo.preco)}</span>
+          <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
+        </>}
+        <span style={{fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{selAtivo.mercado}</span>
+
+        <div className="sep"/>
+
+        {/* Dropdown Indicadores — via portal pra evitar z-index do .analysis */}
+        <div className="ind-wrap">
+          <button
+            ref={indBtnRef}
+            className={`ind-btn ${indOpen?"open":""}`}
+            onClick={()=>{
+              if(!indOpen && indBtnRef.current){
+                const r = indBtnRef.current.getBoundingClientRect();
+                setIndPos({top: r.bottom+4, left: r.left});
+              }
+              setIndOpen(v=>!v);
+            }}
+          >
+            Indicadores <span className="arr">▼</span>
+            {INDICADORES.filter(i=>tools.has(i.id)).length>0&&(
+              <span style={{background:"var(--accent)",color:"#fff",borderRadius:8,padding:"1px 5px",fontSize:9,fontWeight:700}}>
+                {INDICADORES.filter(i=>tools.has(i.id)).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {hoverC&&(
+          <div className="ohlc">
+            <span>A:<span style={{color:"var(--text)"}}> {fmtP(hoverC.abertura)}</span></span>
+            <span>M:<span style={{color:"var(--up)"}}> {fmtP(hoverC.maxima)}</span></span>
+            <span>m:<span style={{color:"var(--down)"}}> {fmtP(hoverC.minima)}</span></span>
+            <span>F:<span style={{color:hoverC.fechamento>=hoverC.abertura?"var(--up)":"var(--down)"}}> {fmtP(hoverC.fechamento)}</span></span>
+            <span style={{color:"var(--text3)"}}>{hoverC.data}</span>
+          </div>
+        )}
+        <span style={{marginLeft:"auto",fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)",flexShrink:0}}>
+          {padroes.length} padrões · {candles.length} candles
+        </span>
+        {onAddSplit && (
+          <button className="pane-btn" onClick={onAddSplit} title="Adicionar tela">+</button>
+        )}
+        {onClose && (
+          <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
+        )}
+        {!painelAberto && (
+          <button
+            onClick={()=>setPainelAberto(true)}
+            title="Mostrar painel de indicadores"
+            className="pane-btn"
+          >«</button>
+        )}
+      </div>
+
+      <div className="abody">
+        <div className="achart">
+          {loading&&<div className="ld"><div className="spin"/><div className="ldtxt">CARREGANDO...</div></div>}
+          {!loading&&candles.length>0&&(
+            <CandleChart
+              candles={candles}
+              padroes={padroes}
+              niveis={niveis}
+              activeTools={tools}
+              selPat={selPat}
+              setSelPat={setSelPat}
+              onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
+              setHoverC={setHoverC}
+              showVolume={selAtivo.mercado!=="COMMODITY"}
+            />
+          )}
+          {!loading&&candles.length>0&&(
+            <div style={{position:"absolute",top:10,left:14,display:"flex",gap:16,pointerEvents:"none",zIndex:5}}>
+              {tools.has("sma20")  &&<span style={{fontSize:9,color:"#F5A623",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM20</span>}
+              {tools.has("sma100") &&<span style={{fontSize:9,color:"#9B6DFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM100</span>}
+              {tools.has("sma200") &&<span style={{fontSize:9,color:"#3D7EFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM200</span>}
+              {tools.has("sr")     &&<span style={{fontSize:9,color:"var(--text2)",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>--- S/R</span>}
+            </div>
+          )}
+        </div>
+
+        {painelAberto&&<div className="rpanel">
+          <button className="rp-toggle" onClick={()=>setPainelAberto(false)} title="Recolher painel" style={{position:"absolute",top:8,right:8,zIndex:10}}>»</button>
+
+          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+
+            {/* ── INDICADORES GRÁTIS ── */}
+            <div className="rpsec">
+              <div className="tsec-head">
+                <span className="rptitle">Indicadores</span>
+                <span className="tsec-tag free">Grátis</span>
+              </div>
+              {TOOLS.filter(t=>t.plano==="free").map(t=>(
+                <div key={t.id}>
+                  <div className={`titem ${tools.has(t.id)?"active":""}`} onClick={()=>toggleTool(t.id)}>
+                    <div className="tchk">{tools.has(t.id)&&"✓"}</div>
+                    <div className="tinf">
+                      <div className="tnm">{t.name}</div>
+                      <div className="tty">{t.type}</div>
+                    </div>
+                  </div>
+                  {t.nota&&<div style={{fontSize:9,color:"var(--text3)",padding:"1px 10px 5px 36px",fontStyle:"italic"}}>ℹ️ {t.nota}</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* ── INDICADORES PREMIUM ── */}
+            <div className="rpsec">
+              <div className="tsec-head">
+                <span className="rptitle">Indicadores</span>
+                <span className="tsec-tag prem">Premium</span>
+              </div>
+              {TOOLS.filter(t=>t.plano==="premium").map(t=>(
+                <div key={t.id} className="titem" style={{opacity:.45,cursor:"default"}}>
+                  <div className="tchk"></div>
+                  <div className="tinf"><div className="tnm">{t.name}</div><div className="tty">{t.type}</div></div>
+                  <span className="tlock">🔒</span>
+                </div>
+              ))}
+              <button
+                onClick={()=>navigate("/precos")}
+                style={{width:"100%",marginTop:10,padding:"8px",background:"none",border:"1px solid rgba(155,109,255,.3)",borderRadius:7,color:"var(--pro)",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:".3px"}}
+              >Saiba mais →</button>
+            </div>
+
+            {/* ── HINT quando nenhum indicador ativo ── */}
+            {tools.size===0&&candles.length>0&&(
+              <div className="rpsec">
+                <div style={{fontSize:11,color:"var(--text3)",textAlign:"center",lineHeight:1.6,padding:"4px 0"}}>
+                  Ative um indicador acima<br/>para ver os padrões no gráfico
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>}
+
+      </div>
+
+      {/* ── BOTÃO SAIBA MAIS ── */}
+      {selPat && lampPos && (
+        <button
+          className="saiba-mais-btn"
+          style={{left: lampPos.x, top: lampPos.y}}
+          onClick={e=>{ e.stopPropagation(); setTooltipAberto(v=>!v); }}
+        >
+          Saiba mais →
+        </button>
+      )}
+
+      {/* ── PAINEL DE EXPLICAÇÃO (sidebar direita sobreposta) ── */}
+      {selPat && tooltipAberto && (()=>{
+        const conf    = selPat.confiabilidade ?? 0;
+        const corConf = conf >= 80 ? "var(--up)" : "var(--gold)";
+
+        return (
+          <div className="exp-panel">
+            <div className="exp-header">
+              <div className="exp-nome">{selPat.nome}</div>
+              <button className="exp-close" onClick={()=>setTooltipAberto(false)}>✕</button>
+            </div>
+
+            <div className="exp-body">
+              {selPat.resultado && selPat.resultado !== "pendente" && (
+                <div className="exp-badges">
+                  <span className="exp-badge" style={{
+                    background:selPat.resultado==="sucesso"?"rgba(0,214,143,.1)":"rgba(255,69,96,.1)",
+                    color:selPat.resultado==="sucesso"?"var(--up)":"var(--down)"}}>
+                    {selPat.resultado==="sucesso"?"✅ Confirmado":"❌ Não confirmado"}
+                  </span>
+                </div>
+              )}
+
+              <div className="exp-texto">{selPat.explicacao||selPat.descricao}</div>
+
+              <div>
+                <div className="exp-qual-row">
+                  <span>Confiabilidade do padrão</span>
+                  <span style={{color:corConf,fontWeight:700}}>{conf}%</span>
+                </div>
+                <div className="exp-bar">
+                  <div className="exp-bar-fill" style={{width:`${conf}%`,background:corConf}}/>
+                </div>
+              </div>
+
+              <div className="exp-aviso">⚠️ Conteúdo educativo · não é recomendação</div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── PORTAL DO DROPDOWN DE INDICADORES ── */}
+      {indOpen && createPortal(
+        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setIndOpen(false)}>
+          <div
+            className="ind-drop"
+            style={{position:"fixed",top:indPos.top,left:indPos.left}}
+            onMouseDown={e=>e.stopPropagation()}
+          >
+            {[...new Set(INDICADORES.map(i=>i.grupo))].map(grupo=>(
+              <div key={grupo}>
+                <div className="ind-section">{grupo}</div>
+                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>(
+                  <div
+                    key={ind.id}
+                    className="ind-item"
+                    onMouseDown={e=>{
+                      e.stopPropagation();
+                      toggleTool(ind.id);
+                    }}
+                  >
+                    <div className={`ind-chk ${tools.has(ind.id)?"on":""}`}>
+                      {tools.has(ind.id)&&"✓"}
+                    </div>
+                    <span className="ind-label">{ind.label}</span>
+                    <span className="ind-color" style={{background:ind.cor}}/>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── POPOVER DE TROCA DE ATIVO DESTA TELA ── */}
+      {switcherAberto && createPortal(
+        <div
+          style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100}}
+          onMouseDown={()=>setSwitcherAberto(false)}
+        >
+          <div className="ind-drop" style={{position:"relative",top:0,left:0,width:340,padding:0}} onMouseDown={e=>e.stopPropagation()}>
+            <AssetSwitcher mercado={mercado} onSelect={a=>{ onTickerChange(a.ticker); setSwitcherAberto(false); }}/>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+function AppInner(){
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [mercado,setMercado] = useState([]);
+  const [usosDiarios,setUsosDiarios] = useState({});
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [ibovLoading,setIbovLoading] = useState(false);
@@ -1337,12 +1942,10 @@ function AppInner(){
   const [sbCollapsed,setSbCollapsed] = useState(false);
   const [secao,setSecao]     = useState("inicio");
 
-  // Novos estados pro cabeçalho da análise
-  const [chartType,setChartType] = useState("candles"); // candles | linha | area
-  const [showAssetSwitcher,setShowAssetSwitcher] = useState(false);
-  const [showIndicators,setShowIndicators] = useState(false);
-  const [fullscreen,setFullscreen] = useState(false);
-  const [painelAberto,setPainelAberto] = useState(true);  // barra direita visível
+  // Multitelas: null = uma tela só; com ticker = segunda tela aberta ao
+  // lado da principal. A tela principal continua vindo da URL (permite
+  // F5/link direto); a segunda é só estado local, não vai pra URL.
+  const [splitTicker,setSplitTicker] = useState(null);
 
   // Deriva qual "página" estamos baseado na URL
   const path = location.pathname;
@@ -1386,66 +1989,6 @@ function AppInner(){
 
   const abrirAtivo=a=>{
     navigate(`/ativo/${encodeURIComponent(a.ticker)}`);
-  };
-
-  // Quando a URL é /ativo/XXX, busca os dados (funciona até em F5 ou link direto)
-  useEffect(()=>{
-    if(!tickerUrl) return;
-
-    // Procura o ativo no mercado já carregado. Se não achar, monta um stub mínimo.
-    let ativo = mercado.find(m=>m.ticker===tickerUrl);
-    if(!ativo){
-      ativo = { ticker: tickerUrl, simbolo: tickerUrl.split(".")[0].split("-")[0], nome: tickerUrl, mercado: "—", moeda: "—" };
-    }
-    setSel(ativo);
-    setLoading(true);
-    setSelPat(null);
-    setLampPos(null);
-    setTooltipAberto(false);
-    setCandles([]);
-    setPadroes([]);
-    setNiveis([]);
-    fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
-      .then(r=>r.json())
-      .then(d=>{
-        setCandles(d.candles||[]);
-        setPadroes(d.padroes||[]);
-        setNiveis(d.niveis||[]);
-        // Atualiza info do ativo com dados do backend se disponível
-        if(d.info){
-          setSel(prev=>({...prev, ...d.info, ticker: tickerUrl}));
-        }
-        setLoading(false);
-      })
-      .catch(()=>setLoading(false));
-  },[tickerUrl, tf.periodo, tf.intervalo]);
-
-  const trocarTF=t=>{
-    setTf(t);
-    // O useEffect do tickerUrl/tf detecta a mudança e rebusca
-  };
-
-  // Atualiza dados manualmente (botão refresh)
-  const atualizarAtivo = () => {
-    if(!selAtivo) return;
-    setLoading(true);setCandles([]);setPadroes([]);setNiveis([]);
-    fetch(`${API}/ativo/${selAtivo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
-      .then(r=>r.json())
-      .then(d=>{setCandles(d.candles||[]);setPadroes(d.padroes||[]);setNiveis(d.niveis||[]);setLoading(false);})
-      .catch(()=>setLoading(false));
-  };
-
-  const toggleTool=id=>{
-    setTools(prev=>{
-      const n=new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      // Se desmarcou o padrão que estava selecionado, limpa seleção
-      if(selPat && normalizarTipo(selPat.tipo) === id && !n.has(id)){
-        setSelPat(null);
-        setTooltipAberto(false);
-      }
-      return n;
-    });
   };
 
   const ibov        = mercado.find(m=>m.ticker==="^BVSP")||mercado[0];
@@ -1668,253 +2211,30 @@ function AppInner(){
         </div>
       )}
 
-      {isAnalysis&&selAtivo&&(
-        <div className={`analysis ${fullscreen?"fullscreen":""}`}>
-          <div className="atb">
-            <button className="bbtn" onClick={()=>navigate("/mercados")} title="Voltar pra home">←</button>
-            <span className="atick">{selAtivo.simbolo}</span>
-
-            {selAtivo.preco>0&&<>
-              <span className="apr">{fmtP(selAtivo.preco)}</span>
-              <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
-            </>}
-            <span style={{fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{selAtivo.mercado}</span>
-
-            <div className="sep"/>
-
-            {/* Timeframes */}
-            <div className="tfg">
-              {TFS.map(t=>(
-                <button key={t.label} className={`tfb ${tf.label===t.label?"active":""}`} onClick={()=>trocarTF(t)}>{t.label}</button>
-              ))}
-            </div>
-
-            {/* Dropdown Indicadores — via portal pra evitar z-index do .analysis */}
-            <div className="ind-wrap">
-              <button
-                ref={indBtnRef}
-                className={`ind-btn ${indOpen?"open":""}`}
-                onClick={()=>{
-                  if(!indOpen && indBtnRef.current){
-                    const r = indBtnRef.current.getBoundingClientRect();
-                    setIndPos({top: r.bottom+4, left: r.left});
-                  }
-                  setIndOpen(v=>!v);
-                }}
-              >
-                Indicadores <span className="arr">▼</span>
-                {INDICADORES.filter(i=>tools.has(i.id)).length>0&&(
-                  <span style={{background:"var(--accent)",color:"#fff",borderRadius:8,padding:"1px 5px",fontSize:9,fontWeight:700}}>
-                    {INDICADORES.filter(i=>tools.has(i.id)).length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {hoverC&&(
-              <div className="ohlc">
-                <span>A:<span style={{color:"var(--text)"}}> {fmtP(hoverC.abertura)}</span></span>
-                <span>M:<span style={{color:"var(--up)"}}> {fmtP(hoverC.maxima)}</span></span>
-                <span>m:<span style={{color:"var(--down)"}}> {fmtP(hoverC.minima)}</span></span>
-                <span>F:<span style={{color:hoverC.fechamento>=hoverC.abertura?"var(--up)":"var(--down)"}}> {fmtP(hoverC.fechamento)}</span></span>
-                <span style={{color:"var(--text3)"}}>{hoverC.data}</span>
-              </div>
-            )}
-            <span style={{marginLeft:"auto",fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)",flexShrink:0}}>
-              {padroes.length} padrões · {candles.length} candles
-            </span>
-            {!fullscreen && !painelAberto && (
-              <button
-                onClick={()=>setPainelAberto(true)}
-                title="Mostrar painel de indicadores"
-                style={{
-                  marginLeft:8,background:"var(--card)",border:"1px solid var(--border)",
-                  color:"var(--text2)",cursor:"pointer",width:28,height:28,borderRadius:7,
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,
-                  transition:"all .15s",flexShrink:0
-                }}
-                onMouseEnter={e=>{e.currentTarget.style.background="var(--accent)";e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="var(--accent)"}}
-                onMouseLeave={e=>{e.currentTarget.style.background="var(--card)";e.currentTarget.style.color="var(--text2)";e.currentTarget.style.borderColor="var(--border)"}}
-              >«</button>
-            )}
-          </div>
-
-          <div className="abody">
-            <div className="achart">
-              {loading&&<div className="ld"><div className="spin"/><div className="ldtxt">CARREGANDO...</div></div>}
-              {!loading&&candles.length>0&&(
-                <CandleChart
-                  candles={candles}
-                  padroes={padroes}
-                  niveis={niveis}
-                  activeTools={tools}
-                  selPat={selPat}
-                  setSelPat={setSelPat}
-                  onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
-                  setHoverC={setHoverC}
-                  showVolume={selAtivo.mercado!=="COMMODITY"}
-                />
-              )}
-              {!loading&&candles.length>0&&(
-                <div style={{position:"absolute",top:10,left:14,display:"flex",gap:16,pointerEvents:"none",zIndex:5}}>
-                  {tools.has("sma20")  &&<span style={{fontSize:9,color:"#F5A623",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM20</span>}
-                  {tools.has("sma100") &&<span style={{fontSize:9,color:"#9B6DFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM100</span>}
-                  {tools.has("sma200") &&<span style={{fontSize:9,color:"#3D7EFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM200</span>}
-                  {tools.has("sr")     &&<span style={{fontSize:9,color:"var(--text2)",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>--- S/R</span>}
-                </div>
-              )}
-            </div>
-
-            {!fullscreen&&painelAberto&&<div className="rpanel">
-              <button className="rp-toggle" onClick={()=>setPainelAberto(false)} title="Recolher painel" style={{position:"absolute",top:8,right:8,zIndex:10}}>»</button>
-
-              <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
-
-                {/* ── INDICADORES GRÁTIS ── */}
-                <div className="rpsec">
-                  <div className="tsec-head">
-                    <span className="rptitle">Indicadores</span>
-                    <span className="tsec-tag free">Grátis</span>
-                  </div>
-                  {TOOLS.filter(t=>t.plano==="free").map(t=>(
-                    <div key={t.id}>
-                      <div className={`titem ${tools.has(t.id)?"active":""}`} onClick={()=>toggleTool(t.id)}>
-                        <div className="tchk">{tools.has(t.id)&&"✓"}</div>
-                        <div className="tinf">
-                          <div className="tnm">{t.name}</div>
-                          <div className="tty">{t.type}</div>
-                        </div>
-                      </div>
-                      {t.nota&&<div style={{fontSize:9,color:"var(--text3)",padding:"1px 10px 5px 36px",fontStyle:"italic"}}>ℹ️ {t.nota}</div>}
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── INDICADORES PREMIUM ── */}
-                <div className="rpsec">
-                  <div className="tsec-head">
-                    <span className="rptitle">Indicadores</span>
-                    <span className="tsec-tag prem">Premium</span>
-                  </div>
-                  {TOOLS.filter(t=>t.plano==="premium").map(t=>(
-                    <div key={t.id} className="titem" style={{opacity:.45,cursor:"default"}}>
-                      <div className="tchk"></div>
-                      <div className="tinf"><div className="tnm">{t.name}</div><div className="tty">{t.type}</div></div>
-                      <span className="tlock">🔒</span>
-                    </div>
-                  ))}
-                  <button
-                    onClick={()=>navigate("/precos")}
-                    style={{width:"100%",marginTop:10,padding:"8px",background:"none",border:"1px solid rgba(155,109,255,.3)",borderRadius:7,color:"var(--pro)",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:".3px"}}
-                  >Saiba mais →</button>
-                </div>
-
-                {/* ── HINT quando nenhum indicador ativo ── */}
-                {tools.size===0&&candles.length>0&&(
-                  <div className="rpsec">
-                    <div style={{fontSize:11,color:"var(--text3)",textAlign:"center",lineHeight:1.6,padding:"4px 0"}}>
-                      Ative um indicador acima<br/>para ver os padrões no gráfico
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            </div>}
-
-          </div>
+      {/* ── ANÁLISE: 1 tela, ou 2 lado a lado (multitelas) ──
+          A tela principal usa key="primary" sempre — assim, ao abrir/fechar
+          a segunda tela, o React reconcilia o mesmo componente em vez de
+          desmontar e remontar (o que perderia indicadores/seleção e
+          disparodava um refetch à toa). */}
+      {isAnalysis && tickerUrl && (
+        <div className="analysis-row">
+          <ChartPane
+            key="primary"
+            mercado={mercado}
+            ticker={tickerUrl}
+            onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
+            onAddSplit={splitTicker ? undefined : ()=>setSplitTicker(tickerUrl)}
+          />
+          {splitTicker && (
+            <ChartPane
+              key="secondary"
+              mercado={mercado}
+              ticker={splitTicker}
+              onTickerChange={setSplitTicker}
+              onClose={()=>setSplitTicker(null)}
+            />
+          )}
         </div>
-      )}
-
-      {/* ── BOTÃO SAIBA MAIS ── */}
-      {selPat && lampPos && (
-        <button
-          className="saiba-mais-btn"
-          style={{left: lampPos.x, top: lampPos.y}}
-          onClick={e=>{ e.stopPropagation(); setTooltipAberto(v=>!v); }}
-        >
-          Saiba mais →
-        </button>
-      )}
-
-      {/* ── PAINEL DE EXPLICAÇÃO (sidebar direita sobreposta) ── */}
-      {selPat && tooltipAberto && (()=>{
-        const conf    = selPat.confiabilidade ?? 0;
-        const corConf = conf >= 80 ? "var(--up)" : "var(--gold)";
-
-        return (
-          <div className="exp-panel">
-            {/* Header */}
-            <div className="exp-header">
-              <div className="exp-nome">{selPat.nome}</div>
-              <button className="exp-close" onClick={()=>setTooltipAberto(false)}>✕</button>
-            </div>
-
-            <div className="exp-body">
-              {/* Badge resultado */}
-              {selPat.resultado && selPat.resultado !== "pendente" && (
-                <div className="exp-badges">
-                  <span className="exp-badge" style={{
-                    background:selPat.resultado==="sucesso"?"rgba(0,214,143,.1)":"rgba(255,69,96,.1)",
-                    color:selPat.resultado==="sucesso"?"var(--up)":"var(--down)"}}>
-                    {selPat.resultado==="sucesso"?"✅ Confirmado":"❌ Não confirmado"}
-                  </span>
-                </div>
-              )}
-
-              {/* Texto educativo */}
-              <div className="exp-texto">{selPat.explicacao||selPat.descricao}</div>
-
-              {/* Confiabilidade geral */}
-              <div>
-                <div className="exp-qual-row">
-                  <span>Confiabilidade do padrão</span>
-                  <span style={{color:corConf,fontWeight:700}}>{conf}%</span>
-                </div>
-                <div className="exp-bar">
-                  <div className="exp-bar-fill" style={{width:`${conf}%`,background:corConf}}/>
-                </div>
-              </div>
-
-
-
-              {/* Aviso */}
-              <div className="exp-aviso">⚠️ Conteúdo educativo · não é recomendação</div>
-            </div>
-          </div>
-        );
-      })()}
-      {/* ── PORTAL DO DROPDOWN DE INDICADORES ── */}
-      {indOpen && createPortal(
-        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setIndOpen(false)}>
-          <div
-            className="ind-drop"
-            style={{position:"fixed",top:indPos.top,left:indPos.left}}
-            onMouseDown={e=>e.stopPropagation()}
-          >
-            {[...new Set(INDICADORES.map(i=>i.grupo))].map(grupo=>(
-              <div key={grupo}>
-                <div className="ind-section">{grupo}</div>
-                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>(
-                  <div
-                    key={ind.id}
-                    className="ind-item"
-                    onMouseDown={e=>{
-                      e.stopPropagation();
-                      toggleTool(ind.id);
-                    }}
-                  >
-                    <div className={`ind-chk ${tools.has(ind.id)?"on":""}`}>
-                      {tools.has(ind.id)&&"✓"}
-                    </div>
-                    <span className="ind-label">{ind.label}</span>
-                    <span className="ind-color" style={{background:ind.cor}}/>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>,
-        document.body
       )}
       </>
     );

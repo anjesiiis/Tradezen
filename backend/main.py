@@ -38,6 +38,7 @@ from admin_auth import router as admin_auth_router
 from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
 from admin_templates_niveis import router as admin_templates_niveis_router
+from padroes_marcados import router as padroes_marcados_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
@@ -58,6 +59,7 @@ app.include_router(admin_auth_router)
 app.include_router(admin_templates_router)
 app.include_router(admin_templates_topo_duplo_router)
 app.include_router(admin_templates_niveis_router)
+app.include_router(padroes_marcados_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }
@@ -246,7 +248,12 @@ def dados_ativo(
             "intervalo": intervalo,
             "total_candles": len(candles),
             "candles": candles,
-            "niveis": detectar_niveis(candles),
+            # Detector automático de suporte/resistência desligado até termos
+            # 40+ templates marcados com resultado "sucesso" em templates_niveis
+            # (hoje ainda são poucos — ver admin_templates_niveis.py). Mesmo
+            # critério já valia pro detector de OCO (classicos.py), removido
+            # daqui no commit 78a74cc.
+            "niveis": [],
         }
         cache_set(chave_cache, resposta)
         return {**resposta, "cache": False}

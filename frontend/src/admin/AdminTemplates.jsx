@@ -66,19 +66,26 @@ export default function AdminTemplates() {
     }
   }
 
-  async function carregarGrafico() {
+  async function carregarGrafico(tickerParam) {
+    const alvo = (tickerParam ?? ticker).trim();
+    if (!alvo) return;
     setCarregando(true);
     setMensagem(null);
     try {
-      const data = await fetchAtivoCandles(ticker.trim(), periodo, intervalo);
+      const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
       setPontos({});
     } catch {
-      setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${ticker}'.` });
+      setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
     } finally {
       setCarregando(false);
     }
+  }
+
+  function selecionarTicker(novoTicker) {
+    setTicker(novoTicker);
+    carregarGrafico(novoTicker);
   }
 
   const completo = PASSOS.every((k) => pontos[k]);
@@ -112,7 +119,12 @@ export default function AdminTemplates() {
   }
 
   function iniciarEdicao(template) {
-    setEditando({ ...template, pontosEdit: template.pontos });
+    setEditando({ ...template, pontosEdit: template.pontos, readOnly: false });
+    setMensagem(null);
+  }
+
+  function iniciarVisualizacao(template) {
+    setEditando({ ...template, pontosEdit: template.pontos, readOnly: true });
     setMensagem(null);
   }
 
@@ -172,16 +184,18 @@ export default function AdminTemplates() {
         {editando ? (
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2>Editando #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => setEditando(null)} className="admin-link-btn">Cancelar</button>
+              <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
+              <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
             </div>
 
             <TemplateMarkerChart
+              key={`${editando.id}-${editando.readOnly}`}
               candles={editando.candles}
               steps={STEPS}
               linePairs={LINE_PAIRS}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
+              readOnly={editando.readOnly}
             />
 
             <div className="admin-grid2">
@@ -191,6 +205,7 @@ export default function AdminTemplates() {
                   defaultValue={editando.resultado || ""}
                   onChange={(e) => setEditando((prev) => ({ ...prev, resultado: e.target.value }))}
                   className="admin-input"
+                  disabled={editando.readOnly}
                 />
               </Campo>
               <Campo label="Observação">
@@ -199,13 +214,16 @@ export default function AdminTemplates() {
                   defaultValue={editando.observacao || ""}
                   onChange={(e) => setEditando((prev) => ({ ...prev, observacao: e.target.value }))}
                   className="admin-input"
+                  disabled={editando.readOnly}
                 />
               </Campo>
             </div>
 
-            <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
-              {salvando ? "Salvando..." : "Salvar alterações"}
-            </button>
+            {!editando.readOnly && (
+              <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
+                {salvando ? "Salvando..." : "Salvar alterações"}
+              </button>
+            )}
           </section>
         ) : (
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -213,7 +231,7 @@ export default function AdminTemplates() {
 
             <div className="admin-row">
               <Campo label="Ticker">
-                <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={setTicker} /></div>
+                <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
               <Campo label="Período">
                 <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">
@@ -225,7 +243,7 @@ export default function AdminTemplates() {
                   {INTERVALOS.map((i) => <option key={i} value={i}>{i}</option>)}
                 </select>
               </Campo>
-              <button onClick={carregarGrafico} disabled={carregando || !ticker.trim()} className="admin-btn">
+              <button onClick={() => carregarGrafico()} disabled={carregando || !ticker.trim()} className="admin-btn">
                 {carregando ? "Carregando..." : "Carregar gráfico"}
               </button>
             </div>
@@ -284,6 +302,7 @@ export default function AdminTemplates() {
                     <td>{t.resultado || "—"}</td>
                     <td className="muted">{new Date(t.criado_em).toLocaleString("pt-BR")}</td>
                     <td style={{ textAlign: "right" }}>
+                      <a className="action" onClick={() => iniciarVisualizacao(t)}>Visualizar</a>
                       <a className="action" onClick={() => iniciarEdicao(t)}>Editar</a>
                       <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
                     </td>

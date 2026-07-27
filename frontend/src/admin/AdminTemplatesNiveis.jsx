@@ -10,6 +10,7 @@ const PADDING = 15;
 
 // Convenção deste projeto: resistência = verde, suporte = vermelho.
 const corDoTipo = (tipo) => (tipo === "resistencia" ? "#00D68F" : "#FF4560");
+const CORES_NIVEL = { suporte: corDoTipo("suporte"), resistencia: corDoTipo("resistencia") };
 
 function janelaDoPadrao(candlesContexto, toques) {
   const indices = toques.map((t) => t.i);
@@ -58,13 +59,14 @@ export default function AdminTemplatesNiveis() {
   const [tipo, setTipo] = useState("suporte");
   const [candlesContexto, setCandlesContexto] = useState(null);
   const [carregando, setCarregando] = useState(false);
-  const [toques, setToques] = useState([]);
+  const [toquesPorGrupo, setToquesPorGrupo] = useState({ suporte: [], resistencia: [] });
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [editando, setEditando] = useState(null);
+  const [marcacaoKey, setMarcacaoKey] = useState(0);
 
   useEffect(() => {
     carregarTemplates();
@@ -78,29 +80,38 @@ export default function AdminTemplatesNiveis() {
     }
   }
 
-  async function carregarGrafico() {
+  async function carregarGrafico(tickerParam) {
+    const alvo = (tickerParam ?? ticker).trim();
+    if (!alvo) return;
     setCarregando(true);
     setMensagem(null);
     try {
-      const data = await fetchAtivoCandles(ticker.trim(), periodo, intervalo);
+      const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
-      setToques([]);
+      setToquesPorGrupo({ suporte: [], resistencia: [] });
+      setMarcacaoKey((k) => k + 1);
     } catch {
-      setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${ticker}'.` });
+      setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
     } finally {
       setCarregando(false);
     }
   }
 
-  const completo = toques.length >= 2;
+  function selecionarTicker(novoTicker) {
+    setTicker(novoTicker);
+    carregarGrafico(novoTicker);
+  }
+
+  const toquesAtivos = toquesPorGrupo[tipo] || [];
+  const completo = toquesAtivos.length >= 2;
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, toquesAjustados } = janelaDoPadrao(candlesContexto, toques);
+      const { candles, toquesAjustados } = janelaDoPadrao(candlesContexto, toquesAtivos);
       await templatesNiveisApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
@@ -111,11 +122,12 @@ export default function AdminTemplatesNiveis() {
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
       });
-      setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
-      setCandlesContexto(null);
-      setToques([]);
+      const tipoLabel = tipo === "resistencia" ? "Resistência" : "Suporte";
+      setMensagem({ tipo: "ok", texto: `${tipoLabel} salvo com sucesso. Gráfico continua aberto — marque o próximo nível.` });
+      setToquesPorGrupo((prev) => ({ ...prev, [tipo]: [] }));
       setResultado("");
       setObservacao("");
+      setMarcacaoKey((k) => k + 1);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -125,7 +137,12 @@ export default function AdminTemplatesNiveis() {
   }
 
   function iniciarEdicao(template) {
-    setEditando({ ...template, toquesEdit: template.pontos?.toques || [] });
+    setEditando({ ...template, toquesEdit: template.pontos?.toques || [], readOnly: false });
+    setMensagem(null);
+  }
+
+  function iniciarVisualizacao(template) {
+    setEditando({ ...template, toquesEdit: template.pontos?.toques || [], readOnly: true });
     setMensagem(null);
   }
 
@@ -186,19 +203,27 @@ export default function AdminTemplatesNiveis() {
         {editando ? (
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2>Editando #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => setEditando(null)} className="admin-link-btn">Cancelar</button>
+              <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
+              <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
             </div>
 
             <Campo label="Tipo">
-              <TipoToggle value={editando.tipo} onChange={(t) => setEditando((prev) => ({ ...prev, tipo: t }))} />
+              {editando.readOnly ? (
+                <span style={{ color: corDoTipo(editando.tipo), fontWeight: 600 }}>
+                  {editando.tipo === "resistencia" ? "Resistência" : "Suporte"}
+                </span>
+              ) : (
+                <TipoToggle value={editando.tipo} onChange={(t) => setEditando((prev) => ({ ...prev, tipo: t }))} />
+              )}
             </Campo>
 
             <NivelMarkerChart
+              key={`${editando.id}-${editando.readOnly}`}
               candles={editando.candles}
               cor={corDoTipo(editando.tipo)}
               initialToques={editando.toquesEdit}
               onChange={(t) => setEditando((prev) => ({ ...prev, toquesEdit: t }))}
+              readOnly={editando.readOnly}
             />
 
             <div className="admin-grid2">
@@ -208,6 +233,7 @@ export default function AdminTemplatesNiveis() {
                   defaultValue={editando.resultado || ""}
                   onChange={(e) => setEditando((prev) => ({ ...prev, resultado: e.target.value }))}
                   className="admin-input"
+                  disabled={editando.readOnly}
                 />
               </Campo>
               <Campo label="Observação">
@@ -216,13 +242,16 @@ export default function AdminTemplatesNiveis() {
                   defaultValue={editando.observacao || ""}
                   onChange={(e) => setEditando((prev) => ({ ...prev, observacao: e.target.value }))}
                   className="admin-input"
+                  disabled={editando.readOnly}
                 />
               </Campo>
             </div>
 
-            <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
-              {salvando ? "Salvando..." : "Salvar alterações"}
-            </button>
+            {!editando.readOnly && (
+              <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
+                {salvando ? "Salvando..." : "Salvar alterações"}
+              </button>
+            )}
           </section>
         ) : (
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -230,7 +259,7 @@ export default function AdminTemplatesNiveis() {
 
             <div className="admin-row">
               <Campo label="Ticker">
-                <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={setTicker} /></div>
+                <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
               <Campo label="Período">
                 <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">
@@ -245,14 +274,22 @@ export default function AdminTemplatesNiveis() {
               <Campo label="Tipo">
                 <TipoToggle value={tipo} onChange={setTipo} />
               </Campo>
-              <button onClick={carregarGrafico} disabled={carregando || !ticker.trim()} className="admin-btn">
+              <button onClick={() => carregarGrafico()} disabled={carregando || !ticker.trim()} className="admin-btn">
                 {carregando ? "Carregando..." : "Carregar gráfico"}
               </button>
             </div>
 
             {candlesContexto && (
               <>
-                <NivelMarkerChart candles={candlesContexto} cor={corDoTipo(tipo)} onChange={setToques} />
+                <NivelMarkerChart
+                  key={marcacaoKey}
+                  candles={candlesContexto}
+                  dual
+                  cores={CORES_NIVEL}
+                  toquesIniciais={toquesPorGrupo}
+                  grupoAtivo={tipo}
+                  onChange={setToquesPorGrupo}
+                />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">
@@ -274,7 +311,7 @@ export default function AdminTemplatesNiveis() {
                 </div>
 
                 <button onClick={salvarNovo} disabled={!completo || salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
-                  {salvando ? "Salvando..." : "Salvar template"}
+                  {salvando ? "Salvando..." : `Salvar ${tipo === "resistencia" ? "Resistência" : "Suporte"}`}
                 </button>
               </>
             )}
@@ -306,6 +343,7 @@ export default function AdminTemplatesNiveis() {
                     <td>{t.resultado || "—"}</td>
                     <td className="muted">{new Date(t.criado_em).toLocaleString("pt-BR")}</td>
                     <td style={{ textAlign: "right" }}>
+                      <a className="action" onClick={() => iniciarVisualizacao(t)}>Visualizar</a>
                       <a className="action" onClick={() => iniciarEdicao(t)}>Editar</a>
                       <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
                     </td>

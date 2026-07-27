@@ -8,7 +8,7 @@ function toChartTime(candle) {
 // Componente genérico: não sabe nada sobre nenhum padrão específico.
 // Quem chama decide os `steps` (quais pontos marcar) e `linePairs`
 // (quais pares de pontos ligar com uma linha, ex: a neckline do OCO).
-export default function TemplateMarkerChart({ candles, steps, linePairs = [], initialPontos, onChange }) {
+export default function TemplateMarkerChart({ candles, steps, linePairs = [], initialPontos, onChange, readOnly = false }) {
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -68,6 +68,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
     markersApiRef.current = createSeriesMarkers(series, []);
 
     chart.subscribeClick((param) => {
+      if (readOnly) return;
       if (!param.point || param.time === undefined) return;
       const idx = timeToIndexRef.current.get(param.time);
       if (idx === undefined) return;
@@ -160,11 +161,12 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {steps.map((s) => {
             const marcado = pontos[s.key];
-            const ativo = activeStep === s.key;
+            const ativo = !readOnly && activeStep === s.key;
             return (
               <button
                 key={s.key}
-                onClick={() => setActiveStep(s.key)}
+                onClick={() => !readOnly && setActiveStep(s.key)}
+                disabled={readOnly}
                 className={`admin-chip${ativo ? " active" : ""}${marcado ? " filled" : ""}`}
                 style={marcado ? { boxShadow: `inset 3px 0 0 ${s.color}` } : undefined}
               >
@@ -174,13 +176,15 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
             );
           })}
         </div>
-        <button onClick={limpar} className="admin-link-btn">Limpar</button>
+        {!readOnly && <button onClick={limpar} className="admin-link-btn">Limpar</button>}
       </div>
 
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
-        {completo
-          ? "Todos os pontos marcados. Clique em um chip acima para refazer algum ponto."
-          : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label}`}
+        {readOnly
+          ? "Visualização — somente leitura."
+          : completo
+            ? "Todos os pontos marcados. Clique em um chip acima para refazer algum ponto."
+            : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label}`}
       </p>
 
       <div ref={containerRef} style={{ padding: "8px" }} />

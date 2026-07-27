@@ -77,20 +77,35 @@ def _eh_cripto(ticker):
 
 
 def _buscar_binance(ticker, intervalo="1d", limite=1000):
-    """Busca candles da Binance. limite máximo: 1000."""
+    """Busca candles da Binance, paginando pra trás com `endTime` quando
+    limite > 1000 (o cap da API por request). Pra pra na primeira página
+    incompleta — sinal de que já chegou no início do histórico do par."""
     symbol = BINANCE_SYMBOLS.get(ticker.upper())
     if not symbol:
         return []
     interval = BINANCE_INTERVALS.get(intervalo, "1d")
     try:
-        resp = requests.get(
-            f"{BINANCE_URL}/klines",
-            params={"symbol": symbol, "interval": interval, "limit": min(limite, 1000)},
-            timeout=10,
-        )
-        resp.raise_for_status()
+        klines = []
+        end_time = None
+        restante = limite
+        while restante > 0:
+            pedido = min(restante, 1000)
+            params = {"symbol": symbol, "interval": interval, "limit": pedido}
+            if end_time is not None:
+                params["endTime"] = end_time
+            resp = requests.get(f"{BINANCE_URL}/klines", params=params, timeout=10)
+            resp.raise_for_status()
+            lote = resp.json()
+            if not lote:
+                break
+            klines = lote + klines
+            end_time = lote[0][0] - 1
+            restante -= len(lote)
+            if len(lote) < pedido:
+                break  # veio menos que o pedido: chegou no início do histórico
+
         candles = []
-        for k in resp.json():
+        for k in klines[-limite:]:
             candles.append({
                 "timestamp": int(k[0]),
                 "data": datetime.fromtimestamp(k[0]/1000).strftime("%Y-%m-%d %H:%M"),
@@ -164,7 +179,7 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
         # Binance: traduz periodo em quantidade de candles
         limites = {
             "1mo": 30, "3mo": 90, "6mo": 180,
-            "1y": 365, "2y": 730, "5y": 1000, "10y": 1000, "max": 1000,
+            "1y": 365, "2y": 730, "5y": 1825, "10y": 3650, "max": 100000,
         }
         limite = limites.get(periodo, 365)
         candles = _buscar_binance(ticker, intervalo, limite)

@@ -45,7 +45,7 @@ export default function AdminLogin() {
     <AdminShell>
       <div className="admin-center">
         <div className="admin-card" style={{ width: "100%", maxWidth: 360 }}>
-          <h1>Admin · Templates OCO</h1>
+          <h1>Admin</h1>
           <p className="hint">Acesso restrito. Informe seu email para receber o link de acesso.</p>
 
           {status === "sent" && (
