@@ -368,6 +368,67 @@ def buscar_ativo(request: Request, q: str = Query(..., description="Nome ou tick
     return {"status": "ok", "resultados": resultados, "total": len(resultados)}
 
 
+# ── DADOS MOCKADOS (página Mercados estilo TradingView) ────────
+# TODO: substituir por fonte de dados real quando integrarmos:
+#   - market cap total de cripto + dominância → CoinGecko/CoinMarketCap API
+#   - yield BR10Y, inflação (BRIRYY) e Selic/previsão → Trading Economics
+#     ou API do Banco Central (SGS) / IBGE (SIDRA)
+# Até lá, isso aqui é só pra a página não ficar com espaço vazio — os
+# valores abaixo são fixos, não refletem o mercado real.
+import random as _random
+
+
+def _serie_mock(base: float, pontos: int, variacao_pct: float) -> list:
+    """Passeio aleatório determinístico só pra desenhar um mini-gráfico
+    plausível — não é dado de mercado de verdade."""
+    rnd = _random.Random(int(base))  # seed fixa: mesma série a cada request
+    serie = [base]
+    for _ in range(pontos - 1):
+        passo = serie[-1] * (rnd.uniform(-1, 1) * variacao_pct / 100)
+        serie.append(round(serie[-1] + passo, 4))
+    return serie
+
+
+@app.get("/mercado/visao-geral")
+@limiter.limit("60/minute")
+def visao_geral_mercado(request: Request):
+    """
+    Dados extras pra página Mercados (cards estilo TradingView): market cap
+    de cripto, dominância do Bitcoin, e indicadores econômicos do Brasil.
+    MOCK — ver TODO acima. Front já sabe que "mock": true significa isso.
+    """
+    return {
+        "status": "ok",
+        "mock": True,
+        "cripto": {
+            "market_cap_usd": 2_380_000_000_000,
+            "market_cap_variacao_pct": 2.41,
+            "market_cap_serie": _serie_mock(2_280_000_000_000, 30, 2.5),
+            "dominancia": {"bitcoin": 54.2, "ethereum": 17.8, "outros": 28.0},
+        },
+        "economia_brasil": {
+            "yield_10a": {
+                "valor": 11.85,
+                "variacao_pct": -0.34,
+                "serie": _serie_mock(11.9, 30, 1.2),
+            },
+            "inflacao_mensal": [
+                {"mes": "Set/25", "valor": 0.35}, {"mes": "Out/25", "valor": 0.21},
+                {"mes": "Nov/25", "valor": 0.18}, {"mes": "Dez/25", "valor": 0.52},
+                {"mes": "Jan/26", "valor": 0.61}, {"mes": "Fev/26", "valor": 0.44},
+                {"mes": "Mar/26", "valor": 0.29}, {"mes": "Abr/26", "valor": 0.15},
+                {"mes": "Mai/26", "valor": 0.09}, {"mes": "Jun/26", "valor": 0.33},
+                {"mes": "Jul/26", "valor": 0.40}, {"mes": "Ago/26", "valor": 0.27},
+            ],
+            "juros": {
+                "atual": 10.75,
+                "previsao": 10.50,
+                "proximo_lancamento": "2026-09-17",
+            },
+        },
+    }
+
+
 @app.get("/cache/limpar")
 def limpar_cache(admin: str = Depends(require_admin)):
     """Limpa o cache em memória (útil pra debug). Só admin — sem isso,
