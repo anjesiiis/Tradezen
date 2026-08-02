@@ -454,6 +454,22 @@ def _serie_mock(base: float, pontos: int, variacao_pct: float) -> list:
     return serie
 
 
+def _serie_mock_24h(base: float, variacao_pct: float, seed: int) -> list:
+    """Igual a `_serie_mock`, mas devolve pontos horários das últimas 24h já
+    com timestamp (ms) — formato que o HomeLineChart espera pro gráfico
+    grande da página de Criptomoedas."""
+    rnd = _random.Random(seed)
+    agora = int(_datetime.now().timestamp() * 1000)
+    valores = [base]
+    for _ in range(23):
+        passo = valores[-1] * (rnd.uniform(-1, 1) * variacao_pct / 100)
+        valores.append(round(valores[-1] + passo, 2))
+    return [
+        {"timestamp": agora - (23 - i) * 3600_000, "fechamento": v}
+        for i, v in enumerate(valores)
+    ]
+
+
 @app.get("/mercado/visao-geral")
 @limiter.limit("60/minute")
 def visao_geral_mercado(request: Request):
@@ -478,11 +494,33 @@ def visao_geral_mercado(request: Request):
     resposta = {
         "status": "ok",
         "cripto": {
+            # TODO: capitalização/volume total e dominância dependem de um
+            # agregador de mercado (ex: CoinGecko /global, CoinMarketCap) —
+            # a Binance só enxerga o volume negociado nela mesma, não o
+            # mercado cripto inteiro. Preço e variação do BTC/ETH/BNB/XRP
+            # nos cards do topo da página de Criptomoedas são reais (vêm de
+            # /mercado, que já busca na Binance); só os blocos agregados
+            # abaixo (cap. total, volume 24h, stablecoins, dominância,
+            # volatilidade) seguem mock até integrarmos essa fonte.
             "mock": True,
             "market_cap_usd": 2_380_000_000_000,
             "market_cap_variacao_pct": 2.41,
             "market_cap_serie": _serie_mock(2_280_000_000_000, 30, 2.5),
+            "market_cap_serie_24h": _serie_mock_24h(2_330_000_000_000, 1.4, seed=1),
+            "volume_24h_usd": 71_890_000_000,
+            "volume_24h_variacao_pct": -3.12,
             "dominancia": {"bitcoin": 54.2, "ethereum": 17.8, "outros": 28.0},
+            "stablecoins": {
+                "mock": True,
+                "market_cap_usd": 168_400_000_000,
+                "variacao_pct": 0.62,
+                "serie": _serie_mock(166_800_000_000, 30, 0.8),
+            },
+            "volatilidade": {
+                "mock": True,
+                "bitcoin":  {"indice": 45.2, "variacao_pct": -1.8},
+                "ethereum": {"indice": 58.7, "variacao_pct": 2.3},
+            },
         },
         "economia_brasil": {
             "yield_10a": {

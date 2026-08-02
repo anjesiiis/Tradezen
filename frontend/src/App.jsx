@@ -319,6 +319,16 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .idx-skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);animation:idxshimmer 1.4s infinite}
 @keyframes idxshimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 
+/* ───────── CRIPTOMOEDAS (estilo TradingView) ───────── */
+.crypto-top-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%}
+.crypto-top-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:transform .15s,border-color .15s,background .15s;display:flex;flex-direction:column;gap:8px;min-width:0}
+.crypto-top-card:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--s2)}
+.crypto-top-spark{position:relative;height:34px;margin-top:2px}
+.crypto-main-grid{display:grid;grid-template-columns:7fr 3fr;gap:16px;align-items:stretch;width:100%}
+.crypto-badge-total{font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--accent);background:rgba(47,111,239,.12);padding:2px 8px;border-radius:5px}
+@media (max-width:1100px){.crypto-main-grid{grid-template-columns:1fr!important}}
+@media (max-width:700px){.crypto-top-row{grid-template-columns:repeat(2,1fr)!important}}
+
 /* ───────── PÁGINA DE ABERTURA ───────── */
 .abertura{position:fixed;inset:0;background:var(--bg);overflow:hidden;z-index:1000}
 .ab-fx{position:absolute;inset:0;z-index:0;display:block}
@@ -2246,11 +2256,192 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
   );
 }
 
-// Página genérica de listagem de ativos — usada por Criptomoedas,
-// Principais Ativos e Favoritos. Busca por nome/ticker sempre disponível;
-// o filtro por tipo de mercado só aparece quando a lista tem mais de um tipo
-// (não faz sentido mostrar as abas B3/CRIPTO/... dentro da página que já é
-// só de cripto, por exemplo).
+const CRYPTO_TOP4 = ["BTC-USD", "ETH-USD", "BNB-USD", "XRP-USD"];
+const CORES_CRYPTO_TOP = { "BTC-USD":"#F7931A", "ETH-USD":"#627EEA", "BNB-USD":"#F3BA2F", "XRP-USD":"#3A4048" };
+
+// Página de Criptomoedas — hero estilo TradingView (cards principais +
+// capitalização total + dominância + volatilidade) com a identidade visual
+// do TradeUp, seguida da grade completa de ativos (busca inclusa).
+function PaginaCriptomoedas({ tema, mercado, favoritos, toggleFavorito, abrirAtivo }){
+  const [geral, setGeral] = useState(null);
+  const [busca, setBusca] = useState("");
+
+  useEffect(()=>{
+    let cancelado = false;
+    fetch(`${API}/mercado/visao-geral`).then(r=>r.json()).then(d=>{ if(!cancelado) setGeral(d); }).catch(()=>{});
+    return ()=>{ cancelado = true; };
+  },[]);
+
+  const cripto  = geral?.cripto;
+  const criptos = mercado.filter(m=>m.mercado==="CRIPTO");
+
+  const filtrado = criptos.filter(a=>{
+    if(!busca) return true;
+    const q = busca.toLowerCase();
+    return a.simbolo?.toLowerCase().includes(q) || a.nome?.toLowerCase().includes(q) || a.ticker?.toLowerCase().includes(q);
+  });
+
+  const capPositiva = (cripto?.market_cap_variacao_pct||0) >= 0;
+  const marketCapSerie24h = cripto?.market_cap_serie_24h || [];
+
+  return (
+    <div className="home">
+      <div className="sh" style={{marginTop:8}}>
+        <span className="st" style={{fontSize:18}}>🪙 Criptomoedas</span>
+      </div>
+
+      {/* TOPO — 4 cards principais, sempre dados reais (Binance via /mercado) */}
+      <div className="crypto-top-row">
+        {CRYPTO_TOP4.map(tk=>{
+          const a = criptos.find(c=>c.ticker===tk);
+          if(!a) return <div key={tk} className="idx-skel" style={{height:96}}/>;
+          const cor = CORES_CRYPTO_TOP[tk];
+          return (
+            <div key={tk} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
+              <div className="idx-top">
+                <div className="idx-ic" style={{background:cor+"26",color:cor}}>{a.simbolo[0]}</div>
+                <span className="idx-name">{a.nome}</span>
+              </div>
+              <div className="idx-line">
+                <span className="idx-price">${fmtP(a.preco)}</span>
+                <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
+              </div>
+              <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ÁREA PRINCIPAL — 70% capitalização total / 30% stablecoins+dominância+volatilidade */}
+      <div className="crypto-main-grid">
+        <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+            <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Capitalização total de mercado</span>
+            <span className="crypto-badge-total">TOTAL</span>
+            {cripto?.mock && <SeloEstimadoMkt3/>}
+          </div>
+          {cripto ? (
+            <>
+              <div style={{display:"flex",gap:36,flexWrap:"wrap",marginBottom:12}}>
+                <div>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>Valor total</div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                    <span style={{fontSize:24,fontWeight:700,fontFamily:"var(--font-m)",color:"var(--text)"}}>{fmtGrandeMkt3(cripto.market_cap_usd)}</span>
+                    <VariacaoMkt3 pct={cripto.market_cap_variacao_pct}/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>Volume 24h</div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                    <span style={{fontSize:24,fontWeight:700,fontFamily:"var(--font-m)",color:"var(--text)"}}>{fmtGrandeMkt3(cripto.volume_24h_usd)}</span>
+                    <VariacaoMkt3 pct={cripto.volume_24h_variacao_pct}/>
+                  </div>
+                </div>
+              </div>
+              <div style={{position:"relative",height:300,flex:1}}>
+                {marketCapSerie24h.length>0
+                  ? <HomeLineChart data={marketCapSerie24h} color={capPositiva?"#00D68F":"#FF4560"} tema={tema}/>
+                  : <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+                }
+              </div>
+            </>
+          ) : <div className="idx-skel" style={{height:340}}/>}
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {/* Market Cap de Stablecoins */}
+          <div className="card" style={{padding:18}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:8}}>
+              Market Cap de Stablecoins {cripto?.stablecoins?.mock && <SeloEstimadoMkt3/>}
+            </div>
+            {cripto ? <>
+              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                <span style={{fontSize:18,fontWeight:700,fontFamily:"var(--font-m)",color:"var(--text)"}}>{fmtGrandeMkt3(cripto.stablecoins.market_cap_usd)}</span>
+                <VariacaoMkt3 pct={cripto.stablecoins.variacao_pct}/>
+              </div>
+              <div style={{position:"relative",height:52,marginTop:8}}>
+                <MiniLine data={cripto.stablecoins.serie} color={cripto.stablecoins.variacao_pct>=0?"#26a69a":"#ef5350"}/>
+              </div>
+            </> : <div className="idx-skel" style={{height:88}}/>}
+          </div>
+
+          {/* Dominância do Bitcoin */}
+          <div className="card" style={{padding:18}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>
+              Dominância do Bitcoin {cripto?.mock && <SeloEstimadoMkt3/>}
+            </div>
+            {cripto ? (
+              <>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontFamily:"var(--font-m)",marginBottom:6}}>
+                  <span style={{color:"#2962ff"}}>₿ {cripto.dominancia.bitcoin.toFixed(1)}%</span>
+                  <span style={{color:"#26a69a"}}>Ξ {cripto.dominancia.ethereum.toFixed(1)}%</span>
+                  <span style={{color:"#ef5350"}}>Outros {cripto.dominancia.outros.toFixed(1)}%</span>
+                </div>
+                <div style={{display:"flex",height:10,borderRadius:5,overflow:"hidden"}}>
+                  <div style={{width:`${cripto.dominancia.bitcoin}%`,background:"#2962ff"}}/>
+                  <div style={{width:`${cripto.dominancia.ethereum}%`,background:"#26a69a"}}/>
+                  <div style={{width:`${cripto.dominancia.outros}%`,background:"#ef5350"}}/>
+                </div>
+              </>
+            ) : <div className="idx-skel" style={{height:54}}/>}
+          </div>
+
+          {/* Volatilidade */}
+          <div className="card" style={{padding:18}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>
+              Volatilidade {cripto?.volatilidade?.mock && <SeloEstimadoMkt3/>}
+            </div>
+            {cripto ? (
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {[
+                  {nome:"Bitcoin",  letra:"₿", cor:"#F7931A", v:cripto.volatilidade.bitcoin},
+                  {nome:"Ethereum", letra:"Ξ", cor:"#627EEA", v:cripto.volatilidade.ethereum},
+                ].map(({nome,letra,cor,v})=>(
+                  <div key={nome} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:cor+"26",color:cor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,flexShrink:0}}>{letra}</div>
+                      <span style={{fontSize:12,color:"var(--text)"}}>{nome}</span>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:12,fontFamily:"var(--font-m)",color:"var(--text)"}}>{v.indice.toFixed(1)}</div>
+                      <VariacaoMkt3 pct={v.variacao_pct}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <div className="idx-skel" style={{height:76}}/>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{fontSize:10,color:"var(--text3)",textAlign:"right",marginTop:-8}}>Dados via Binance</div>
+
+      {/* LISTA COMPLETA — todas as criptos disponíveis, com busca */}
+      <div className="sh" style={{marginTop:8}}>
+        <span className="st" style={{fontSize:14}}>Todos os ativos</span>
+        <span style={{fontSize:11,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{filtrado.length} ativos</span>
+      </div>
+      <div className="search" style={{maxWidth:280}}>
+        <span className="search-ic">🔎</span>
+        <input placeholder="Buscar por nome ou ticker..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+      </div>
+      <div className="card" style={{padding:16}}>
+        <div className="agrid">
+          {criptos.length===0
+            ? [...Array(12)].map((_,i)=><SkeletonCard key={i}/>)
+            : filtrado.length===0
+              ? <div style={{gridColumn:"1 / -1",textAlign:"center",color:"var(--text2)",fontSize:12,padding:"40px 0"}}>Nenhum ativo encontrado.</div>
+              : filtrado.map((a,i)=><AssetCard key={a.ticker||i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Página genérica de listagem de ativos — usada por Principais Ativos e
+// Favoritos. Busca por nome/ticker sempre disponível; o filtro por tipo de
+// mercado só aparece quando a lista tem mais de um tipo.
 function PaginaListaAtivos({ icone, titulo, ativos, carregando=false, mensagemVazio="Nenhum ativo encontrado.", favoritos, toggleFavorito, abrirAtivo }){
   const [filtro, setFiltro] = useState("TODOS");
   const [busca, setBusca] = useState("");
@@ -2874,9 +3065,8 @@ function AppInner(){
             <PaginaMercadosOverview tema={tema} abrirAtivo={abrirAtivo} setSecao={setSecao}/>
           )}
           {secao==="cripto" && (
-            <PaginaListaAtivos
-              icone="₿" titulo="Criptomoedas"
-              ativos={criptos} carregando={mercado.length===0}
+            <PaginaCriptomoedas
+              tema={tema} mercado={mercado}
               favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
             />
           )}
