@@ -125,7 +125,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .dd-item:hover{background:var(--s2)}
 .dd-item:last-child{border-bottom:none}
 
-.ac{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s;overflow:hidden}
+.ac{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s;overflow:hidden;position:relative}
 .ac:hover{border-color:rgba(61,126,255,.4);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .ac-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .ac-ic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
@@ -137,6 +137,12 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ac-nm{font-size:9px;color:var(--text2);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ac-pr{font-family:var(--font-m);font-size:12px;color:var(--text);font-weight:600}
 .ac-mini{height:44px;position:relative;margin-top:8px}
+.ac-padrao-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;color:var(--gold);background:rgba(245,166,35,.15);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.pdet-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px}
+.pdet-badge.ok{background:rgba(0,214,143,.15);color:var(--up)}
+.pdet-badge.forming{background:rgba(245,166,35,.15);color:#F5A623}
+.pdet-lamp{background:none;border:none;font-size:16px;line-height:1;cursor:pointer;padding:0;transition:transform .15s}
+.pdet-lamp:hover{transform:scale(1.2)}
 .bup{background:rgba(0,214,143,.12);color:var(--up)}
 .bdn{background:rgba(255,69,96,.12);color:var(--down)}
 .up{color:var(--up)}.dn{color:var(--down)}
@@ -1812,13 +1818,22 @@ function SearchBar({onSelect, mercado=[]}){
 
 
 // ── Asset Card ────────────────────────────────────────────────
-function AssetCard({a,onClick,favorito=false,onToggleFavorito}){
+// `padrao` (opcional) = {nome_curto, status} vindo de /analises/resumo —
+// só passado pros 6 cards de Principais Ativos na home; o resto das grades
+// (cripto, favoritos, listas) não manda essa prop, então o badge nunca
+// aparece lá.
+function AssetCard({a,onClick,favorito=false,onToggleFavorito,padrao=null}){
   const cor=MKTC[a.mercado]||"#5A7299";
   return(
     <div className="ac" onClick={onClick}>
       <div className="ac-top">
         <div className="ac-ic" style={{background:cor+"22",color:cor}}>{a.simbolo[0]}</div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {padrao && (
+            <span className="ac-padrao-badge" title={`Padrão detectado: ${padrao.nome_curto}`}>
+              💡{padrao.nome_curto}
+            </span>
+          )}
           {onToggleFavorito && (
             <button
               className={`ac-fav ${favorito?"on":""}`}
@@ -1833,6 +1848,33 @@ function AssetCard({a,onClick,favorito=false,onToggleFavorito}){
       <div className="ac-nm">{a.nome}</div>
       <div className="ac-pr">{fmtP(a.preco)}</div>
       <div className="ac-mini"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
+    </div>
+  );
+}
+
+// Card de padrão detectado ("Padrões Detectados", home) — mesmo estilo
+// visual do AssetCard, conteúdo diferente: em vez de preço/variação, mostra
+// o padrão encontrado pelo modelo. Só a lâmpada é clicável (abre a análise
+// completa do ativo); o resto do card é só informativo.
+function PadraoDetectadoCard({ d, onAbrirAnalise }){
+  const confirmado = d.status === "confirmado";
+  return (
+    <div className="ac" style={{cursor:"default"}}>
+      <div className="ac-top">
+        <div className="ac-ic" style={{background:"var(--accent)22",color:"var(--accent)"}}>{d.simbolo[0]}</div>
+        <button
+          className="pdet-lamp"
+          title="Ver análise completa do padrão"
+          onClick={()=>onAbrirAnalise(d.ticker)}
+        >💡</button>
+      </div>
+      <div className="ac-tk">{d.simbolo}</div>
+      <div className="ac-nm">{d.nome_padrao}</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:2}}>
+        <span className={`pdet-badge ${confirmado?"ok":"forming"}`}>{confirmado?"Confirmado":"Em formação"}</span>
+        <span style={{fontSize:11,fontFamily:"var(--font-m)",color:"var(--text2)"}}>{d.confianca}%</span>
+      </div>
+      <div className="ac-mini"><MiniLine data={d.serie||[]} color={confirmado?"#00D68F":"#F5A623"}/></div>
     </div>
   );
 }
@@ -1995,7 +2037,15 @@ function Sidebar({ secao, setSecao, collapsed, setCollapsed }){
           <button
             key={it.id}
             className={`sb-item ${ativo?"active":""}`}
-            onClick={()=>it.route ? navigate(it.route) : setSecao(it.id)}
+            onClick={()=>{
+              if(it.route){ navigate(it.route); return; }
+              // Item sem rota própria só existe dentro de /mercados — se o
+              // clique veio de outra rota própria (ex: /principais-ativos),
+              // precisa navegar de volta pra lá também, senão o clique não
+              // faz nada visível e a sidebar parece travada.
+              setSecao(it.id);
+              if(location.pathname!=="/mercados") navigate("/mercados");
+            }}
             title={collapsed?it.label:""}
           >
             <svg viewBox="0 0 24 24">{it.icon}</svg>
@@ -3232,6 +3282,7 @@ function AppInner(){
   const location = useLocation();
 
   const [mercado,setMercado] = useState([]);
+  const [resumoPadroes,setResumoPadroes] = useState(null); // /analises/resumo
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [ibovLoading,setIbovLoading] = useState(false);
@@ -3282,6 +3333,38 @@ function AppInner(){
       .then(d=>setMercado(d.dados||[]))
       .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
   },[]);
+
+  // Padrões detectados (Dashboard: contador + seção "Padrões Detectados" +
+  // lâmpada nos cards de Principais Ativos). Os destaques nem sempre vêm
+  // com série de preço (só os tickers que já estão em /mercado têm serie —
+  // um ativo marcado no admin pode não ser um dos ~27 tickers fixos), então
+  // busca em lote as que faltarem só pra desenhar o sparkline do card.
+  useEffect(()=>{
+    let cancelado = false;
+    fetch(`${API}/analises/resumo`).then(r=>r.json()).then(async d=>{
+      if(cancelado || d.status!=="ok") return;
+      const destaques = d.destaques || [];
+      const semSerie = destaques.filter(x=>!mercado.some(m=>m.ticker===x.ticker)).map(x=>x.ticker);
+      let series = {};
+      if(semSerie.length){
+        try{
+          const batch = await fetch(`${API}/ativos/batch?tickers=${encodeURIComponent(semSerie.join(","))}&periodo=1mo&intervalo=1d`).then(r=>r.json());
+          for(const r of (batch.resultados||[])){
+            if(r.status==="ok" && r.candles?.length) series[r.ticker] = r.candles.map(c=>c.fechamento);
+          }
+        }catch(e){ /* sparkline é só decorativo — sem ela o card ainda funciona */ }
+      }
+      if(cancelado) return;
+      setResumoPadroes({
+        ...d,
+        destaques: destaques.map(x=>({
+          ...x,
+          serie: mercado.find(m=>m.ticker===x.ticker)?.serie || series[x.ticker] || [],
+        })),
+      });
+    }).catch(()=>{});
+    return ()=>{ cancelado = true; };
+  },[mercado.length>0]);
 
   // Busca gráfico do IBOV de acordo com o timeframe (1D/1S/1M)
   useEffect(()=>{
@@ -3416,6 +3499,12 @@ function AppInner(){
             <div className="sh">
               <span className="st">📌 Índices e Principais Ações</span>
             </div>
+            {resumoPadroes?.hoje && (
+              <div style={{fontSize:11,color:"var(--text2)",marginTop:-6,marginBottom:12}}>
+                🔍 {resumoPadroes.hoje.total} padrões detectados hoje · {resumoPadroes.hoje.confirmados} confirmados · {resumoPadroes.hoje.em_formacao} em formação
+                {resumoPadroes.hoje_mock && <SeloEstimadoMkt3/>}
+              </div>
+            )}
             <div className="idx-row">
               {indices.map((a,i)=>{
                 // Ticker sem dado (e sem substituto) — mostra o nome do
@@ -3498,17 +3587,28 @@ function AppInner(){
             </div>
           </div>
 
-          {/* CRIPTO */}
+          {/* PADRÕES DETECTADOS */}
           <div>
             <div className="sh">
-              <span className="st">₿ Mercado Cripto</span>
-              <span className="sl" onClick={()=>navigate("/lista/cripto")}>Ver todos →</span>
+              <span className="st" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                📊 Padrões Detectados
+                {resumoPadroes?.hoje && (
+                  <span style={{fontSize:11,fontWeight:500,color:"var(--text2)",fontFamily:"var(--font-m)"}}>
+                    {resumoPadroes.hoje.total} padrões hoje · {resumoPadroes.hoje.confirmados} confirmados · {resumoPadroes.hoje.em_formacao} em formação
+                  </span>
+                )}
+              </span>
+              <span className="sl" style={{color:"var(--text3)",cursor:"default"}} title="Em breve">Ver todos →</span>
             </div>
             <div className="card" style={{padding:16}}>
               <div className="agrid">
-                {criptos.length>0
-                  ?criptos.slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
-                  :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
+                {!resumoPadroes
+                  ?[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
+                  :resumoPadroes.destaques.length===0
+                    ?<div style={{gridColumn:"1 / -1",textAlign:"center",color:"var(--text2)",fontSize:12,padding:"40px 0"}}>Nenhum padrão com 2+ ocorrências no histórico ainda.</div>
+                    :resumoPadroes.destaques.slice(0,6).map((d,i)=>(
+                        <PadraoDetectadoCard key={d.ticker||i} d={d} onAbrirAnalise={ticker=>navigate(`/ativo/${encodeURIComponent(ticker)}`)}/>
+                      ))
                 }
               </div>
             </div>
@@ -3523,7 +3623,7 @@ function AppInner(){
             <div className="card" style={{padding:16}}>
               <div className="agrid">
                 {[...acoes,...forex].length>0
-                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
+                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)} padrao={resumoPadroes?.por_ticker?.[a.ticker]}/>)
                   :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>
