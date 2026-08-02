@@ -329,6 +329,17 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 @media (max-width:1100px){.crypto-main-grid{grid-template-columns:1fr!important}}
 @media (max-width:700px){.crypto-top-row{grid-template-columns:repeat(2,1fr)!important}}
 
+/* ───────── PRINCIPAIS ATIVOS (gráfico comparativo) ───────── */
+.pa-grid{display:grid;grid-template-columns:7fr 3fr;gap:16px;align-items:stretch;width:100%}
+@media (max-width:1100px){.pa-grid{grid-template-columns:1fr!important}}
+.pa-toggle-row{display:flex;gap:8px;flex-wrap:wrap}
+.pa-toggle{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;font-family:var(--font-m);padding:5px 10px;border-radius:999px;cursor:pointer;transition:all .15s;opacity:.55}
+.pa-toggle.on{opacity:1}
+.pa-toggle:hover{border-color:var(--accent)}
+.pa-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pa-carousel{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+.pa-carousel-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:172px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+
 /* ───────── PÁGINA DE ABERTURA ───────── */
 .abertura{position:fixed;inset:0;background:var(--bg);overflow:hidden;z-index:1000}
 .ab-fx{position:absolute;inset:0;z-index:0;display:block}
@@ -1958,27 +1969,40 @@ const SB_ITENS = [
   { id:"inicio",     label:"Dashboard",       icon:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></> },
   { id:"mercados",   label:"Mercados",        icon:<><line x1="3" y1="3" x2="3" y2="21"/><line x1="3" y1="21" x2="21" y2="21"/><polyline points="7 14 11 10 14 13 19 7"/></> },
   { id:"cripto",     label:"Criptomoedas",    icon:<><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h4a2 2 0 0 1 0 4h-4zm0 4h4.5a2 2 0 0 1 0 4h-4.5zm1.5-7v2m0 9v2"/></> },
-  { id:"ativos",     label:"Principais Ativos",icon:<><path d="M3 17l6-6 4 4 8-8"/><polyline points="21 3 21 9 15 3"/></> },
+  { id:"ativos",     label:"Principais Ativos",icon:<><path d="M3 17l6-6 4 4 8-8"/><polyline points="21 3 21 9 15 3"/></>, route:"/principais-ativos" },
   { id:"favoritos",  label:"Favoritos",       icon:<><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 21.5 12 17.8 5.5 21.5 7 14.5 2 9.5 9 9"/></> },
 ];
 
+// Itens com `route` são páginas próprias (URL dedicada, ex: Principais
+// Ativos em /principais-ativos); os demais só trocam a `secao` local
+// dentro de /mercados, sem navegar.
 function Sidebar({ secao, setSecao, collapsed, setCollapsed }){
+  const navigate = useNavigate();
+  const location = useLocation();
   return (
     <aside className={`sb ${collapsed?"collapsed":""}`}>
       <button className="sb-toggle" onClick={()=>setCollapsed(c=>!c)} title={collapsed?"Expandir":"Recolher"}>
         {collapsed ? "»" : "«"}
       </button>
-      {SB_ITENS.map(it=>(
-        <button
-          key={it.id}
-          className={`sb-item ${secao===it.id?"active":""}`}
-          onClick={()=>setSecao(it.id)}
-          title={collapsed?it.label:""}
-        >
-          <svg viewBox="0 0 24 24">{it.icon}</svg>
-          <span className="sb-label">{it.label}</span>
-        </button>
-      ))}
+      {/* Numa rota própria (ex: /principais-ativos), `secao` continua com
+          o último valor que tinha dentro de /mercados — sem essa checagem,
+          o item de dentro de /mercados ficava "active" ao mesmo tempo que
+          o item da rota própria. */}
+      {SB_ITENS.map(it=>{
+        const numaRotaPropria = SB_ITENS.some(x=>x.route && location.pathname===x.route);
+        const ativo = it.route ? location.pathname===it.route : (!numaRotaPropria && secao===it.id);
+        return (
+          <button
+            key={it.id}
+            className={`sb-item ${ativo?"active":""}`}
+            onClick={()=>it.route ? navigate(it.route) : setSecao(it.id)}
+            title={collapsed?it.label:""}
+          >
+            <svg viewBox="0 0 24 24">{it.icon}</svg>
+            <span className="sb-label">{it.label}</span>
+          </button>
+        );
+      })}
     </aside>
   );
 }
@@ -2101,6 +2125,7 @@ function ColunaMkt3({ titulo, corCard, corBorda, children, linkTexto, onLink }){
 }
 
 function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
+  const navigate = useNavigate();
   const [dados, setDados] = useState(null);     // ticker -> {preco, variacaoPct, serie}
   const [geral, setGeral] = useState(null);
 
@@ -2175,7 +2200,7 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
         </ColunaMkt3>
 
         {/* COLUNA 2 — CÂMBIO E COMMODITIES */}
-        <ColunaMkt3 titulo="Câmbio e Commodities" corCard={corCard} corBorda={corBorda} linkTexto="Ver todos os futuros >" onLink={()=>setSecao("ativos")}>
+        <ColunaMkt3 titulo="Câmbio e Commodities" corCard={corCard} corBorda={corBorda} linkTexto="Ver todos os futuros >" onLink={()=>navigate("/principais-ativos")}>
           <div>
             <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>USD para BRL</div>
             {usdbrl ? <>
@@ -2261,10 +2286,9 @@ const CORES_CRYPTO_TOP = { "BTC-USD":"#F7931A", "ETH-USD":"#627EEA", "BNB-USD":"
 
 // Página de Criptomoedas — hero estilo TradingView (cards principais +
 // capitalização total + dominância + volatilidade) com a identidade visual
-// do TradeUp, seguida da grade completa de ativos (busca inclusa).
-function PaginaCriptomoedas({ tema, mercado, favoritos, toggleFavorito, abrirAtivo }){
+// do TradeUp.
+function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
   const [geral, setGeral] = useState(null);
-  const [busca, setBusca] = useState("");
 
   useEffect(()=>{
     let cancelado = false;
@@ -2274,12 +2298,6 @@ function PaginaCriptomoedas({ tema, mercado, favoritos, toggleFavorito, abrirAti
 
   const cripto  = geral?.cripto;
   const criptos = mercado.filter(m=>m.mercado==="CRIPTO");
-
-  const filtrado = criptos.filter(a=>{
-    if(!busca) return true;
-    const q = busca.toLowerCase();
-    return a.simbolo?.toLowerCase().includes(q) || a.nome?.toLowerCase().includes(q) || a.ticker?.toLowerCase().includes(q);
-  });
 
   const capPositiva = (cripto?.market_cap_variacao_pct||0) >= 0;
   const marketCapSerie24h = cripto?.market_cap_serie_24h || [];
@@ -2415,33 +2433,343 @@ function PaginaCriptomoedas({ tema, mercado, favoritos, toggleFavorito, abrirAti
       </div>
 
       <div style={{fontSize:10,color:"var(--text3)",textAlign:"right",marginTop:-8}}>Dados via Binance</div>
+    </div>
+  );
+}
 
-      {/* LISTA COMPLETA — todas as criptos disponíveis, com busca */}
+// ── Página Principais Ativos — gráfico comparativo (rota /principais-ativos) ──
+const COMPARATIVO_ATIVOS = [
+  { ticker:"^BVSP",    nome:"Ibovespa",   badge:"IBOV",    letra:"I", cor:"#2962FF", prefixo:"",   unidade:"pts" },
+  { ticker:"BTC-USD",  nome:"Bitcoin",    badge:"BTC",     letra:"B", cor:"#F7931A", prefixo:"$",  unidade:null },
+  { ticker:"GC=F",     nome:"Ouro",       badge:"GC1!",    letra:"O", cor:"#D4AF37", prefixo:"$",  unidade:null },
+  { ticker:"^IXIC",    nome:"Nasdaq",     badge:"IXIC",    letra:"N", cor:"#26A69A", prefixo:"",   unidade:"pts" },
+  { ticker:"USDBRL=X", nome:"Dólar/Real", badge:"USD/BRL", letra:"$", cor:"#9B6DFF", prefixo:"R$", unidade:null },
+];
+const PERIODOS_COMPARATIVO = ["1M","3M","6M","1A","YTD"];
+const INDICES_GLOBAIS_FOOTER = [
+  { ticker:"^GSPC",  nome:"S&P 500",    badge:"SPX",  letra:"S", cor:"#3D7EFF", mockBase:5580  },
+  { ticker:"^NDX",   nome:"Nasdaq 100", badge:"NDX",  letra:"N", cor:"#9B6DFF", mockBase:19600 },
+  { ticker:"^DJI",   nome:"Dow 30",     badge:"DJI",  letra:"D", cor:"#26A69A", mockBase:40200 },
+  { ticker:"^N225",  nome:"Japão 225",  badge:"N225", letra:"J", cor:"#EF5350", mockBase:38800 },
+  { ticker:"^FTSE",  nome:"FTSE 100",   badge:"FTSE", letra:"F", cor:"#F5A623", mockBase:8200  },
+  { ticker:"^GDAXI", nome:"DAX",        badge:"DAX",  letra:"D", cor:"#E8B84B", mockBase:18500 },
+];
+
+function _cutoffComparativo(periodo){
+  const agora = new Date();
+  if(periodo==="YTD") return new Date(agora.getFullYear(),0,1).getTime();
+  const dias = { "1M":30, "3M":90, "6M":180, "1A":365 }[periodo] || 180;
+  return agora.getTime() - dias*86400000;
+}
+
+// Busca candles de vários tickers em lote; qualquer um que faltar na
+// resposta (Yahoo às vezes derruba UM ticker específico quando várias
+// buscas rodam em paralelo no mesmo lote — mesmo comportamento já visto
+// nos cards do dashboard, ver fetcher.py) ganha uma segunda tentativa
+// individual, fora do lote, antes de desistir.
+async function _fetchCandlesComRetry(tickers, periodo, intervalo){
+  const resp = await fetch(`${API}/ativos/batch?tickers=${encodeURIComponent(tickers.join(","))}&periodo=${periodo}&intervalo=${intervalo}`).then(r=>r.json()).catch(()=>null);
+  const mapa = {};
+  const faltando = [];
+  for(const t of tickers){
+    const r = (resp?.resultados||[]).find(x=>x.ticker?.toUpperCase()===t.toUpperCase());
+    if(r?.status==="ok" && r.candles?.length) mapa[t] = r.candles;
+    else faltando.push(t);
+  }
+  if(faltando.length){
+    const retries = await Promise.all(faltando.map(t=>
+      fetch(`${API}/ativo/${encodeURIComponent(t)}?periodo=${periodo}&intervalo=${intervalo}`).then(r=>r.json()).catch(()=>null)
+    ));
+    faltando.forEach((t,i)=>{ if(retries[i]?.candles?.length) mapa[t] = retries[i].candles; });
+  }
+  return mapa;
+}
+
+function _prngSeed(str){ let h=0; for(let i=0;i<str.length;i++) h = Math.imul(31,h)+str.charCodeAt(i)|0; return h>>>0; }
+function _mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed>>>15, 1 | seed);
+    t = t + Math.imul(t ^ t>>>7, 61 | t) ^ t;
+    return ((t ^ t>>>14)>>>0) / 4294967296;
+  };
+}
+
+// TODO: só entra em ação se um ativo continuar sem dado mesmo depois da
+// retentativa individual em `_fetchCandlesComRetry` — não é fonte de
+// mercado real, é só pra a linha não sumir do gráfico comparativo (o
+// usuário vê o selo "ESTIMADO" nesse caso, tanto no toggle quanto na lista).
+function _gerarSerieMockComparativo(ticker, pontos=60){
+  const rnd = _mulberry32(_prngSeed(ticker));
+  const agora = Date.now();
+  let valor = 0;
+  const serie = [];
+  for(let i=0;i<pontos;i++){
+    valor += (rnd()-0.5) * 1.4;
+    serie.push({ time: Math.floor((agora-(pontos-i)*86400000)/1000), value: Number(valor.toFixed(2)) });
+  }
+  return serie;
+}
+
+function _gerarMockIndiceFooter(cfg){
+  const rnd = _mulberry32(_prngSeed(cfg.ticker));
+  return { preco: cfg.mockBase, variacaoPct: Number(((rnd()-0.5)*4).toFixed(2)), mock:true };
+}
+
+// Gráfico de múltiplas linhas sobrepostas (Lightweight Charts) — cada
+// ativo é uma LineSeries própria na mesma escala (%), pra poder comparar
+// ativos com preços muito diferentes lado a lado. Séries desligadas nos
+// toggles são removidas do chart (não só escondidas) pra não pesar o fit.
+function ComparativoChart({ series, config, ligados, selecionado, tema }){
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const seriesRefs = useRef({});
+
+  useEffect(()=>{
+    if(!containerRef.current) return;
+    chartRef.current = createChart(containerRef.current, {
+      layout:{ background:{type:ColorType.Solid,color:"transparent"}, textColor:"#5A7299", fontFamily:"JetBrains Mono", fontSize:10 },
+      grid:{ vertLines:{color:"rgba(255,255,255,.03)"}, horzLines:{color:"rgba(255,255,255,.03)"} },
+      crosshair:{ mode:CrosshairMode.Normal, vertLine:{color:"rgba(200,216,247,.2)",labelBackgroundColor:"#3D7EFF"}, horzLine:{color:"rgba(200,216,247,.2)",labelBackgroundColor:"#3D7EFF"} },
+      rightPriceScale:{ borderColor:"rgba(255,255,255,.06)", textColor:"#5A7299" },
+      timeScale:{ borderColor:"rgba(255,255,255,.06)", textColor:"#5A7299", timeVisible:true, rightOffset:8 },
+      localization:{ priceFormatter:v=>`${v>=0?"+":""}${v.toFixed(2)}%` },
+      handleScroll:false, handleScale:false,
+    });
+    const ro = new ResizeObserver(()=>{
+      if(chartRef.current && containerRef.current){
+        chartRef.current.applyOptions({ width:containerRef.current.clientWidth, height:containerRef.current.clientHeight });
+      }
+    });
+    ro.observe(containerRef.current);
+    return ()=>{ ro.disconnect(); chartRef.current?.remove(); chartRef.current=null; seriesRefs.current={}; };
+  },[]);
+
+  // Troca de tema: só reestiliza via applyOptions, nunca recria o chart.
+  useEffect(()=>{
+    if(!chartRef.current) return;
+    const claro = tema==="light";
+    const corTexto = claro ? "#5B6B84" : "#5A7299";
+    const corGrid  = claro ? "rgba(15,23,32,.05)" : "rgba(255,255,255,.03)";
+    const corBorda = claro ? "rgba(15,23,32,.10)" : "rgba(255,255,255,.06)";
+    const corCross = claro ? "rgba(47,111,239,.25)" : "rgba(200,216,247,.2)";
+    chartRef.current.applyOptions({
+      layout:{ textColor: corTexto },
+      grid:{ vertLines:{ color: corGrid }, horzLines:{ color: corGrid } },
+      crosshair:{ vertLine:{ color: corCross }, horzLine:{ color: corCross } },
+      rightPriceScale:{ borderColor: corBorda, textColor: corTexto },
+      timeScale:{ borderColor: corBorda, textColor: corTexto },
+    });
+  },[tema]);
+
+  useEffect(()=>{
+    if(!chartRef.current) return;
+    for(const cfg of config){
+      const dados = series[cfg.ticker];
+      const mostrar = ligados.has(cfg.ticker) && dados?.length>1;
+      let s = seriesRefs.current[cfg.ticker];
+      if(mostrar){
+        if(!s){
+          s = chartRef.current.addSeries(LineSeries, {
+            lineWidth: 2, priceLineVisible:false, lastValueVisible:true, title: cfg.badge,
+          });
+          seriesRefs.current[cfg.ticker] = s;
+        }
+        s.setData(dados);
+        const destacada = !selecionado || selecionado===cfg.ticker;
+        s.applyOptions({
+          color: destacada ? cfg.cor : cfg.cor+"33",
+          lineWidth: selecionado===cfg.ticker ? 3 : 2,
+        });
+      } else if(s){
+        chartRef.current.removeSeries(s);
+        delete seriesRefs.current[cfg.ticker];
+      }
+    }
+    chartRef.current.timeScale().fitContent();
+  },[series, config, ligados, selecionado]);
+
+  return <div ref={containerRef} style={{position:"absolute",inset:0}}/>;
+}
+
+function PaginaPrincipaisAtivosComparativo({ tema }){
+  const [candles, setCandles] = useState({});
+  const [mockTickers, setMockTickers] = useState(new Set());
+  const [footer, setFooter] = useState({});
+  const [ligados, setLigados] = useState(()=>new Set(COMPARATIVO_ATIVOS.map(a=>a.ticker)));
+  const [periodo, setPeriodo] = useState("6M");
+  const [selecionado, setSelecionado] = useState(null);
+
+  useEffect(()=>{
+    let cancelado = false;
+    _fetchCandlesComRetry(COMPARATIVO_ATIVOS.map(a=>a.ticker), "2y", "1d").then(mapa=>{
+      if(cancelado) return;
+      const faltando = new Set(COMPARATIVO_ATIVOS.map(a=>a.ticker).filter(t=>!mapa[t]?.length));
+      setCandles(mapa);
+      setMockTickers(faltando);
+    });
+    return ()=>{ cancelado = true; };
+  },[]);
+
+  useEffect(()=>{
+    let cancelado = false;
+    _fetchCandlesComRetry(INDICES_GLOBAIS_FOOTER.map(a=>a.ticker), "1mo", "1d").then(mapa=>{
+      if(cancelado) return;
+      const out = {};
+      for(const cfg of INDICES_GLOBAIS_FOOTER){
+        const c = mapa[cfg.ticker];
+        if(c?.length){
+          const primeiro=c[0].fechamento, ultimo=c[c.length-1].fechamento;
+          out[cfg.ticker] = { preco:ultimo, variacaoPct: primeiro?((ultimo-primeiro)/primeiro)*100:0 };
+        } else {
+          out[cfg.ticker] = _gerarMockIndiceFooter(cfg);
+        }
+      }
+      setFooter(out);
+    });
+    return ()=>{ cancelado = true; };
+  },[]);
+
+  const cutoff = _cutoffComparativo(periodo);
+  const seriesNormalizadas = {};
+  const variacaoAtual = {};
+  const precoAtual = {};
+  for(const cfg of COMPARATIVO_ATIVOS){
+    if(mockTickers.has(cfg.ticker)){
+      const serieMock = _gerarSerieMockComparativo(cfg.ticker);
+      seriesNormalizadas[cfg.ticker] = serieMock;
+      variacaoAtual[cfg.ticker] = serieMock[serieMock.length-1]?.value ?? 0;
+      continue;
+    }
+    const raw = candles[cfg.ticker];
+    if(!raw?.length) continue;
+    const janela = raw.filter(c=>c.timestamp>=cutoff);
+    const usavel = janela.length>1 ? janela : raw.slice(-2);
+    if(usavel.length<2) continue;
+    const base = usavel[0].fechamento;
+    seriesNormalizadas[cfg.ticker] = usavel.map(c=>({ time:Math.floor(c.timestamp/1000), value: base ? Number((((c.fechamento/base)-1)*100).toFixed(2)) : 0 }));
+    const ultimo = usavel[usavel.length-1];
+    variacaoAtual[cfg.ticker] = base ? ((ultimo.fechamento/base)-1)*100 : 0;
+    precoAtual[cfg.ticker] = ultimo.fechamento;
+  }
+
+  const carregando = Object.keys(candles).length===0 && mockTickers.size===0;
+
+  return (
+    <div className="home">
       <div className="sh" style={{marginTop:8}}>
-        <span className="st" style={{fontSize:14}}>Todos os ativos</span>
-        <span style={{fontSize:11,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{filtrado.length} ativos</span>
+        <span className="st" style={{fontSize:18}}>📊 Principais Ativos</span>
       </div>
-      <div className="search" style={{maxWidth:280}}>
-        <span className="search-ic">🔎</span>
-        <input placeholder="Buscar por nome ou ticker..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+
+      <div className="pa-grid">
+        {/* ESQUERDA — gráfico comparativo, normalizado em % */}
+        <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:14}}>
+            <div className="pa-toggle-row">
+              {COMPARATIVO_ATIVOS.map(cfg=>{
+                const on = ligados.has(cfg.ticker);
+                return (
+                  <button
+                    key={cfg.ticker}
+                    className={`pa-toggle ${on?"on":""}`}
+                    style={on?{borderColor:cfg.cor,color:cfg.cor}:{}}
+                    onClick={()=>setLigados(prev=>{
+                      const next = new Set(prev);
+                      if(next.has(cfg.ticker)) next.delete(cfg.ticker); else next.add(cfg.ticker);
+                      return next;
+                    })}
+                  >
+                    <span className="pa-dot" style={{background:cfg.cor,opacity:on?1:.35}}/>
+                    {cfg.badge}
+                    {mockTickers.has(cfg.ticker) && <SeloEstimadoMkt3/>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mc-tabs">
+              {PERIODOS_COMPARATIVO.map(p=>(
+                <button key={p} className={`mc-tab ${periodo===p?"active":""}`} onClick={()=>setPeriodo(p)}>{p}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{position:"relative",height:400,flex:1}}>
+            {carregando
+              ? <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+              : <ComparativoChart series={seriesNormalizadas} config={COMPARATIVO_ATIVOS} ligados={ligados} selecionado={selecionado} tema={tema}/>
+            }
+          </div>
+        </div>
+
+        {/* DIREITA — lista vertical, clicar destaca a linha no gráfico */}
+        <div className="card" style={{padding:18,display:"flex",flexDirection:"column"}}>
+          <span style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:4}}>Ativos</span>
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {COMPARATIVO_ATIVOS.map(cfg=>{
+              const variacao = variacaoAtual[cfg.ticker];
+              const preco = precoAtual[cfg.ticker];
+              const mock = mockTickers.has(cfg.ticker);
+              if(variacao===undefined) return <div key={cfg.ticker} className="idx-skel" style={{height:56,marginBottom:4}}/>;
+              return (
+                <div
+                  key={cfg.ticker}
+                  onClick={()=>setSelecionado(prev=>prev===cfg.ticker?null:cfg.ticker)}
+                  style={{
+                    borderRadius:8, cursor:"pointer",
+                    background: selecionado===cfg.ticker ? "var(--s2)" : "transparent",
+                    boxShadow: selecionado===cfg.ticker ? `inset 2px 0 0 ${cfg.cor}` : "none",
+                  }}
+                >
+                  <LinhaAtivoMkt3
+                    letra={cfg.letra} cor={cfg.cor} nome={cfg.nome}
+                    badge={mock ? `${cfg.badge} · ESTIMADO` : cfg.badge}
+                    badgeFundo={cfg.cor+"1a"} badgeTexto={cfg.cor}
+                    preco={mock ? "—" : cfg.prefixo+fmtP(preco)}
+                    unidade={mock ? undefined : cfg.unidade}
+                    variacaoPct={variacao}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span
+            style={{fontSize:12,color:"var(--text3)",marginTop:"auto",paddingTop:12}}
+            title="Em breve"
+          >Ver todos os indicadores →</span>
+        </div>
       </div>
-      <div className="card" style={{padding:16}}>
-        <div className="agrid">
-          {criptos.length===0
-            ? [...Array(12)].map((_,i)=><SkeletonCard key={i}/>)
-            : filtrado.length===0
-              ? <div style={{gridColumn:"1 / -1",textAlign:"center",color:"var(--text2)",fontSize:12,padding:"40px 0"}}>Nenhum ativo encontrado.</div>
-              : filtrado.map((a,i)=><AssetCard key={a.ticker||i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
-          }
+
+      {/* RODAPÉ — carrossel horizontal de índices globais */}
+      <div>
+        <div className="sh">
+          <span className="st" style={{fontSize:13}}>🌍 Índices Globais</span>
+        </div>
+        <div className="pa-carousel">
+          {INDICES_GLOBAIS_FOOTER.map(cfg=>{
+            const d = footer[cfg.ticker];
+            if(!d) return <div key={cfg.ticker} className="idx-skel pa-carousel-card"/>;
+            return (
+              <div key={cfg.ticker} className="pa-carousel-card">
+                <div className="idx-top">
+                  <IconeAtivoMkt3 letra={cfg.letra} cor={cfg.cor}/>
+                  <span className="idx-name">{cfg.nome}</span>
+                </div>
+                <BadgeMkt3 corFundo={cfg.cor+"1a"} corTexto={cfg.cor}>{cfg.badge}{d.mock?" · ESTIMADO":""}</BadgeMkt3>
+                <div className="idx-line" style={{marginTop:6}}>
+                  <span className="idx-price">{fmtP(d.preco)}</span>
+                  <VariacaoMkt3 pct={d.variacaoPct}/>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-// Página genérica de listagem de ativos — usada por Principais Ativos e
-// Favoritos. Busca por nome/ticker sempre disponível; o filtro por tipo de
-// mercado só aparece quando a lista tem mais de um tipo.
+// Página genérica de listagem de ativos — usada por Favoritos. Busca por
+// nome/ticker sempre disponível; o filtro por tipo de mercado só aparece
+// quando a lista tem mais de um tipo.
 function PaginaListaAtivos({ icone, titulo, ativos, carregando=false, mensagemVazio="Nenhum ativo encontrado.", favoritos, toggleFavorito, abrirAtivo }){
   const [filtro, setFiltro] = useState("TODOS");
   const [busca, setBusca] = useState("");
@@ -3065,17 +3393,7 @@ function AppInner(){
             <PaginaMercadosOverview tema={tema} abrirAtivo={abrirAtivo} setSecao={setSecao}/>
           )}
           {secao==="cripto" && (
-            <PaginaCriptomoedas
-              tema={tema} mercado={mercado}
-              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
-            />
-          )}
-          {secao==="ativos" && (
-            <PaginaListaAtivos
-              icone="📈" titulo="Principais Ativos"
-              ativos={mercado.filter(m=>m.mercado!=="CRIPTO")} carregando={mercado.length===0}
-              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
-            />
+            <PaginaCriptomoedas tema={tema} mercado={mercado} abrirAtivo={abrirAtivo}/>
           )}
           {secao==="favoritos" && (
             <PaginaListaAtivos
@@ -3229,6 +3547,16 @@ function AppInner(){
           </div>
         </div>
           )}
+          </div>
+        </div>
+      )}
+
+      {/* ── PRINCIPAIS ATIVOS (rota própria — gráfico comparativo) ── */}
+      {path==="/principais-ativos"&&(
+        <div className="dash">
+          <Sidebar secao={secao} setSecao={setSecao} collapsed={sbCollapsed} setCollapsed={setSbCollapsed}/>
+          <div className="dash-main">
+            <PaginaPrincipaisAtivosComparativo tema={tema}/>
           </div>
         </div>
       )}
