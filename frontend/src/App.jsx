@@ -125,7 +125,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .dd-item:hover{background:var(--s2)}
 .dd-item:last-child{border-bottom:none}
 
-.ac{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s;overflow:hidden;position:relative}
+.ac{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s;overflow:hidden}
 .ac:hover{border-color:rgba(61,126,255,.4);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .ac-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .ac-ic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
@@ -137,12 +137,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ac-nm{font-size:9px;color:var(--text2);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ac-pr{font-family:var(--font-m);font-size:12px;color:var(--text);font-weight:600}
 .ac-mini{height:44px;position:relative;margin-top:8px}
-.ac-padrao-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;color:var(--gold);background:rgba(245,166,35,.15);padding:2px 6px;border-radius:5px;white-space:nowrap}
-.pdet-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px}
-.pdet-badge.ok{background:rgba(0,214,143,.15);color:var(--up)}
-.pdet-badge.forming{background:rgba(245,166,35,.15);color:#F5A623}
-.pdet-lamp{background:none;border:none;font-size:16px;line-height:1;cursor:pointer;padding:0;transition:transform .15s}
-.pdet-lamp:hover{transform:scale(1.2)}
 .bup{background:rgba(0,214,143,.12);color:var(--up)}
 .bdn{background:rgba(255,69,96,.12);color:var(--down)}
 .up{color:var(--up)}.dn{color:var(--down)}
@@ -409,7 +403,15 @@ const INDICADORES = [
   {id:"vwap",      label:"VWAP",          cor:"#F5A623", grupo:"Volume"},
   {id:"volume_ma", label:"Volume médio",  cor:"#00D68F", grupo:"Volume"},
   {id:"obv",       label:"OBV",           cor:"#9B6DFF", grupo:"Volume"},
-  {id:"fibo", label:"Fibonacci", cor:"#F5A623", grupo:"Ferramentas"},
+  // Ferramentas de desenho — fibo já existia (mecanismo próprio, ver
+  // FERRAMENTA_INFO/CandleChart); as outras 4 são novas, todas com
+  // `desenho:true` pra o dropdown saber que o clique arma uma ferramenta
+  // de colocar pontos no gráfico em vez de ligar/desligar um indicador.
+  {id:"fibo",       label:"Fibonacci",          cor:"#F5A623",  grupo:"Ferramentas de Desenho", icone:"Φ"},
+  {id:"trend",      label:"Linha de Tendência",  cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"⟋", desenho:true},
+  {id:"horizontal", label:"Linha Horizontal",    cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"➖", desenho:true},
+  {id:"retangulo_desenho", label:"Retângulo",    cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"▭", desenho:true},
+  {id:"canal",      label:"Canal Paralelo",      cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"∥", desenho:true},
 ];
 
 // Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo
@@ -823,6 +825,160 @@ function _desenharFibonacci(ctx, toX, toY, fibo, canvasWidth){
   ctx.restore();
 }
 
+// ── Ferramentas de desenho (usuário) ─────────────────────────
+// Cor única pros 4 desenhos livres (trend/horizontal/retângulo/canal) — o
+// Fibonacci continua laranja (já existia antes, ver _desenharFibonacci acima).
+const DESENHO_COR  = "#2962ff";
+const DESENHO_FILL = "rgba(41,98,255,0.1)";
+
+// Metadados de cada ferramenta de desenho por clique (quantos pontos precisa
+// e o texto de dica mostrado enquanto o usuário ainda não terminou de
+// clicar). "fibo" fica de fora — continua no mecanismo antigo
+// (tools/activeTools), só ganha um ícone novo na lista pra aparecer junto.
+const FERRAMENTA_INFO = {
+  trend: {
+    npontos: 2,
+    hints: ["Linha de Tendência: clique no 1º ponto", "Linha de Tendência: clique no 2º ponto"],
+  },
+  horizontal: {
+    npontos: 1,
+    hints: ["Linha Horizontal: clique no gráfico pra fixar o preço"],
+  },
+  retangulo_desenho: {
+    npontos: 2,
+    hints: ["Retângulo: clique no 1º canto", "Retângulo: clique no canto oposto"],
+  },
+  canal: {
+    npontos: 3,
+    hints: ["Canal Paralelo: clique no 1º ponto da linha base", "Canal Paralelo: clique no 2º ponto da linha base", "Canal Paralelo: clique pra definir a largura"],
+  },
+};
+
+function _desenharHandle(ctx, x, y, cor){
+  ctx.save();
+  ctx.fillStyle = cor;
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Distância de um ponto (px,py) até o segmento (x1,y1)-(x2,y2) — usado pra
+// achar qual desenho está sob o cursor no clique direito (mais tolerante
+// que testar só os pontos/handles).
+function _distPontoSegmento(px, py, x1, y1, x2, y2){
+  const dx = x2-x1, dy = y2-y1;
+  const lenSq = dx*dx + dy*dy;
+  let t = lenSq === 0 ? 0 : ((px-x1)*dx + (py-y1)*dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t*dx, projY = y1 + t*dy;
+  return Math.hypot(px-projX, py-projY);
+}
+
+function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth){
+  if(pontos.length<2) return;
+  const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
+  const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
+  if([x1,y1,x2,y2].some(v=>v==null)) return;
+  const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
+  const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
+  const xEnd = canvasWidth;
+  const yEnd = yR + m*(xEnd-xR);
+
+  ctx.save();
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?3:2;
+  ctx.beginPath();
+  ctx.moveTo(xL,yL);
+  ctx.lineTo(xEnd,yEnd);
+  ctx.stroke();
+  ctx.restore();
+  _desenharHandle(ctx,x1,y1,DESENHO_COR);
+  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+}
+
+function _desenharHorizontal(ctx, toY, pontos, isSel, canvasWidth){
+  if(pontos.length<1) return;
+  const y = toY(pontos[0].preco);
+  if(y==null) return;
+  ctx.save();
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?3:2;
+  ctx.beginPath();
+  ctx.moveTo(0,y);
+  ctx.lineTo(canvasWidth,y);
+  ctx.stroke();
+  ctx.font = "bold 10px 'JetBrains Mono',monospace";
+  ctx.fillStyle = DESENHO_COR;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(fmtP(pontos[0].preco), canvasWidth-6, y-4);
+  ctx.restore();
+}
+
+function _desenharRetanguloDesenho(ctx, toX, toY, pontos, isSel){
+  if(pontos.length<2) return;
+  const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
+  const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
+  if([x1,y1,x2,y2].some(v=>v==null)) return;
+  const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
+  ctx.save();
+  ctx.fillStyle = DESENHO_FILL;
+  ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?2.5:1.5;
+  ctx.strokeRect(x,y,w,h);
+  ctx.restore();
+  _desenharHandle(ctx,x1,y1,DESENHO_COR);
+  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+}
+
+function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
+  if(pontos.length<3) return;
+  const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
+  const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
+  const x3=toX(pontos[2].logical), y3=toY(pontos[2].preco);
+  if([x1,y1,x2,y2,x3,y3].some(v=>v==null)) return;
+  const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
+  const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
+  const xEnd = canvasWidth;
+  const yBaseEnd = yR + m*(xEnd-xR);
+  const yBaseAtX3 = yL + m*(x3-xL);
+  const offset = y3 - yBaseAtX3;
+
+  ctx.save();
+  ctx.fillStyle = DESENHO_FILL;
+  ctx.beginPath();
+  ctx.moveTo(xL,yL);
+  ctx.lineTo(xEnd,yBaseEnd);
+  ctx.lineTo(xEnd,yBaseEnd+offset);
+  ctx.lineTo(xL,yL+offset);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?3:2;
+  ctx.beginPath(); ctx.moveTo(xL,yL); ctx.lineTo(xEnd,yBaseEnd); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(xL,yL+offset); ctx.lineTo(xEnd,yBaseEnd+offset); ctx.stroke();
+  ctx.restore();
+
+  _desenharHandle(ctx,x1,y1,DESENHO_COR);
+  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+  _desenharHandle(ctx,x3,y3,DESENHO_COR);
+}
+
+// Despacha pro desenho certo conforme `d.tipo`. `toLogX`/`toPrecoY` convertem
+// logical-index/preço pra pixel (ver comentário no redraw() do CandleChart
+// sobre por que usamos coordenada lógica em vez de tempo — permite
+// desenhar além do último candle, ex: linha de tendência se estendendo
+// pro futuro).
+function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth){
+  if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  else if(d.tipo==="horizontal") _desenharHorizontal(ctx, toPrecoY, d.pontos, isSel, canvasWidth);
+  else if(d.tipo==="retangulo_desenho") _desenharRetanguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
+  else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+}
+
 // ── Templates marcados manualmente no admin (OCO/Topo Duplo/Suporte-Resistência),
 // plugados no gráfico principal — não é detecção automática, é o histórico
 // real já confirmado. Os pontos vêm com timestamp (não índice), porque foram
@@ -1143,7 +1299,7 @@ function HomeLineChart({data, color, tema="dark"}){
 }
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos, tema="dark"}){
+function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos}){
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -1169,6 +1325,34 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
   const [fibo, setFibo] = useState(null); // {a:{i,preco}, b:{i,preco}} | null
   const fiboRef = useRef(null);
   useEffect(()=>{ fiboRef.current = fibo; },[fibo]);
+
+  // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal) —
+  // `desenhos` é dono do pai (ChartPane), porque o botão "Limpar desenhos"
+  // e o dropdown que arma a ferramenta também vivem lá. Refs espelham os
+  // props mais recentes pros handlers de mouse (registrados uma vez só,
+  // deps:[], então fecham sobre valores desatualizados sem os refs).
+  const [pontosProgresso, setPontosProgresso] = useState([]);
+  const pontosProgressoRef = useRef([]);
+  useEffect(()=>{ pontosProgressoRef.current = pontosProgresso; },[pontosProgresso]);
+  const desenhosRef = useRef(desenhos);
+  useEffect(()=>{ desenhosRef.current = desenhos; },[desenhos]);
+  const ferramentaAtivaRef = useRef(ferramentaAtiva);
+  useEffect(()=>{ ferramentaAtivaRef.current = ferramentaAtiva; },[ferramentaAtiva]);
+  const arrastandoRef = useRef(null); // {desenhoId, pontoIndex} | null
+  const cliqueInicioRef = useRef(null); // {x,y} em coords de tela — onde o mousedown começou, pra distinguir clique de arraste
+  const [menuCtx, setMenuCtx] = useState(null); // {x,y,desenhoId} em coords de tela
+
+  // Trocou de ferramenta (ou desarmou) → começa a contagem de pontos do zero
+  useEffect(()=>{ setPontosProgresso([]); },[ferramentaAtiva]);
+
+  // Cursor crosshair enquanto uma ferramenta (nova ou o fibo antigo) está
+  // esperando clique; volta ao normal quando nenhuma está armada (o próprio
+  // mousemove troca pra "move" ao passar perto de um handle arrastável).
+  useEffect(()=>{
+    if(!containerRef.current) return;
+    const fiboArmado = activeTools.has("fibo") && !fibo?.b;
+    containerRef.current.style.cursor = (ferramentaAtiva || fiboArmado) ? "crosshair" : "default";
+  },[ferramentaAtiva, activeTools, fibo]);
 
   // Inicializa o gráfico
   useEffect(()=>{
@@ -1587,6 +1771,187 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     setFibo(null);
   },[candles]);
 
+  // Hover/arrastar/clique-direito/colocar-ponto — tudo em eventos de
+  // mouse nativos no container (não dá pra usar subscribeClick do LWC aqui,
+  // ele só cobre clique simples, não arraste). Registrado uma vez só
+  // (deps:[]); usa refs pra sempre ler o estado mais novo sem re-registrar
+  // a cada render.
+  useEffect(()=>{
+    const container = containerRef.current;
+    if(!container) return;
+    const RAIO_HANDLE = 8;
+
+    const pontosPixel = (d) => {
+      const chart = chartRef.current, series = candleRef.current;
+      if(!chart || !series) return [];
+      if(d.tipo==="horizontal"){
+        const y = series.priceToCoordinate(d.pontos[0].preco);
+        return y==null ? [] : [{x:null, y, idx:0}];
+      }
+      return d.pontos
+        .map((p,idx)=>{
+          const x = chart.timeScale().logicalToCoordinate(p.logical);
+          const y = series.priceToCoordinate(p.preco);
+          return (x==null||y==null) ? null : {x,y,idx};
+        })
+        .filter(Boolean);
+    };
+
+    const acharHandleProximo = (mx,my) => {
+      for(const d of desenhosRef.current){
+        for(const pp of pontosPixel(d)){
+          if(pp.x==null){ // horizontal — a linha inteira é arrastável, não só um ponto
+            if(Math.abs(my-pp.y) <= RAIO_HANDLE) return {desenhoId:d.id, pontoIndex:0};
+          } else if(Math.hypot(mx-pp.x, my-pp.y) <= RAIO_HANDLE){
+            return {desenhoId:d.id, pontoIndex:pp.idx};
+          }
+        }
+      }
+      return null;
+    };
+
+    const acharDesenhoProximo = (mx,my) => {
+      // pro clique direito — mais tolerante, testa a linha/forma inteira
+      for(const d of desenhosRef.current){
+        if(d.tipo==="horizontal"){
+          const series = candleRef.current;
+          const y = series?.priceToCoordinate(d.pontos[0].preco);
+          if(y!=null && Math.abs(my-y)<=6) return d.id;
+          continue;
+        }
+        const pts = pontosPixel(d);
+        if(pts.length<2) continue;
+        let achou = false;
+        for(let i=0;i<pts.length-1 && !achou;i++){
+          if(_distPontoSegmento(mx,my,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y) <= 6) achou = true;
+        }
+        if(!achou && d.tipo==="retangulo_desenho" && pts.length===2){
+          const [p1,p2] = pts;
+          if(_distPontoSegmento(mx,my,p1.x,p1.y,p2.x,p1.y)<=6) achou = true;
+          if(_distPontoSegmento(mx,my,p2.x,p2.y,p1.x,p2.y)<=6) achou = true;
+        }
+        if(achou) return d.id;
+      }
+      return null;
+    };
+
+    const onMouseMove = (e) => {
+      if(ferramentaAtivaRef.current) return; // colocando um desenho novo — sem hover/arraste nos já existentes
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+
+      if(arrastandoRef.current){
+        const { desenhoId, pontoIndex } = arrastandoRef.current;
+        const series = candleRef.current, chart = chartRef.current;
+        if(!series || !chart) return;
+        const preco = series.coordinateToPrice(my);
+        if(preco==null) return;
+        const logicalArraste = d_tipo => d_tipo==="horizontal" ? null : chart.timeScale().coordinateToLogical(mx);
+        // setDesenhos é do pai (ChartPane) — adiado por microtask pelo mesmo
+        // motivo do handler de clique acima (evita "update durante o render
+        // de outro componente", já que subscribeCrosshairMove do LWC também
+        // reage a esse mesmo mousemove nativo).
+        queueMicrotask(()=>{
+          setDesenhos?.(prev=>prev.map(d=>{
+            if(d.id!==desenhoId) return d;
+            if(d.tipo==="horizontal") return {...d, pontos:[{preco}]};
+            const logical = logicalArraste(d.tipo);
+            if(logical==null) return d;
+            const novosPontos = d.pontos.slice();
+            novosPontos[pontoIndex] = {logical, preco};
+            return {...d, pontos:novosPontos};
+          }));
+        });
+        return;
+      }
+
+      container.style.cursor = acharHandleProximo(mx,my) ? "move" : "default";
+    };
+
+    const onMouseDown = (e) => {
+      if(e.button!==0) return;
+      if(ferramentaAtivaRef.current){
+        // Colocando um ponto novo — guarda onde o botão desceu; o clique só
+        // "conta" no mouseup se o mouse não tiver se mexido quase nada (ver
+        // onMouseUp). Não dá pra usar chart.subscribeClick do LWC aqui: ele
+        // engole o 2º/3º clique quando chegam rápido um atrás do outro
+        // (trata como duplo-clique) — clique-a-clique nosso, sem esse limite.
+        cliqueInicioRef.current = {x:e.clientX, y:e.clientY};
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+      const proximo = acharHandleProximo(mx,my);
+      if(proximo){
+        arrastandoRef.current = proximo;
+        chartRef.current?.applyOptions({ handleScroll:false, handleScale:false });
+        e.preventDefault();
+      }
+    };
+
+    const onMouseUp = (e) => {
+      if(arrastandoRef.current){
+        arrastandoRef.current = null;
+        chartRef.current?.applyOptions({ handleScroll:true, handleScale:true });
+        return;
+      }
+      const inicio = cliqueInicioRef.current;
+      cliqueInicioRef.current = null;
+      if(!ferramentaAtivaRef.current || !inicio) return;
+      if(Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y) > 5) return; // foi arraste/pan, não clique
+
+      const chart = chartRef.current, series = candleRef.current;
+      if(!chart || !series) return;
+      const ferramenta = ferramentaAtivaRef.current;
+      const info = FERRAMENTA_INFO[ferramenta];
+      if(!info) return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+      const logical = chart.timeScale().coordinateToLogical(mx);
+      const preco = series.coordinateToPrice(my);
+      if(logical == null || preco == null) return;
+
+      const novo = [...pontosProgressoRef.current, {logical, preco}];
+      if(novo.length >= info.npontos){
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:novo };
+        setPontosProgresso([]);
+        // setDesenhos/setFerramentaAtiva são do pai (ChartPane) — chamar
+        // direto aqui (ainda dentro do listener de mouseup nativo) disparava
+        // "Cannot update a component while rendering a different component"
+        // (subscribeCrosshairMove do LWC também reage ao mesmo evento).
+        // Adiar pro próximo microtask evita a colisão sem o usuário notar.
+        queueMicrotask(()=>{
+          setDesenhos?.(atual=>[...atual, novoDesenho]);
+          setFerramentaAtiva?.(null);
+        });
+      } else {
+        setPontosProgresso(novo);
+      }
+    };
+
+    const onContextMenu = (e) => {
+      if(ferramentaAtivaRef.current) return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+      const desenhoId = acharDesenhoProximo(mx,my);
+      if(desenhoId){
+        e.preventDefault();
+        setMenuCtx({x:e.clientX, y:e.clientY, desenhoId});
+      }
+    };
+
+    container.addEventListener("mousemove", onMouseMove);
+    container.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    container.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      container.removeEventListener("mousemove", onMouseMove);
+      container.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      container.removeEventListener("contextmenu", onContextMenu);
+    };
+  },[]);
+
   // Suportes/Resistências — linhas de preço nativas (recalculadas a cada troca de timeframe/ticker,
   // e filtradas pelos toggles "Suporte"/"Resistência" na lista de indicadores)
   useEffect(()=>{
@@ -1662,6 +2027,10 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         return chart.timeScale().timeToCoordinate(Math.floor(c.timestamp/1000));
       };
       const toY = price => series.priceToCoordinate(price);
+      // Coordenada lógica em vez de índice de candle — só ela cobre posições
+      // além do último candle (linha de tendência/canal se estendendo pro
+      // futuro); ver comentário no effect de captura de clique acima.
+      const toLogX = logical => chart.timeScale().logicalToCoordinate(logical);
 
       for(const p of padroes){
         if(!activeTools.has(normalizarTipo(p.tipo))) continue;
@@ -1676,6 +2045,11 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       // Fibonacci — marcado pelo usuário, só desenha com os 2 pontos prontos
       if(activeTools.has("fibo") && fibo?.a && fibo?.b){
         _desenharFibonacci(ctx, toX, toY, fibo, canvas.width);
+      }
+
+      // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal)
+      for(const d of desenhos){
+        _desenharDesenhoUsuario(ctx, toLogX, toY, d, false, canvas.width);
       }
 
       // Emite posição da lâmpada do padrão selecionado pro pai
@@ -1701,7 +2075,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
 
     redrawRef.current = redraw;
     redraw();
-  },[candles, padroes, activeTools, selPat, fibo]);
+  },[candles, padroes, activeTools, selPat, fibo, desenhos]);
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0}}>
@@ -1715,6 +2089,52 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         }}>
           {!fibo ? "Fibonacci: clique no 1º ponto do gráfico" : "Fibonacci: clique no 2º ponto do gráfico"}
         </div>
+      )}
+      {ferramentaAtiva && FERRAMENTA_INFO[ferramentaAtiva] && (
+        <div style={{
+          position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
+          background:"rgba(6,8,15,.85)",border:"1px solid rgba(41,98,255,.4)",color:"#2962ff",
+          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 14px",borderRadius:20,zIndex:15,
+          pointerEvents:"none",whiteSpace:"nowrap",
+        }}>
+          {FERRAMENTA_INFO[ferramentaAtiva].hints[pontosProgresso.length] || "Clique no gráfico..."}
+        </div>
+      )}
+      {menuCtx && createPortal(
+        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setMenuCtx(null)}>
+          <div
+            style={{
+              position:"fixed",top:menuCtx.y,left:menuCtx.x,background:"var(--card)",
+              border:"1px solid var(--border)",borderRadius:8,padding:4,minWidth:130,
+              boxShadow:"0 8px 32px rgba(0,0,0,.4)",zIndex:9999,
+            }}
+            onMouseDown={e=>e.stopPropagation()}
+          >
+            <div
+              onClick={()=>{
+                const d = desenhos.find(x=>x.id===menuCtx.desenhoId);
+                if(d){
+                  setDesenhos?.(prev=>prev.filter(x=>x.id!==d.id));
+                  setFerramentaAtiva?.(d.tipo);
+                }
+                setMenuCtx(null);
+              }}
+              style={{padding:"7px 10px",fontSize:12,color:"var(--text)",cursor:"pointer",borderRadius:5}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--s2)"}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+            >✏️ Editar</div>
+            <div
+              onClick={()=>{
+                setDesenhos?.(prev=>prev.filter(x=>x.id!==menuCtx.desenhoId));
+                setMenuCtx(null);
+              }}
+              style={{padding:"7px 10px",fontSize:12,color:"var(--down)",cursor:"pointer",borderRadius:5}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--s2)"}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+            >🗑️ Remover</div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -1818,22 +2238,13 @@ function SearchBar({onSelect, mercado=[]}){
 
 
 // ── Asset Card ────────────────────────────────────────────────
-// `padrao` (opcional) = {nome_curto, status} vindo de /analises/resumo —
-// só passado pros 6 cards de Principais Ativos na home; o resto das grades
-// (cripto, favoritos, listas) não manda essa prop, então o badge nunca
-// aparece lá.
-function AssetCard({a,onClick,favorito=false,onToggleFavorito,padrao=null}){
+function AssetCard({a,onClick,favorito=false,onToggleFavorito}){
   const cor=MKTC[a.mercado]||"#5A7299";
   return(
     <div className="ac" onClick={onClick}>
       <div className="ac-top">
         <div className="ac-ic" style={{background:cor+"22",color:cor}}>{a.simbolo[0]}</div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {padrao && (
-            <span className="ac-padrao-badge" title={`Padrão detectado: ${padrao.nome_curto}`}>
-              💡{padrao.nome_curto}
-            </span>
-          )}
           {onToggleFavorito && (
             <button
               className={`ac-fav ${favorito?"on":""}`}
@@ -1848,33 +2259,6 @@ function AssetCard({a,onClick,favorito=false,onToggleFavorito,padrao=null}){
       <div className="ac-nm">{a.nome}</div>
       <div className="ac-pr">{fmtP(a.preco)}</div>
       <div className="ac-mini"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
-    </div>
-  );
-}
-
-// Card de padrão detectado ("Padrões Detectados", home) — mesmo estilo
-// visual do AssetCard, conteúdo diferente: em vez de preço/variação, mostra
-// o padrão encontrado pelo modelo. Só a lâmpada é clicável (abre a análise
-// completa do ativo); o resto do card é só informativo.
-function PadraoDetectadoCard({ d, onAbrirAnalise }){
-  const confirmado = d.status === "confirmado";
-  return (
-    <div className="ac" style={{cursor:"default"}}>
-      <div className="ac-top">
-        <div className="ac-ic" style={{background:"var(--accent)22",color:"var(--accent)"}}>{d.simbolo[0]}</div>
-        <button
-          className="pdet-lamp"
-          title="Ver análise completa do padrão"
-          onClick={()=>onAbrirAnalise(d.ticker)}
-        >💡</button>
-      </div>
-      <div className="ac-tk">{d.simbolo}</div>
-      <div className="ac-nm">{d.nome_padrao}</div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:2}}>
-        <span className={`pdet-badge ${confirmado?"ok":"forming"}`}>{confirmado?"Confirmado":"Em formação"}</span>
-        <span style={{fontSize:11,fontFamily:"var(--font-m)",color:"var(--text2)"}}>{d.confianca}%</span>
-      </div>
-      <div className="ac-mini"><MiniLine data={d.serie||[]} color={confirmado?"#00D68F":"#F5A623"}/></div>
     </div>
   );
 }
@@ -2902,6 +3286,8 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
   const [painelAberto,setPainelAberto] = useState(true);
   const [switcherAberto,setSwitcherAberto] = useState(false);
   const [maisAberto,setMaisAberto] = useState(false); // legenda: mostra os indicadores "a mais" (além do limite visível)
+  const [ferramentaAtiva,setFerramentaAtiva] = useState(null); // ferramenta de desenho armada (trend/horizontal/retangulo_desenho/canal)
+  const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
 
   // Fecha dropdown de indicadores ao clicar fora
   useEffect(()=>{
@@ -2934,6 +3320,8 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
     setCandles([]);
     setPadroes([]);
     setNiveis([]);
+    setFerramentaAtiva(null);
+    setDesenhos([]);
     Promise.all([
       fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`).then(r=>r.json()),
       fetchPadroesMarcados(ativo.ticker, tf.intervalo),
@@ -3050,6 +3438,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
               setHoverC={setHoverC}
               showVolume={selAtivo.mercado!=="COMMODITY"}
               tema={tema}
+              ferramentaAtiva={ferramentaAtiva}
+              setFerramentaAtiva={setFerramentaAtiva}
+              desenhos={desenhos}
+              setDesenhos={setDesenhos}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip
@@ -3238,22 +3630,46 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
             {[...new Set(INDICADORES.map(i=>i.grupo))].map(grupo=>(
               <div key={grupo}>
                 <div className="ind-section">{grupo}</div>
-                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>(
-                  <div
-                    key={ind.id}
-                    className="ind-item"
-                    onMouseDown={e=>{
-                      e.stopPropagation();
-                      toggleTool(ind.id);
-                    }}
-                  >
-                    <div className={`ind-chk ${tools.has(ind.id)?"on":""}`}>
-                      {tools.has(ind.id)&&"✓"}
+                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>{
+                  // Ferramentas de desenho (trend/horizontal/retângulo/canal)
+                  // armam `ferramentaAtiva` em vez de ligar/desligar um
+                  // indicador — clique no gráfico é que efetivamente desenha
+                  // (ver FERRAMENTA_INFO/CandleChart). O Fibonacci continua
+                  // no mecanismo antigo (toggleTool), só ganhou ícone aqui.
+                  const ligado = ind.desenho ? ferramentaAtiva===ind.id : tools.has(ind.id);
+                  return (
+                    <div
+                      key={ind.id}
+                      className="ind-item"
+                      onMouseDown={e=>{
+                        e.stopPropagation();
+                        if(ind.desenho){
+                          setFerramentaAtiva(prev=>prev===ind.id?null:ind.id);
+                          setIndOpen(false);
+                        } else {
+                          toggleTool(ind.id);
+                        }
+                      }}
+                    >
+                      <div className={`ind-chk ${ligado?"on":""}`}>{ligado&&"✓"}</div>
+                      <span className="ind-label">{ind.label}</span>
+                      {ind.icone
+                        ? <span style={{fontSize:12,color:ind.cor,fontFamily:"var(--font-m)",width:14,textAlign:"center",flexShrink:0}}>{ind.icone}</span>
+                        : <span className="ind-color" style={{background:ind.cor}}/>
+                      }
                     </div>
-                    <span className="ind-label">{ind.label}</span>
-                    <span className="ind-color" style={{background:ind.cor}}/>
-                  </div>
-                ))}
+                  );
+                })}
+                {grupo==="Ferramentas de Desenho" && desenhos.length>0 && (
+                  <button
+                    onMouseDown={e=>{ e.stopPropagation(); setDesenhos([]); }}
+                    style={{
+                      width:"calc(100% - 12px)",margin:"4px 6px 2px",padding:"7px 8px",
+                      background:"none",border:"1px solid var(--border)",borderRadius:6,
+                      color:"var(--down)",fontSize:11,fontWeight:600,cursor:"pointer",
+                    }}
+                  >🗑️ Limpar desenhos</button>
+                )}
               </div>
             ))}
           </div>
@@ -3282,7 +3698,6 @@ function AppInner(){
   const location = useLocation();
 
   const [mercado,setMercado] = useState([]);
-  const [resumoPadroes,setResumoPadroes] = useState(null); // /analises/resumo
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [ibovLoading,setIbovLoading] = useState(false);
@@ -3333,38 +3748,6 @@ function AppInner(){
       .then(d=>setMercado(d.dados||[]))
       .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
   },[]);
-
-  // Padrões detectados (Dashboard: contador + seção "Padrões Detectados" +
-  // lâmpada nos cards de Principais Ativos). Os destaques nem sempre vêm
-  // com série de preço (só os tickers que já estão em /mercado têm serie —
-  // um ativo marcado no admin pode não ser um dos ~27 tickers fixos), então
-  // busca em lote as que faltarem só pra desenhar o sparkline do card.
-  useEffect(()=>{
-    let cancelado = false;
-    fetch(`${API}/analises/resumo`).then(r=>r.json()).then(async d=>{
-      if(cancelado || d.status!=="ok") return;
-      const destaques = d.destaques || [];
-      const semSerie = destaques.filter(x=>!mercado.some(m=>m.ticker===x.ticker)).map(x=>x.ticker);
-      let series = {};
-      if(semSerie.length){
-        try{
-          const batch = await fetch(`${API}/ativos/batch?tickers=${encodeURIComponent(semSerie.join(","))}&periodo=1mo&intervalo=1d`).then(r=>r.json());
-          for(const r of (batch.resultados||[])){
-            if(r.status==="ok" && r.candles?.length) series[r.ticker] = r.candles.map(c=>c.fechamento);
-          }
-        }catch(e){ /* sparkline é só decorativo — sem ela o card ainda funciona */ }
-      }
-      if(cancelado) return;
-      setResumoPadroes({
-        ...d,
-        destaques: destaques.map(x=>({
-          ...x,
-          serie: mercado.find(m=>m.ticker===x.ticker)?.serie || series[x.ticker] || [],
-        })),
-      });
-    }).catch(()=>{});
-    return ()=>{ cancelado = true; };
-  },[mercado.length>0]);
 
   // Busca gráfico do IBOV de acordo com o timeframe (1D/1S/1M)
   useEffect(()=>{
@@ -3499,12 +3882,6 @@ function AppInner(){
             <div className="sh">
               <span className="st">📌 Índices e Principais Ações</span>
             </div>
-            {resumoPadroes?.hoje && (
-              <div style={{fontSize:11,color:"var(--text2)",marginTop:-6,marginBottom:12}}>
-                🔍 {resumoPadroes.hoje.total} padrões detectados hoje · {resumoPadroes.hoje.confirmados} confirmados · {resumoPadroes.hoje.em_formacao} em formação
-                {resumoPadroes.hoje_mock && <SeloEstimadoMkt3/>}
-              </div>
-            )}
             <div className="idx-row">
               {indices.map((a,i)=>{
                 // Ticker sem dado (e sem substituto) — mostra o nome do
@@ -3587,28 +3964,17 @@ function AppInner(){
             </div>
           </div>
 
-          {/* PADRÕES DETECTADOS */}
+          {/* CRIPTO */}
           <div>
             <div className="sh">
-              <span className="st" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                📊 Padrões Detectados
-                {resumoPadroes?.hoje && (
-                  <span style={{fontSize:11,fontWeight:500,color:"var(--text2)",fontFamily:"var(--font-m)"}}>
-                    {resumoPadroes.hoje.total} padrões hoje · {resumoPadroes.hoje.confirmados} confirmados · {resumoPadroes.hoje.em_formacao} em formação
-                  </span>
-                )}
-              </span>
-              <span className="sl" style={{color:"var(--text3)",cursor:"default"}} title="Em breve">Ver todos →</span>
+              <span className="st">₿ Mercado Cripto</span>
+              <span className="sl" onClick={()=>navigate("/lista/cripto")}>Ver todos →</span>
             </div>
             <div className="card" style={{padding:16}}>
               <div className="agrid">
-                {!resumoPadroes
-                  ?[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
-                  :resumoPadroes.destaques.length===0
-                    ?<div style={{gridColumn:"1 / -1",textAlign:"center",color:"var(--text2)",fontSize:12,padding:"40px 0"}}>Nenhum padrão com 2+ ocorrências no histórico ainda.</div>
-                    :resumoPadroes.destaques.slice(0,6).map((d,i)=>(
-                        <PadraoDetectadoCard key={d.ticker||i} d={d} onAbrirAnalise={ticker=>navigate(`/ativo/${encodeURIComponent(ticker)}`)}/>
-                      ))
+                {criptos.length>0
+                  ?criptos.slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
+                  :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>
             </div>
@@ -3623,7 +3989,7 @@ function AppInner(){
             <div className="card" style={{padding:16}}>
               <div className="agrid">
                 {[...acoes,...forex].length>0
-                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)} padrao={resumoPadroes?.por_ticker?.[a.ticker]}/>)
+                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
                   :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>

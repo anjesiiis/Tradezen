@@ -18,8 +18,6 @@ ENDPOINTS:
     GET /ativos                     → lista TODOS os ativos disponíveis
     GET /ativos/batch?tickers=...   → vários ativos numa só request
     GET /ativos/buscar?q=...        → busca de ativos
-    GET /padroes-marcados/{ticker}  → padrões marcados de um ativo específico
-    GET /analises/resumo            → contagem + destaques de padrões em todos os ativos (Dashboard)
 
     POST /admin/auth/magic-link     → login admin via Supabase (magic link)
     GET/POST/PUT/DELETE /admin/templates             → CRUD de templates OCO (marcação manual)
@@ -44,7 +42,6 @@ from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
 from admin_templates_niveis import router as admin_templates_niveis_router
 from padroes_marcados import router as padroes_marcados_router
-from analises import router as analises_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
@@ -77,7 +74,6 @@ app.include_router(admin_templates_router)
 app.include_router(admin_templates_topo_duplo_router)
 app.include_router(admin_templates_niveis_router)
 app.include_router(padroes_marcados_router)
-app.include_router(analises_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }
