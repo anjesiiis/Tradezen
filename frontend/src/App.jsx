@@ -2533,11 +2533,15 @@ function AppInner(){
     .map(tipo => mercado.find(m=>m.mercado===tipo))
     .filter(Boolean);
 
-  // Fileira de índices da home: IBOV + principais ações (na ordem definida)
-  const TICKERS_INDICES = ["^BVSP","PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","BBAS3.SA"];
-  const indices = TICKERS_INDICES
-    .map(tk => mercado.find(m=>m.ticker===tk))
-    .filter(Boolean);
+  // Fileira de índices da home: Ibovespa, Petrobras, Vale, Itaú, Bradesco,
+  // nessa ordem. Sem o .filter(Boolean) de antes — ele descartava
+  // silenciosamente qualquer ticker que o /mercado não tivesse conseguido
+  // buscar naquele ciclo (a busca de resumo às vezes falha por ativo,
+  // individualmente, sem derrubar o endpoint todo), e a fileira encolhia
+  // pra 3 ou 4 cards sem viso nenhum. Agora sempre reserva os 5 lugares —
+  // o que não achou vira skeleton em vez de sumir.
+  const TICKERS_INDICES = ["^BVSP","PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA"];
+  const indices = TICKERS_INDICES.map(tk => mercado.find(m=>m.ticker===tk) || null);
 
   // Série pro gráfico da home — usa dados reais se já carregou, senão fallback do resumo
   const ibovSerie = ibovChart.length > 0
@@ -2620,26 +2624,24 @@ function AppInner(){
               <span className="st">📌 Índices e Principais Ações</span>
             </div>
             <div className="idx-row">
-              {indices.length>0
-                ? indices.map((a,i)=>{
-                    const cor = MKTC[a.mercado] || "var(--accent)";
-                    return (
-                      <div key={a.ticker} className="idx-btn" onClick={()=>abrirAtivo(a)}>
-                        <div className="idx-top">
-                          <div className="idx-ic" style={{background:cor}}>{a.simbolo[0]}</div>
-                          <span className="idx-name">{a.nome||a.simbolo}</span>
-                        </div>
-                        <div className="idx-line">
-                          <span className="idx-price">{fmtP(a.preco)}</span>
-                          <span className={`idx-chg ${a.alta?"up":"down"}`}>
-                            {a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                : [...Array(5)].map((_,i)=><div key={i} className="idx-skel"/>)
-              }
+              {indices.map((a,i)=>{
+                if(!a) return <div key={i} className="idx-skel"/>;
+                const cor = MKTC[a.mercado] || "var(--accent)";
+                return (
+                  <div key={a.ticker} className="idx-btn" onClick={()=>abrirAtivo(a)}>
+                    <div className="idx-top">
+                      <div className="idx-ic" style={{background:cor}}>{a.simbolo[0]}</div>
+                      <span className="idx-name">{a.nome||a.simbolo}</span>
+                    </div>
+                    <div className="idx-line">
+                      <span className="idx-price">{fmtP(a.preco)}</span>
+                      <span className={`idx-chg ${a.alta?"up":"down"}`}>
+                        {a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
