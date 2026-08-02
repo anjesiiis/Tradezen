@@ -33,13 +33,31 @@ const CSS = `
   --font-m:'JetBrains Mono',monospace;
   --r:10px;
 }
+/* Tema claro — mesma paleta de marca, ajustada pra contraste em fundo branco
+   (o dark theme foi calibrado pra quase-preto; alguns tons de acento ficam
+   "lavados" em branco se não escurecerem um pouco). */
+:root[data-theme="light"]{
+  --bg:#F3F5F9;
+  --s1:#FFFFFF;
+  --s2:#EBEEF3;
+  --card:#FFFFFF;
+  --border:#DCE2EB;
+  --up:#0CA678;
+  --down:#E1354D;
+  --accent:#2F6FEF;
+  --gold:#B8720A;
+  --text:#0F1720;
+  --text2:#5B6B84;
+  --text3:#7C8798;
+  --pro:#7C5CDB;
+}
 html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);font-family:var(--font-b);overflow:hidden;max-width:none!important}
 #root{display:flex;flex-direction:column}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
 /* NAV */
 .nav{height:52px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;z-index:200;position:relative}
-.logo{font-family:var(--font-h);font-size:22px;letter-spacing:3px;color:#fff;cursor:pointer;user-select:none}
+.logo{font-family:var(--font-h);font-size:22px;letter-spacing:3px;color:var(--text);cursor:pointer;user-select:none}
 .logo span{color:var(--accent)}
 /* SEARCH BAR */
 .search{flex:1;max-width:440px;position:relative;display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;transition:border-color .2s}
@@ -112,6 +130,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ac-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .ac-ic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .ac-chg{font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700}
+.ac-fav{background:none;border:none;color:var(--text3);font-size:15px;line-height:1;cursor:pointer;padding:0;transition:color .15s,transform .15s}
+.ac-fav:hover{transform:scale(1.15);color:var(--gold)}
+.ac-fav.on{color:var(--gold)}
 .ac-tk{font-family:var(--font-h);font-size:17px;letter-spacing:1px;color:var(--text);line-height:1;margin-bottom:3px}
 .ac-nm{font-size:9px;color:var(--text2);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ac-pr{font-family:var(--font-m);font-size:12px;color:var(--text);font-weight:600}
@@ -138,7 +159,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;position:relative;z-index:20}
 .bbtn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 8px 2px 0;line-height:1}
 .bbtn:hover{color:var(--text)}
-.atick{font-family:var(--font-h);font-size:21px;letter-spacing:2px;color:#fff;flex-shrink:0;cursor:pointer;user-select:none}
+.atick{font-family:var(--font-h);font-size:21px;letter-spacing:2px;color:var(--text);flex-shrink:0;cursor:pointer;user-select:none}
 .atick:hover{color:var(--accent)}
 .pane-btn{margin-left:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all .15s}
 .pane-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -152,19 +173,19 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
 
 /* RIGHT PANEL */
-.rpanel{width:272px;border-left:1px solid var(--border);background:var(--s1);display:flex;flex-direction:column;overflow:hidden;position:relative;padding-top:4px}
+.rpanel{width:208px;border-left:1px solid var(--border);background:var(--s1);display:flex;flex-direction:column;overflow:hidden;position:relative;padding-top:4px}
 .rp-toggle{width:24px;height:24px;border-radius:6px;background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;transition:background .15s,color .15s;flex-shrink:0}
 .rp-toggle:hover{background:var(--card);color:var(--text)}
 .rp-head{display:flex;justify-content:flex-end;padding:8px 10px 0}
 /* botão para reabrir quando a barra está fechada */
 .rp-reabrir{position:absolute;right:12px;top:12px;z-index:10;width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;transition:background .15s,color .15s,border-color .15s}
 .rp-reabrir:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.rpsec{padding:14px 16px;border-bottom:1px solid var(--border)}
-.rptitle{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text2);text-transform:uppercase;margin-bottom:10px}
-.titem{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:3px;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.rpsec{padding:12px;border-bottom:1px solid var(--border)}
+.rptitle{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text2);text-transform:uppercase;margin-bottom:10px}
+.titem{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;margin-bottom:3px;cursor:pointer;transition:all .15s;border:1px solid transparent}
 .titem:hover{background:rgba(61,126,255,.06);border-color:var(--border)}
 .titem.active{background:rgba(61,126,255,.1);border-color:var(--accent)}
-.tchk{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px}
+.tchk{width:15px;height:15px;border-radius:4px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px}
 .titem.active .tchk{background:var(--accent);border-color:var(--accent);color:#fff}
 .tinf{flex:1}
 .tnm{font-size:11px;font-weight:500;color:var(--text)}
@@ -221,7 +242,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 @keyframes sp{to{transform:rotate(360deg)}}
 .ldtxt{font-size:10px;color:var(--text2);font-family:var(--font-m);letter-spacing:2px}
 .upg{margin:0 16px 16px;background:linear-gradient(135deg,rgba(61,126,255,.1),rgba(155,109,255,.1));border:1px solid rgba(155,109,255,.2);border-radius:10px;padding:14px}
-.ubt{font-size:12px;font-weight:700;color:#fff;margin-bottom:4px}
+.ubt{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
 .ubd{font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:10px}
 .ubb{width:100%;background:linear-gradient(135deg,var(--accent),var(--pro));border:none;color:#fff;font-weight:700;font-size:11px;padding:8px;border-radius:7px;cursor:pointer;letter-spacing:.5px}
 
@@ -304,17 +325,17 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ab-glow{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 50% at 50% 38%,rgba(61,126,255,.10),transparent 70%),radial-gradient(40% 40% at 80% 82%,rgba(155,109,255,.08),transparent 70%)}
 .ab-wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
 .ab-head{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;flex-shrink:0}
-.ab-logo{font-family:var(--font-h);font-size:24px;letter-spacing:3px;color:#fff;display:flex;align-items:center;gap:10px;user-select:none}
+.ab-logo{font-family:var(--font-h);font-size:24px;letter-spacing:3px;color:var(--text);display:flex;align-items:center;gap:10px;user-select:none}
 .ab-logo span{color:var(--accent)}
 .ab-logo .ic{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--pro));display:inline-flex;align-items:center;justify-content:center;font-size:15px}
 .ab-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 24px 60px;overflow-y:auto}
-.ab-hero h1{font-family:var(--font-h);font-size:clamp(40px,7.5vw,96px);line-height:.98;font-weight:400;letter-spacing:2px;color:#fff;margin-bottom:26px;opacity:0;animation:abrise .9s ease forwards .15s}
+.ab-hero h1{font-family:var(--font-h);font-size:clamp(40px,7.5vw,96px);line-height:.98;font-weight:400;letter-spacing:2px;color:var(--text);margin-bottom:26px;opacity:0;animation:abrise .9s ease forwards .15s}
 .ab-hero h1 .l2{display:block;color:var(--accent)}
-.ab-hero p{max-width:580px;font-size:clamp(15px,2vw,19px);line-height:1.55;color:var(--text3);margin-bottom:38px;opacity:0;animation:abrise .9s ease forwards .35s}
-.ab-entrar{background:#fff;color:var(--bg);border:none;font-family:var(--font-b);font-size:17px;font-weight:700;padding:15px 50px;border-radius:999px;cursor:pointer;transition:transform .18s,box-shadow .18s;opacity:0;animation:abrise .9s ease forwards .55s}
-.ab-entrar:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,255,255,.18)}
+.ab-hero p{max-width:580px;font-size:clamp(15px,2vw,19px);line-height:1.55;color:var(--text2);margin-bottom:38px;opacity:0;animation:abrise .9s ease forwards .35s}
+.ab-entrar{background:var(--accent);color:#fff;border:none;font-family:var(--font-b);font-size:17px;font-weight:700;padding:15px 50px;border-radius:999px;cursor:pointer;transition:transform .18s,box-shadow .18s;opacity:0;animation:abrise .9s ease forwards .55s}
+.ab-entrar:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(47,111,239,.35)}
 .ab-tiles{display:flex;gap:18px;margin-top:60px;flex-wrap:wrap;justify-content:center;opacity:0;animation:abrise .9s ease forwards .75s}
-.ab-tile{width:132px;height:120px;background:var(--card);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:transform .18s,border-color .18s,background .18s;color:var(--text3)}
+.ab-tile{width:132px;height:120px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:transform .18s,border-color .18s,background .18s;color:var(--text2)}
 .ab-tile:hover{transform:translateY(-4px);border-color:var(--accent);background:var(--s2);color:var(--text)}
 .ab-tile svg{width:30px;height:30px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ab-tile span{font-size:12px;font-weight:600;text-align:center;padding:0 6px}
@@ -340,8 +361,6 @@ const TOOLS=[
   {id:"retangulo",       name:"Retângulo",             type:"Continuação", free:false, plano:"premium"},
 ];
 
-const LIMITE_DIARIO_FREE = 5;
-
 // Só 1D por enquanto (60m e 1S removidos da UI). "max" (não "5y"): os
 // padrões marcados no admin (OCO/Topo Duplo/S-R) vêm de qualquer ponto do
 // histórico do ativo, às vezes lá em 2000 — com um período curto o candle
@@ -356,6 +375,23 @@ const INDICADORES = [
   {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
   {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
   {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
+  {id:"atr",    label:"ATR",                cor:"#F5A623", grupo:"Volatilidade"},
+  {id:"rsi",         label:"RSI",         cor:"#3D7EFF", grupo:"Osciladores"},
+  {id:"estocastico", label:"Estocástico", cor:"#9B6DFF", grupo:"Osciladores"},
+  {id:"vwap",      label:"VWAP",          cor:"#F5A623", grupo:"Volume"},
+  {id:"volume_ma", label:"Volume médio",  cor:"#00D68F", grupo:"Volume"},
+  {id:"obv",       label:"OBV",           cor:"#9B6DFF", grupo:"Volume"},
+  {id:"fibo", label:"Fibonacci", cor:"#F5A623", grupo:"Ferramentas"},
+];
+
+// Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo
+// TradingView) — junta os dois catálogos (indicadores técnicos + padrões de
+// gráfico) já que os dois ligam/desligam pelo mesmo Set `tools`. Padrões não
+// têm cor fixa (variam com o resultado no próprio desenho), então usam um
+// cinza neutro só pra bolinha da legenda.
+const LEGENDA_ITENS = [
+  ...INDICADORES.map(i => ({ id: i.id, label: i.label, cor: i.cor })),
+  ...TOOLS.map(t => ({ id: t.id, label: t.name, cor: "#8B949E" })),
 ];
 
 const ATIVOS=[
@@ -657,7 +693,12 @@ function _desenharNivel(ctx, toX, toY, p, isSel){
   ctx.save();
 
   const resultado = p.resultado || "pendente";
-  const simbolo = resultado === "sucesso" ? "💡" : resultado === "falhou" ? "❌" : "⏳";
+  // Suporte/Resistência não tem "resultado" no sentido de padrão confirmado
+  // ou não (o texto marcado é tipo "Suporte", "Suporte muito forte" — nunca
+  // bate com "sucesso"/"falhou"), então sempre cai no caso padrão. Por isso
+  // usa 🎯 aqui em vez da ⏳ dos outros padrões — combina mais com "nível
+  // de preço visado" do que com "aguardando resultado".
+  const simbolo = resultado === "sucesso" ? "💡" : resultado === "falhou" ? "❌" : "🎯";
   const cor = p.tipo === "resistencia" ? "#00D68F" : "#FF4560";
   const lampC = coords[coords.length - 1];
 
@@ -706,6 +747,51 @@ function _desenharNivel(ctx, toX, toY, p, isSel){
   ctx.textAlign = "left";
   ctx.fillText(`${p.nome} ${fmtP(precoMin)}–${fmtP(precoMax)}`, xMax + 8, (yTopo + yFundo) / 2);
 
+  ctx.restore();
+}
+
+// Fibonacci — desenhado a partir de 2 pontos que o próprio usuário marcou no
+// gráfico (fibo = {a:{i,preco}, b:{i,preco}}), não vem de padrão nenhum.
+// As linhas vão do ponto mais antigo até a borda direita do canvas — jeito
+// clássico de projetar os níveis pra frente no tempo.
+function _desenharFibonacci(ctx, toX, toY, fibo, canvasWidth){
+  const { a, b } = fibo;
+  const xA = toX(a.i);
+  if(xA == null) return;
+
+  const precoAlto = Math.max(a.preco, b.preco);
+  const precoBaixo = Math.min(a.preco, b.preco);
+  const amplitude = precoAlto - precoBaixo;
+  if(amplitude <= 0) return;
+
+  ctx.save();
+  ctx.font = "bold 9px 'JetBrains Mono',monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+
+  FIBO_NIVEIS.forEach(nivel => {
+    // 0% sempre no preço mais alto dos dois pontos, 100% no mais baixo —
+    // convenção padrão de retração.
+    const preco = precoAlto - amplitude*nivel;
+    const y = toY(preco);
+    if(y == null) return;
+
+    const destaque = nivel === 0 || nivel === 1 || nivel === 0.5;
+    ctx.globalAlpha = destaque ? 0.85 : 0.55;
+    ctx.strokeStyle = "#F5A623";
+    ctx.lineWidth = destaque ? 1.3 : 1;
+    ctx.setLineDash(nivel === 0 || nivel === 1 ? [] : [5,4]);
+    ctx.beginPath();
+    ctx.moveTo(xA, y);
+    ctx.lineTo(canvasWidth, y);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = "#F5A623";
+    ctx.fillText(`${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`, xA + 6, y - 8);
+  });
+
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -784,6 +870,118 @@ const toLWSeries = (candles) =>
     value: c.fechamento,
   })).sort((a,b) => a.time - b.time);
 
+// ── Cálculo dos indicadores técnicos ──────────────────────────
+// Todas recebem `sorted` (candles já ordenados por timestamp crescente,
+// o chamador garante isso) e devolvem série(s) no formato do Lightweight
+// Charts ({time, value}). Tudo client-side, direto do OHLCV — sem
+// depender do backend/ML.
+
+// RSI (Wilder) — período 14 por padrão.
+function calcularRSI(sorted, periodo=14){
+  if(sorted.length < periodo+1) return [];
+  const closes = sorted.map(c=>c.fechamento);
+  let ganho=0, perda=0;
+  for(let i=1;i<=periodo;i++){
+    const diff = closes[i]-closes[i-1];
+    if(diff>=0) ganho+=diff; else perda-=diff;
+  }
+  let mediaGanho = ganho/periodo, mediaPerda = perda/periodo;
+  const rsiDe = (mg,mp)=> mp===0 ? 100 : 100-(100/(1+mg/mp));
+  const out = [{ time: Math.floor(sorted[periodo].timestamp/1000), value: rsiDe(mediaGanho,mediaPerda) }];
+  for(let i=periodo+1;i<closes.length;i++){
+    const diff = closes[i]-closes[i-1];
+    mediaGanho = (mediaGanho*(periodo-1) + Math.max(diff,0))/periodo;
+    mediaPerda = (mediaPerda*(periodo-1) + Math.max(-diff,0))/periodo;
+    out.push({ time: Math.floor(sorted[i].timestamp/1000), value: rsiDe(mediaGanho,mediaPerda) });
+  }
+  return out;
+}
+
+// Estocástico — %K bruto (period 14) suavizado por SMA3, e %D = SMA3 do %K.
+function calcularEstocastico(sorted, periodoK=14, suavK=3, periodoD=3){
+  if(sorted.length < periodoK) return { k: [], d: [] };
+  const bruto = [];
+  for(let i=periodoK-1; i<sorted.length; i++){
+    const janela = sorted.slice(i-periodoK+1, i+1);
+    const maxima = Math.max(...janela.map(c=>c.maxima));
+    const minima = Math.min(...janela.map(c=>c.minima));
+    const valor = maxima===minima ? 50 : (sorted[i].fechamento-minima)/(maxima-minima)*100;
+    bruto.push({ time: Math.floor(sorted[i].timestamp/1000), value: valor });
+  }
+  const suavizar = (serie, periodo) => {
+    const out = [];
+    for(let i=periodo-1; i<serie.length; i++){
+      const media = serie.slice(i-periodo+1, i+1).reduce((s,p)=>s+p.value,0)/periodo;
+      out.push({ time: serie[i].time, value: media });
+    }
+    return out;
+  };
+  const k = suavizar(bruto, suavK);
+  const d = suavizar(k, periodoD);
+  return { k, d };
+}
+
+// ATR (Wilder) — período 14 por padrão.
+function calcularATR(sorted, periodo=14){
+  if(sorted.length < periodo+1) return [];
+  const trs = [];
+  for(let i=1; i<sorted.length; i++){
+    const atual = sorted[i], anterior = sorted[i-1];
+    trs.push(Math.max(
+      atual.maxima - atual.minima,
+      Math.abs(atual.maxima - anterior.fechamento),
+      Math.abs(atual.minima - anterior.fechamento),
+    ));
+  }
+  let media = trs.slice(0, periodo).reduce((s,v)=>s+v,0)/periodo;
+  const out = [{ time: Math.floor(sorted[periodo].timestamp/1000), value: media }];
+  for(let i=periodo; i<trs.length; i++){
+    media = (media*(periodo-1) + trs[i])/periodo;
+    out.push({ time: Math.floor(sorted[i+1].timestamp/1000), value: media });
+  }
+  return out;
+}
+
+// Volume médio (SMA do volume, período 20).
+function calcularVolumeMA(sorted, periodo=20){
+  const out = [];
+  for(let i=periodo-1; i<sorted.length; i++){
+    const media = sorted.slice(i-periodo+1, i+1).reduce((s,c)=>s+(c.volume||0),0)/periodo;
+    out.push({ time: Math.floor(sorted[i].timestamp/1000), value: media });
+  }
+  return out;
+}
+
+// VWAP — como só temos candle diário (sem sessão intradiária pra ancorar),
+// é uma acumulada desde o primeiro candle carregado. Com "max" de histórico
+// isso vira uma média de prazo bem longo lá pro fim da série — ainda assim
+// serve de referência de "preço médio ponderado por volume" do período todo.
+function calcularVWAP(sorted){
+  let cumPV=0, cumVol=0;
+  return sorted.map(c=>{
+    const tipico = (c.maxima+c.minima+c.fechamento)/3;
+    cumPV += tipico*(c.volume||0);
+    cumVol += (c.volume||0);
+    return { time: Math.floor(c.timestamp/1000), value: cumVol>0 ? cumPV/cumVol : tipico };
+  });
+}
+
+// OBV — On-Balance Volume, acumulado.
+function calcularOBV(sorted){
+  let obv=0;
+  return sorted.map((c,i)=>{
+    if(i>0){
+      if(c.fechamento > sorted[i-1].fechamento) obv += c.volume||0;
+      else if(c.fechamento < sorted[i-1].fechamento) obv -= c.volume||0;
+    }
+    return { time: Math.floor(c.timestamp/1000), value: obv };
+  });
+}
+
+// Fibonacci — os 7 níveis clássicos de retração entre dois preços marcados
+// pelo usuário (não é calculado a partir de candles, é geometria pura).
+const FIBO_NIVEIS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+
 // ── Estilo das linhas de Suporte/Resistência (rank mais forte = mais nítido) ──
 const NIVEL_COR = { suporte: "0,214,143", resistencia: "255,69,96" };
 const nivelChave = (nivel) => `${nivel.tipo}:${nivel.preco}`;
@@ -817,7 +1015,7 @@ function MiniLine({data,color}){
 }
 
 // ── Gráfico de Linha — Estudo de Mercado (Lightweight Charts) ─
-function HomeLineChart({data, color}){
+function HomeLineChart({data, color, tema="dark"}){
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const seriesRef    = useRef(null);
@@ -883,6 +1081,24 @@ function HomeLineChart({data, color}){
     };
   },[]);
 
+  // Troca de tema: só reestiliza via applyOptions, nunca recria o chart
+  // (recriar perderia os dados — o efeito de setData não depende de `tema`).
+  useEffect(()=>{
+    if(!chartRef.current) return;
+    const claro = tema==="light";
+    const corTexto = claro ? "#5B6B84" : "#5A7299";
+    const corGrid  = claro ? "rgba(15,23,32,.05)" : "rgba(255,255,255,.03)";
+    const corBorda = claro ? "rgba(15,23,32,.10)" : "rgba(255,255,255,.06)";
+    const corCross = claro ? "rgba(47,111,239,.25)" : "rgba(200,216,247,.2)";
+    chartRef.current.applyOptions({
+      layout:{ textColor: corTexto },
+      grid:{ vertLines:{ color: corGrid }, horzLines:{ color: corGrid } },
+      crosshair:{ vertLine:{ color: corCross }, horzLine:{ color: corCross } },
+      rightPriceScale:{ borderColor: corBorda, textColor: corTexto },
+      timeScale:{ borderColor: corBorda, textColor: corTexto },
+    });
+  },[tema]);
+
   useEffect(()=>{
     if(!seriesRef.current || !data?.length) return;
     seriesRef.current.setData(toLWSeries(data));
@@ -899,7 +1115,7 @@ function HomeLineChart({data, color}){
 }
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos}){
+function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos, tema="dark"}){
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -910,40 +1126,57 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
   const bbUpperRef   = useRef(null);
   const bbMidRef     = useRef(null);
   const bbLowerRef   = useRef(null);
+  const vwapRef      = useRef(null);
+  const volMaRef     = useRef(null);
+  const oscilRef     = useRef({}); // { [id]: {paneIndex, series:[...]} } — RSI/Estocástico/ATR/OBV
   const markersRef   = useRef(null);
   const canvasRef    = useRef(null);
   const redrawRef    = useRef(null);
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
 
+  // Fibonacci — pontos marcados pelo próprio usuário (não vem de padrão
+  // nenhum). fiboRef espelha o state pro handler de clique (fechamento do
+  // effect não pega o valor mais novo sem isso).
+  const [fibo, setFibo] = useState(null); // {a:{i,preco}, b:{i,preco}} | null
+  const fiboRef = useRef(null);
+  useEffect(()=>{ fiboRef.current = fibo; },[fibo]);
+
   // Inicializa o gráfico
   useEffect(()=>{
     if(!containerRef.current) return;
 
+    const claro = tema==="light";
+    const corFundo   = claro ? "#FFFFFF" : "#06080F";
+    const corTexto   = claro ? "#5B6B84" : "#8FA3C7";
+    const corGrid    = claro ? "rgba(15,23,32,.06)"  : "rgba(255,255,255,.04)";
+    const corBorda   = claro ? "rgba(15,23,32,.10)"  : "rgba(255,255,255,.06)";
+    const corCross   = claro ? "rgba(47,111,239,.25)" : "rgba(200,216,247,.15)";
+
     chartRef.current = createChart(containerRef.current, {
       layout:{
-        background:{ type: ColorType.Solid, color: "#06080F" },
-        textColor: "#8FA3C7",
+        background:{ type: ColorType.Solid, color: corFundo },
+        textColor: corTexto,
         fontFamily: '"JetBrains Mono", "SF Mono", Consolas, monospace',
         fontSize: 12,
       },
       grid:{
-        vertLines:{ color: "rgba(255,255,255,.04)" },
-        horzLines:{ color: "rgba(255,255,255,.04)" },
+        vertLines:{ color: corGrid },
+        horzLines:{ color: corGrid },
       },
       crosshair:{
         mode: CrosshairMode.Normal,
-        vertLine:{ color:"rgba(200,216,247,.15)", width:1, style: LineStyle.Dashed, labelBackgroundColor:"#3D7EFF" },
-        horzLine:{ color:"rgba(200,216,247,.15)", width:1, style: LineStyle.Dashed, labelBackgroundColor:"#3D7EFF" },
+        vertLine:{ color:corCross, width:1, style: LineStyle.Dashed, labelBackgroundColor:"#3D7EFF" },
+        horzLine:{ color:corCross, width:1, style: LineStyle.Dashed, labelBackgroundColor:"#3D7EFF" },
       },
       rightPriceScale:{
-        borderColor: "rgba(255,255,255,.06)",
-        textColor: "#8FA3C7",
+        borderColor: corBorda,
+        textColor: corTexto,
         scaleMargins: showVolume ? { top:0.05, bottom:0.2 } : { top:0.08, bottom:0.08 },
       },
       timeScale:{
-        borderColor: "rgba(255,255,255,.06)",
-        textColor: "#8FA3C7",
+        borderColor: corBorda,
+        textColor: corTexto,
         timeVisible: true,
         secondsVisible: false,
         barSpacing: 8,
@@ -1016,12 +1249,35 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       sma100Ref.current = null;
       sma200Ref.current = null;
       bbUpperRef.current = bbMidRef.current = bbLowerRef.current = null;
+      vwapRef.current = null;
+      volMaRef.current = null;
+      oscilRef.current = {};
       candleRef.current = null;
       volRef.current = null;
       try { chartRef.current?.remove(); } catch(e) {}
       chartRef.current = null;
     };
   },[showVolume]);
+
+  // Troca de tema depois de montado: só reestiliza (applyOptions), nunca
+  // recria o chart — recriar perderia todos os dados já plotados, porque
+  // os efeitos que fazem setData() não dependem de `tema` e não rodariam
+  // de novo sozinhos.
+  useEffect(()=>{
+    if(!chartRef.current) return;
+    const claro = tema==="light";
+    const corTexto = claro ? "#5B6B84" : "#8FA3C7";
+    const corGrid  = claro ? "rgba(15,23,32,.06)" : "rgba(255,255,255,.04)";
+    const corBorda = claro ? "rgba(15,23,32,.10)" : "rgba(255,255,255,.06)";
+    const corCross = claro ? "rgba(47,111,239,.25)" : "rgba(200,216,247,.15)";
+    chartRef.current.applyOptions({
+      layout:{ background:{ type: ColorType.Solid, color: claro ? "#FFFFFF" : "#06080F" }, textColor: corTexto },
+      grid:{ vertLines:{ color: corGrid }, horzLines:{ color: corGrid } },
+      crosshair:{ vertLine:{ color:corCross }, horzLine:{ color:corCross } },
+      rightPriceScale:{ borderColor: corBorda, textColor: corTexto },
+      timeScale:{ borderColor: corBorda, textColor: corTexto },
+    });
+  },[tema]);
 
   // Atualiza candles
   useEffect(()=>{
@@ -1124,6 +1380,101 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         if(ref.current && chartRef.current){ try{chartRef.current.removeSeries(ref.current);}catch(e){} ref.current=null; }
       });
     }
+
+    const sorted = [...candles].sort((a,b)=>a.timestamp-b.timestamp);
+
+    // VWAP — overlay no preço, mesma escala do candle.
+    if(activeTools.has("vwap")){
+      if(!vwapRef.current){
+        vwapRef.current = chartRef.current.addSeries(LineSeries, { color:"#F5A623", lineWidth:1.5, lineStyle:2, priceLineVisible:false, lastValueVisible:false });
+      }
+      vwapRef.current.setData(calcularVWAP(sorted));
+    } else {
+      safeRemove(vwapRef);
+    }
+
+    // Volume médio — overlay na mesma escala do histograma de volume (só existe se showVolume).
+    if(activeTools.has("volume_ma") && volRef.current && candles.length >= 20){
+      if(!volMaRef.current){
+        volMaRef.current = chartRef.current.addSeries(LineSeries, { color:"#00D68F", lineWidth:1.5, priceScaleId:"volume", priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+      }
+      volMaRef.current.setData(calcularVolumeMA(sorted, 20));
+    } else {
+      safeRemove(volMaRef);
+    }
+  },[candles, activeTools]);
+
+  // Osciladores (RSI, Estocástico, ATR, OBV) — cada um no seu próprio pane,
+  // abaixo do preço/volume. Mais simples reconstruir tudo a cada mudança do
+  // que tentar reconciliar índice de pane por pane; toggle de indicador não
+  // é um caminho quente, então o custo é irrelevante.
+  useEffect(()=>{
+    if(!chartRef.current || !candles.length) return;
+    const chart = chartRef.current;
+    const sorted = [...candles].sort((a,b)=>a.timestamp-b.timestamp);
+
+    // Remove tudo que existia antes...
+    Object.values(oscilRef.current).forEach(o=>{
+      o.series.forEach(s=>{ try{ chart.removeSeries(s); }catch(e){} });
+    });
+    // ...e os panes vazios que sobraram (de trás pra frente, senão os
+    // índices dos que ainda faltam remover mudam no meio do caminho).
+    const totalPanesAntes = chart.panes().length;
+    for(let i=totalPanesAntes-1; i>=1; i--){
+      try{ chart.removePane(i); }catch(e){}
+    }
+    oscilRef.current = {};
+
+    const definicoes = [
+      {
+        id:"rsi", ativo: activeTools.has("rsi") && candles.length>=15,
+        montar: (paneIndex)=>{
+          const s = chart.addSeries(LineSeries, {color:"#3D7EFF", lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, title:"RSI"}, paneIndex);
+          s.setData(calcularRSI(sorted, 14));
+          s.createPriceLine({ price:70, color:"rgba(255,69,96,.4)", lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+          s.createPriceLine({ price:30, color:"rgba(0,214,143,.4)", lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+          return [s];
+        },
+      },
+      {
+        id:"estocastico", ativo: activeTools.has("estocastico") && candles.length>=17,
+        montar: (paneIndex)=>{
+          const { k, d } = calcularEstocastico(sorted, 14, 3, 3);
+          const sK = chart.addSeries(LineSeries, {color:"#9B6DFF", lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, title:"%K"}, paneIndex);
+          const sD = chart.addSeries(LineSeries, {color:"#F5A623", lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, title:"%D"}, paneIndex);
+          sK.setData(k);
+          sD.setData(d);
+          sK.createPriceLine({ price:80, color:"rgba(255,69,96,.4)", lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+          sK.createPriceLine({ price:20, color:"rgba(0,214,143,.4)", lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+          return [sK, sD];
+        },
+      },
+      {
+        id:"atr", ativo: activeTools.has("atr") && candles.length>=15,
+        montar: (paneIndex)=>{
+          const s = chart.addSeries(LineSeries, {color:"#F5A623", lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, title:"ATR"}, paneIndex);
+          s.setData(calcularATR(sorted, 14));
+          return [s];
+        },
+      },
+      {
+        id:"obv", ativo: activeTools.has("obv") && candles.length>=2,
+        montar: (paneIndex)=>{
+          const s = chart.addSeries(LineSeries, {color:"#9B6DFF", lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, title:"OBV"}, paneIndex);
+          s.setData(calcularOBV(sorted));
+          return [s];
+        },
+      },
+    ];
+
+    let proximoPane = 1;
+    definicoes.forEach(def=>{
+      if(!def.ativo) return;
+      const series = def.montar(proximoPane);
+      try{ chart.panes()[proximoPane]?.setHeight(110); }catch(e){}
+      oscilRef.current[def.id] = { paneIndex: proximoPane, series };
+      proximoPane++;
+    });
   },[candles, activeTools]);
 
   // Limpa markers do Lightweight Charts (emoji é desenhado no canvas)
@@ -1172,6 +1523,41 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     chartRef.current.subscribeClick(handler);
     return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
   },[padroes, candles, activeTools, setSelPat]);
+
+  // Fibonacci — captura os 2 cliques do usuário no gráfico (índice do candle
+  // + preço exato do clique). Depois dos 2 pontos, novos cliques não fazem
+  // mais nada até a ferramenta ser desligada e ligada de novo.
+  useEffect(()=>{
+    if(!chartRef.current || !candleRef.current || !candles.length) return;
+    const timeToIndex = new Map(candles.map((c,i)=>[Math.floor(c.timestamp/1000), i]));
+    const handler = (param) => {
+      if(!activeTools.has("fibo")) return;
+      if(fiboRef.current?.b) return;
+      if(!param.time || !param.point) return;
+      const idx = timeToIndex.get(param.time);
+      if(idx === undefined) return;
+      const preco = candleRef.current.coordinateToPrice(param.point.y);
+      if(preco === null || preco === undefined) return;
+      setFibo(prev=>{
+        if(!prev) return { a: { i:idx, preco } };
+        if(!prev.b) return { ...prev, b: { i:idx, preco } };
+        return prev;
+      });
+    };
+    chartRef.current.subscribeClick(handler);
+    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
+  },[candles, activeTools]);
+
+  // Desliga a ferramenta → limpa o desenho (próxima vez que ligar, começa do zero)
+  useEffect(()=>{
+    if(!activeTools.has("fibo")) setFibo(null);
+  },[activeTools]);
+
+  // Trocou de candles (novo ativo/timeframe) → os pontos antigos não fazem
+  // mais sentido nesse gráfico
+  useEffect(()=>{
+    setFibo(null);
+  },[candles]);
 
   // Suportes/Resistências — linhas de preço nativas (recalculadas a cada troca de timeframe/ticker,
   // e filtradas pelos toggles "Suporte"/"Resistência" na lista de indicadores)
@@ -1228,29 +1614,6 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     });
   },[nivelSel]);
 
-  // Enquadra o gráfico nos padrões marcados atualmente ativos — sem isso,
-  // um padrão marcado há anos (ex: candle de 2023 num histórico de 3200+
-  // candles) fica desenhado fora da faixa visível por padrão (o gráfico
-  // abre mostrando só os candles mais recentes), e some inteiro pro
-  // usuário mesmo já estando corretamente plotado nas coordenadas reais.
-  useEffect(()=>{
-    const chart = chartRef.current;
-    if(!chart || !candles.length || !padroes.length) return;
-
-    const relevantes = padroes.filter(p => activeTools.has(normalizarTipo(p.tipo)));
-    if(!relevantes.length) return;
-
-    const indices = relevantes.flatMap(p => {
-      if(p.toquesResolvidos) return p.toquesResolvidos.map(pt => pt.i);
-      return Object.values(p.pontos || {}).filter(Boolean).map(pt => pt.i);
-    });
-    if(!indices.length) return;
-
-    const from = Math.max(0, Math.min(...indices) - 10);
-    const to   = Math.min(candles.length - 1, Math.max(...indices) + 10);
-    try{ chart.timeScale().setVisibleLogicalRange({ from, to }); }catch(e){}
-  },[activeTools, padroes, candles]);
-
   // Canvas — desenha padrões via _desenharOCO
   useEffect(()=>{
     const redraw = () => {
@@ -1282,6 +1645,11 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         else _desenharOCO(ctx, toX, toY, p, isSel, canvas.width);
       }
 
+      // Fibonacci — marcado pelo usuário, só desenha com os 2 pontos prontos
+      if(activeTools.has("fibo") && fibo?.a && fibo?.b){
+        _desenharFibonacci(ctx, toX, toY, fibo, canvas.width);
+      }
+
       // Emite posição da lâmpada do padrão selecionado pro pai
       // SÓ se o tipo do padrão ainda estiver ativo nas tools — senão limpa
       const tipoSelAtivo = selPat && activeTools.has(normalizarTipo(selPat.tipo));
@@ -1305,11 +1673,21 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
 
     redrawRef.current = redraw;
     redraw();
-  },[candles, padroes, activeTools, selPat]);
+  },[candles, padroes, activeTools, selPat, fibo]);
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0}}>
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}/>
+      {activeTools.has("fibo") && !fibo?.b && (
+        <div style={{
+          position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
+          background:"rgba(6,8,15,.85)",border:"1px solid rgba(245,166,35,.4)",color:"#F5A623",
+          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 14px",borderRadius:20,zIndex:15,
+          pointerEvents:"none",whiteSpace:"nowrap",
+        }}>
+          {!fibo ? "Fibonacci: clique no 1º ponto do gráfico" : "Fibonacci: clique no 2º ponto do gráfico"}
+        </div>
+      )}
     </div>
   );
 }
@@ -1412,13 +1790,22 @@ function SearchBar({onSelect, mercado=[]}){
 
 
 // ── Asset Card ────────────────────────────────────────────────
-function AssetCard({a,onClick}){
+function AssetCard({a,onClick,favorito=false,onToggleFavorito}){
   const cor=MKTC[a.mercado]||"#5A7299";
   return(
     <div className="ac" onClick={onClick}>
       <div className="ac-top">
         <div className="ac-ic" style={{background:cor+"22",color:cor}}>{a.simbolo[0]}</div>
-        <span className={`ac-chg ${a.alta?"bup":"bdn"}`}>{a.alta?"▲":"▼"}{Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {onToggleFavorito && (
+            <button
+              className={`ac-fav ${favorito?"on":""}`}
+              title={favorito?"Remover dos favoritos":"Adicionar aos favoritos"}
+              onClick={e=>{ e.stopPropagation(); onToggleFavorito(); }}
+            >{favorito?"★":"☆"}</button>
+          )}
+          <span className={`ac-chg ${a.alta?"bup":"bdn"}`}>{a.alta?"▲":"▼"}{Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
+        </div>
       </div>
       <div className="ac-tk">{a.simbolo}</div>
       <div className="ac-nm">{a.nome}</div>
@@ -1452,6 +1839,15 @@ function Abertura(){
     let w, h, points = [], raf;
     const mouse = { x:-9999, y:-9999 };
 
+    // Lê o tema salvo direto do localStorage (não do atributo da <html>,
+    // que pode ainda não ter sido setado pelo efeito do AppInner na hora
+    // que esse efeito monta) — no claro, o mesh precisa de mais opacidade
+    // pra não sumir num fundo quase branco.
+    const claro = localStorage.getItem("tradeup-tema") === "light";
+    const corPonto  = claro ? "rgba(47,111,239,0.6)" : "rgba(61,126,255,0.7)";
+    const corLinha  = claro ? "47,111,239" : "99,130,200";
+    const opLinhaMax = claro ? 0.28 : 0.12;
+
     const resize = ()=>{
       w = canvas.width = window.innerWidth;
       h = canvas.height = window.innerHeight;
@@ -1477,7 +1873,7 @@ function Abertura(){
         if(dist<160){ p.x+=dx*0.008; p.y+=dy*0.008; }
         ctx.beginPath();
         ctx.arc(p.x,p.y,1.6,0,Math.PI*2);
-        ctx.fillStyle="rgba(61,126,255,0.7)";
+        ctx.fillStyle=corPonto;
         ctx.fill();
       }
       for(let i=0;i<points.length;i++){
@@ -1487,7 +1883,7 @@ function Abertura(){
           if(d<130){
             ctx.beginPath();
             ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
-            ctx.strokeStyle=`rgba(99,130,200,${0.12*(1-d/130)})`;
+            ctx.strokeStyle=`rgba(${corLinha},${opLinhaMax*(1-d/130)})`;
             ctx.stroke();
           }
         }
@@ -1516,7 +1912,7 @@ function Abertura(){
         <div className="ab-head">
           <div className="ab-logo">
             <span className="ic">✦</span>
-            <span>TRADE<span>TEC</span></span>
+            <span>TRADE<span>UP</span></span>
           </div>
         </div>
         <div className="ab-hero">
@@ -1576,12 +1972,67 @@ function Sidebar({ secao, setSecao, collapsed, setCollapsed }){
   );
 }
 
-function EmBreve({ titulo }){
+// Página "Mercados" — todos os ativos carregados, com busca por nome/ticker
+// e filtro por tipo de mercado (B3, Cripto, Forex...). Reaproveita os
+// mesmos AssetCard/agrid/mc-tab já usados na home, só que sem limite de 6.
+// Página genérica de listagem de ativos — usada por Mercados, Criptomoedas,
+// Principais Ativos e Favoritos. Busca por nome/ticker sempre disponível;
+// o filtro por tipo de mercado só aparece quando a lista tem mais de um tipo
+// (não faz sentido mostrar as abas B3/CRIPTO/... dentro da página que já é
+// só de cripto, por exemplo).
+function PaginaListaAtivos({ icone, titulo, ativos, carregando=false, mensagemVazio="Nenhum ativo encontrado.", favoritos, toggleFavorito, abrirAtivo }){
+  const [filtro, setFiltro] = useState("TODOS");
+  const [busca, setBusca] = useState("");
+
+  const mercadosNaLista = [...new Set(ativos.map(a=>a.mercado))];
+  const mostrarFiltro = mercadosNaLista.length > 1;
+
+  const filtrado = ativos.filter(a => {
+    if(mostrarFiltro && filtro!=="TODOS" && a.mercado!==filtro) return false;
+    if(busca){
+      const q = busca.toLowerCase();
+      const bate = a.simbolo?.toLowerCase().includes(q) || a.nome?.toLowerCase().includes(q) || a.ticker?.toLowerCase().includes(q);
+      if(!bate) return false;
+    }
+    return true;
+  });
+
   return (
-    <div className="embreve">
-      <div className="eb-ic">🚧</div>
-      <h2>{titulo}</h2>
-      <p>Esta seção está em construção. Vamos montá-la em breve, uma de cada vez.</p>
+    <div className="home">
+      <div className="sh" style={{marginTop:8}}>
+        <span className="st" style={{fontSize:18}}>{icone} {titulo}</span>
+        <span style={{fontSize:11,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{filtrado.length} ativos</span>
+      </div>
+
+      <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+        <div className="search" style={{maxWidth:280,flex:"1 1 240px"}}>
+          <span className="search-ic">🔎</span>
+          <input
+            placeholder="Buscar por nome ou ticker..."
+            value={busca}
+            onChange={e=>setBusca(e.target.value)}
+          />
+        </div>
+        {mostrarFiltro && (
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button className={`mc-tab ${filtro==="TODOS"?"active":""}`} onClick={()=>setFiltro("TODOS")}>Todos</button>
+            {MERCADOS_ORDEM.filter(m=>mercadosNaLista.includes(m)).map(m=>(
+              <button key={m} className={`mc-tab ${filtro===m?"active":""}`} onClick={()=>setFiltro(m)}>{m}</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{padding:16}}>
+        <div className="agrid">
+          {carregando
+            ? [...Array(12)].map((_,i)=><SkeletonCard key={i}/>)
+            : filtrado.length===0
+              ? <div style={{gridColumn:"1 / -1",textAlign:"center",color:"var(--text2)",fontSize:12,padding:"40px 0"}}>{mensagemVazio}</div>
+              : filtrado.map((a,i)=><AssetCard key={a.ticker||i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
+          }
+        </div>
+      </div>
     </div>
   );
 }
@@ -1591,7 +2042,7 @@ function EmBreve({ titulo }){
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema="dark" }){
   const navigate = useNavigate();
   const tf = TFS[0];
 
@@ -1610,6 +2061,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose }){
   const [hoverC,setHoverC]    = useState(null);
   const [painelAberto,setPainelAberto] = useState(true);
   const [switcherAberto,setSwitcherAberto] = useState(false);
+  const [maisAberto,setMaisAberto] = useState(false); // legenda: mostra os indicadores "a mais" (além do limite visível)
 
   // Fecha dropdown de indicadores ao clicar fora
   useEffect(()=>{
@@ -1757,16 +2209,72 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose }){
               onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
               setHoverC={setHoverC}
               showVolume={selAtivo.mercado!=="COMMODITY"}
+              tema={tema}
             />
           )}
-          {!loading&&candles.length>0&&(
-            <div style={{position:"absolute",top:10,left:14,display:"flex",gap:16,pointerEvents:"none",zIndex:5}}>
-              {tools.has("sma20")  &&<span style={{fontSize:9,color:"#F5A623",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM20</span>}
-              {tools.has("sma100") &&<span style={{fontSize:9,color:"#9B6DFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM100</span>}
-              {tools.has("sma200") &&<span style={{fontSize:9,color:"#3D7EFF",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>── MM200</span>}
-              {tools.has("sr")     &&<span style={{fontSize:9,color:"var(--text2)",fontFamily:"var(--font-m)",background:"rgba(6,8,15,.7)",padding:"2px 6px",borderRadius:4}}>--- S/R</span>}
-            </div>
-          )}
+          {/* Legenda dos indicadores ativos — estilo TradingView: cada chip
+              tem um "×" que desliga na hora, sem precisar abrir o painel.
+              Só mostra os primeiros LEGENDA_LIMITE direto; o resto fica
+              atrás do "···" (abre com hover ou clique), pra não poluir o
+              gráfico quando tem muito indicador ligado ao mesmo tempo. */}
+          {!loading&&candles.length>0&&tools.size>0&&(()=>{
+            const ativos = LEGENDA_ITENS.filter(it=>tools.has(it.id));
+            const LEGENDA_LIMITE = 3;
+            const visiveis = ativos.slice(0, LEGENDA_LIMITE);
+            const extras = ativos.slice(LEGENDA_LIMITE);
+
+            const chip = (it) => (
+              <div key={it.id} style={{
+                display:"flex",alignItems:"center",gap:6,
+                background:"rgba(6,8,15,.82)",border:"1px solid var(--border)",borderRadius:5,
+                padding:"3px 4px 3px 8px",
+              }}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:it.cor,flexShrink:0}}/>
+                <span style={{fontSize:10,fontFamily:"var(--font-m)",color:"var(--text)",flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.label}</span>
+                <button
+                  onClick={()=>toggleTool(it.id)}
+                  title={`Remover ${it.label}`}
+                  style={{background:"none",border:"none",color:"var(--text2)",cursor:"pointer",fontSize:11,lineHeight:1,padding:"1px 3px",flexShrink:0}}
+                  onMouseEnter={e=>{e.currentTarget.style.color="var(--down)"}}
+                  onMouseLeave={e=>{e.currentTarget.style.color="var(--text2)"}}
+                >✕</button>
+              </div>
+            );
+
+            return (
+              <div style={{position:"absolute",top:10,left:14,zIndex:12,maxWidth:210}}>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {visiveis.map(chip)}
+                </div>
+
+                {extras.length>0 && (
+                  <div
+                    style={{position:"relative",marginTop:4}}
+                    onMouseEnter={()=>setMaisAberto(true)}
+                    onMouseLeave={()=>setMaisAberto(false)}
+                  >
+                    <div
+                      onClick={()=>setMaisAberto(v=>!v)}
+                      title={`+${extras.length} indicador${extras.length>1?"es":""}`}
+                      style={{
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                        background:"rgba(6,8,15,.82)",border:"1px solid var(--border)",borderRadius:5,
+                        padding:"3px 8px",cursor:"pointer",
+                        fontSize:10,fontFamily:"var(--font-m)",color:"var(--text2)",
+                      }}
+                    >
+                      +{extras.length} ···
+                    </div>
+                    {maisAberto && (
+                      <div style={{position:"absolute",top:"100%",left:0,marginTop:4,display:"flex",flexDirection:"column",gap:4,zIndex:13}}>
+                        {extras.map(chip)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {painelAberto&&<div className="rpanel">
@@ -1934,13 +2442,35 @@ function AppInner(){
   const location = useLocation();
 
   const [mercado,setMercado] = useState([]);
-  const [usosDiarios,setUsosDiarios] = useState({});
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [ibovLoading,setIbovLoading] = useState(false);
   const [erro,setErro]       = useState("");
   const [sbCollapsed,setSbCollapsed] = useState(false);
   const [secao,setSecao]     = useState("inicio");
+
+  // Tema claro/escuro — persiste em localStorage, aplicado via atributo
+  // data-theme na <html> (é o que os seletores :root[data-theme="light"] escutam).
+  const [tema,setTema] = useState(()=> localStorage.getItem("tradeup-tema") || "dark");
+  useEffect(()=>{
+    document.documentElement.setAttribute("data-theme", tema);
+    localStorage.setItem("tradeup-tema", tema);
+  },[tema]);
+  const alternarTema = () => setTema(t => t==="dark" ? "light" : "dark");
+
+  // Favoritos — só client-side (localStorage) por enquanto, sem backend/login.
+  const [favoritos,setFavoritos] = useState(()=>{
+    try{ return new Set(JSON.parse(localStorage.getItem("tradeup-favoritos")||"[]")); }
+    catch(e){ return new Set(); }
+  });
+  const toggleFavorito = (ticker) => {
+    setFavoritos(prev=>{
+      const n = new Set(prev);
+      n.has(ticker) ? n.delete(ticker) : n.add(ticker);
+      localStorage.setItem("tradeup-favoritos", JSON.stringify([...n]));
+      return n;
+    });
+  };
 
   // Multitelas: null = uma tela só; com ticker = segunda tela aberta ao
   // lado da principal. A tela principal continua vindo da URL (permite
@@ -1996,6 +2526,13 @@ function AppInner(){
   const acoes       = mercado.filter(m=>m.mercado==="B3"&&m.ticker!=="^BVSP");
   const forex       = mercado.filter(m=>m.mercado==="FOREX");
 
+  // Amostra da seção "Mercados" da home — um de cada tipo, pra mostrar a
+  // variedade (Cripto/Forex/Commodity nem apareciam antes na tela inicial,
+  // só dentro de "Principais Ativos" misturado com B3).
+  const amostraMercados = MERCADOS_ORDEM
+    .map(tipo => mercado.find(m=>m.mercado===tipo))
+    .filter(Boolean);
+
   // Fileira de índices da home: IBOV + principais ações (na ordem definida)
   const TICKERS_INDICES = ["^BVSP","PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","BBAS3.SA"];
   const indices = TICKERS_INDICES
@@ -2016,12 +2553,15 @@ function AppInner(){
       {/* NAV (escondida na tela de abertura) */}
       {path!=="/"&&(
       <nav className="nav">
-        <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>TEC</span></div>
+        <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>UP</span></div>
         <SearchBar onSelect={abrirAtivo} mercado={mercado}/>
         <div style={{flex:1}}/>
         <div className="nav-r">
-          <button className="nav-ic" title="Tema claro/escuro">
-            <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <button className="nav-ic" title={tema==="dark" ? "Mudar pro tema claro" : "Mudar pro tema escuro"} onClick={alternarTema}>
+            {tema==="dark"
+              ? <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              : <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            }
           </button>
           <button className="nav-ic" title="Notificações">
             <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2037,13 +2577,34 @@ function AppInner(){
         <div className="dash">
           <Sidebar secao={secao} setSecao={setSecao} collapsed={sbCollapsed} setCollapsed={setSbCollapsed}/>
           <div className="dash-main">
-          {secao!=="inicio" && (
-            <EmBreve titulo={
-              secao==="mercados" ? "Mercados" :
-              secao==="cripto"   ? "Criptomoedas" :
-              secao==="ativos"   ? "Principais Ativos" :
-              secao==="favoritos"? "Favoritos" : "Em breve"
-            }/>
+          {secao==="mercados" && (
+            <PaginaListaAtivos
+              icone="🌐" titulo="Mercados"
+              ativos={mercado} carregando={mercado.length===0}
+              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
+            />
+          )}
+          {secao==="cripto" && (
+            <PaginaListaAtivos
+              icone="₿" titulo="Criptomoedas"
+              ativos={criptos} carregando={mercado.length===0}
+              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
+            />
+          )}
+          {secao==="ativos" && (
+            <PaginaListaAtivos
+              icone="📈" titulo="Principais Ativos"
+              ativos={mercado.filter(m=>m.mercado!=="CRIPTO")} carregando={mercado.length===0}
+              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
+            />
+          )}
+          {secao==="favoritos" && (
+            <PaginaListaAtivos
+              icone="⭐" titulo="Favoritos"
+              ativos={mercado.filter(m=>favoritos.has(m.ticker))}
+              mensagemVazio="Você ainda não favoritou nenhum ativo — clique na estrela ☆ de qualquer card pra adicionar aqui."
+              favoritos={favoritos} toggleFavorito={toggleFavorito} abrirAtivo={abrirAtivo}
+            />
           )}
           {secao==="inicio" && (
           <div className="home">
@@ -2114,8 +2675,25 @@ function AppInner(){
               </div>
               <div className="mc-chart">
                 {ibovSerie.length>0
-                  ?<HomeLineChart data={ibovSerie} color={ibov?.alta?"#00D68F":"#FF4560"}/>
+                  ?<HomeLineChart data={ibovSerie} color={ibov?.alta?"#00D68F":"#FF4560"} tema={tema}/>
                   :<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+                }
+              </div>
+            </div>
+          </div>
+
+          {/* MERCADOS — resumo com um pouco de cada tipo (B3, Cripto, Forex,
+              Commodity, NASDAQ/NYSE), com link pra página completa */}
+          <div>
+            <div className="sh">
+              <span className="st">🌐 Mercados</span>
+              <span className="sl" onClick={()=>setSecao("mercados")}>Ver todos →</span>
+            </div>
+            <div className="card" style={{padding:16}}>
+              <div className="agrid">
+                {amostraMercados.length>0
+                  ?amostraMercados.map((a,i)=><AssetCard key={a.ticker||i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
+                  :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>
             </div>
@@ -2130,7 +2708,7 @@ function AppInner(){
             <div className="card" style={{padding:16}}>
               <div className="agrid">
                 {criptos.length>0
-                  ?criptos.slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)}/>)
+                  ?criptos.slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
                   :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>
@@ -2146,7 +2724,7 @@ function AppInner(){
             <div className="card" style={{padding:16}}>
               <div className="agrid">
                 {[...acoes,...forex].length>0
-                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)}/>)
+                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
                   :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
                 }
               </div>
@@ -2204,7 +2782,7 @@ function AppInner(){
                 if(lista.length===0){
                   return [...Array(8)].map((_,i)=><SkeletonCard key={i}/>);
                 }
-                return lista.map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)}/>);
+                return lista.map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>);
               })()}
             </div>
           </div>
@@ -2224,6 +2802,7 @@ function AppInner(){
             ticker={tickerUrl}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
             onAddSplit={splitTicker ? undefined : ()=>setSplitTicker(tickerUrl)}
+            tema={tema}
           />
           {splitTicker && (
             <ChartPane
@@ -2232,6 +2811,7 @@ function AppInner(){
               ticker={splitTicker}
               onTickerChange={setSplitTicker}
               onClose={()=>setSplitTicker(null)}
+              tema={tema}
             />
           )}
         </div>

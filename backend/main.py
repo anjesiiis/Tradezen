@@ -27,14 +27,17 @@ ENDPOINTS:
 
 import asyncio
 import time
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import uvicorn
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
-from patterns.niveis import detectar_niveis
-from admin_auth import router as admin_auth_router
+from config import FRONTEND_URL
+from admin_auth import router as admin_auth_router, require_admin
 from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
 from admin_templates_niveis import router as admin_templates_niveis_router
@@ -47,12 +50,23 @@ app = FastAPI(
     version="1.3.0"
 )
 
-# CORS — permite o frontend React conectar
+# Rate limiting por IP — sem isso, /ativo e /ativos/batch eram um jeito de
+# graça de martelar o Yahoo Finance/Binance através da nossa API até tomar
+# rate-limit/ban deles, ou só inflar nossa conta. default_limits cobre
+# qualquer rota sem decorator explícito.
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS — só os domínios reais do frontend. Antes tinha um "*" junto com os
+# domínios explícitos, o que o Starlette trata como "libera geral" (o "*"
+# vence) — qualquer site podia chamar a API. FRONTEND_URL cobre produção.
+_origens_permitidas = {FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"}
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=list(_origens_permitidas),
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(admin_auth_router)
@@ -198,7 +212,8 @@ def raiz():
 
 
 @app.get("/mercado")
-def resumo_mercado():
+@limiter.limit("60/minute")
+def resumo_mercado(request: Request):
     """
     Retorna resumo do mercado para a página inicial.
     Cache de 5 minutos.
@@ -216,7 +231,9 @@ def resumo_mercado():
 
 
 @app.get("/ativo/{ticker}")
+@limiter.limit("30/minute")
 def dados_ativo(
+    request: Request,
     ticker: str,
     periodo: str = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 5y, max"),
     intervalo: str = Query("1d", description="1d, 60m, 1wk")
@@ -278,7 +295,9 @@ def listar_ativos(mercado: Optional[str] = Query(None, description="Filtra por m
 
 
 @app.get("/ativos/batch")
+@limiter.limit("15/minute")
 async def ativos_batch(
+    request: Request,
     tickers: str = Query(..., description="Tickers separados por vírgula"),
     periodo: str = Query("3mo"),
     intervalo: str = Query("1d")
@@ -290,6 +309,8 @@ async def ativos_batch(
     lista_tickers = [t.strip() for t in tickers.split(",") if t.strip()]
     if not lista_tickers:
         raise HTTPException(status_code=400, detail="Nenhum ticker informado.")
+    if len(lista_tickers) > 20:
+        raise HTTPException(status_code=400, detail="Máximo de 20 tickers por requisição.")
 
     ttl = TTL_MEDIO if intervalo == "1d" else TTL_LONGO
 
@@ -327,7 +348,8 @@ async def ativos_batch(
 
 
 @app.get("/ativos/buscar")
-def buscar_ativo(q: str = Query(..., description="Nome ou ticker do ativo")):
+@limiter.limit("60/minute")
+def buscar_ativo(request: Request, q: str = Query(..., description="Nome ou ticker do ativo")):
     """
     Busca ativos por nome, ticker ou símbolo.
     Exemplo: /ativos/buscar?q=petro
@@ -347,16 +369,19 @@ def buscar_ativo(q: str = Query(..., description="Nome ou ticker do ativo")):
 
 
 @app.get("/cache/limpar")
-def limpar_cache():
-    """Limpa o cache em memória (útil pra debug)."""
+def limpar_cache(admin: str = Depends(require_admin)):
+    """Limpa o cache em memória (útil pra debug). Só admin — sem isso,
+    qualquer um podia forçar toda requisição seguinte a bater de novo
+    no Yahoo Finance/Binance, de graça."""
     total = len(_cache)
     _cache.clear()
     return {"status": "ok", "removidos": total}
 
 
 @app.get("/cache/status")
-def status_cache():
-    """Mostra o que está em cache no momento."""
+def status_cache(admin: str = Depends(require_admin)):
+    """Mostra o que está em cache no momento. Só admin — os nomes das
+    chaves revelam quais tickers estão sendo consultados."""
     agora = time.time()
     itens = [
         {"chave": chave, "idade_seg": int(agora - ts)}
