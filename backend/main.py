@@ -368,14 +368,79 @@ def buscar_ativo(request: Request, q: str = Query(..., description="Nome ou tick
     return {"status": "ok", "resultados": resultados, "total": len(resultados)}
 
 
-# ── DADOS MOCKADOS (página Mercados estilo TradingView) ────────
+# ── DADOS DA PÁGINA MERCADOS (cards estilo TradingView) ─────────
+# Selic e inflação (IPCA) vêm de verdade da API pública do Banco Central
+# (SGS — sem chave, sem cadastro). O resto ainda é mock:
 # TODO: substituir por fonte de dados real quando integrarmos:
 #   - market cap total de cripto + dominância → CoinGecko/CoinMarketCap API
-#   - yield BR10Y, inflação (BRIRYY) e Selic/previsão → Trading Economics
-#     ou API do Banco Central (SGS) / IBGE (SIDRA)
-# Até lá, isso aqui é só pra a página não ficar com espaço vazio — os
-# valores abaixo são fixos, não refletem o mercado real.
+#   - yield BR10Y → não tem fonte gratuita limpa (daria pra aproximar com o
+#     CSV de preços do Tesouro Direto, mas é 14MB e pede mais trabalho de
+#     parsing — deixado pra depois)
 import random as _random
+import requests as _requests
+from datetime import datetime as _datetime
+
+BCB_SGS_URL   = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/{n}?formato=json"
+BCB_FOCUS_URL = "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais"
+
+# Calendário oficial do Copom pra 2026 (BC divulga com quase um ano de
+# antecedência — não muda). Decisão sempre sai no 2º dia de cada reunião.
+# TODO: atualizar quando o Banco Central divulgar o calendário de 2027.
+_COPOM_2026 = [
+    "2026-03-18", "2026-04-29", "2026-06-17", "2026-08-05",
+    "2026-09-16", "2026-11-04", "2026-12-09",
+]
+
+
+def _proximo_copom() -> str:
+    hoje = _datetime.now().strftime("%Y-%m-%d")
+    for data in _COPOM_2026:
+        if data >= hoje:
+            return data
+    return _COPOM_2026[-1]
+
+
+def _buscar_selic_atual():
+    try:
+        r = _requests.get(BCB_SGS_URL.format(codigo=432, n=1), timeout=5)
+        r.raise_for_status()
+        return float(r.json()[0]["valor"])
+    except Exception:
+        return None
+
+
+def _buscar_ipca_mensal_12m():
+    try:
+        r = _requests.get(BCB_SGS_URL.format(codigo=433, n=12), timeout=5)
+        r.raise_for_status()
+        meses_pt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+        saida = []
+        for item in r.json():
+            _dia, mes, ano = item["data"].split("/")
+            saida.append({"mes": f"{meses_pt[int(mes)-1]}/{ano[2:]}", "valor": float(item["valor"])})
+        return saida
+    except Exception:
+        return None
+
+
+def _buscar_selic_previsao():
+    # OData da API do BC é exigente com a codificação da URL — passar por
+    # `params=` (requests usa form-encoding, %27 pra aspas) faz o serviço
+    # devolver 400. Montando a query string manualmente, do jeito que ele
+    # espera (aspas literais, espaço como %20), funciona.
+    try:
+        ano_atual = _datetime.now().year
+        url = (
+            f"{BCB_FOCUS_URL}?$top=1"
+            f"&$filter=Indicador%20eq%20'Selic'%20and%20DataReferencia%20eq%20'{ano_atual}'"
+            f"&$orderby=Data%20desc&$format=json"
+        )
+        r = _requests.get(url, timeout=5)
+        r.raise_for_status()
+        valores = r.json().get("value", [])
+        return round(float(valores[0]["Mediana"]), 2) if valores else None
+    except Exception:
+        return None
 
 
 def _serie_mock(base: float, pontos: int, variacao_pct: float) -> list:
@@ -395,12 +460,25 @@ def visao_geral_mercado(request: Request):
     """
     Dados extras pra página Mercados (cards estilo TradingView): market cap
     de cripto, dominância do Bitcoin, e indicadores econômicos do Brasil.
-    MOCK — ver TODO acima. Front já sabe que "mock": true significa isso.
+    Selic e inflação são reais (Banco Central); o resto é mock — ver TODO
+    acima. Front já sabe que cada bloco tem seu próprio "mock": true/false.
     """
-    return {
+    chave_cache = "mercado_visao_geral"
+    em_cache = cache_get(chave_cache, TTL_CURTO)
+    if em_cache is not None:
+        return em_cache
+
+    selic_atual = _buscar_selic_atual()
+    selic_previsao = _buscar_selic_previsao()
+    inflacao = _buscar_ipca_mensal_12m()
+    # Se a API do BC estiver fora do ar, cai pra um valor plausível em vez
+    # de quebrar a página — mas sinaliza mock=True nesse caso específico.
+    juros_e_inflacao_reais = selic_atual is not None and inflacao is not None
+
+    resposta = {
         "status": "ok",
-        "mock": True,
         "cripto": {
+            "mock": True,
             "market_cap_usd": 2_380_000_000_000,
             "market_cap_variacao_pct": 2.41,
             "market_cap_serie": _serie_mock(2_280_000_000_000, 30, 2.5),
@@ -408,25 +486,32 @@ def visao_geral_mercado(request: Request):
         },
         "economia_brasil": {
             "yield_10a": {
+                "mock": True,
                 "valor": 11.85,
                 "variacao_pct": -0.34,
                 "serie": _serie_mock(11.9, 30, 1.2),
             },
-            "inflacao_mensal": [
-                {"mes": "Set/25", "valor": 0.35}, {"mes": "Out/25", "valor": 0.21},
-                {"mes": "Nov/25", "valor": 0.18}, {"mes": "Dez/25", "valor": 0.52},
-                {"mes": "Jan/26", "valor": 0.61}, {"mes": "Fev/26", "valor": 0.44},
-                {"mes": "Mar/26", "valor": 0.29}, {"mes": "Abr/26", "valor": 0.15},
-                {"mes": "Mai/26", "valor": 0.09}, {"mes": "Jun/26", "valor": 0.33},
-                {"mes": "Jul/26", "valor": 0.40}, {"mes": "Ago/26", "valor": 0.27},
-            ],
+            "inflacao_mensal": {
+                "mock": inflacao is None,
+                "dados": inflacao or [
+                    {"mes": "Set/25", "valor": 0.35}, {"mes": "Out/25", "valor": 0.21},
+                    {"mes": "Nov/25", "valor": 0.18}, {"mes": "Dez/25", "valor": 0.52},
+                    {"mes": "Jan/26", "valor": 0.61}, {"mes": "Fev/26", "valor": 0.44},
+                    {"mes": "Mar/26", "valor": 0.29}, {"mes": "Abr/26", "valor": 0.15},
+                    {"mes": "Mai/26", "valor": 0.09}, {"mes": "Jun/26", "valor": 0.33},
+                    {"mes": "Jul/26", "valor": 0.40}, {"mes": "Ago/26", "valor": 0.27},
+                ],
+            },
             "juros": {
-                "atual": 10.75,
-                "previsao": 10.50,
-                "proximo_lancamento": "2026-09-17",
+                "mock": not juros_e_inflacao_reais,
+                "atual": selic_atual if selic_atual is not None else 10.75,
+                "previsao": selic_previsao if selic_previsao is not None else 10.50,
+                "proximo_lancamento": _proximo_copom(),
             },
         },
     }
+    cache_set(chave_cache, resposta)
+    return resposta
 
 
 @app.get("/cache/limpar")

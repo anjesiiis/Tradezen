@@ -122,47 +122,60 @@ def _buscar_binance(ticker, intervalo="1d", limite=1000):
         return []
 
 
-def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d"):
-    """Busca candles do Yahoo Finance."""
-    try:
-        df = yf.download(
-            ticker,
-            period=periodo,
-            interval=intervalo,
-            auto_adjust=True,
-            progress=False,
-            threads=False,  # já paralelizamos por fora
-        )
-        if df.empty:
+def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
+    """Busca candles do Yahoo Finance.
+
+    `tentativas`: quando várias buscas rodam em paralelo (ex: resumo do
+    mercado, um ThreadPoolExecutor por ativo), o Yahoo às vezes derruba
+    ALGUMAS das requisições simultâneas mesmo com o ticker certo — testado
+    isoladamente e em sequência, o mesmo ticker que falhou no paralelo
+    funciona de primeira. Uma retentativa rápida resolve a maioria desses
+    casos sem esconder erro de verdade (ticker inválido continua falhando
+    nas duas tentativas).
+    """
+    for tentativa in range(tentativas):
+        try:
+            df = yf.download(
+                ticker,
+                period=periodo,
+                interval=intervalo,
+                auto_adjust=True,
+                progress=False,
+                threads=False,  # já paralelizamos por fora
+            )
+            if df.empty:
+                raise ValueError("resposta vazia")
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            df.dropna(inplace=True)
+            candles = []
+            for idx, row in df.iterrows():
+                ts = int(idx.timestamp() * 1000) if hasattr(idx, "timestamp") else 0
+                candles.append({
+                    "timestamp": ts,
+                    "data": idx.strftime("%Y-%m-%d %H:%M") if hasattr(idx, "strftime") else str(idx),
+                    "abertura": round(float(row["Open"]), 4),
+                    "maxima": round(float(row["High"]), 4),
+                    "minima": round(float(row["Low"]), 4),
+                    "fechamento": round(float(row["Close"]), 4),
+                    "volume": int(float(row.get("Volume", 0))),
+                    "fonte": "yahoo",
+                })
+
+            # Yahoo às vezes publica o candle do pregão ainda em formação (ex: B3
+            # antes do fechamento oficial do dia) com abertura/máxima/mínima
+            # zeradas e só o último preço no fechamento — descarta esse candle
+            # incompleto pra não virar um "marubozo" indo até zero no gráfico.
+            if candles and candles[-1]["maxima"] == 0 and candles[-1]["minima"] == 0:
+                candles.pop()
+
+            return candles
+        except Exception as e:
+            if tentativa + 1 < tentativas:
+                time.sleep(0.6)
+                continue
+            print(f"[Yahoo] Erro {ticker}: {e}")
             return []
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        df.dropna(inplace=True)
-        candles = []
-        for idx, row in df.iterrows():
-            ts = int(idx.timestamp() * 1000) if hasattr(idx, "timestamp") else 0
-            candles.append({
-                "timestamp": ts,
-                "data": idx.strftime("%Y-%m-%d %H:%M") if hasattr(idx, "strftime") else str(idx),
-                "abertura": round(float(row["Open"]), 4),
-                "maxima": round(float(row["High"]), 4),
-                "minima": round(float(row["Low"]), 4),
-                "fechamento": round(float(row["Close"]), 4),
-                "volume": int(float(row.get("Volume", 0))),
-                "fonte": "yahoo",
-            })
-
-        # Yahoo às vezes publica o candle do pregão ainda em formação (ex: B3
-        # antes do fechamento oficial do dia) com abertura/máxima/mínima
-        # zeradas e só o último preço no fechamento — descarta esse candle
-        # incompleto pra não virar um "marubozo" indo até zero no gráfico.
-        if candles and candles[-1]["maxima"] == 0 and candles[-1]["minima"] == 0:
-            candles.pop()
-
-        return candles
-    except Exception as e:
-        print(f"[Yahoo] Erro {ticker}: {e}")
-        return []
 
 
 def buscar_candles(ticker, periodo="5y", intervalo="1d"):
@@ -259,8 +272,12 @@ def buscar_resumo_mercado():
     Tempo total ≈ tempo do ativo mais lento, não a soma de todos.
     """
     resultado = []
-    # max_workers=10: suficiente pra 23 ativos sem stress no Yahoo/Binance
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # max_workers=6 (era 10) — com 10 threads batendo no Yahoo ao mesmo
+    # tempo, ele começou a derrubar algumas das requisições simultâneas
+    # (confirmado: os mesmos tickers funcionam de primeira quando testados
+    # em sequência). Menos concorrência + retry em _buscar_yahoo juntos
+    # resolvem a maioria das falhas sem deixar a busca muito mais lenta.
+    with ThreadPoolExecutor(max_workers=6) as executor:
         # Submete todas as buscas e mantém a ordem original
         futuros = {
             executor.submit(_processar_resumo_ativo, ativo): ativo

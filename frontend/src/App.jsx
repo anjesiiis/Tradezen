@@ -2014,6 +2014,17 @@ function VariacaoMkt3({ pct }){
   return <span style={{color:cor,fontSize:12,fontWeight:700,fontFamily:"var(--font-m)"}}>{positivo?"+":""}{pct.toFixed(2)}%</span>;
 }
 
+// Selo discreto pros blocos que ainda são mock (hoje só BR10Y, e o resto
+// dos indicadores de juros/inflação só cai aqui se a API do BC estiver fora).
+function SeloEstimadoMkt3(){
+  return (
+    <span
+      title="Ainda não temos fonte de dado real pra isso — valor de referência, não é o mercado ao vivo."
+      style={{marginLeft:6,fontSize:9,fontWeight:700,letterSpacing:.3,padding:"1px 5px",borderRadius:4,background:"rgba(245,166,35,.15)",color:"#F5A623",verticalAlign:"middle"}}
+    >ESTIMADO</span>
+  );
+}
+
 function LinhaAtivoMkt3({ letra, cor, nome, badge, badgeFundo, badgeTexto, preco, unidade, variacaoPct, onClick }){
   return (
     <div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:onClick?"pointer":"default"}}>
@@ -2065,7 +2076,7 @@ function MiniBarrasMkt3({ dados, tema }){
 
 function ColunaMkt3({ titulo, corCard, corBorda, children, linkTexto, onLink }){
   return (
-    <div style={{background:corCard,border:`1px solid ${corBorda}`,borderRadius:12,padding:18,display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
+    <div style={{background:corCard,border:`1px solid ${corBorda}`,borderRadius:12,padding:18,display:"flex",flexDirection:"column",gap:16,minWidth:0,height:"100%"}}>
       <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>{titulo}</span>
       {children}
       {linkTexto && (
@@ -2120,7 +2131,7 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
         <span className="st" style={{fontSize:18}}>🌐 Mercados</span>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,alignItems:"start"}} className="mkt3-grid">
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,alignItems:"stretch"}} className="mkt3-grid">
 
         {/* COLUNA 1 — CRIPTOMOEDAS */}
         <ColunaMkt3 titulo="Criptomoedas" corCard={corCard} corBorda={corBorda} linkTexto="Veja todas as criptomoedas >" onLink={()=>setSecao("cripto")}>
@@ -2191,7 +2202,10 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
         {/* COLUNA 3 — INDICADORES ECONÔMICOS (mock — ver comentário no backend) */}
         <ColunaMkt3 titulo="Indicadores Econômicos" corCard={corCard} corBorda={corBorda} linkTexto="Ver todos os indicadores econômicos >" onLink={null}>
           <div>
-            <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>Brasil 10A yield <span style={{opacity:.6}}>(BR10Y)</span></div>
+            <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>
+              Brasil 10A yield <span style={{opacity:.6}}>(BR10Y)</span>
+              {econ?.yield_10a?.mock && <SeloEstimadoMkt3/>}
+            </div>
             {econ ? <>
               <div style={{display:"flex",alignItems:"baseline",gap:8}}>
                 <span style={{fontSize:20,fontWeight:700,color:"var(--text)"}}>{econ.yield_10a.valor.toFixed(2)}%</span>
@@ -2205,11 +2219,11 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
 
           {econ && <div>
             <div style={{fontSize:11,color:"var(--text2)",marginBottom:8}}>Taxa de inflação anual do Brasil <span style={{opacity:.6}}>(BRIRYY)</span></div>
-            <MiniBarrasMkt3 dados={econ.inflacao_mensal} tema={tema}/>
+            <MiniBarrasMkt3 dados={econ.inflacao_mensal.dados} tema={tema}/>
           </div>}
 
           {econ && <div>
-            <div style={{fontSize:11,color:"var(--text2)",marginBottom:8}}>Taxa de juros do Brasil</div>
+            <div style={{fontSize:11,color:"var(--text2)",marginBottom:8}}>Taxa de juros do Brasil{econ.juros.mock && <SeloEstimadoMkt3/>}</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               <div>
                 <div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Real</div>
@@ -2785,23 +2799,36 @@ function AppInner(){
 
   // Fileira de índices da home: Ibovespa, Petrobras, Vale, Itaú, Bradesco,
   // nessa ordem. O /mercado às vezes falha em buscar UM ativo específico
-  // naquele ciclo (sem derrubar o endpoint todo) — pra nunca deixar um
-  // buraco vazio na fileira, quem faltar é substituído na hora por outra
-  // ação B3 disponível (nunca repete um ticker já mostrado). Só vira
-  // skeleton se literalmente não sobrar nenhuma ação B3 pra substituir.
-  const TICKERS_INDICES = ["^BVSP","PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA"];
+  // naquele ciclo (sem derrubar o endpoint todo, o Yahoo derruba algumas
+  // requisições concorrentes de vez em quando — o backend já tenta de novo
+  // sozinho, mas nem sempre resolve) — pra nunca deixar um buraco vazio na
+  // fileira, quem faltar é substituído na hora por outra ação B3
+  // disponível (nunca repete um ticker já mostrado). Se não sobrar nenhuma
+  // ação B3 pra substituir, mostra o nome do ativo pretendido com "Sem
+  // dados" em vez de um card em branco.
+  const INDICES_CONFIG = [
+    {ticker:"^BVSP",    nome:"Ibovespa",  simbolo:"IBOV"},
+    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4"},
+    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3"},
+    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4"},
+    {ticker:"BBDC4.SA", nome:"Bradesco",  simbolo:"BBDC4"},
+  ];
+  const TICKERS_INDICES = INDICES_CONFIG.map(c=>c.ticker);
   const substitutosIndices = mercado.filter(m=>m.mercado==="B3"&&!TICKERS_INDICES.includes(m.ticker));
   const indices = (()=>{
     const usados = new Set();
     let cursor = 0;
-    return TICKERS_INDICES.map(tk=>{
-      const achado = mercado.find(m=>m.ticker===tk);
+    return INDICES_CONFIG.map(cfg=>{
+      const achado = mercado.find(m=>m.ticker===cfg.ticker);
       if(achado){ usados.add(achado.ticker); return achado; }
       while(cursor < substitutosIndices.length){
         const candidato = substitutosIndices[cursor++];
         if(!usados.has(candidato.ticker)){ usados.add(candidato.ticker); return candidato; }
       }
-      return null;
+      // Esgotou os substitutos — se o /mercado ainda nem respondeu (mercado
+      // vazio), é só carregamento normal; se já respondeu e mesmo assim
+      // não achou nem substituto, é falha de verdade.
+      return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
     });
   })();
 
@@ -2883,7 +2910,28 @@ function AppInner(){
             </div>
             <div className="idx-row">
               {indices.map((a,i)=>{
-                if(!a) return <div key={i} className="idx-skel"/>;
+                // Ticker sem dado (e sem substituto) — mostra o nome do
+                // ativo pretendido em vez de um card em branco. "semDados"
+                // distingue "ainda carregando" (mercado nem respondeu) de
+                // "respondeu e mesmo assim não achou" (falha de verdade).
+                if("semDados" in a){
+                  return (
+                    <div key={a.ticker||i} className="idx-btn" style={{cursor:"default",opacity:.55}}>
+                      <div className="idx-top">
+                        <div className="idx-ic" style={{background:"var(--border)",color:"var(--text3)"}}>{a.simbolo[0]}</div>
+                        <span className="idx-name">{a.nome}</span>
+                      </div>
+                      <div className="idx-line">
+                        {a.semDados
+                          ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
+                          : <span style={{fontSize:11,color:"var(--text3)",display:"flex",alignItems:"center",gap:6}}>
+                              <span className="spin" style={{width:10,height:10,borderWidth:2}}/>Carregando
+                            </span>
+                        }
+                      </div>
+                    </div>
+                  );
+                }
                 const cor = MKTC[a.mercado] || "var(--accent)";
                 return (
                   <div key={a.ticker} className="idx-btn" onClick={()=>abrirAtivo(a)}>
