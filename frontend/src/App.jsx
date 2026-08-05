@@ -8,6 +8,11 @@ import AdminTemplates from "./admin/AdminTemplates.jsx";
 import AdminTemplatesTopoDuplo from "./admin/AdminTemplatesTopoDuplo.jsx";
 import AdminTemplatesNiveis from "./admin/AdminTemplatesNiveis.jsx";
 import RequireAdmin from "./admin/RequireAdmin.jsx";
+import { AuthProvider, useAuth } from "./auth/AuthContext.jsx";
+import RequireAuth from "./auth/RequireAuth.jsx";
+import Login from "./auth/Login.jsx";
+import Cadastro from "./auth/Cadastro.jsx";
+import AuthCallback from "./auth/AuthCallback.jsx";
 
 const API = "http://localhost:8000";
 
@@ -167,7 +172,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .apr{font-family:var(--font-m);font-size:14px;color:var(--text);flex-shrink:0}
 .achg{font-size:11px;padding:2px 8px;border-radius:5px;flex-shrink:0;font-weight:700}
 .sep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}
-.ohlc{display:flex;gap:14px;font-size:10px;font-family:var(--font-m);color:var(--text2);flex-shrink:0;margin-left:8px}
 
 .abody{display:flex;flex:1;overflow:hidden}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
@@ -403,15 +407,19 @@ const INDICADORES = [
   {id:"vwap",      label:"VWAP",          cor:"#F5A623", grupo:"Volume"},
   {id:"volume_ma", label:"Volume médio",  cor:"#00D68F", grupo:"Volume"},
   {id:"obv",       label:"OBV",           cor:"#9B6DFF", grupo:"Volume"},
-  // Ferramentas de desenho — fibo já existia (mecanismo próprio, ver
-  // FERRAMENTA_INFO/CandleChart); as outras 4 são novas, todas com
-  // `desenho:true` pra o dropdown saber que o clique arma uma ferramenta
-  // de colocar pontos no gráfico em vez de ligar/desligar um indicador.
-  {id:"fibo",       label:"Fibonacci",          cor:"#F5A623",  grupo:"Ferramentas de Desenho", icone:"Φ"},
-  {id:"trend",      label:"Linha de Tendência",  cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"⟋", desenho:true},
-  {id:"horizontal", label:"Linha Horizontal",    cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"➖", desenho:true},
-  {id:"retangulo_desenho", label:"Retângulo",    cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"▭", desenho:true},
-  {id:"canal",      label:"Canal Paralelo",      cor:"#2962FF", grupo:"Ferramentas de Desenho", icone:"∥", desenho:true},
+];
+
+// Ferramentas de desenho — botão/dropdown próprio na toolbar, separado do
+// de Indicadores (ver ChartPane). Fibonacci usa o mecanismo antigo
+// (toggleTool/activeTools, igual antes); as outras 4 usam `ferramentaAtiva`
+// (ver FERRAMENTA_INFO/CandleChart) — o dropdown sabe qual usar pelo
+// `desenho:true`.
+const FERRAMENTAS_DESENHO_LISTA = [
+  {id:"trend",      label:"Linha de Tendência", cor:"#2962FF", icone:"⟋", desenho:true},
+  {id:"horizontal", label:"Linha Horizontal",   cor:"#2962FF", icone:"➖", desenho:true},
+  {id:"fibo",       label:"Fibonacci",          cor:"#F5A623", icone:"Φ"},
+  {id:"retangulo_desenho", label:"Retângulo",   cor:"#2962FF", icone:"▭", desenho:true},
+  {id:"canal",      label:"Canal Paralelo",     cor:"#2962FF", icone:"∥", desenho:true},
 ];
 
 // Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo
@@ -422,6 +430,10 @@ const INDICADORES = [
 const LEGENDA_ITENS = [
   ...INDICADORES.map(i => ({ id: i.id, label: i.label, cor: i.cor })),
   ...TOOLS.map(t => ({ id: t.id, label: t.name, cor: "#8B949E" })),
+  // Fibonacci não está mais em INDICADORES (ganhou botão próprio de
+  // Ferramentas de Desenho), mas continua ligando/desligando pelo mesmo
+  // Set `tools` — sem essa linha ele sumia da legenda do gráfico.
+  { id:"fibo", label:"Fibonacci", cor:"#F5A623" },
 ];
 
 const ATIVOS=[
@@ -1299,7 +1311,7 @@ function HomeLineChart({data, color, tema="dark"}){
 }
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, setHoverC, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos}){
+function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos}){
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -1421,23 +1433,6 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         scaleMargins:{ top:0.8, bottom:0 },
       });
     }
-
-    // Crosshair → atualiza OHLC na toolbar
-    chartRef.current.subscribeCrosshairMove(param=>{
-      if(param.time && candleRef.current){
-        const data = param.seriesData.get(candleRef.current);
-        if(data) setHoverC({
-          abertura:   data.open,
-          maxima:     data.high,
-          minima:     data.low,
-          fechamento: data.close,
-          data: new Date(param.time * 1000).toISOString().slice(0,10),
-        });
-        else setHoverC(null);
-      } else {
-        setHoverC(null);
-      }
-    });
 
     chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(()=>{
       redrawRef.current?.();
@@ -3282,12 +3277,14 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
   const [indOpen,setIndOpen]  = useState(false);
   const indBtnRef = useRef(null);
   const [indPos,setIndPos]    = useState({top:0,left:0});
-  const [hoverC,setHoverC]    = useState(null);
   const [painelAberto,setPainelAberto] = useState(true);
   const [switcherAberto,setSwitcherAberto] = useState(false);
   const [maisAberto,setMaisAberto] = useState(false); // legenda: mostra os indicadores "a mais" (além do limite visível)
   const [ferramentaAtiva,setFerramentaAtiva] = useState(null); // ferramenta de desenho armada (trend/horizontal/retangulo_desenho/canal)
   const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
+  const [desenhoOpen,setDesenhoOpen] = useState(false); // dropdown de ferramentas de desenho — botão próprio, separado do de Indicadores
+  const desenhoBtnRef = useRef(null);
+  const [desenhoPos,setDesenhoPos] = useState({top:0,left:0});
 
   // Fecha dropdown de indicadores ao clicar fora
   useEffect(()=>{
@@ -3296,6 +3293,14 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
     document.addEventListener("mousedown", h);
     return ()=>document.removeEventListener("mousedown", h);
   },[indOpen]);
+
+  // Fecha dropdown de ferramentas de desenho ao clicar fora
+  useEffect(()=>{
+    if(!desenhoOpen) return;
+    const h = e => { if(!e.target.closest(".ind-wrap")) setDesenhoOpen(false); };
+    document.addEventListener("mousedown", h);
+    return ()=>document.removeEventListener("mousedown", h);
+  },[desenhoOpen]);
 
   // Busca candles + padrões marcados sempre que o ticker DESTA tela muda —
   // cada ChartPane tem o seu próprio ciclo de fetch, independente das outras.
@@ -3396,15 +3401,28 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
           </button>
         </div>
 
-        {hoverC&&(
-          <div className="ohlc">
-            <span>A:<span style={{color:"var(--text)"}}> {fmtP(hoverC.abertura)}</span></span>
-            <span>M:<span style={{color:"var(--up)"}}> {fmtP(hoverC.maxima)}</span></span>
-            <span>m:<span style={{color:"var(--down)"}}> {fmtP(hoverC.minima)}</span></span>
-            <span>F:<span style={{color:hoverC.fechamento>=hoverC.abertura?"var(--up)":"var(--down)"}}> {fmtP(hoverC.fechamento)}</span></span>
-            <span style={{color:"var(--text3)"}}>{hoverC.data}</span>
-          </div>
-        )}
+        {/* Dropdown Ferramentas de Desenho — botão próprio, separado do de Indicadores */}
+        <div className="ind-wrap">
+          <button
+            ref={desenhoBtnRef}
+            className={`ind-btn ${desenhoOpen?"open":""}`}
+            onClick={()=>{
+              if(!desenhoOpen && desenhoBtnRef.current){
+                const r = desenhoBtnRef.current.getBoundingClientRect();
+                setDesenhoPos({top: r.bottom+4, left: r.left});
+              }
+              setDesenhoOpen(v=>!v);
+            }}
+          >
+            ✏️ Desenho <span className="arr">▼</span>
+            {(desenhos.length + (tools.has("fibo")?1:0))>0&&(
+              <span style={{background:"var(--accent)",color:"#fff",borderRadius:8,padding:"1px 5px",fontSize:9,fontWeight:700}}>
+                {desenhos.length + (tools.has("fibo")?1:0)}
+              </span>
+            )}
+          </button>
+        </div>
+
         <span style={{marginLeft:"auto",fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)",flexShrink:0}}>
           {padroes.length} padrões · {candles.length} candles
         </span>
@@ -3435,7 +3453,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
               selPat={selPat}
               setSelPat={setSelPat}
               onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
-              setHoverC={setHoverC}
               showVolume={selAtivo.mercado!=="COMMODITY"}
               tema={tema}
               ferramentaAtiva={ferramentaAtiva}
@@ -3630,48 +3647,70 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
             {[...new Set(INDICADORES.map(i=>i.grupo))].map(grupo=>(
               <div key={grupo}>
                 <div className="ind-section">{grupo}</div>
-                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>{
-                  // Ferramentas de desenho (trend/horizontal/retângulo/canal)
-                  // armam `ferramentaAtiva` em vez de ligar/desligar um
-                  // indicador — clique no gráfico é que efetivamente desenha
-                  // (ver FERRAMENTA_INFO/CandleChart). O Fibonacci continua
-                  // no mecanismo antigo (toggleTool), só ganhou ícone aqui.
-                  const ligado = ind.desenho ? ferramentaAtiva===ind.id : tools.has(ind.id);
-                  return (
-                    <div
-                      key={ind.id}
-                      className="ind-item"
-                      onMouseDown={e=>{
-                        e.stopPropagation();
-                        if(ind.desenho){
-                          setFerramentaAtiva(prev=>prev===ind.id?null:ind.id);
-                          setIndOpen(false);
-                        } else {
-                          toggleTool(ind.id);
-                        }
-                      }}
-                    >
-                      <div className={`ind-chk ${ligado?"on":""}`}>{ligado&&"✓"}</div>
-                      <span className="ind-label">{ind.label}</span>
-                      {ind.icone
-                        ? <span style={{fontSize:12,color:ind.cor,fontFamily:"var(--font-m)",width:14,textAlign:"center",flexShrink:0}}>{ind.icone}</span>
-                        : <span className="ind-color" style={{background:ind.cor}}/>
-                      }
-                    </div>
-                  );
-                })}
-                {grupo==="Ferramentas de Desenho" && desenhos.length>0 && (
-                  <button
-                    onMouseDown={e=>{ e.stopPropagation(); setDesenhos([]); }}
-                    style={{
-                      width:"calc(100% - 12px)",margin:"4px 6px 2px",padding:"7px 8px",
-                      background:"none",border:"1px solid var(--border)",borderRadius:6,
-                      color:"var(--down)",fontSize:11,fontWeight:600,cursor:"pointer",
+                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>(
+                  <div
+                    key={ind.id}
+                    className="ind-item"
+                    onMouseDown={e=>{
+                      e.stopPropagation();
+                      toggleTool(ind.id);
                     }}
-                  >🗑️ Limpar desenhos</button>
-                )}
+                  >
+                    <div className={`ind-chk ${tools.has(ind.id)?"on":""}`}>
+                      {tools.has(ind.id)&&"✓"}
+                    </div>
+                    <span className="ind-label">{ind.label}</span>
+                    <span className="ind-color" style={{background:ind.cor}}/>
+                  </div>
+                ))}
               </div>
             ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── PORTAL DO DROPDOWN DE FERRAMENTAS DE DESENHO ── */}
+      {desenhoOpen && createPortal(
+        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setDesenhoOpen(false)}>
+          <div
+            className="ind-drop"
+            style={{position:"fixed",top:desenhoPos.top,left:desenhoPos.left}}
+            onMouseDown={e=>e.stopPropagation()}
+          >
+            <div className="ind-section">Ferramentas de Desenho</div>
+            {FERRAMENTAS_DESENHO_LISTA.map(ind=>{
+              const ligado = ind.desenho ? ferramentaAtiva===ind.id : tools.has(ind.id);
+              return (
+                <div
+                  key={ind.id}
+                  className="ind-item"
+                  onMouseDown={e=>{
+                    e.stopPropagation();
+                    if(ind.desenho){
+                      setFerramentaAtiva(prev=>prev===ind.id?null:ind.id);
+                    } else {
+                      toggleTool(ind.id);
+                    }
+                    setDesenhoOpen(false);
+                  }}
+                >
+                  <div className={`ind-chk ${ligado?"on":""}`}>{ligado&&"✓"}</div>
+                  <span className="ind-label">{ind.label}</span>
+                  <span style={{fontSize:12,color:ind.cor,fontFamily:"var(--font-m)",width:14,textAlign:"center",flexShrink:0}}>{ind.icone}</span>
+                </div>
+              );
+            })}
+            {desenhos.length>0 && (
+              <button
+                onMouseDown={e=>{ e.stopPropagation(); setDesenhos([]); }}
+                style={{
+                  width:"calc(100% - 12px)",margin:"4px 6px 2px",padding:"7px 8px",
+                  background:"none",border:"1px solid var(--border)",borderRadius:6,
+                  color:"var(--down)",fontSize:11,fontWeight:600,cursor:"pointer",
+                }}
+              >🗑️ Limpar desenhos</button>
+            )}
           </div>
         </div>,
         document.body
@@ -3696,6 +3735,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
 function AppInner(){
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const [mercado,setMercado] = useState([]);
   const [marketTab,setMTab]  = useState("1D");
@@ -3703,7 +3743,9 @@ function AppInner(){
   const [ibovLoading,setIbovLoading] = useState(false);
   const [erro,setErro]       = useState("");
   const [sbCollapsed,setSbCollapsed] = useState(false);
-  const [secao,setSecao]     = useState("inicio");
+  // Suporta /mercados?secao=favoritos (usado pelo redirecionamento de
+  // /favoritos) — só lido na primeira renderização, de propósito.
+  const [secao,setSecao]     = useState(()=> new URLSearchParams(location.search).get("secao") || "inicio");
 
   // Tema claro/escuro — persiste em localStorage, aplicado via atributo
   // data-theme na <html> (é o que os seletores :root[data-theme="light"] escutam).
@@ -3844,7 +3886,10 @@ function AppInner(){
           <button className="nav-ic" title="Notificações">
             <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
-          <button className="btn-in">Entrar</button>
+          {user
+            ? <button className="btn-in" title="Sair" onClick={()=>{ logout(); navigate("/"); }}>{user.user_metadata?.nome || user.email}</button>
+            : <button className="btn-in" onClick={()=>navigate("/login")}>Entrar</button>
+          }
           <button className="btn-pr">✦ Pro</button>
         </div>
       </nav>
@@ -4099,6 +4144,15 @@ function AppInner(){
 // Decide entre a Abertura (sobreposta) e o app.
 // montado para que os dados de mercado já carreguem no fundo enquanto o
 // usuário vê a tela de abertura.
+// Redireciona client-side (sem reload) — usado pelas rotas protegidas
+// /dashboard e /favoritos, que hoje são só "apelidos" pra telas que já
+// existem dentro de /mercados (ver `secao` em AppInner).
+function Redirecionar({ to }){
+  const navigate = useNavigate();
+  useEffect(()=>{ navigate(to, { replace:true }); },[to]);
+  return null;
+}
+
 function Router(){
   const location = useLocation();
   const naAbertura = location.pathname === "/";
@@ -4115,6 +4169,16 @@ function Router(){
     return <RequireAdmin><AdminTemplatesNiveis/></RequireAdmin>;
   }
 
+  if (location.pathname === "/login") return <Login/>;
+  if (location.pathname === "/cadastro") return <Cadastro/>;
+  if (location.pathname === "/auth/callback") return <AuthCallback/>;
+  if (location.pathname === "/dashboard") {
+    return <RequireAuth><Redirecionar to="/mercados"/></RequireAuth>;
+  }
+  if (location.pathname === "/favoritos") {
+    return <RequireAuth><Redirecionar to="/mercados?secao=favoritos"/></RequireAuth>;
+  }
+
   return (
     <>
       <AppInner/>
@@ -4127,7 +4191,9 @@ function Router(){
 export default function App(){
   return (
     <BrowserRouter>
-      <Router/>
+      <AuthProvider>
+        <Router/>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
