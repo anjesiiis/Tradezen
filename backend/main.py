@@ -42,6 +42,7 @@ from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
 from admin_templates_niveis import router as admin_templates_niveis_router
 from padroes_marcados import router as padroes_marcados_router
+from analises import router as analises_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
@@ -74,6 +75,7 @@ app.include_router(admin_templates_router)
 app.include_router(admin_templates_topo_duplo_router)
 app.include_router(admin_templates_niveis_router)
 app.include_router(padroes_marcados_router)
+app.include_router(analises_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }

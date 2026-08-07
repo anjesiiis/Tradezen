@@ -338,6 +338,14 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 @media (max-width:1100px){.crypto-main-grid{grid-template-columns:1fr!important}}
 @media (max-width:700px){.crypto-top-row{grid-template-columns:repeat(2,1fr)!important}}
 
+/* ───────── DASHBOARD (mesmo estilo da página de Cripto) ───────── */
+.dash-top-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;width:100%}
+@media (max-width:1100px){.dash-top-row{grid-template-columns:repeat(3,1fr)!important}}
+@media (max-width:600px){.dash-top-row{grid-template-columns:repeat(2,1fr)!important}}
+.pdet-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.pdet-badge.ok{background:rgba(0,214,143,.15);color:var(--up)}
+.pdet-badge.forming{background:rgba(245,166,35,.15);color:#F5A623}
+
 /* ───────── PRINCIPAIS ATIVOS (gráfico comparativo) ───────── */
 .pa-grid{display:grid;grid-template-columns:7fr 3fr;gap:16px;align-items:stretch;width:100%}
 @media (max-width:1100px){.pa-grid{grid-template-columns:1fr!important}}
@@ -3743,6 +3751,7 @@ function AppInner(){
   const { user, logout } = useAuth();
 
   const [mercado,setMercado] = useState([]);
+  const [topPadroes,setTopPadroes] = useState([]); // 3 ativos c/ mais padrões — card bloqueado do Dashboard
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [ibovLoading,setIbovLoading] = useState(false);
@@ -3794,6 +3803,10 @@ function AppInner(){
       .then(r=>r.json())
       .then(d=>setMercado(d.dados||[]))
       .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
+    fetch(`${API}/analises/top-padroes`)
+      .then(r=>r.json())
+      .then(d=>{ if(d.status==="ok") setTopPadroes(d.destaques||[]); })
+      .catch(()=>{});
   },[]);
 
   // Busca gráfico do IBOV de acordo com o timeframe (1D/1S/1M)
@@ -3829,40 +3842,26 @@ function AppInner(){
   const acoes       = mercado.filter(m=>m.mercado==="B3"&&m.ticker!=="^BVSP");
   const forex       = mercado.filter(m=>m.mercado==="FOREX");
 
-  // Fileira de índices da home: Ibovespa, Petrobras, Vale, Itaú, Bradesco,
-  // nessa ordem. O /mercado às vezes falha em buscar UM ativo específico
-  // naquele ciclo (sem derrubar o endpoint todo, o Yahoo derruba algumas
-  // requisições concorrentes de vez em quando — o backend já tenta de novo
-  // sozinho, mas nem sempre resolve) — pra nunca deixar um buraco vazio na
-  // fileira, quem faltar é substituído na hora por outra ação B3
-  // disponível (nunca repete um ticker já mostrado). Se não sobrar nenhuma
-  // ação B3 pra substituir, mostra o nome do ativo pretendido com "Sem
-  // dados" em vez de um card em branco.
-  const INDICES_CONFIG = [
-    {ticker:"^BVSP",    nome:"Ibovespa",  simbolo:"IBOV"},
-    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4"},
-    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3"},
-    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4"},
-    {ticker:"BBDC4.SA", nome:"Bradesco",  simbolo:"BBDC4"},
+  // Fileira do topo do Dashboard: Bitcoin, Petrobras, Vale, Itaú, Ouro,
+  // Prata, nessa ordem — mesmo estilo dos cards da página de Criptomoedas.
+  // Sem substituição por outro ativo aqui (diferente da fileira antiga de
+  // índices): trocar "Bitcoin" por outra cripto quando falha ficaria
+  // estranho num card que promete mostrar exatamente esses 6 ativos — só
+  // cai no fallback "Sem dados"/"Carregando" (mesmo problema de sempre:
+  // Yahoo derruba ticker individual em lote concorrente às vezes).
+  const DASH_TOP_CONFIG = [
+    {ticker:"BTC-USD",  nome:"Bitcoin",   simbolo:"BTC",   cor:"#F7931A"},
+    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4", cor:"#00A650"},
+    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3", cor:"#EAB308"},
+    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4", cor:"#EC7000"},
+    {ticker:"GC=F",     nome:"Ouro",      simbolo:"OURO",  cor:"#F5A623"},
+    {ticker:"SI=F",     nome:"Prata",     simbolo:"PRATA", cor:"#9CA3AF"},
   ];
-  const TICKERS_INDICES = INDICES_CONFIG.map(c=>c.ticker);
-  const substitutosIndices = mercado.filter(m=>m.mercado==="B3"&&!TICKERS_INDICES.includes(m.ticker));
-  const indices = (()=>{
-    const usados = new Set();
-    let cursor = 0;
-    return INDICES_CONFIG.map(cfg=>{
-      const achado = mercado.find(m=>m.ticker===cfg.ticker);
-      if(achado){ usados.add(achado.ticker); return achado; }
-      while(cursor < substitutosIndices.length){
-        const candidato = substitutosIndices[cursor++];
-        if(!usados.has(candidato.ticker)){ usados.add(candidato.ticker); return candidato; }
-      }
-      // Esgotou os substitutos — se o /mercado ainda nem respondeu (mercado
-      // vazio), é só carregamento normal; se já respondeu e mesmo assim
-      // não achou nem substituto, é falha de verdade.
-      return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
-    });
-  })();
+  const dashTop = DASH_TOP_CONFIG.map(cfg=>{
+    const achado = mercado.find(m=>m.ticker===cfg.ticker);
+    if(achado) return achado;
+    return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
+  });
 
   // Série pro gráfico da home — usa dados reais se já carregou, senão fallback do resumo
   const ibovSerie = ibovChart.length > 0
@@ -3927,121 +3926,125 @@ function AppInner(){
             </div>
           )}
 
-          {/* FILEIRA DE ÍNDICES */}
-          <div>
-            <div className="sh">
-              <span className="st">📌 Índices e Principais Ações</span>
-            </div>
-            <div className="idx-row">
-              {indices.map((a,i)=>{
-                // Ticker sem dado (e sem substituto) — mostra o nome do
-                // ativo pretendido em vez de um card em branco. "semDados"
-                // distingue "ainda carregando" (mercado nem respondeu) de
-                // "respondeu e mesmo assim não achou" (falha de verdade).
-                if("semDados" in a){
-                  return (
-                    <div key={a.ticker||i} className="idx-btn" style={{cursor:"default",opacity:.55}}>
-                      <div className="idx-top">
-                        <div className="idx-ic" style={{background:"var(--border)",color:"var(--text3)"}}>{a.simbolo[0]}</div>
-                        <span className="idx-name">{a.nome}</span>
-                      </div>
-                      <div className="idx-line">
-                        {a.semDados
-                          ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                          : <span style={{fontSize:11,color:"var(--text3)",display:"flex",alignItems:"center",gap:6}}>
-                              <span className="spin" style={{width:10,height:10,borderWidth:2}}/>Carregando
-                            </span>
-                        }
-                      </div>
-                    </div>
-                  );
-                }
-                const cor = MKTC[a.mercado] || "var(--accent)";
+          {/* TOPO — mesmo estilo dos cards da página de Criptomoedas */}
+          <div className="dash-top-row">
+            {dashTop.map((a,i)=>{
+              const cfg = DASH_TOP_CONFIG[i];
+              if("semDados" in a){
                 return (
-                  <div key={a.ticker} className="idx-btn" onClick={()=>abrirAtivo(a)}>
+                  <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
                     <div className="idx-top">
-                      <div className="idx-ic" style={{background:cor}}>{a.simbolo[0]}</div>
-                      <span className="idx-name">{a.nome||a.simbolo}</span>
+                      <div className="idx-ic" style={{background:"var(--border)",color:"var(--text3)"}}>{cfg.simbolo[0]}</div>
+                      <span className="idx-name">{cfg.nome}</span>
                     </div>
                     <div className="idx-line">
-                      <span className="idx-price">{fmtP(a.preco)}</span>
-                      <span className={`idx-chg ${a.alta?"up":"down"}`}>
-                        {a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%
-                      </span>
+                      {a.semDados
+                        ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
+                        : <span style={{fontSize:11,color:"var(--text3)",display:"flex",alignItems:"center",gap:6}}>
+                            <span className="spin" style={{width:10,height:10,borderWidth:2}}/>Carregando
+                          </span>
+                      }
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              }
+              return (
+                <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
+                  <div className="idx-top">
+                    <div className="idx-ic" style={{background:cfg.cor+"26",color:cfg.cor}}>{a.simbolo[0]}</div>
+                    <span className="idx-name">{a.nome}</span>
+                  </div>
+                  <div className="idx-line">
+                    <span className="idx-price">{fmtP(a.preco)}</span>
+                    <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
+                  </div>
+                  <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* ESTUDO DE MERCADO */}
-          <div>
-            <div className="sh">
-              <span className="st">📊 Estudo de Mercado</span>
-              <span className="sl" onClick={()=>ibov&&abrirAtivo(ibov)}>Análise completa →</span>
-            </div>
-            <div className="card">
-              <div className="mc">
-                <div className="mc-top">
-                  <div
-                    style={{cursor:"pointer"}}
-                    onClick={()=>ibov&&abrirAtivo(ibov)}
-                    title="Clique para abrir análise completa"
-                  >
-                    <div className="mc-label">Ibovespa · B3 · BRL</div>
-                    <div style={{display:"flex",alignItems:"baseline",gap:4}}>
-                      <span className="mc-price">{fmtP(ibov?.preco)}</span>
-                      <span className="mc-cur">BRL</span>
-                    </div>
-                    <div className={`mc-chg ${ibov?.alta?"bup":"bdn"}`} style={{marginTop:8}}>
-                      {ibov?.alta?"▲":"▼"} {Math.abs(ibov?.variacao_pct||0).toFixed(2)}%
-                    </div>
+          {/* ÁREA PRINCIPAL — gráfico do Ibovespa (70%) + painel lateral (30%) */}
+          <div className="crypto-main-grid">
+            <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>📊 Estudo de Mercado</span>
+                <span className="sl" onClick={()=>ibov&&abrirAtivo(ibov)}>Análise completa →</span>
+              </div>
+              <div
+                style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,cursor:"pointer"}}
+                onClick={()=>ibov&&abrirAtivo(ibov)}
+                title="Clique para abrir análise completa"
+              >
+                <div>
+                  <div className="mc-label">Ibovespa · B3 · BRL</div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                    <span className="mc-price">{fmtP(ibov?.preco)}</span>
+                    <span className="mc-cur">BRL</span>
                   </div>
-                  <div className="mc-tabs">
-                    {["1D"].map(t=>(
-                      <button key={t} className={`mc-tab ${marketTab===t?"active":""}`} onClick={()=>setMTab(t)}>{t}</button>
-                    ))}
+                  <div className={`mc-chg ${ibov?.alta?"bup":"bdn"}`} style={{marginTop:8}}>
+                    {ibov?.alta?"▲":"▼"} {Math.abs(ibov?.variacao_pct||0).toFixed(2)}%
                   </div>
                 </div>
+                <div className="mc-tabs">
+                  {["1D"].map(t=>(
+                    <button key={t} className={`mc-tab ${marketTab===t?"active":""}`} onClick={e=>{ e.stopPropagation(); setMTab(t); }}>{t}</button>
+                  ))}
+                </div>
               </div>
-              <div className="mc-chart">
+              <div className="mc-chart" style={{flex:1,marginTop:12}}>
                 {ibovSerie.length>0
                   ?<HomeLineChart data={ibovSerie} color={ibov?.alta?"#00D68F":"#FF4560"} tema={tema}/>
                   :<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
                 }
               </div>
             </div>
-          </div>
 
-          {/* CRIPTO */}
-          <div>
-            <div className="sh">
-              <span className="st">₿ Mercado Cripto</span>
-              <span className="sl" onClick={()=>navigate("/lista/cripto")}>Ver todos →</span>
-            </div>
-            <div className="card" style={{padding:16}}>
-              <div className="agrid">
-                {criptos.length>0
-                  ?criptos.slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
-                  :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
-                }
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              {/* Análise Técnica — bloqueada por enquanto */}
+              <div className="card" style={{padding:18}}>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>📊 Análise Técnica</div>
+                <div style={{position:"relative"}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:10,pointerEvents:"none",userSelect:"none"}}>
+                    {(topPadroes.length>0 ? topPadroes : [null,null,null]).map((d,i)=>{
+                      if(!d) return <div key={i} className="idx-skel" style={{height:40}}/>;
+                      const confirmado = d.status==="confirmado";
+                      return (
+                        <div key={d.ticker} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                            <div style={{width:26,height:26,borderRadius:"50%",background:"var(--accent)26",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>{d.simbolo[0]}</div>
+                            <div style={{minWidth:0}}>
+                              <div style={{fontSize:12,fontWeight:600,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.simbolo}</div>
+                              <div style={{fontSize:10,color:"var(--text2)"}}>{d.nome_padrao}</div>
+                            </div>
+                          </div>
+                          <div style={{textAlign:"right",flexShrink:0}}>
+                            <span className={`pdet-badge ${confirmado?"ok":"forming"}`}>{confirmado?"Confirmado":"Em formação"}</span>
+                            <div style={{fontSize:10,fontFamily:"var(--font-m)",color:"var(--text2)",marginTop:2}}>{d.confianca}%</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{
+                    position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
+                    background: tema==="light" ? "rgba(243,245,249,.75)" : "rgba(6,8,15,.7)",
+                    borderRadius:8,
+                  }}>
+                    <span style={{fontSize:20}}>🔒</span>
+                  </div>
+                </div>
+                <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",marginTop:10}}>Em breve disponível</div>
               </div>
-            </div>
-          </div>
 
-          {/* PRINCIPAIS ATIVOS */}
-          <div>
-            <div className="sh">
-              <span className="st">📈 Análise dos Principais Ativos</span>
-              <span className="sl" onClick={()=>navigate("/lista/acoes")}>Ver todos →</span>
-            </div>
-            <div className="card" style={{padding:16}}>
-              <div className="agrid">
-                {[...acoes,...forex].length>0
-                  ?[...acoes,...forex].slice(0,6).map((a,i)=><AssetCard key={i} a={a} onClick={()=>abrirAtivo(a)} favorito={favoritos.has(a.ticker)} onToggleFavorito={()=>toggleFavorito(a.ticker)}/>)
-                  :[...Array(6)].map((_,i)=><SkeletonCard key={i}/>)
-                }
+              {/* Placeholders — nada definido ainda pra essas duas seções */}
+              <div className="card" style={{padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:96,gap:6}}>
+                <span style={{fontSize:18,opacity:.35}}>＋</span>
+                <span style={{fontSize:11,color:"var(--text3)",textAlign:"center"}}>Mais seções em breve</span>
+              </div>
+              <div className="card" style={{padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:96,gap:6}}>
+                <span style={{fontSize:18,opacity:.35}}>＋</span>
+                <span style={{fontSize:11,color:"var(--text3)",textAlign:"center"}}>Mais seções em breve</span>
               </div>
             </div>
           </div>
