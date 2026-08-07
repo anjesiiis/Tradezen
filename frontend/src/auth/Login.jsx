@@ -8,10 +8,13 @@ export default function Login() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [senha, setSenha] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | sending | error
   const [erro, setErro] = useState("");
 
   // Já logado? Não faz sentido mostrar o formulário de login de novo.
+  // Também cobre o próprio login: signInWithPassword só atualiza a sessão
+  // (via AuthContext), quem manda pra /mercados é este efeito.
   useEffect(() => {
     if (user) navigate("/mercados", { replace: true });
   }, [user, navigate]);
@@ -20,54 +23,61 @@ export default function Login() {
     e.preventDefault();
     setStatus("sending");
     setErro("");
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        shouldCreateUser: false, // login não cria conta — evita cadastro sem nome por engano
-      },
+      password: senha,
     });
     if (error) {
       setStatus("error");
-      if (/signups not allowed|user not found/i.test(error.message)) {
-        setErro("Não encontramos uma conta com esse email.");
+      if (/invalid login credentials/i.test(error.message)) {
+        setErro("Email ou senha incorretos.");
+      } else if (/email not confirmed/i.test(error.message)) {
+        setErro("Confirme seu email antes de entrar — verifique sua caixa de entrada (e o spam).");
       } else if (/rate limit/i.test(error.message)) {
-        setErro("Muitos pedidos em pouco tempo. Aguarde um pouco e tente de novo.");
+        setErro("Muitas tentativas em pouco tempo. Aguarde um pouco e tente de novo.");
       } else {
-        setErro("Não foi possível enviar o link. Tente novamente.");
+        setErro("Não foi possível entrar. Tente novamente.");
       }
       return;
     }
-    setStatus("sent");
+    // Sucesso: onAuthStateChange atualiza `user` no contexto, o useEffect
+    // acima faz o redirect — não precisa mexer em `status` aqui.
   }
 
   return (
     <AuthShell>
       <div className="auth-card">
         <h1>Entrar</h1>
-        <p className="hint">Informe seu email — a gente te manda um link de acesso, sem senha.</p>
+        <p className="hint">Informe seu email e senha pra acessar sua conta.</p>
 
-        {status === "sent" ? (
-          <div className="auth-msg auth-msg-ok">Link de acesso enviado! Verifique seu email.</div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="auth-field">
-              <label>Email</label>
-              <input
-                className="auth-input"
-                type="email"
-                required
-                placeholder="seu@email.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            {status === "error" && <div className="auth-msg auth-msg-err">{erro}</div>}
-            <button className="auth-btn" type="submit" disabled={status === "sending"}>
-              {status === "sending" ? "Enviando..." : "Entrar"}
-            </button>
-          </form>
-        )}
+        <form onSubmit={handleSubmit}>
+          <div className="auth-field">
+            <label>Email</label>
+            <input
+              className="auth-input"
+              type="email"
+              required
+              placeholder="seu@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="auth-field">
+            <label>Senha</label>
+            <input
+              className="auth-input"
+              type="password"
+              required
+              placeholder="Sua senha"
+              value={senha}
+              onChange={e => setSenha(e.target.value)}
+            />
+          </div>
+          {status === "error" && <div className="auth-msg auth-msg-err">{erro}</div>}
+          <button className="auth-btn" type="submit" disabled={status === "sending"}>
+            {status === "sending" ? "Entrando..." : "Entrar"}
+          </button>
+        </form>
 
         <div className="auth-switch">
           Não tem conta? <a onClick={() => navigate("/cadastro")}>Cadastre-se grátis</a>

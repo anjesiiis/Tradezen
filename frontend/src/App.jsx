@@ -14,7 +14,12 @@ import Login from "./auth/Login.jsx";
 import Cadastro from "./auth/Cadastro.jsx";
 import AuthCallback from "./auth/AuthCallback.jsx";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// Painel de padrões (OCO/Topo Duplo/Suporte-Resistência) escondido pro
+// primeiro grupo de teste — não está pronto pra eles verem ainda. Um
+// flag só, fácil de religar quando decidir trazer de volta.
+const PAINEL_PADROES_ATIVO = false;
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -3432,7 +3437,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
         {onClose && (
           <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
         )}
-        {!painelAberto && (
+        {PAINEL_PADROES_ATIVO && !painelAberto && (
           <button
             onClick={()=>setPainelAberto(true)}
             title="Mostrar painel de indicadores"
@@ -3526,7 +3531,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
           })()}
         </div>
 
-        {painelAberto&&<div className="rpanel">
+        {PAINEL_PADROES_ATIVO && painelAberto&&<div className="rpanel">
           <button className="rp-toggle" onClick={()=>setPainelAberto(false)} title="Recolher painel" style={{position:"absolute",top:8,right:8,zIndex:10}}>»</button>
 
           <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>

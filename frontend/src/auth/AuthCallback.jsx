@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import AuthShell from "./theme.jsx";
 import { supabase } from "../lib/supabaseClient.js";
 
-// Pra onde o Supabase manda o usuário depois de clicar no magic link. O
-// próprio supabase-js já processa o token que vem no fragmento da URL
-// (#access_token=...) sozinho ao inicializar o client — detectSessionInUrl
-// vem ligado por padrão — então só precisamos esperar a sessão aparecer
-// e mandar pro dashboard.
+// Pra onde o Supabase manda o usuário depois de confirmar o email do
+// cadastro (link "Confirm signup"). O próprio supabase-js já processa o
+// token que vem no fragmento da URL (#access_token=...) sozinho ao
+// inicializar o client — detectSessionInUrl vem ligado por padrão —
+// então só precisamos esperar a sessão aparecer e mandar pro dashboard.
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [erro, setErro] = useState("");
