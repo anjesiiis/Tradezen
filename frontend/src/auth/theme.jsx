@@ -12,14 +12,14 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 
 :root{
   --bg:#06080F; --s1:#0D1117; --s2:#161B22; --card:#0D1117; --border:#21262D;
-  --up:#00D68F; --down:#FF4560; --accent:#3D7EFF; --gold:#F5A623; --pro:#9B6DFF;
+  --up:#00D68F; --down:#FF4560; --accent:#3D7EFF; --gold:#F5A623;
   --text:#E6EDF3; --text2:#5A7299; --text3:#8B949E;
   --font-h:'Bebas Neue',sans-serif; --font-b:'DM Sans',sans-serif; --font-m:'JetBrains Mono',monospace;
   --r:12px;
 }
 :root[data-theme="light"]{
   --bg:#F3F5F9; --s1:#FFFFFF; --s2:#EBEEF3; --card:#FFFFFF; --border:#DCE2EB;
-  --up:#0CA678; --down:#E1354D; --accent:#2F6FEF; --gold:#B8720A; --pro:#7C5CDB;
+  --up:#0CA678; --down:#E1354D; --accent:#2F6FEF; --gold:#B8720A;
   --text:#0F1720; --text2:#5B6B84; --text3:#7C8798;
 }
 
@@ -58,7 +58,7 @@ export default function AuthShell({ children }) {
   // Essas páginas não montam o AppInner (onde o toggle de tema normalmente
   // vive), mas devem respeitar a preferência já salva pelo resto do app.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", localStorage.getItem("tradeup-tema") || "dark");
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("tradezen-tema") || "dark");
   }, []);
 
   return (

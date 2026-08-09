@@ -1,5 +1,5 @@
 """
-TRADEUP — DETECTOR DE PADRÕES CLÁSSICOS
+TRADEZEN — DETECTOR DE PADRÕES CLÁSSICOS
 =========================================
 
 Padrões implementados:
@@ -31,7 +31,6 @@ def _analisar_gaps(candles: List[Dict], pontos: Dict, limiar: float = 0.02) -> D
 
     oe = pontos["ombro_esq"]["i"]
     n1 = pontos["neck1"]["i"]
-    ca = pontos["cabeca"]["i"]
     n2 = pontos["neck2"]["i"]
     od = pontos["ombro_dir"]["i"]
 

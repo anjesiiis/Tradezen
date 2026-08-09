@@ -1,5 +1,5 @@
 """
-TRADEUP — TOP PADRÕES (ativos com mais padrões marcados)
+TRADEZEN — TOP PADRÕES (ativos com mais padrões marcados)
 ==========================================================
 Usado pela seção "Análise Técnica" (bloqueada) do Dashboard — mostra os 3
 ativos com mais padrões no histórico, vindos das tabelas de templates do
@@ -15,8 +15,9 @@ modelo — o formato da resposta continua o mesmo.
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
+from rate_limit import limiter
 from supabase_client import supabase
 from data.fetcher import buscar_ativo_info
 from padroes_marcados import _resultado_normalizado
@@ -84,7 +85,8 @@ def _mock_top3() -> List[Dict[str, Any]]:
 
 
 @router.get("/analises/top-padroes")
-def top_padroes():
+@limiter.limit("60/minute")
+def top_padroes(request: Request):
     """Os 3 ativos com mais padrões marcados no histórico — pro card
     bloqueado 'Análise Técnica' do Dashboard."""
     linhas = _linhas_reais()

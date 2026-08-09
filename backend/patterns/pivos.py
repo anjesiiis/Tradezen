@@ -1,5 +1,5 @@
 """
-TRADEUP — PIVÔS (topos/fundos) E ATR
+TRADEZEN — PIVÔS (topos/fundos) E ATR
 ======================================
 
 Base compartilhada por detectores de padrões (OCO, suportes/resistências, ...).

@@ -1,5 +1,5 @@
 """
-TRADEUP — SUPORTES E RESISTÊNCIAS
+TRADEZEN — SUPORTES E RESISTÊNCIAS
 ====================================
 
 Agrupa os pivôs (topos/fundos) de `patterns.pivos` em níveis horizontais de

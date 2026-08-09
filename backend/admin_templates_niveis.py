@@ -1,9 +1,10 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from admin_auth import require_admin
+from rate_limit import limiter
 from supabase_client import supabase
 
 router = APIRouter(
@@ -43,7 +44,8 @@ class TemplateUpdate(BaseModel):
 
 
 @router.get("")
-def listar_templates(tipo: Optional[Tipo] = None):
+@limiter.limit("30/minute")
+def listar_templates(request: Request, tipo: Optional[Tipo] = None):
     query = supabase.table("templates_niveis").select("*").order("criado_em", desc=True)
     if tipo:
         query = query.eq("tipo", tipo)
@@ -52,7 +54,8 @@ def listar_templates(tipo: Optional[Tipo] = None):
 
 
 @router.get("/{template_id}")
-def obter_template(template_id: int):
+@limiter.limit("30/minute")
+def obter_template(request: Request, template_id: int):
     resp = supabase.table("templates_niveis").select("*").eq("id", template_id).limit(1).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
@@ -60,14 +63,16 @@ def obter_template(template_id: int):
 
 
 @router.post("")
-def criar_template(payload: TemplateCreate):
+@limiter.limit("30/minute")
+def criar_template(request: Request, payload: TemplateCreate):
     body = payload.model_dump()
     resp = supabase.table("templates_niveis").insert(body).execute()
     return {"status": "ok", "template": resp.data[0]}
 
 
 @router.put("/{template_id}")
-def atualizar_template(template_id: int, payload: TemplateUpdate):
+@limiter.limit("30/minute")
+def atualizar_template(request: Request, template_id: int, payload: TemplateUpdate):
     body = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not body:
         raise HTTPException(status_code=400, detail="Nada para atualizar.")
@@ -79,7 +84,8 @@ def atualizar_template(template_id: int, payload: TemplateUpdate):
 
 
 @router.delete("/{template_id}")
-def remover_template(template_id: int):
+@limiter.limit("30/minute")
+def remover_template(request: Request, template_id: int):
     resp = supabase.table("templates_niveis").delete().eq("id", template_id).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")

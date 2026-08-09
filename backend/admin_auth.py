@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from supabase_auth.errors import AuthApiError
 
 from config import ADMIN_EMAILS, FRONTEND_URL
+from rate_limit import limiter
 from supabase_client import supabase
 
 router = APIRouter(prefix="/admin/auth", tags=["admin-auth"])
@@ -12,8 +13,12 @@ class MagicLinkRequest(BaseModel):
     email: EmailStr
 
 
+# 5/minuto — é o endpoint de login. Sem um limite apertado aqui, alguém
+# podia martelar magic-link pra um email várias vezes por minuto (spam de
+# email pra vítima, ou tentar esgotar o rate-limit do próprio Supabase).
 @router.post("/magic-link")
-def solicitar_magic_link(payload: MagicLinkRequest):
+@limiter.limit("5/minute")
+def solicitar_magic_link(request: Request, payload: MagicLinkRequest):
     email = payload.email.strip().lower()
 
     if email not in ADMIN_EMAILS:

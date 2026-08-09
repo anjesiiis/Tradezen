@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
-║              TRADEUP — BACKEND API                          ║
+║              TRADEZEN — BACKEND API                        ║
 ║              FastAPI + Yahoo Finance + Binance              ║
 ║                                                              ║
 ║   v1.3 — Cache em memória + batch + paralelismo             ║
@@ -29,14 +29,20 @@ import asyncio
 import time
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from typing import Literal, Optional
+
+# Valores aceitos pelo yfinance de verdade — travar aqui em vez de "str"
+# solto rejeita input malformado direto no FastAPI (422), antes de gastar
+# uma chamada no Yahoo Finance com um período/intervalo inválido.
+PeriodoAtivo = Literal["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"]
+IntervaloAtivo = Literal["1d", "60m", "1wk"]
 import uvicorn
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
 from config import FRONTEND_URL
+from rate_limit import limiter
 from admin_auth import router as admin_auth_router, require_admin
 from admin_templates import router as admin_templates_router
 from admin_templates_topo_duplo import router as admin_templates_topo_duplo_router
@@ -46,22 +52,28 @@ from analises import router as analises_router
 
 # ── APP ───────────────────────────────────────────────────────
 app = FastAPI(
-    title="TradeUp API",
+    title="TradeZen API",
     description="Backend de análise técnica educacional — padrões gráficos",
     version="1.3.0"
 )
 
 # Rate limiting por IP — sem isso, /ativo e /ativos/batch eram um jeito de
 # graça de martelar o Yahoo Finance/Binance através da nossa API até tomar
-# rate-limit/ban deles, ou só inflar nossa conta. default_limits cobre
+# rate-limit/ban deles, ou só inflar nossa conta. `limiter` vem de
+# rate_limit.py (compartilhado com os routers) — default_limits ali cobre
 # qualquer rota sem decorator explícito.
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS — só os domínios reais do frontend. Antes tinha um "*" junto com os
 # domínios explícitos, o que o Starlette trata como "libera geral" (o "*"
-# vence) — qualquer site podia chamar a API. FRONTEND_URL cobre produção.
+# vence) — qualquer site podia chamar a API. Nunca usar allow_origins=["*"].
+#
+# TODO deploy: FRONTEND_URL (env var, backend/.env em produção) precisa
+# estar setada pro domínio real do site (ex: https://tradezen.com.br) —
+# sem isso, o navegador bloqueia toda chamada do frontend em produção pra
+# essa API por CORS. Em dev, sem a var, cai no default "localhost:5173"
+# (ver config.py) e as duas próximas linhas cobrem localhost/5173 e /3000.
 _origens_permitidas = {FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"}
 app.add_middleware(
     CORSMiddleware,
@@ -69,6 +81,27 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# Headers de segurança em toda resposta — API pura (só JSON), então o CSP
+# fica no mínimo possível: nada aqui deveria ser interpretado como
+# HTML/JS/CSS por um navegador, então "default-src 'none'" nunca quebra
+# funcionalidade nenhuma, só fecha a porta caso algum dia um endpoint
+# devolva algo que um browser mal-configurado tente renderizar.
+@app.middleware("http")
+async def adicionar_headers_seguranca(request: Request, call_next):
+    resposta = await call_next(request)
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    resposta.headers["X-Frame-Options"] = "DENY"
+    resposta.headers["X-XSS-Protection"] = "1; mode=block"
+    resposta.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resposta.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    # Só tem efeito quando a resposta já veio por HTTPS (é assim que todo
+    # navegador trata HSTS) — inofensivo em dev (http://localhost), pronto
+    # pra produção assim que o domínio tiver HTTPS (Render/Vercel já dão
+    # isso de graça).
+    resposta.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return resposta
+
 
 app.include_router(admin_auth_router)
 app.include_router(admin_templates_router)
@@ -210,7 +243,7 @@ ATIVOS_DISPONIVEIS = [
 
 @app.get("/")
 def raiz():
-    return {"status": "online", "produto": "TradeUp API", "versao": "1.2.0"}
+    return {"status": "online", "produto": "TradeZen API", "versao": "1.2.0"}
 
 
 @app.get("/mercado")
@@ -237,8 +270,8 @@ def resumo_mercado(request: Request):
 def dados_ativo(
     request: Request,
     ticker: str,
-    periodo: str = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 5y, max"),
-    intervalo: str = Query("1d", description="1d, 60m, 1wk")
+    periodo: PeriodoAtivo = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 5y, max"),
+    intervalo: IntervaloAtivo = Query("1d", description="1d, 60m, 1wk")
 ):
     """
     Retorna candles de um ativo.
@@ -283,7 +316,8 @@ def dados_ativo(
 
 
 @app.get("/ativos")
-def listar_ativos(mercado: Optional[str] = Query(None, description="Filtra por mercado: B3, CRIPTO, FOREX...")):
+@limiter.limit("60/minute")
+def listar_ativos(request: Request, mercado: Optional[str] = Query(None, description="Filtra por mercado: B3, CRIPTO, FOREX...")):
     """
     Lista TODOS os ativos disponíveis na plataforma.
     Exemplo: /ativos?mercado=CRIPTO
@@ -301,8 +335,8 @@ def listar_ativos(mercado: Optional[str] = Query(None, description="Filtra por m
 async def ativos_batch(
     request: Request,
     tickers: str = Query(..., description="Tickers separados por vírgula"),
-    periodo: str = Query("3mo"),
-    intervalo: str = Query("1d")
+    periodo: PeriodoAtivo = Query("3mo"),
+    intervalo: IntervaloAtivo = Query("1d")
 ):
     """
     Retorna candles de VÁRIOS ativos numa só requisição, em paralelo.
@@ -555,7 +589,8 @@ def visao_geral_mercado(request: Request):
 
 
 @app.get("/cache/limpar")
-def limpar_cache(admin: str = Depends(require_admin)):
+@limiter.limit("30/minute")
+def limpar_cache(request: Request, admin: str = Depends(require_admin)):
     """Limpa o cache em memória (útil pra debug). Só admin — sem isso,
     qualquer um podia forçar toda requisição seguinte a bater de novo
     no Yahoo Finance/Binance, de graça."""
@@ -565,7 +600,8 @@ def limpar_cache(admin: str = Depends(require_admin)):
 
 
 @app.get("/cache/status")
-def status_cache(admin: str = Depends(require_admin)):
+@limiter.limit("30/minute")
+def status_cache(request: Request, admin: str = Depends(require_admin)):
     """Mostra o que está em cache no momento. Só admin — os nomes das
     chaves revelam quais tickers estão sendo consultados."""
     agora = time.time()

@@ -1,5 +1,5 @@
 """
-TRADEUP — BACKTEST DE PADRÕES
+TRADEZEN — BACKTEST DE PADRÕES
 ================================
 
 Mede a CONFIABILIDADE REAL do detector de OCO num ativo:
@@ -16,7 +16,6 @@ Uso via terminal:
     python backtest.py BTC-USD --tf 1d --periodo 5y --janela 8
 """
 
-import sys
 import argparse
 from typing import List, Dict
 
@@ -30,7 +29,7 @@ from patterns.classicos import detectar_padroes_classicos
 # ──────────────────────────────────────────────────────────────
 def baixar_candles(ticker: str, periodo: str = "2y", intervalo: str = "1d") -> List[Dict]:
     """
-    Baixa candles do Yahoo Finance e converte pro formato interno do TradeUp.
+    Baixa candles do Yahoo Finance e converte pro formato interno do TradeZen.
     """
     df = yf.download(ticker, period=periodo, interval=intervalo,
                      progress=False, auto_adjust=False)
@@ -114,7 +113,7 @@ def backtest_ativo(ticker: str, periodo: str = "2y", intervalo: str = "1d",
     print(f"     Com veredicto:      {total_verd}  (pendentes: {total_pend})")
     print(f"     Sucessos:           {total_suc}")
     print(f"     CONFIABILIDADE:     {taxa_geral:.1f}%")
-    print(f"     Por faixa de score:")
+    print("     Por faixa de score:")
 
     for nome, c in contagem.items():
         verd = c["sucessos"] + c["falhos"]
@@ -138,7 +137,7 @@ def backtest_ativo(ticker: str, periodo: str = "2y", intervalo: str = "1d",
 # 3) MAIN (CLI)
 # ──────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Backtest de OCO — TradeUp")
+    parser = argparse.ArgumentParser(description="Backtest de OCO — TradeZen")
     parser.add_argument("tickers", nargs="+", help="ex: PETR4.SA VALE3.SA BTC-USD")
     parser.add_argument("--tf",      default="1d",  help="timeframe: 1d, 60m, 1wk (default: 1d)")
     parser.add_argument("--periodo", default="2y",  help="ex: 2y, 5y, 1y (default: 2y)")
@@ -146,7 +145,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print(f"  BACKTEST OCO — TradeUp")
+    print("  BACKTEST OCO — TradeZen")
     print(f"  tf={args.tf}  ·  período={args.periodo}  ·  janela={args.janela}")
     print("=" * 60)
 
@@ -160,7 +159,6 @@ def main():
     if len(resultados) > 1:
         tot_verd = sum(r["com_veredicto"] for r in resultados)
         tot_suc  = sum(r["sucessos"]      for r in resultados)
-        tot_fal  = sum(r["falhos"]        for r in resultados)
         taxa_geral = round(tot_suc / tot_verd * 100, 1) if tot_verd else 0.0
 
         faixa_geral = {
@@ -180,7 +178,7 @@ def main():
         print(f"  Total com veredicto:  {tot_verd}")
         print(f"  Sucessos:             {tot_suc}")
         print(f"  CONFIABILIDADE GERAL: {taxa_geral:.1f}%")
-        print(f"\n  Por faixa de score:")
+        print("\n  Por faixa de score:")
         for nome, c in faixa_geral.items():
             verd = c["sucessos"] + c["falhos"]
             if verd > 0:

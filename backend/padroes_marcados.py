@@ -1,5 +1,5 @@
 """
-TRADEUP — PADRÕES MARCADOS
+TRADEZEN — PADRÕES MARCADOS
 =============================
 
 Expõe (sem autenticação, é dado educativo público) os templates marcados
@@ -13,8 +13,9 @@ salvo é relativo ao recorte de candles daquele template — quem resolve pro
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
+from rate_limit import limiter
 from supabase_client import supabase
 
 router = APIRouter(tags=["padroes-marcados"])
@@ -119,7 +120,8 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 @router.get("/padroes-marcados/{ticker}")
-def padroes_marcados(ticker: str, timeframe: Optional[str] = Query(None)):
+@limiter.limit("60/minute")
+def padroes_marcados(request: Request, ticker: str, timeframe: Optional[str] = Query(None)):
     """Templates marcados manualmente pro ticker — não é detecção automática."""
     ticker_norm = ticker.strip().upper()
     padroes: List[Dict[str, Any]] = []

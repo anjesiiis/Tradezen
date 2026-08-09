@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { createChart, ColorType, CrosshairMode, LineStyle, AreaSeries, LineSeries, CandlestickSeries, HistogramSeries, createSeriesMarkers } from "lightweight-charts";
@@ -37,7 +37,7 @@ const CSS = `
   --text:#E6EDF3;
   --text2:#5A7299;
   --text3:#8B949E;
-  --pro:#9B6DFF;
+  --pro:#3D7EFF;
   --font-h:'Bebas Neue',sans-serif;
   --font-b:'DM Sans',sans-serif;
   --font-m:'JetBrains Mono',monospace;
@@ -59,7 +59,7 @@ const CSS = `
   --text:#0F1720;
   --text2:#5B6B84;
   --text3:#7C8798;
-  --pro:#7C5CDB;
+  --pro:#2F6FEF;
 }
 html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);font-family:var(--font-b);overflow:hidden;max-width:none!important}
 #root{display:flex;flex-direction:column}
@@ -98,7 +98,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .nav-r{display:flex;align-items:center;gap:10px;margin-left:auto}
 .btn-in{background:none;border:1px solid var(--border);color:var(--text3);font-size:12px;padding:6px 16px;border-radius:7px;cursor:pointer;transition:all .2s;font-family:var(--font-b)}
 .btn-in:hover{border-color:var(--accent);color:var(--text)}
-.btn-pr{background:linear-gradient(135deg,#3D7EFF,#9B6DFF);border:none;color:#fff;font-weight:700;font-size:12px;padding:6px 18px;border-radius:7px;cursor:pointer;font-family:var(--font-b)}
+.btn-pr{background:#3D7EFF;border:none;color:#fff;font-weight:700;font-size:12px;padding:6px 18px;border-radius:7px;cursor:pointer;font-family:var(--font-b)}
 
 /* HOME */
 .home{height:calc(100vh - 52px);overflow-y:auto;padding:24px 40px 48px;display:flex;flex-direction:column;gap:24px;width:100%;max-width:none}
@@ -153,7 +153,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* TICKER */
 .tbar{position:fixed;bottom:0;left:0;right:0;height:26px;background:var(--s1);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden;z-index:100}
-.tbl{padding:0 14px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase;flex-shrink:0;border-right:1px solid var(--border);height:100%;display:flex;align-items:center}
 .tscroll{display:flex;align-items:center;animation:scl 60s linear infinite;white-space:nowrap}
 @keyframes scl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .ti{display:flex;align-items:center;gap:6px;padding:0 18px;border-right:1px solid var(--border);height:26px;font-size:10px;font-family:var(--font-m)}
@@ -355,7 +354,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .pa-toggle:hover{border-color:var(--accent)}
 .pa-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .pa-carousel{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
-.pa-carousel-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:172px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.pa-carousel-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:172px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+.pa-carousel-card:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--s2)}
 
 /* ───────── PÁGINA DE ABERTURA ───────── */
 .abertura{position:fixed;inset:0;background:var(--bg);overflow:hidden;z-index:1000}
@@ -449,36 +449,6 @@ const LEGENDA_ITENS = [
   { id:"fibo", label:"Fibonacci", cor:"#F5A623" },
 ];
 
-const ATIVOS=[
-  {ticker:"^BVSP",    simbolo:"IBOV",    nome:"Ibovespa",        mercado:"B3",       moeda:"BRL"},
-  {ticker:"PETR4.SA", simbolo:"PETR4",   nome:"Petrobras PN",    mercado:"B3",       moeda:"BRL"},
-  {ticker:"VALE3.SA", simbolo:"VALE3",   nome:"Vale ON",         mercado:"B3",       moeda:"BRL"},
-  {ticker:"ITUB4.SA", simbolo:"ITUB4",   nome:"Itaú Unibanco",   mercado:"B3",       moeda:"BRL"},
-  {ticker:"BBDC4.SA", simbolo:"BBDC4",   nome:"Bradesco PN",     mercado:"B3",       moeda:"BRL"},
-  {ticker:"WEGE3.SA", simbolo:"WEGE3",   nome:"WEG ON",          mercado:"B3",       moeda:"BRL"},
-  {ticker:"MGLU3.SA", simbolo:"MGLU3",   nome:"Magazine Luiza",  mercado:"B3",       moeda:"BRL"},
-  {ticker:"BBAS3.SA", simbolo:"BBAS3",   nome:"Banco do Brasil", mercado:"B3",       moeda:"BRL"},
-  {ticker:"RENT3.SA", simbolo:"RENT3",   nome:"Localiza",        mercado:"B3",       moeda:"BRL"},
-  {ticker:"BTC-USD",  simbolo:"BTC",     nome:"Bitcoin",         mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"ETH-USD",  simbolo:"ETH",     nome:"Ethereum",        mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"SOL-USD",  simbolo:"SOL",     nome:"Solana",          mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"BNB-USD",  simbolo:"BNB",     nome:"Binance Coin",    mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"XRP-USD",  simbolo:"XRP",     nome:"Ripple",          mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"ADA-USD",  simbolo:"ADA",     nome:"Cardano",         mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"DOGE-USD", simbolo:"DOGE",    nome:"Dogecoin",        mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"AVAX-USD", simbolo:"AVAX",    nome:"Avalanche",       mercado:"CRIPTO",   moeda:"USD"},
-  {ticker:"USDBRL=X", simbolo:"USD/BRL", nome:"Dólar / Real",    mercado:"FOREX",    moeda:"BRL"},
-  {ticker:"EURUSD=X", simbolo:"EUR/USD", nome:"Euro / Dólar",    mercado:"FOREX",    moeda:"USD"},
-  {ticker:"EURBRL=X", simbolo:"EUR/BRL", nome:"Euro / Real",     mercado:"FOREX",    moeda:"BRL"},
-  {ticker:"GBPUSD=X", simbolo:"GBP/USD", nome:"Libra / Dólar",   mercado:"FOREX",    moeda:"USD"},
-  {ticker:"AAPL",     simbolo:"AAPL",    nome:"Apple",           mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"MSFT",     simbolo:"MSFT",    nome:"Microsoft",       mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"NVDA",     simbolo:"NVDA",    nome:"Nvidia",          mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"TSLA",     simbolo:"TSLA",    nome:"Tesla",           mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"AMZN",     simbolo:"AMZN",    nome:"Amazon",          mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"GOOGL",    simbolo:"GOOGL",   nome:"Alphabet",        mercado:"NASDAQ",   moeda:"USD"},
-  {ticker:"META",     simbolo:"META",    nome:"Meta",            mercado:"NASDAQ",   moeda:"USD"},
-];
 
 const fmtP=v=>{
   if(!v&&v!==0)return"—";
@@ -494,7 +464,7 @@ const normalizarTipo = (tipo = "") => {
   return t;
 };
 
-function _desenharOCO(ctx, toX, toY, p, isSel, cw){
+function _desenharOCO(ctx, toX, toY, p, isSel){
   const P = p.pontos;
   if(!P) return;
 
@@ -997,11 +967,16 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
 // sobre por que usamos coordenada lógica em vez de tempo — permite
 // desenhar além do último candle, ex: linha de tendência se estendendo
 // pro futuro).
-function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth){
+// `preview`: true enquanto o usuário ainda está arrastando o mouse antes do
+// clique final (ver comentário no redraw() do CandleChart) — desenha
+// tracejado/translúcido pra distinguir do desenho já confirmado.
+function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth, preview=false){
+  if(preview){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
   if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="horizontal") _desenharHorizontal(ctx, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="retangulo_desenho") _desenharRetanguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
   else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  if(preview){ ctx.restore(); }
 }
 
 // ── Templates marcados manualmente no admin (OCO/Topo Duplo/Suporte-Resistência),
@@ -1365,10 +1340,11 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
   useEffect(()=>{ ferramentaAtivaRef.current = ferramentaAtiva; },[ferramentaAtiva]);
   const arrastandoRef = useRef(null); // {desenhoId, pontoIndex} | null
   const cliqueInicioRef = useRef(null); // {x,y} em coords de tela — onde o mousedown começou, pra distinguir clique de arraste
+  const previewPontoRef = useRef(null); // {logical,preco} do mouse, só enquanto uma ferramenta de 2+ pontos está no meio da colocação
   const [menuCtx, setMenuCtx] = useState(null); // {x,y,desenhoId} em coords de tela
 
   // Trocou de ferramenta (ou desarmou) → começa a contagem de pontos do zero
-  useEffect(()=>{ setPontosProgresso([]); },[ferramentaAtiva]);
+  useEffect(()=>{ setPontosProgresso([]); previewPontoRef.current = null; redrawRef.current?.(); },[ferramentaAtiva]);
 
   // Cursor crosshair enquanto uma ferramenta (nova ou o fibo antigo) está
   // esperando clique; volta ao normal quando nenhuma está armada (o próprio
@@ -1432,6 +1408,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       borderDownColor: "#FF4560",
       wickUpColor:     "#00D68F",
       wickDownColor:   "#FF4560",
+      priceLineVisible: false,
     });
 
     // Volume — só cria se showVolume (esconde pra commodities/futuros, cujo volume do Yahoo é ruim)
@@ -1474,7 +1451,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       oscilRef.current = {};
       candleRef.current = null;
       volRef.current = null;
-      try { chartRef.current?.remove(); } catch(e) {}
+      try { chartRef.current?.remove(); } catch {}
       chartRef.current = null;
     };
   },[showVolume]);
@@ -1518,22 +1495,16 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     const volData = [...volMap.values()].sort((a,b)=>a.time-b.time);
     volRef.current?.setData(volData);
 
-    // Mostra os últimos 100 candles por padrão — usuário pode arrastar pra ver
-    // o histórico. Se tiver padrão marcado manualmente mais antigo que isso,
-    // estende o começo da janela pra incluir ele — senão a marcação fica
-    // escondida fora da vista, sem o usuário saber que precisa rolar pra trás.
+    // Mostra os últimos 60 candles por padrão, bem próximo — usuário pode
+    // arrastar pra ver o histórico completo.
     const totalCandles = candles.length;
-    const visibleCount = 100;
-    let from = Math.max(0, totalCandles - visibleCount);
-    const iniciosMarcados = padroes.map(p => p.intervalo_candles?.inicio).filter(i => i != null);
-    if(iniciosMarcados.length){
-      from = Math.min(from, Math.max(0, Math.min(...iniciosMarcados) - 10));
-    }
+    const visibleCount = 60;
+    const from = Math.max(0, totalCandles - visibleCount);
     chartRef.current?.timeScale().setVisibleLogicalRange({
       from,
       to: totalCandles + 5,
     });
-  },[candles, padroes]);
+  },[candles]);
 
   // SMAs
   useEffect(()=>{
@@ -1552,7 +1523,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     // Helper: remove série com segurança (v5 é estrita; tenta e ignora se já foi)
     const safeRemove = (ref) => {
       if(ref.current && chartRef.current){
-        try { chartRef.current.removeSeries(ref.current); } catch(e) {}
+        try { chartRef.current.removeSeries(ref.current); } catch {}
         ref.current = null;
       }
     };
@@ -1572,7 +1543,6 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     upsertSMA(sma20Ref,  20,  "#F5A623", activeTools.has("sma20")  && candles.length >= 20);
     upsertSMA(sma100Ref, 100, "#9B6DFF", activeTools.has("sma100") && candles.length >= 100);
     upsertSMA(sma200Ref, 200, "#3D7EFF", activeTools.has("sma200") && candles.length >= 200);
-    console.log("[Indicadores] SMAs:", {sma20: activeTools.has("sma20"), sma100: activeTools.has("sma100"), sma200: activeTools.has("sma200"), bb: activeTools.has("bb"), candles: candles.length});
 
     // Bandas de Bollinger (período 20, 2 desvios)
     const hasBB = activeTools.has("bb") && candles.length >= 20;
@@ -1597,7 +1567,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       bbLowerRef.current.setData(lower);
     } else {
       [bbUpperRef,bbMidRef,bbLowerRef].forEach(ref=>{
-        if(ref.current && chartRef.current){ try{chartRef.current.removeSeries(ref.current);}catch(e){} ref.current=null; }
+        if(ref.current && chartRef.current){ try{chartRef.current.removeSeries(ref.current);}catch{} ref.current=null; }
       });
     }
 
@@ -1635,13 +1605,13 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
 
     // Remove tudo que existia antes...
     Object.values(oscilRef.current).forEach(o=>{
-      o.series.forEach(s=>{ try{ chart.removeSeries(s); }catch(e){} });
+      o.series.forEach(s=>{ try{ chart.removeSeries(s); }catch{} });
     });
     // ...e os panes vazios que sobraram (de trás pra frente, senão os
     // índices dos que ainda faltam remover mudam no meio do caminho).
     const totalPanesAntes = chart.panes().length;
     for(let i=totalPanesAntes-1; i>=1; i--){
-      try{ chart.removePane(i); }catch(e){}
+      try{ chart.removePane(i); }catch{}
     }
     oscilRef.current = {};
 
@@ -1691,7 +1661,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     definicoes.forEach(def=>{
       if(!def.ativo) return;
       const series = def.montar(proximoPane);
-      try{ chart.panes()[proximoPane]?.setHeight(110); }catch(e){}
+      try{ chart.panes()[proximoPane]?.setHeight(110); }catch{}
       oscilRef.current[def.id] = { paneIndex: proximoPane, series };
       proximoPane++;
     });
@@ -1706,7 +1676,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       } else {
         markersRef.current.setMarkers([]);
       }
-    } catch(e) {}
+    } catch {}
   },[candles]);
 
   // Clique → seleciona padrão mais próximo
@@ -1741,7 +1711,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       }
     };
     chartRef.current.subscribeClick(handler);
-    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
+    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
   },[padroes, candles, activeTools, setSelPat]);
 
   // Fibonacci — captura os 2 cliques do usuário no gráfico (índice do candle
@@ -1765,7 +1735,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       });
     };
     chartRef.current.subscribeClick(handler);
-    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
+    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
   },[candles, activeTools]);
 
   // Desliga a ferramenta → limpa o desenho (próxima vez que ligar, começa do zero)
@@ -1844,7 +1814,25 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     };
 
     const onMouseMove = (e) => {
-      if(ferramentaAtivaRef.current) return; // colocando um desenho novo — sem hover/arraste nos já existentes
+      if(ferramentaAtivaRef.current){
+        // Ferramenta armada e já tem pelo menos 1 ponto colocado — mostra o
+        // desenho "se formando" seguindo o mouse até o clique que confirma
+        // o próximo ponto (ex: retângulo entre o 1º canto e o cursor).
+        if(pontosProgressoRef.current.length > 0){
+          const chart = chartRef.current, series = candleRef.current;
+          if(chart && series){
+            const rect = container.getBoundingClientRect();
+            const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+            const logical = chart.timeScale().coordinateToLogical(mx);
+            const preco = series.coordinateToPrice(my);
+            if(logical!=null && preco!=null){
+              previewPontoRef.current = {logical, preco};
+              redrawRef.current?.();
+            }
+          }
+        }
+        return; // colocando um desenho novo — sem hover/arraste nos já existentes
+      }
       const rect = container.getBoundingClientRect();
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
 
@@ -1965,7 +1953,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
   useEffect(()=>{
     if(!candleRef.current) return;
     nivelLinesRef.current.forEach(({priceLine})=>{
-      try{ candleRef.current.removePriceLine(priceLine); }catch(e){}
+      try{ candleRef.current.removePriceLine(priceLine); }catch{}
     });
     const niveisAtivos = niveis.filter(nv=>activeTools.has(nv.tipo));
     nivelLinesRef.current = niveisAtivos.map(nivel=>{
@@ -2004,14 +1992,14 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       });
     };
     chartRef.current.subscribeClick(handler);
-    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch(e){} };
+    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
   },[niveis]);
 
   // Reestiliza as linhas quando a seleção muda
   useEffect(()=>{
     nivelLinesRef.current.forEach(({nivel, priceLine})=>{
       const {color, lineWidth} = estiloNivel(nivel, nivelChave(nivel)===nivelSel);
-      try{ priceLine.applyOptions({color, lineWidth}); }catch(e){}
+      try{ priceLine.applyOptions({color, lineWidth}); }catch{}
     });
   },[nivelSel]);
 
@@ -2047,7 +2035,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         const tipoNorm = normalizarTipo(p.tipo);
         if(tipoNorm === "topo_duplo") _desenharTopoDuplo(ctx, toX, toY, p, isSel);
         else if(tipoNorm === "suporte" || tipoNorm === "resistencia") _desenharNivel(ctx, toX, toY, p, isSel);
-        else _desenharOCO(ctx, toX, toY, p, isSel, canvas.width);
+        else _desenharOCO(ctx, toX, toY, p, isSel);
       }
 
       // Fibonacci — marcado pelo usuário, só desenha com os 2 pontos prontos
@@ -2058,6 +2046,15 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal)
       for(const d of desenhos){
         _desenharDesenhoUsuario(ctx, toLogX, toY, d, false, canvas.width);
+      }
+
+      // Preview ao vivo — a ferramenta ainda está sendo colocada (já tem
+      // 1+ ponto clicado) e o mouse se moveu desde então: desenha como se o
+      // cursor fosse o próximo ponto, tracejado, pra dar o feedback visual
+      // de "o retângulo/linha/canal se formando" antes do clique final.
+      if(ferramentaAtiva && pontosProgresso.length>0 && previewPontoRef.current){
+        const desenhoPreview = { tipo: ferramentaAtiva, pontos: [...pontosProgresso, previewPontoRef.current] };
+        _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true);
       }
 
       // Emite posição da lâmpada do padrão selecionado pro pai
@@ -2083,7 +2080,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
 
     redrawRef.current = redraw;
     redraw();
-  },[candles, padroes, activeTools, selPat, fibo, desenhos]);
+  },[candles, padroes, activeTools, selPat, fibo, desenhos, ferramentaAtiva, pontosProgresso]);
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0}}>
@@ -2299,7 +2296,7 @@ function Abertura(){
     // que pode ainda não ter sido setado pelo efeito do AppInner na hora
     // que esse efeito monta) — no claro, o mesh precisa de mais opacidade
     // pra não sumir num fundo quase branco.
-    const claro = localStorage.getItem("tradeup-tema") === "light";
+    const claro = localStorage.getItem("tradezen-tema") === "light";
     const corPonto  = claro ? "rgba(47,111,239,0.6)" : "rgba(61,126,255,0.7)";
     const corLinha  = claro ? "47,111,239" : "99,130,200";
     const opLinhaMax = claro ? 0.28 : 0.12;
@@ -2368,7 +2365,7 @@ function Abertura(){
         <div className="ab-head">
           <div className="ab-logo">
             <span className="ic">✦</span>
-            <span>TRADE<span>UP</span></span>
+            <span>TRADE<span>ZEN</span></span>
           </div>
         </div>
         <div className="ab-hero">
@@ -2400,10 +2397,10 @@ function Abertura(){
 
 // ── SIDEBAR do dashboard ──
 const SB_ITENS = [
-  { id:"inicio",     label:"Dashboard",       icon:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></> },
+  { id:"inicio",     label:"Início",          icon:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></> },
   { id:"mercados",   label:"Mercados",        icon:<><line x1="3" y1="3" x2="3" y2="21"/><line x1="3" y1="21" x2="21" y2="21"/><polyline points="7 14 11 10 14 13 19 7"/></> },
   { id:"cripto",     label:"Criptomoedas",    icon:<><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h4a2 2 0 0 1 0 4h-4zm0 4h4.5a2 2 0 0 1 0 4h-4.5zm1.5-7v2m0 9v2"/></> },
-  { id:"ativos",     label:"Principais Ativos",icon:<><path d="M3 17l6-6 4 4 8-8"/><polyline points="21 3 21 9 15 3"/></>, route:"/principais-ativos" },
+  { id:"ativos",     label:"Principais Índices",icon:<><path d="M3 17l6-6 4 4 8-8"/><polyline points="21 3 21 9 15 3"/></>, route:"/principais-ativos" },
   { id:"favoritos",  label:"Favoritos",       icon:<><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 21.5 12 17.8 5.5 21.5 7 14.5 2 9.5 9 9"/></> },
 ];
 
@@ -2725,10 +2722,15 @@ function PaginaMercadosOverview({ tema, abrirAtivo, setSecao }){
 
 const CRYPTO_TOP4 = ["BTC-USD", "ETH-USD", "BNB-USD", "XRP-USD"];
 const CORES_CRYPTO_TOP = { "BTC-USD":"#F7931A", "ETH-USD":"#627EEA", "BNB-USD":"#F3BA2F", "XRP-USD":"#3A4048" };
+// Banners da direita — criptos voláteis fora do topo-4, com espaço pra
+// adicionar mais (botão "+") entre as que ainda não estão em nenhum dos
+// dois lugares.
+const CRYPTO_BANNER_PADRAO = ["SOL-USD", "DOGE-USD", "AVAX-USD"];
+const CORES_CRYPTO_BANNER = { "SOL-USD":"#9945FF", "DOGE-USD":"#C2A633", "AVAX-USD":"#E84142", "ADA-USD":"#0033AD" };
 
 // Página de Criptomoedas — hero estilo TradingView (cards principais +
 // capitalização total + dominância + volatilidade) com a identidade visual
-// do TradeUp.
+// do TradeZen.
 function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
   const [geral, setGeral] = useState(null);
 
@@ -2809,68 +2811,25 @@ function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
         </div>
 
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {/* Market Cap de Stablecoins */}
-          <div className="card" style={{padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:8}}>
-              Market Cap de Stablecoins {cripto?.stablecoins?.mock && <SeloEstimadoMkt3/>}
-            </div>
-            {cripto ? <>
-              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                <span style={{fontSize:18,fontWeight:700,fontFamily:"var(--font-m)",color:"var(--text)"}}>{fmtGrandeMkt3(cripto.stablecoins.market_cap_usd)}</span>
-                <VariacaoMkt3 pct={cripto.stablecoins.variacao_pct}/>
-              </div>
-              <div style={{position:"relative",height:52,marginTop:8}}>
-                <MiniLine data={cripto.stablecoins.serie} color={cripto.stablecoins.variacao_pct>=0?"#26a69a":"#ef5350"}/>
-              </div>
-            </> : <div className="idx-skel" style={{height:88}}/>}
-          </div>
-
-          {/* Dominância do Bitcoin */}
-          <div className="card" style={{padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>
-              Dominância do Bitcoin {cripto?.mock && <SeloEstimadoMkt3/>}
-            </div>
-            {cripto ? (
-              <>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontFamily:"var(--font-m)",marginBottom:6}}>
-                  <span style={{color:"#2962ff"}}>₿ {cripto.dominancia.bitcoin.toFixed(1)}%</span>
-                  <span style={{color:"#26a69a"}}>Ξ {cripto.dominancia.ethereum.toFixed(1)}%</span>
-                  <span style={{color:"#ef5350"}}>Outros {cripto.dominancia.outros.toFixed(1)}%</span>
+          {/* Banners — cada um é 1 criptomoeda volátil, mesmo estilo dos cards do topo */}
+          {CRYPTO_BANNER_PADRAO.map(tk=>{
+            const a = criptos.find(c=>c.ticker===tk);
+            const cor = CORES_CRYPTO_BANNER[tk] || "#8B949E";
+            if(!a) return <div key={tk} className="idx-skel" style={{height:96}}/>;
+            return (
+              <div key={tk} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
+                <div className="idx-top">
+                  <div className="idx-ic" style={{background:cor+"26",color:cor}}>{a.simbolo[0]}</div>
+                  <span className="idx-name">{a.nome}</span>
                 </div>
-                <div style={{display:"flex",height:10,borderRadius:5,overflow:"hidden"}}>
-                  <div style={{width:`${cripto.dominancia.bitcoin}%`,background:"#2962ff"}}/>
-                  <div style={{width:`${cripto.dominancia.ethereum}%`,background:"#26a69a"}}/>
-                  <div style={{width:`${cripto.dominancia.outros}%`,background:"#ef5350"}}/>
+                <div className="idx-line">
+                  <span className="idx-price">${fmtP(a.preco)}</span>
+                  <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
                 </div>
-              </>
-            ) : <div className="idx-skel" style={{height:54}}/>}
-          </div>
-
-          {/* Volatilidade */}
-          <div className="card" style={{padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>
-              Volatilidade {cripto?.volatilidade?.mock && <SeloEstimadoMkt3/>}
-            </div>
-            {cripto ? (
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {[
-                  {nome:"Bitcoin",  letra:"₿", cor:"#F7931A", v:cripto.volatilidade.bitcoin},
-                  {nome:"Ethereum", letra:"Ξ", cor:"#627EEA", v:cripto.volatilidade.ethereum},
-                ].map(({nome,letra,cor,v})=>(
-                  <div key={nome} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:22,height:22,borderRadius:"50%",background:cor+"26",color:cor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,flexShrink:0}}>{letra}</div>
-                      <span style={{fontSize:12,color:"var(--text)"}}>{nome}</span>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:12,fontFamily:"var(--font-m)",color:"var(--text)"}}>{v.indice.toFixed(1)}</div>
-                      <VariacaoMkt3 pct={v.variacao_pct}/>
-                    </div>
-                  </div>
-                ))}
+                <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
               </div>
-            ) : <div className="idx-skel" style={{height:76}}/>}
-          </div>
+            );
+          })}
         </div>
       </div>
 
@@ -3034,7 +2993,7 @@ function ComparativoChart({ series, config, ligados, selecionado, tema }){
   return <div ref={containerRef} style={{position:"absolute",inset:0}}/>;
 }
 
-function PaginaPrincipaisAtivosComparativo({ tema }){
+function PaginaPrincipaisAtivosComparativo({ tema, abrirAtivo }){
   const [candles, setCandles] = useState({});
   const [mockTickers, setMockTickers] = useState(new Set());
   const [footer, setFooter] = useState({});
@@ -3100,7 +3059,7 @@ function PaginaPrincipaisAtivosComparativo({ tema }){
   return (
     <div className="home">
       <div className="sh" style={{marginTop:8}}>
-        <span className="st" style={{fontSize:18}}>📊 Principais Ativos</span>
+        <span className="st" style={{fontSize:18}}>📊 Principais Índices</span>
       </div>
 
       <div className="pa-grid">
@@ -3154,7 +3113,10 @@ function PaginaPrincipaisAtivosComparativo({ tema }){
               return (
                 <div
                   key={cfg.ticker}
-                  onClick={()=>setSelecionado(prev=>prev===cfg.ticker?null:cfg.ticker)}
+                  onMouseEnter={()=>setSelecionado(cfg.ticker)}
+                  onMouseLeave={()=>setSelecionado(null)}
+                  onClick={()=>abrirAtivo({ticker:cfg.ticker})}
+                  title={`Ver ${cfg.nome}`}
                   style={{
                     borderRadius:8, cursor:"pointer",
                     background: selecionado===cfg.ticker ? "var(--s2)" : "transparent",
@@ -3190,7 +3152,7 @@ function PaginaPrincipaisAtivosComparativo({ tema }){
             const d = footer[cfg.ticker];
             if(!d) return <div key={cfg.ticker} className="idx-skel pa-carousel-card"/>;
             return (
-              <div key={cfg.ticker} className="pa-carousel-card">
+              <div key={cfg.ticker} className="pa-carousel-card" onClick={()=>abrirAtivo({ticker:cfg.ticker})} title={`Ver ${cfg.nome}`}>
                 <div className="idx-top">
                   <IconeAtivoMkt3 letra={cfg.letra} cor={cfg.cor}/>
                   <span className="idx-name">{cfg.nome}</span>
@@ -3274,7 +3236,7 @@ function PaginaListaAtivos({ icone, titulo, ativos, carregando=false, mensagemVa
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema="dark" }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema="dark", favoritos, toggleFavorito, favoritosConfig, salvarConfigFavorito, removerConfigFavorito }){
   const navigate = useNavigate();
   const tf = TFS[0];
 
@@ -3296,6 +3258,12 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
   const [ferramentaAtiva,setFerramentaAtiva] = useState(null); // ferramenta de desenho armada (trend/horizontal/retangulo_desenho/canal)
   const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
   const [desenhoOpen,setDesenhoOpen] = useState(false); // dropdown de ferramentas de desenho — botão próprio, separado do de Indicadores
+  // Espelha o prop mais recente pro effect de troca de ticker ler sem
+  // precisar entrar nas deps dele (entrar nas deps causaria um refetch
+  // toda vez que QUALQUER favorito salvasse configuração, não só o
+  // ticker que está sendo trocado).
+  const favoritosConfigRef = useRef(favoritosConfig);
+  useEffect(()=>{ favoritosConfigRef.current = favoritosConfig; },[favoritosConfig]);
   const desenhoBtnRef = useRef(null);
   const [desenhoPos,setDesenhoPos] = useState({top:0,left:0});
 
@@ -3339,7 +3307,16 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
     setPadroes([]);
     setNiveis([]);
     setFerramentaAtiva(null);
-    setDesenhos([]);
+    // Ativo favoritado com indicadores/desenhos salvos → restaura; senão,
+    // começa limpo (evita vazar os indicadores do ativo anterior pro novo).
+    const configSalva = favoritosConfigRef.current?.[ticker];
+    if(configSalva){
+      setTools(new Set(configSalva.tools||[]));
+      setDesenhos(configSalva.desenhos||[]);
+    } else {
+      setTools(new Set());
+      setDesenhos([]);
+    }
     Promise.all([
       fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`).then(r=>r.json()),
       fetchPadroesMarcados(ativo.ticker, tf.intervalo),
@@ -3373,6 +3350,25 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
     });
   };
 
+  // Favoritar salva um retrato dos indicadores + desenhos ligados agora
+  // mesmo (mesmo que vazio); desfavoritar apaga esse retrato. Enquanto
+  // continuar favoritado, o effect logo abaixo mantém o retrato atualizado
+  // conforme o usuário mexe nos indicadores/desenhos.
+  const handleFavoritar = () => {
+    if(!ticker || !toggleFavorito) return;
+    const jaEraFavorito = favoritos?.has(ticker);
+    toggleFavorito(ticker);
+    if(jaEraFavorito) removerConfigFavorito?.(ticker);
+    else salvarConfigFavorito?.(ticker, { tools:[...tools], desenhos });
+  };
+
+  // Enquanto o ativo estiver favoritado, mantém o retrato salvo em dia
+  // conforme o usuário liga/desliga indicadores ou desenha algo novo.
+  useEffect(()=>{
+    if(!ticker || !favoritos?.has(ticker)) return;
+    salvarConfigFavorito?.(ticker, { tools:[...tools], desenhos });
+  },[tools, desenhos]);
+
   if(!selAtivo) return null;
 
   return (
@@ -3383,6 +3379,17 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
         <span className="atick" onClick={()=>setSwitcherAberto(v=>!v)} title="Trocar ativo desta tela">
           {selAtivo.simbolo} <span style={{fontSize:11}}>▾</span>
         </span>
+
+        {toggleFavorito && (
+          <button
+            className={`ac-fav ${favoritos?.has(ticker)?"on":""}`}
+            style={{fontSize:18}}
+            title={favoritos?.has(ticker)
+              ? "Remover dos favoritos (indicadores e desenhos salvos serão apagados)"
+              : "Adicionar aos favoritos — salva os indicadores e desenhos deste gráfico"}
+            onClick={handleFavoritar}
+          >{favoritos?.has(ticker)?"★":"☆"}</button>
+        )}
 
         {selAtivo.preco>0&&<>
           <span className="apr">{fmtP(selAtivo.preco)}</span>
@@ -3436,22 +3443,21 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
           </button>
         </div>
 
-        <span style={{marginLeft:"auto",fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)",flexShrink:0}}>
-          {padroes.length} padrões · {candles.length} candles
-        </span>
-        {onAddSplit && (
-          <button className="pane-btn" onClick={onAddSplit} title="Adicionar tela">+</button>
-        )}
-        {onClose && (
-          <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
-        )}
-        {PAINEL_PADROES_ATIVO && !painelAberto && (
-          <button
-            onClick={()=>setPainelAberto(true)}
-            title="Mostrar painel de indicadores"
-            className="pane-btn"
-          >«</button>
-        )}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          {onAddSplit && (
+            <button className="pane-btn" onClick={onAddSplit} title="Adicionar tela">+</button>
+          )}
+          {onClose && (
+            <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
+          )}
+          {PAINEL_PADROES_ATIVO && !painelAberto && (
+            <button
+              onClick={()=>setPainelAberto(true)}
+              title="Mostrar painel de indicadores"
+              className="pane-btn"
+            >«</button>
+          )}
+        </div>
       </div>
 
       <div className="abody">
@@ -3749,12 +3755,12 @@ function AppInner(){
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [userMenuAberto,setUserMenuAberto] = useState(false); // menu "Sair" no nome do usuário no header
 
   const [mercado,setMercado] = useState([]);
   const [topPadroes,setTopPadroes] = useState([]); // 3 ativos c/ mais padrões — card bloqueado do Dashboard
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
-  const [ibovLoading,setIbovLoading] = useState(false);
   const [erro,setErro]       = useState("");
   const [sbCollapsed,setSbCollapsed] = useState(false);
   // Suporta /mercados?secao=favoritos (usado pelo redirecionamento de
@@ -3763,24 +3769,48 @@ function AppInner(){
 
   // Tema claro/escuro — persiste em localStorage, aplicado via atributo
   // data-theme na <html> (é o que os seletores :root[data-theme="light"] escutam).
-  const [tema,setTema] = useState(()=> localStorage.getItem("tradeup-tema") || "dark");
+  const [tema,setTema] = useState(()=> localStorage.getItem("tradezen-tema") || "dark");
   useEffect(()=>{
     document.documentElement.setAttribute("data-theme", tema);
-    localStorage.setItem("tradeup-tema", tema);
+    localStorage.setItem("tradezen-tema", tema);
   },[tema]);
   const alternarTema = () => setTema(t => t==="dark" ? "light" : "dark");
 
   // Favoritos — só client-side (localStorage) por enquanto, sem backend/login.
   const [favoritos,setFavoritos] = useState(()=>{
-    try{ return new Set(JSON.parse(localStorage.getItem("tradeup-favoritos")||"[]")); }
-    catch(e){ return new Set(); }
+    try{ return new Set(JSON.parse(localStorage.getItem("tradezen-favoritos")||"[]")); }
+    catch{ return new Set(); }
   });
   const toggleFavorito = (ticker) => {
     setFavoritos(prev=>{
       const n = new Set(prev);
       n.has(ticker) ? n.delete(ticker) : n.add(ticker);
-      localStorage.setItem("tradeup-favoritos", JSON.stringify([...n]));
+      localStorage.setItem("tradezen-favoritos", JSON.stringify([...n]));
       return n;
+    });
+  };
+
+  // Configuração salva por ativo favoritado — indicadores ligados (tools)
+  // e desenhos feitos no gráfico. Só existe pra tickers favoritados; ao
+  // desfavoritar, a configuração é apagada junto (ver removerConfigFavorito).
+  const [favoritosConfig,setFavoritosConfig] = useState(()=>{
+    try{ return JSON.parse(localStorage.getItem("tradezen-favoritos-config")||"{}"); }
+    catch{ return {}; }
+  });
+  const salvarConfigFavorito = (ticker, config) => {
+    setFavoritosConfig(prev=>{
+      const next = {...prev, [ticker]: config};
+      localStorage.setItem("tradezen-favoritos-config", JSON.stringify(next));
+      return next;
+    });
+  };
+  const removerConfigFavorito = (ticker) => {
+    setFavoritosConfig(prev=>{
+      if(!(ticker in prev)) return prev;
+      const next = {...prev};
+      delete next[ticker];
+      localStorage.setItem("tradezen-favoritos-config", JSON.stringify(next));
+      return next;
     });
   };
 
@@ -3817,7 +3847,6 @@ function AppInner(){
       "1M": { periodo: "5y",  intervalo: "1mo" },  // 5 anos de candles mensais
     };
     const p = periodos[marketTab] || periodos["1D"];
-    setIbovLoading(true);
     fetch(`${API}/ativo/^BVSP?periodo=${p.periodo}&intervalo=${p.intervalo}`)
       .then(r=>r.json())
       .then(d=>{
@@ -3828,9 +3857,8 @@ function AppInner(){
           fechamento: c.fechamento,
         }));
         setIbovChart(serie);
-        setIbovLoading(false);
       })
-      .catch(()=>setIbovLoading(false));
+      .catch(()=>{});
   },[marketTab]);
 
   const abrirAtivo=a=>{
@@ -3843,23 +3871,31 @@ function AppInner(){
   const forex       = mercado.filter(m=>m.mercado==="FOREX");
 
   // Fileira do topo do Dashboard: Bitcoin, Petrobras, Vale, Itaú, Ouro,
-  // Prata, nessa ordem — mesmo estilo dos cards da página de Criptomoedas.
-  // Sem substituição por outro ativo aqui (diferente da fileira antiga de
-  // índices): trocar "Bitcoin" por outra cripto quando falha ficaria
-  // estranho num card que promete mostrar exatamente esses 6 ativos — só
-  // cai no fallback "Sem dados"/"Carregando" (mesmo problema de sempre:
-  // Yahoo derruba ticker individual em lote concorrente às vezes).
+  // Dólar/Real, nessa ordem — mesmo estilo dos cards da página de
+  // Criptomoedas. Cada slot tem uma lista de substitutos da mesma categoria
+  // (cripto/B3/commodity/forex): se o ativo preferido não vier na resposta
+  // do /mercado (Yahoo derruba ticker individual em lote concorrente às
+  // vezes), o card cai pro próximo da lista em vez de ficar "Sem dados" —
+  // um substituto não usado por outro card é sempre melhor que um card
+  // vazio.
   const DASH_TOP_CONFIG = [
-    {ticker:"BTC-USD",  nome:"Bitcoin",   simbolo:"BTC",   cor:"#F7931A"},
-    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4", cor:"#00A650"},
-    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3", cor:"#EAB308"},
-    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4", cor:"#EC7000"},
-    {ticker:"GC=F",     nome:"Ouro",      simbolo:"OURO",  cor:"#F5A623"},
-    {ticker:"SI=F",     nome:"Prata",     simbolo:"PRATA", cor:"#9CA3AF"},
+    {ticker:"BTC-USD",  nome:"Bitcoin",   simbolo:"BTC",   cor:"#F7931A", fallback:["ETH-USD","SOL-USD","BNB-USD","XRP-USD","ADA-USD","DOGE-USD","AVAX-USD"]},
+    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4", cor:"#00A650", fallback:["VALE3.SA","ITUB4.SA","BBDC4.SA","WEGE3.SA","MGLU3.SA"]},
+    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3", cor:"#EAB308", fallback:["ITUB4.SA","PETR4.SA","BBDC4.SA","WEGE3.SA","MGLU3.SA"]},
+    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4", cor:"#EC7000", fallback:["BBDC4.SA","PETR4.SA","VALE3.SA","WEGE3.SA","MGLU3.SA"]},
+    {ticker:"GC=F",     nome:"Ouro",      simbolo:"OURO",  cor:"#F5A623", fallback:["SI=F","CL=F","BZ=F","NG=F","ZC=F","ZS=F","KC=F"]},
+    {ticker:"USDBRL=X", nome:"Dólar/Real",simbolo:"USD/BRL",cor:"#9CA3AF", fallback:["EURUSD=X","EURBRL=X","GBPUSD=X"]},
   ];
+  const dashTopUsados = new Set();
   const dashTop = DASH_TOP_CONFIG.map(cfg=>{
-    const achado = mercado.find(m=>m.ticker===cfg.ticker);
-    if(achado) return achado;
+    let achado = mercado.find(m=>m.ticker===cfg.ticker && !dashTopUsados.has(m.ticker));
+    if(!achado){
+      for(const tk of cfg.fallback){
+        achado = mercado.find(m=>m.ticker===tk && !dashTopUsados.has(m.ticker));
+        if(achado) break;
+      }
+    }
+    if(achado){ dashTopUsados.add(achado.ticker); return achado; }
     return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
   });
 
@@ -3877,7 +3913,7 @@ function AppInner(){
       {/* NAV (escondida na tela de abertura) */}
       {path!=="/"&&(
       <nav className="nav">
-        <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>UP</span></div>
+        <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>ZEN</span></div>
         <SearchBar onSelect={abrirAtivo} mercado={mercado}/>
         <div style={{flex:1}}/>
         <div className="nav-r">
@@ -3891,7 +3927,22 @@ function AppInner(){
             <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
           {user
-            ? <button className="btn-in" title="Sair" onClick={()=>{ logout(); navigate("/"); }}>{user.user_metadata?.nome || user.email}</button>
+            ? <div style={{position:"relative"}}>
+                <button className="btn-in" onClick={()=>setUserMenuAberto(v=>!v)}>
+                  {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()} <span style={{fontSize:9}}>▾</span>
+                </button>
+                {userMenuAberto && (
+                  <>
+                    <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenuAberto(false)}/>
+                    <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
+                      <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
+                      <div className="ind-item" onClick={()=>{ setUserMenuAberto(false); logout(); navigate("/"); }}>
+                        <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             : <button className="btn-in" onClick={()=>navigate("/login")}>Entrar</button>
           }
           <button className="btn-pr">✦ Pro</button>
@@ -3968,7 +4019,10 @@ function AppInner(){
           <div className="crypto-main-grid">
             <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>📊 Estudo de Mercado</span>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>📊 Estudo de Mercado</span>
+                  <span style={{fontSize:9,fontWeight:700,letterSpacing:.4,textTransform:"uppercase",color:"var(--text3)",background:"var(--s2)",padding:"3px 8px",borderRadius:5}}>Bolsa Brasileira</span>
+                </div>
                 <span className="sl" onClick={()=>ibov&&abrirAtivo(ibov)}>Análise completa →</span>
               </div>
               <div
@@ -4001,16 +4055,15 @@ function AppInner(){
             </div>
 
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              {/* Análise Técnica — bloqueada por enquanto */}
-              <div className="card" style={{padding:18}}>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:10}}>📊 Análise Técnica</div>
-                <div style={{position:"relative"}}>
-                  <div style={{display:"flex",flexDirection:"column",gap:10,pointerEvents:"none",userSelect:"none"}}>
-                    {(topPadroes.length>0 ? topPadroes : [null,null,null]).map((d,i)=>{
-                      if(!d) return <div key={i} className="idx-skel" style={{height:40}}/>;
-                      const confirmado = d.status==="confirmado";
-                      return (
-                        <div key={d.ticker} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+              {/* Análise Técnica — 1 ativo por banner, os 3 bloqueados */}
+              {(topPadroes.length>0 ? topPadroes : [null,null,null]).map((d,i)=>{
+                const confirmado = d?.status==="confirmado";
+                return (
+                  <div key={d?.ticker||i} className="card" style={{padding:18}}>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:.4,textTransform:"uppercase",color:"var(--text3)",marginBottom:10}}>Detector de Análise Técnica</div>
+                    <div style={{position:"relative"}}>
+                      {d ? (
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,pointerEvents:"none",userSelect:"none"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
                             <div style={{width:26,height:26,borderRadius:"50%",background:"var(--accent)26",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>{d.simbolo[0]}</div>
                             <div style={{minWidth:0}}>
@@ -4023,35 +4076,23 @@ function AppInner(){
                             <div style={{fontSize:10,fontFamily:"var(--font-m)",color:"var(--text2)",marginTop:2}}>{d.confianca}%</div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ) : <div className="idx-skel" style={{height:40}}/>}
+                      <div style={{
+                        position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
+                        background: tema==="light" ? "rgba(243,245,249,.75)" : "rgba(6,8,15,.7)",
+                        borderRadius:8,
+                      }}>
+                        <span style={{fontSize:18}}>🔒</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{
-                    position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
-                    background: tema==="light" ? "rgba(243,245,249,.75)" : "rgba(6,8,15,.7)",
-                    borderRadius:8,
-                  }}>
-                    <span style={{fontSize:20}}>🔒</span>
-                  </div>
-                </div>
-                <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",marginTop:10}}>Em breve disponível</div>
-              </div>
-
-              {/* Placeholders — nada definido ainda pra essas duas seções */}
-              <div className="card" style={{padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:96,gap:6}}>
-                <span style={{fontSize:18,opacity:.35}}>＋</span>
-                <span style={{fontSize:11,color:"var(--text3)",textAlign:"center"}}>Mais seções em breve</span>
-              </div>
-              <div className="card" style={{padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:96,gap:6}}>
-                <span style={{fontSize:18,opacity:.35}}>＋</span>
-                <span style={{fontSize:11,color:"var(--text3)",textAlign:"center"}}>Mais seções em breve</span>
-              </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Ticker */}
           <div className="tbar">
-            <div className="tbl">AO VIVO</div>
             <div style={{overflow:"hidden",flex:1}}>
               <div className="tscroll">
                 {[...mercado,...mercado].map((m,i)=>(
@@ -4075,7 +4116,7 @@ function AppInner(){
         <div className="dash">
           <Sidebar secao={secao} setSecao={setSecao} collapsed={sbCollapsed} setCollapsed={setSbCollapsed}/>
           <div className="dash-main">
-            <PaginaPrincipaisAtivosComparativo tema={tema}/>
+            <PaginaPrincipaisAtivosComparativo tema={tema} abrirAtivo={abrirAtivo}/>
           </div>
         </div>
       )}
@@ -4131,6 +4172,11 @@ function AppInner(){
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
             onAddSplit={splitTicker ? undefined : ()=>setSplitTicker(tickerUrl)}
             tema={tema}
+            favoritos={favoritos}
+            toggleFavorito={toggleFavorito}
+            favoritosConfig={favoritosConfig}
+            salvarConfigFavorito={salvarConfigFavorito}
+            removerConfigFavorito={removerConfigFavorito}
           />
           {splitTicker && (
             <ChartPane
@@ -4140,6 +4186,11 @@ function AppInner(){
               onTickerChange={setSplitTicker}
               onClose={()=>setSplitTicker(null)}
               tema={tema}
+              favoritos={favoritos}
+              toggleFavorito={toggleFavorito}
+              favoritosConfig={favoritosConfig}
+              salvarConfigFavorito={salvarConfigFavorito}
+              removerConfigFavorito={removerConfigFavorito}
             />
           )}
         </div>
