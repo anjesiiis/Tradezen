@@ -76,6 +76,18 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-picker-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)}
 .admin-picker-item:last-child{border-bottom:none}
 .admin-picker-item:hover{background:var(--s2)}
+
+/* Mobile <768px — tabelas viram scroll horizontal contido (não a página
+   inteira), grid de 2 colunas empilha, botões ganham alvo de toque 44px. */
+@media (max-width:767px){
+  .admin-header{padding:0 12px;flex-wrap:wrap;height:auto;min-height:56px}
+  .admin-main{padding:14px}
+  .admin-grid2{grid-template-columns:1fr}
+  .admin-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .admin-picker-dd{max-width:calc(100vw - 24px)}
+  .admin-nav{margin-left:0;flex-wrap:wrap;width:100%;margin-top:8px}
+  .admin-btn,.admin-btn-ghost,.admin-picker-btn,.admin-input,.admin-select{min-height:44px}
+}
 `;
 
 export default function AdminShell({ children }) {

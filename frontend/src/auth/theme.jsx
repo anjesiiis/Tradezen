@@ -50,6 +50,14 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .auth-switch{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
 .auth-switch a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
 .auth-switch a:hover{text-decoration:underline}
+
+/* Mobile <768px — campos e botão já são width:100% por padrão; aqui só
+   reduz o padding lateral do card pra caber melhor numa tela de celular. */
+@media (max-width:767px){
+  .auth-shell{padding:16px}
+  .auth-card{padding:24px 16px}
+  .auth-btn{min-height:44px}
+}
 `;
 
 export default function AuthShell({ children }) {
@@ -64,7 +72,7 @@ export default function AuthShell({ children }) {
   return (
     <div className="auth-shell">
       <style>{AUTH_CSS}</style>
-      <div className="auth-logo" onClick={() => navigate("/")}>TRADE<span>UP</span></div>
+      <div className="auth-logo" onClick={() => navigate("/")}>TRADE<span>ZEN</span></div>
       {children}
     </div>
   );

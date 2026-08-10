@@ -21,6 +21,25 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 // flag só, fácil de religar quando decidir trazer de volta.
 const PAINEL_PADROES_ATIVO = false;
 
+// Breakpoints do site inteiro: mobile <768px, tablet 768–1024px, desktop
+// >1024px — os mesmos valores usados nas media queries do CSS abaixo.
+// Esse hook é só pra decisões que precisam acontecer em JS (não dá pra
+// resolver só com CSS), tipo trocar o comportamento de um clique.
+const MOBILE_BREAKPOINT = 768;
+function useIsMobile(){
+  const [isMobile, setIsMobile] = useState(
+    ()=> typeof window!=="undefined" && window.innerWidth < MOBILE_BREAKPOINT
+  );
+  useEffect(()=>{
+    const mq = window.matchMedia(`(max-width:${MOBILE_BREAKPOINT-1}px)`);
+    const onChange = ()=> setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return ()=> mq.removeEventListener("change", onChange);
+  },[]);
+  return isMobile;
+}
+
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -379,7 +398,150 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ab-tile span{font-size:12px;font-weight:600;text-align:center;padding:0 6px}
 @keyframes abrise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
 @media (max-width:600px){.ab-head{padding:18px 20px}.ab-tiles{gap:12px}.ab-tile{width:104px;height:104px}}
-@media (max-width:900px){.mkt3-grid{grid-template-columns:1fr!important}}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVO — breakpoints do site inteiro:
+   mobile <768px · tablet 768–1024px · desktop >1024px
+   (mesmos valores do hook useIsMobile, em JS, pra decisões que CSS
+   sozinho não resolve — ex: o clique de "+ tela" no multitelas)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Header: elementos exclusivos de mobile ficam escondidos no
+   desktop por padrão; a media query abaixo inverte pra <768px. ── */
+.hamburger-btn,.search-toggle-btn,.search-close-btn{display:none}
+.hamburger-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0}
+.hamburger-btn svg,.search-toggle-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.search-toggle-btn{width:44px;height:44px}
+.nav-search-wrap{display:contents}
+
+/* ── Menu hambúrguer (drawer + backdrop) — só existe/anima no mobile,
+   mas fica sempre no DOM (classes de visibilidade cuidam do resto). ── */
+.mobile-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;animation:mdFade .15s ease}
+@keyframes mdFade{from{opacity:0}to{opacity:1}}
+.mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:82vw;max-width:300px;background:var(--s1);border-right:1px solid var(--border);z-index:901;display:flex;flex-direction:column;padding:14px;overflow-y:auto;animation:mdSlide .2s cubic-bezier(.25,.46,.45,.94)}
+@keyframes mdSlide{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+.mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 16px}
+.mobile-drawer-close{width:40px;height:40px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.mobile-drawer-nav{display:flex;flex-direction:column;gap:2px}
+.mobile-drawer-nav .sb-item{min-height:44px}
+.mobile-drawer-divider{height:1px;background:var(--border);margin:14px 4px}
+.mobile-drawer-conta{display:flex;flex-direction:column;gap:8px;padding:0 4px}
+.mobile-drawer-conta .nav-ic{width:100%;height:44px;border-radius:8px;background:var(--card);border:1px solid var(--border);justify-content:flex-start;gap:10px;padding:0 14px}
+.mobile-drawer-conta .nav-ic svg{width:18px;height:18px}
+.mobile-drawer-conta .btn-in,.mobile-drawer-conta .btn-pr{width:100%;min-height:44px;text-align:center}
+
+/* ── Toast "multitelas indisponível" — ChartPane, mobile ── */
+.mobile-toast{position:fixed;left:50%;bottom:calc(26px + 16px);transform:translateX(-50%);background:var(--s1);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.4);z-index:1200;white-space:nowrap;animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ═══════════════════ TABLET — 768–1024px ═══════════════════ */
+@media (max-width:1024px) and (min-width:768px){
+  .mkt3-grid{grid-template-columns:1fr 1fr!important}
+}
+
+/* ═══════════════════ MOBILE — <768px ═══════════════════ */
+@media (max-width:767px){
+  html,body,#root{overflow-x:hidden;overflow-y:auto}
+  *{-webkit-tap-highlight-color:transparent}
+
+  /* Textos legíveis sem zoom + botões com alvo de toque de 44px */
+  body{-webkit-text-size-adjust:100%}
+  button,.btn-in,.btn-pr,input,select,textarea{font-size:max(14px,1em)}
+  button{min-height:44px}
+  .idx-btn,.crypto-top-card,.pa-carousel-card,.ac,.card>button,.sb-item,.ind-item,.dd-item,.search-item,.si{min-height:44px}
+  .ac-fav{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .pane-btn{width:40px;height:40px}
+
+  /* ── HEADER ── */
+  .nav{padding:0 12px;gap:10px;position:relative}
+  .logo{font-size:19px;letter-spacing:2px}
+  .nav-r{display:none}
+  .hamburger-btn,.search-toggle-btn{display:flex}
+  .nav-search-wrap{display:none}
+  .nav-search-wrap.aberta{
+    display:flex;align-items:center;gap:6px;
+    position:absolute;inset:0;background:var(--s1);padding:0 10px;z-index:210;
+  }
+  .nav-search-wrap.aberta .search{max-width:none;flex:1}
+  .nav-search-wrap .search-close-btn{display:flex;width:40px;height:40px;flex-shrink:0}
+
+  /* ── SIDEBAR (desktop, dentro de .dash) — some, vira drawer ── */
+  .sb{display:none}
+  .dash{display:block;width:100%}
+  .dash-main{width:100%}
+
+  /* ── HOME / DASHBOARD ── */
+  .home{padding:14px 12px 40px;height:calc(100vh - 52px)}
+
+  /* Cards de ativos do topo — scroll horizontal, ~140px cada */
+  .dash-top-row{display:flex!important;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:4px}
+  .dash-top-row>*{flex:0 0 auto;min-width:140px;scroll-snap-align:start}
+
+  /* Gráfico principal 100% largura + painel de padrões desce pra baixo
+     (o grid 7fr/3fr já vira 1 coluna em ≤1100px — aqui só garante altura
+     mínima e que os cards empilham verticalmente, sem cortar texto). */
+  .crypto-main-grid{gap:14px}
+  .mc-chart{height:250px;min-height:250px}
+  .mc-price{font-size:26px}
+  .mc-top{flex-wrap:wrap}
+
+  /* Contador/legendas que podem quebrar em 2 linhas em vez de cortar */
+  .idx-name,.ac-nm,.pat-nome{white-space:normal}
+
+  /* ── PÁGINA MERCADOS (3 colunas) → 1 coluna ── */
+  .mkt3-grid{grid-template-columns:1fr!important;gap:12px!important}
+
+  /* ── CRIPTOMOEDAS ── */
+  .crypto-top-row{display:flex!important;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;gap:10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:4px}
+  .crypto-top-row>*{flex:0 0 46%;min-width:150px;scroll-snap-align:start}
+
+  /* ── PRINCIPAIS ÍNDICES ── */
+  .pa-carousel{-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .pa-carousel-card{scroll-snap-align:start;min-width:150px}
+
+  /* ── ANÁLISE (gráfico de um ativo) ── */
+  .analysis{min-width:0!important;width:100%}
+  .analysis-row{overflow-x:hidden}
+  .analysis-row .analysis{min-width:0!important}
+  /* Multitelas desabilitado: só 1 gráfico cabe na tela — a 2ª tela do
+     analysis-row (se existir) fica escondida; o botão "+" mostra o toast
+     em vez de abrir (ver isMobile no ChartPane). */
+  .analysis-row .analysis:not(:first-child){display:none}
+
+  .atb{padding:0 10px;gap:6px;height:48px}
+  .atick{font-size:17px}
+  .ind-btn{padding:6px 9px;min-height:44px}
+  .sep{display:none}
+  .apr,.achg{display:none}
+
+  /* Indicadores / Desenho — viram bottom sheet em vez de dropdown ancorado */
+  .ind-drop-sheet{
+    top:auto!important;left:0!important;right:0!important;bottom:0!important;
+    width:100%!important;max-width:100%;min-width:0;
+    border-radius:16px 16px 0 0;
+    max-height:75vh;overflow-y:auto;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));
+    animation:sheetUp .2s cubic-bezier(.25,.46,.45,.94);
+    box-shadow:0 -8px 32px rgba(0,0,0,.5);
+  }
+  .ind-drop-sheet .ind-item{min-height:44px}
+  @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+  /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */
+  .abody{flex-direction:column}
+  .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
+
+  /* ── TICKER DE RODAPÉ ── */
+  .ti{font-size:11px;padding:0 14px}
+
+  /* ── LANDING PAGE ── */
+  .ab-hero h1{font-size:2rem!important;letter-spacing:1px}
+  .ab-hero p{font-size:14px;padding:0 4px}
+  .ab-entrar{width:100%;padding:15px 24px}
+  .ab-tiles{flex-direction:column;width:100%;max-width:340px;gap:10px;margin-top:36px}
+  .ab-tile{width:100%;height:auto;flex-direction:row;justify-content:flex-start;gap:14px;padding:16px 18px}
+  .ab-tile span{text-align:left;padding:0}
+}
 `;
 
 const MKTC={"B3":"#009C3B","CRIPTO":"#F7931A","FOREX":"#3D7EFF","NASDAQ":"#9B6DFF","NYSE":"#E8B84B","COMMODITY":"#F5A623","—":"#5A7299"};
@@ -3239,6 +3401,13 @@ function PaginaListaAtivos({ icone, titulo, ativos, carregando=false, mensagemVa
 function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema="dark", favoritos, toggleFavorito, favoritosConfig, salvarConfigFavorito, removerConfigFavorito }){
   const navigate = useNavigate();
   const tf = TFS[0];
+  const isMobile = useIsMobile();
+  const [avisoMultitelas,setAvisoMultitelas] = useState(false);
+  useEffect(()=>{
+    if(!avisoMultitelas) return;
+    const timer = setTimeout(()=>setAvisoMultitelas(false), 2600);
+    return ()=>clearTimeout(timer);
+  },[avisoMultitelas]);
 
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
@@ -3445,7 +3614,17 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
 
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
-            <button className="pane-btn" onClick={onAddSplit} title="Adicionar tela">+</button>
+            <button
+              className="pane-btn"
+              onClick={()=>{
+                // Multitelas não cabe numa tela de celular — em vez de abrir
+                // a segunda tela (que ficaria espremida/ilegível), avisa e
+                // mantém só 1 gráfico.
+                if(isMobile){ setAvisoMultitelas(true); return; }
+                onAddSplit();
+              }}
+              title="Adicionar tela"
+            >+</button>
           )}
           {onClose && (
             <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
@@ -3459,6 +3638,12 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
           )}
         </div>
       </div>
+
+      {avisoMultitelas && (
+        <div className="mobile-toast" onAnimationEnd={()=>{}}>
+          Multitelas disponível apenas no desktop
+        </div>
+      )}
 
       <div className="abody">
         <div className="achart">
@@ -3659,7 +3844,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
       {indOpen && createPortal(
         <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setIndOpen(false)}>
           <div
-            className="ind-drop"
+            className="ind-drop ind-drop-sheet"
             style={{position:"fixed",top:indPos.top,left:indPos.left}}
             onMouseDown={e=>e.stopPropagation()}
           >
@@ -3693,7 +3878,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
       {desenhoOpen && createPortal(
         <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setDesenhoOpen(false)}>
           <div
-            className="ind-drop"
+            className="ind-drop ind-drop-sheet"
             style={{position:"fixed",top:desenhoPos.top,left:desenhoPos.left}}
             onMouseDown={e=>e.stopPropagation()}
           >
@@ -3756,6 +3941,8 @@ function AppInner(){
   const location = useLocation();
   const { user, logout } = useAuth();
   const [userMenuAberto,setUserMenuAberto] = useState(false); // menu "Sair" no nome do usuário no header
+  const [buscaMobileAberta,setBuscaMobileAberta] = useState(false); // ícone de lupa → expande a busca (mobile)
+  const [drawerAberto,setDrawerAberto] = useState(false); // menu hambúrguer (mobile) — sidebar + conta
 
   const [mercado,setMercado] = useState([]);
   const [topPadroes,setTopPadroes] = useState([]); // 3 ativos c/ mais padrões — card bloqueado do Dashboard
@@ -3911,44 +4098,119 @@ function AppInner(){
       <style>{CSS}</style>
 
       {/* NAV (escondida na tela de abertura) */}
-      {path!=="/"&&(
-      <nav className="nav">
-        <div className="logo" onClick={()=>navigate("/mercados")}>TRADE<span>ZEN</span></div>
-        <SearchBar onSelect={abrirAtivo} mercado={mercado}/>
-        <div style={{flex:1}}/>
-        <div className="nav-r">
-          <button className="nav-ic" title={tema==="dark" ? "Mudar pro tema claro" : "Mudar pro tema escuro"} onClick={alternarTema}>
-            {tema==="dark"
-              ? <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              : <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-            }
-          </button>
-          <button className="nav-ic" title="Notificações">
-            <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </button>
-          {user
-            ? <div style={{position:"relative"}}>
-                <button className="btn-in" onClick={()=>setUserMenuAberto(v=>!v)}>
-                  {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()} <span style={{fontSize:9}}>▾</span>
-                </button>
-                {userMenuAberto && (
-                  <>
-                    <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenuAberto(false)}/>
-                    <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
-                      <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
-                      <div className="ind-item" onClick={()=>{ setUserMenuAberto(false); logout(); navigate("/"); }}>
-                        <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
+      {path!=="/"&&(()=>{
+        // Ações de conta (tema/sino/entrar-usuário/pro) — renderizadas duas
+        // vezes: uma no header (visível só no desktop) e outra dentro do
+        // menu hambúrguer (visível só no mobile). É o mesmo bloco reusado
+        // via variável pra não duplicar a lógica do menu "Sair".
+        const acoesConta = (
+          <>
+            <button className="nav-ic" title={tema==="dark" ? "Mudar pro tema claro" : "Mudar pro tema escuro"} onClick={alternarTema}>
+              {tema==="dark"
+                ? <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                : <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              }
+            </button>
+            <button className="nav-ic" title="Notificações">
+              <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </button>
+            {user
+              ? <div style={{position:"relative"}}>
+                  <button className="btn-in" onClick={()=>setUserMenuAberto(v=>!v)}>
+                    {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()} <span style={{fontSize:9}}>▾</span>
+                  </button>
+                  {userMenuAberto && (
+                    <>
+                      <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenuAberto(false)}/>
+                      <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
+                        <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
+                        <div className="ind-item" onClick={()=>{ setUserMenuAberto(false); logout(); navigate("/"); }}>
+                          <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
+              : <button className="btn-in" onClick={()=>navigate("/login")}>Entrar</button>
+            }
+            <button className="btn-pr">✦ Pro</button>
+          </>
+        );
+
+        // Só as páginas com Sidebar (Mercados / Principais Índices) têm
+        // navegação própria pra oferecer dentro do drawer — nas demais
+        // (gráfico de um ativo, login...) o hambúrguer fica escondido via
+        // CSS, então `drawerAberto` nunca chega a abrir fora delas.
+        const numaRotaPropria = SB_ITENS.some(x=>x.route && location.pathname===x.route);
+
+        return (
+          <>
+          <nav className="nav">
+            <div className="logo" onClick={()=>{ navigate("/mercados"); setDrawerAberto(false); setBuscaMobileAberta(false); }}>TRADE<span>ZEN</span></div>
+
+            <div className={`nav-search-wrap ${buscaMobileAberta?"aberta":""}`}>
+              <SearchBar onSelect={a=>{ abrirAtivo(a); setBuscaMobileAberta(false); }} mercado={mercado}/>
+              <button className="nav-ic search-close-btn" title="Fechar busca" onClick={()=>setBuscaMobileAberta(false)}>✕</button>
+            </div>
+
+            <div style={{flex:1}}/>
+
+            <button className="nav-ic search-toggle-btn" title="Buscar" onClick={()=>setBuscaMobileAberta(true)}>
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+
+            <div className="nav-r">
+              {acoesConta}
+            </div>
+
+            <button
+              className="hamburger-btn"
+              title="Menu"
+              onClick={()=>setDrawerAberto(true)}
+            >
+              <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </nav>
+
+          {/* ── DRAWER MOBILE (sidebar + conta) ── */}
+          {drawerAberto && (
+            <>
+              <div className="mobile-drawer-backdrop" onClick={()=>setDrawerAberto(false)}/>
+              <div className="mobile-drawer">
+                <div className="mobile-drawer-head">
+                  <div className="logo" style={{fontSize:18}}>TRADE<span>ZEN</span></div>
+                  <button className="mobile-drawer-close" title="Fechar menu" onClick={()=>setDrawerAberto(false)}>✕</button>
+                </div>
+                <div className="mobile-drawer-nav">
+                  {SB_ITENS.map(it=>{
+                    const ativo = it.route ? location.pathname===it.route : (!numaRotaPropria && secao===it.id);
+                    return (
+                      <button
+                        key={it.id}
+                        className={`sb-item ${ativo?"active":""}`}
+                        onClick={()=>{
+                          setDrawerAberto(false);
+                          if(it.route){ navigate(it.route); return; }
+                          setSecao(it.id);
+                          if(location.pathname!=="/mercados") navigate("/mercados");
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24">{it.icon}</svg>
+                        <span className="sb-label">{it.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mobile-drawer-divider"/>
+                <div className="mobile-drawer-conta">
+                  {acoesConta}
+                </div>
               </div>
-            : <button className="btn-in" onClick={()=>navigate("/login")}>Entrar</button>
-          }
-          <button className="btn-pr">✦ Pro</button>
-        </div>
-      </nav>
-      )}
+            </>
+          )}
+          </>
+        );
+      })()}
 
       {/* ── HOME (mercados) com SIDEBAR ── */}
       {path==="/mercados"&&(
