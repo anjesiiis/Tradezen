@@ -73,6 +73,11 @@ export default function Login() {
               onChange={e => setSenha(e.target.value)}
             />
           </div>
+          <div style={{ textAlign: "right", marginTop: -8, marginBottom: 14 }}>
+            <a onClick={() => navigate("/recuperar-senha")} style={{ fontSize: 12, color: "var(--accent)", cursor: "pointer", fontWeight: 600 }}>
+              Esqueci minha senha
+            </a>
+          </div>
           {status === "error" && <div className="auth-msg auth-msg-err">{erro}</div>}
           <button className="auth-btn" type="submit" disabled={status === "sending"}>
             {status === "sending" ? "Entrando..." : "Entrar"}
