@@ -14,6 +14,7 @@ import Login from "./auth/Login.jsx";
 import Cadastro from "./auth/Cadastro.jsx";
 import RecuperarSenha from "./auth/RecuperarSenha.jsx";
 import RedefinirSenha from "./auth/RedefinirSenha.jsx";
+import VendasPage from "./VendasPage.jsx";
 import AuthCallback from "./auth/AuthCallback.jsx";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -344,7 +345,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .idx-btn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 14px;cursor:pointer;transition:transform .15s,border-color .15s,background .15s;text-align:left;display:flex;flex-direction:column;gap:5px;min-width:0}
 .idx-btn:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--s2)}
 .idx-top{display:flex;align-items:center;gap:7px;min-width:0}
-.idx-ic{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;color:#fff}
 .idx-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .idx-line{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .idx-price{font-family:var(--font-m);font-size:16px;font-weight:600;color:var(--text)}
@@ -1498,23 +1498,26 @@ const estiloNivel = (nivel, selecionado) => {
 };
 
 // ── Mini Line (canvas simples pra cards) ─────────────────────
-function MiniLine({data,color}){
+function MiniLine({data,color,padding=4}){
   const ref=useRef(null);
   useEffect(()=>{
     const c=ref.current;if(!c||!data?.length)return;
     c.width=c.offsetWidth;c.height=c.offsetHeight;
     const ctx=c.getContext("2d"),W=c.width,H=c.height;
     const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
-    const pts=data.map((v,i)=>({x:i/(data.length-1)*W,y:H*0.9-(v-mn)/rng*H*0.78}));
+    // Padding interno — sem isso a linha (e os pontos de mínimo/máximo)
+    // encostava exatamente nas bordas do canvas, cortando visualmente.
+    const iw=W-padding*2, ih=H-padding*2;
+    const pts=data.map((v,i)=>({x:padding+i/(data.length-1)*iw,y:padding+ih*0.9-(v-mn)/rng*ih*0.78}));
     ctx.clearRect(0,0,W,H);
     const g=ctx.createLinearGradient(0,0,0,H);
     g.addColorStop(0,color+"30");g.addColorStop(1,color+"00");
     ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
     pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
     ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
-    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();
+    ctx.lineTo(W-padding,H-padding);ctx.lineTo(padding,H-padding);ctx.closePath();
     ctx.fillStyle=g;ctx.fill();
-  },[data,color]);
+  },[data,color,padding]);
   return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>;
 }
 
@@ -2911,6 +2914,78 @@ function IconeAtivoMkt3({ letra, cor }){
   return <div style={{width:26,height:26,borderRadius:"50%",background:cor+"26",color:cor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>{letra}</div>;
 }
 
+// Logo real por ativo — cripto e ações têm empresa/moeda de verdade por trás
+// (CoinGecko/Clearbit); commodity e forex não têm "logo de empresa", usam um
+// símbolo (Au/Ag/$/€/£) no lugar. `cor` aqui é a cor de fallback — mostrada
+// se a imagem falhar (ver IconeAtivo) ou já usada direto pros tipos "simbolo".
+const ICONE_ATIVO_INFO = {
+  // Cripto
+  "BTC-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/1/small/bitcoin.png",     cor:"#F7931A" },
+  "ETH-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/279/small/ethereum.png",  cor:"#627EEA" },
+  "SOL-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/4128/small/solana.png",   cor:"#9945FF" },
+  "BNB-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", cor:"#F3BA2F" },
+  "XRP-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png", cor:"#3A4048" },
+  "ADA-USD":  { tipo:"img", url:"https://assets.coingecko.com/coins/images/975/small/cardano.png",    cor:"#0033AD" },
+  "DOGE-USD": { tipo:"img", url:"https://assets.coingecko.com/coins/images/5/small/dogecoin.png",     cor:"#C2A633" },
+  "AVAX-USD": { tipo:"img", url:"https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png", cor:"#E84142" },
+  // Ações B3 — o Clearbit (logo.clearbit.com) saiu do ar de vez (nem o DNS
+  // resolve mais, confirmado testando direto), então usa o serviço de
+  // favicon do Google — não pede chave/cadastro e é estável há anos. Mesma
+  // cor de fallback pras seis (identidade "ação BR" genérica; a cor de
+  // marca de cada empresa só importava enquanto o quadradinho de 1 letra
+  // era a única opção).
+  "PETR4.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=petrobras.com.br&sz=128",     cor:"#003087" },
+  "VALE3.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=vale.com&sz=128",             cor:"#003087" },
+  "ITUB4.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=itau.com.br&sz=128",          cor:"#003087" },
+  "BBDC4.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=bradesco.com.br&sz=128",      cor:"#003087" },
+  "WEGE3.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=weg.net&sz=128",               cor:"#003087" },
+  "MGLU3.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=magazineluiza.com.br&sz=128", cor:"#003087" },
+  // Commodities e forex — sem logo de empresa, símbolo dentro do círculo
+  "GC=F":     { tipo:"simbolo", texto:"Au",  cor:"#FFD700" },
+  "SI=F":     { tipo:"simbolo", texto:"Ag",  cor:"#C0C0C0" },
+  "CL=F":     { tipo:"simbolo", texto:"Oil", cor:"#8B949E" },
+  "BZ=F":     { tipo:"simbolo", texto:"Oil", cor:"#8B949E" },
+  "NG=F":     { tipo:"simbolo", texto:"Gás", cor:"#8B949E" },
+  "ZC=F":     { tipo:"simbolo", texto:"Mi",  cor:"#8B949E" },
+  "ZS=F":     { tipo:"simbolo", texto:"Sj",  cor:"#8B949E" },
+  "KC=F":     { tipo:"simbolo", texto:"Ca",  cor:"#8B949E" },
+  "USDBRL=X": { tipo:"simbolo", texto:"$",   cor:"#9CA3AF" },
+  "EURUSD=X": { tipo:"simbolo", texto:"€",   cor:"#9CA3AF" },
+  "EURBRL=X": { tipo:"simbolo", texto:"€",   cor:"#9CA3AF" },
+  "GBPUSD=X": { tipo:"simbolo", texto:"£",   cor:"#9CA3AF" },
+};
+
+// Ícone circular de um ativo nos cards do dashboard (32x32 por padrão) —
+// cripto/ação carregam o logo real; commodity/forex e qualquer ticker sem
+// entrada no mapa (ou cuja imagem falhe ao carregar) caem no círculo com
+// símbolo/inicial, sempre pela cor de fallback certa.
+function IconeAtivo({ ticker, simbolo, corPadrao, tamanho=32 }){
+  const [erro, setErro] = useState(false);
+  const info = ICONE_ATIVO_INFO[ticker];
+  const cor = info?.cor || corPadrao || "#5A7299";
+
+  if(info?.tipo==="img" && !erro){
+    return (
+      <img
+        src={info.url}
+        alt={simbolo||ticker}
+        width={tamanho}
+        height={tamanho}
+        style={{width:tamanho,height:tamanho,borderRadius:"50%",objectFit:"cover",flexShrink:0,background:"#fff"}}
+        onError={()=>setErro(true)}
+      />
+    );
+  }
+
+  const texto = info?.tipo==="simbolo" ? info.texto : (simbolo?.[0] || "?");
+  return (
+    <svg width={tamanho} height={tamanho} viewBox="0 0 32 32" style={{flexShrink:0}}>
+      <circle cx="16" cy="16" r="16" fill={cor+"26"}/>
+      <text x="16" y="17" textAnchor="middle" dominantBaseline="middle" fill={cor} fontSize={texto.length>2?9:texto.length>1?11:14} fontWeight="800" fontFamily="var(--font-b)">{texto}</text>
+    </svg>
+  );
+}
+
 function BadgeMkt3({ children, corFundo, corTexto }){
   return <span style={{background:corFundo,color:corTexto,fontSize:10,fontFamily:"var(--font-m)",padding:"2px 7px",borderRadius:5,fontWeight:600}}>{children}</span>;
 }
@@ -3195,7 +3270,7 @@ function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
           return (
             <div key={tk} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
               <div className="idx-top">
-                <div className="idx-ic" style={{background:cor+"26",color:cor}}>{a.simbolo[0]}</div>
+                <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cor}/>
                 <span className="idx-name">{a.nome}</span>
               </div>
               <div className="idx-line">
@@ -3253,7 +3328,7 @@ function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
             return (
               <div key={tk} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
                 <div className="idx-top">
-                  <div className="idx-ic" style={{background:cor+"26",color:cor}}>{a.simbolo[0]}</div>
+                  <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cor}/>
                   <span className="idx-name">{a.nome}</span>
                 </div>
                 <div className="idx-line">
@@ -3278,7 +3353,7 @@ const COMPARATIVO_ATIVOS = [
   { ticker:"BTC-USD",  nome:"Bitcoin",    badge:"BTC",     letra:"B", cor:"#F7931A", prefixo:"$",  unidade:null },
   { ticker:"GC=F",     nome:"Ouro",       badge:"GC1!",    letra:"O", cor:"#D4AF37", prefixo:"$",  unidade:null },
   { ticker:"^IXIC",    nome:"Nasdaq",     badge:"IXIC",    letra:"N", cor:"#26A69A", prefixo:"",   unidade:"pts" },
-  { ticker:"USDBRL=X", nome:"Dólar/Real", badge:"USD/BRL", letra:"$", cor:"#9B6DFF", prefixo:"R$", unidade:null },
+  { ticker:"USDBRL=X", nome:"USD/BRL", badge:"USD/BRL", letra:"$", cor:"#9B6DFF", prefixo:"R$", unidade:null },
 ];
 const PERIODOS_COMPARATIVO = ["1M","3M","6M","1A","YTD"];
 const INDICES_GLOBAIS_FOOTER = [
@@ -4523,7 +4598,7 @@ function AppInner(){
     {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3", cor:"#EAB308", fallback:["ITUB4.SA","PETR4.SA","BBDC4.SA","WEGE3.SA","MGLU3.SA"]},
     {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4", cor:"#EC7000", fallback:["BBDC4.SA","PETR4.SA","VALE3.SA","WEGE3.SA","MGLU3.SA"]},
     {ticker:"GC=F",     nome:"Ouro",      simbolo:"OURO",  cor:"#F5A623", fallback:["SI=F","CL=F","BZ=F","NG=F","ZC=F","ZS=F","KC=F"]},
-    {ticker:"USDBRL=X", nome:"Dólar/Real",simbolo:"USD/BRL",cor:"#9CA3AF", fallback:["EURUSD=X","EURBRL=X","GBPUSD=X"]},
+    {ticker:"USDBRL=X", nome:"USD/BRL",simbolo:"USD/BRL",cor:"#9CA3AF", fallback:["EURUSD=X","EURBRL=X","GBPUSD=X"]},
   ];
   const dashTopUsados = new Set();
   const dashTop = DASH_TOP_CONFIG.map(cfg=>{
@@ -4726,7 +4801,7 @@ function AppInner(){
                 return (
                   <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
                     <div className="idx-top">
-                      <div className="idx-ic" style={{background:"var(--border)",color:"var(--text3)"}}>{cfg.simbolo[0]}</div>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
                       <span className="idx-name">{cfg.nome}</span>
                     </div>
                     <div className="idx-line">
@@ -4743,7 +4818,7 @@ function AppInner(){
               return (
                 <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
                   <div className="idx-top">
-                    <div className="idx-ic" style={{background:cfg.cor+"26",color:cfg.cor}}>{a.simbolo[0]}</div>
+                    <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
                     <span className="idx-name">{a.nome}</span>
                   </div>
                   <div className="idx-line">
@@ -4810,7 +4885,7 @@ function AppInner(){
                   return (
                     <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
                       <div className="idx-top">
-                        <div className="idx-ic" style={{background:"var(--border)",color:"var(--text3)"}}>{cfg.simbolo[0]}</div>
+                        <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
                         <span className="idx-name">{cfg.nome}</span>
                       </div>
                       <div className="idx-line">
@@ -4827,7 +4902,7 @@ function AppInner(){
                 return (
                   <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
                     <div className="idx-top">
-                      <div className="idx-ic" style={{background:cfg.cor+"26",color:cfg.cor}}>{a.simbolo[0]}</div>
+                      <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
                       <span className="idx-name">{a.nome}</span>
                     </div>
                     <div className="idx-line">
@@ -4993,6 +5068,7 @@ function Router(){
     return <RequireAdmin><AdminTemplatesNiveis/></RequireAdmin>;
   }
 
+  if (location.pathname === "/vendas" || location.pathname === "/landing-vendas") return <VendasPage/>;
   if (location.pathname === "/login") return <Login/>;
   if (location.pathname === "/cadastro") return <Cadastro/>;
   if (location.pathname === "/recuperar-senha") return <RecuperarSenha/>;

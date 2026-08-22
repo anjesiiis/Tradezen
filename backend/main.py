@@ -210,7 +210,7 @@ ATIVOS_DISPONIVEIS = [
     {"ticker": "CT=F",      "nome": "Algodão",                "mercado": "COMMODITY", "simbolo": "ALGODAO"},
 
     # ── FOREX ─────────────────────────────────────────────────
-    {"ticker": "USDBRL=X",  "nome": "Dólar / Real",      "mercado": "FOREX", "simbolo": "USD/BRL"},
+    {"ticker": "USDBRL=X",  "nome": "USD/BRL",           "mercado": "FOREX", "simbolo": "USD/BRL"},
     {"ticker": "EURBRL=X",  "nome": "Euro / Real",       "mercado": "FOREX", "simbolo": "EUR/BRL"},
     {"ticker": "GBPBRL=X",  "nome": "Libra / Real",      "mercado": "FOREX", "simbolo": "GBP/BRL"},
     {"ticker": "EURUSD=X",  "nome": "Euro / Dólar",      "mercado": "FOREX", "simbolo": "EUR/USD"},

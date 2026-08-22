@@ -28,7 +28,7 @@ MERCADO_PRINCIPAL = [
     {"ticker": "BBDC4.SA", "nome": "Bradesco",     "simbolo": "BBDC4",    "mercado": "B3",        "moeda": "BRL"},
     {"ticker": "WEGE3.SA", "nome": "WEG",          "simbolo": "WEGE3",    "mercado": "B3",        "moeda": "BRL"},
     {"ticker": "MGLU3.SA", "nome": "Magalu",       "simbolo": "MGLU3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "USDBRL=X", "nome": "Dólar/Real",   "simbolo": "USD/BRL",  "mercado": "FOREX",     "moeda": "BRL"},
+    {"ticker": "USDBRL=X", "nome": "USD/BRL",      "simbolo": "USD/BRL",  "mercado": "FOREX",     "moeda": "BRL"},
     {"ticker": "EURUSD=X", "nome": "Euro/Dólar",   "simbolo": "EUR/USD",  "mercado": "FOREX",     "moeda": "USD"},
     {"ticker": "EURBRL=X", "nome": "Euro/Real",    "simbolo": "EUR/BRL",  "mercado": "FOREX",     "moeda": "BRL"},
     {"ticker": "GBPUSD=X", "nome": "Libra/Dólar",  "simbolo": "GBP/USD",  "mercado": "FOREX",     "moeda": "USD"},
