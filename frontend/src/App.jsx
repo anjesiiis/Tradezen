@@ -449,7 +449,19 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* ═══════════════════ MOBILE — <768px ═══════════════════ */
 @media (max-width:767px){
-  html,body,#root{overflow-x:hidden;overflow-y:auto}
+  /* Só a página (documento) rola — não html/body/#root/.home todos com
+     overflow-y próprio ao mesmo tempo. Essa pilha de scrolls aninhados era
+     o motivo da rolagem travar: o dedo arrastava um container que não
+     necessariamente continha o resto, então descer/subir "tudo" deixava
+     pedaço cortado, e só dava pra ver o resto arrastando a barrinha de
+     rolagem interna do .home. Com altura natural (sem calc(100vh-52px) +
+     overflow-y:auto duplicado) e overflow só no html/body, é uma rolagem
+     só, do jeito que o navegador já faz sozinho — inclusive some a barra
+     de rolagem visível (webkit-scrollbar abaixo). */
+  html,body{overflow-x:hidden;overflow-y:auto;height:auto;-webkit-overflow-scrolling:touch}
+  #root{overflow:visible;height:auto;min-height:100%}
+  html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
+  html,body{scrollbar-width:none}
   *{-webkit-tap-highlight-color:transparent}
 
   /* Textos legíveis sem zoom + botões com alvo de toque de 44px */
@@ -479,7 +491,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .dash-main{width:100%}
 
   /* ── HOME / DASHBOARD ── */
-  .home{padding:14px 12px 40px;height:calc(100vh - 52px)}
+  .home{padding:14px 12px 40px;height:auto;overflow-y:visible}
 
   /* Cards de ativos do topo — scroll horizontal, ~140px cada */
   .dash-top-row{display:flex!important;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:4px}
@@ -509,12 +521,29 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
   /* ── ANÁLISE (gráfico de um ativo) ── */
   .analysis{min-width:0!important;width:100%}
-  .analysis-row{overflow-x:hidden}
-  .analysis-row .analysis{min-width:0!important}
-  /* Multitelas desabilitado: só 1 gráfico cabe na tela — a 2ª tela do
-     analysis-row (se existir) fica escondida; o botão "+" mostra o toast
-     em vez de abrir (ver isMobile no ChartPane). */
-  .analysis-row .analysis:not(:first-child){display:none}
+  /* Piso de altura pro container do candlestick+volume — sem isso, num
+     viewport bem baixo (teclado aberto, celular deitado) o flex:1 podia
+     encolher demais e o volume (25% desse espaço) virar pixels de menos
+     pra aparecer de verdade. */
+  .achart{min-height:400px}
+  /* Multitelas no celular = trocar de "mesa" (estilo poker), não grade lado
+     a lado: força layout de bloco cheio mesmo se a classe grid4 (2x2 do
+     desktop) estiver aplicada — a tela oculta já vem com display:none via
+     inline style (prop ocultoMobile no ChartPane), então só a ativa ocupa
+     espaço. A classe analysis-wrap é quem reserva os 100vh-52px agora
+     (mesa-tabs + o gráfico dividem essa altura); analysis-row vira flex:1
+     dentro dela em vez de reservar a tela inteira sozinha — senão, com a
+     barra de abas visível, o gráfico vazaria pra baixo da tela. */
+  .analysis-wrap{display:flex;flex-direction:column;height:calc(100vh - 52px)}
+  .analysis-row, .analysis-row.grid4{display:block!important;overflow-x:hidden;flex:1;min-height:0}
+  .analysis-row .analysis{min-width:0!important;width:100%!important;height:100%!important;border:none!important}
+
+  /* Barra de abas das mesas — só aparece com 2+ telas abertas (ver JSX) */
+  .mesa-tabs{display:flex;align-items:center;gap:6px;padding:8px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0}
+  .mesa-tab{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:7px 12px;border-radius:8px;background:var(--s2);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font-m);white-space:nowrap;border:1px solid var(--border);min-height:32px}
+  .mesa-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .mesa-tab-x{opacity:.7;padding:2px;line-height:1}
+  .mesa-tab-add{color:var(--text);font-size:15px;font-weight:800;padding:7px 14px}
 
   .atb{padding:0 10px;gap:6px;height:48px}
   .atick{font-size:17px}
@@ -570,19 +599,19 @@ const TOOLS=[
   {id:"retangulo",       name:"Retângulo",             type:"Continuação", free:false, plano:"premium"},
 ];
 
-// 1S (semanal) segue fora por enquanto. "max" no 1D (não "5y"): os padrões
-// marcados no admin (OCO/Topo Duplo/S-R) vêm de qualquer ponto do histórico
-// do ativo, às vezes lá em 2000 — com um período curto o candle do padrão
-// simplesmente não entra na janela carregada e resolverPadroesPorTimestamp
-// descarta ele em silêncio.
+// "max" no 1D e 1S (não "5y"/"1y"): os padrões marcados no admin (OCO/Topo
+// Duplo/S-R) vêm de qualquer ponto do histórico do ativo, às vezes lá em
+// 2000 — com um período curto o candle do padrão simplesmente não entra na
+// janela carregada e resolverPadroesPorTimestamp descarta ele em silêncio.
 // 60m: Yahoo Finance só libera ~2 anos de candle de hora em hora (limite da
 // fonte de dado, não nosso) — por isso "2y", não "max". Os padrões marcados
 // no admin hoje são todos timeframe="1d" (/padroes-marcados filtra por
-// timeframe no banco), então no 60m eles não aparecem — comportamento limpo
-// (nenhum padrão), não "alguns sumindo por estarem fora da janela".
+// timeframe no banco), então no 60m e no 1S eles não aparecem — comportamento
+// limpo (nenhum padrão), não "alguns sumindo por estarem fora da janela".
 const TFS=[
-  {label:"1D",  periodo:"max", intervalo:"1d"},
   {label:"60m", periodo:"2y",  intervalo:"60m"},
+  {label:"1D",  periodo:"max", intervalo:"1d"},
+  {label:"1S",  periodo:"max", intervalo:"1wk"},
 ];
 
 const INDICADORES = [
@@ -1622,6 +1651,7 @@ function HomeLineChart({data, color, tema="dark"}){
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
 function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico}){
+  const isMobile = useIsMobile();
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -1732,7 +1762,12 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       rightPriceScale:{
         borderColor: corBorda,
         textColor: corTexto,
-        scaleMargins: showVolume ? { top:0.05, bottom:0.2 } : { top:0.08, bottom:0.08 },
+        // No mobile o container é bem mais baixo, então a mesma fatia de
+        // 20% pro volume vira poucos pixels reais — as barras somem quase
+        // todas, só o pico das maiores aparece. Dando 25% pro volume (em
+        // vez de 20%) no mobile, o bottom aqui casa com o top:0.75 do
+        // priceScale("volume") logo abaixo, sem sobra nem sobreposição.
+        scaleMargins: showVolume ? { top:0.05, bottom: isMobile ? 0.25 : 0.2 } : { top:0.08, bottom:0.08 },
       },
       timeScale:{
         borderColor: corBorda,
@@ -1758,16 +1793,19 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       priceLineVisible: false,
     });
 
-    // Volume — só cria se showVolume (esconde pra commodities/futuros, cujo volume do Yahoo é ruim)
+    // Volume — só cria se showVolume (esconde pra commodities/futuros, cujo volume do Yahoo é ruim).
+    // No mobile ocupa 25% (top:0.75) em vez de 20% (top:0.8) — ver o
+    // comentário no rightPriceScale acima, os dois têm que bater.
     if(showVolume){
+      const scaleMarginsVolume = { top: isMobile ? 0.75 : 0.8, bottom:0 };
       volRef.current = chartRef.current.addSeries(HistogramSeries, {
         color: "#26a69a",
         priceFormat:{ type:"volume" },
         priceScaleId: "volume",
-        scaleMargins:{ top:0.8, bottom:0 },
+        scaleMargins: scaleMarginsVolume,
       });
       chartRef.current.priceScale("volume").applyOptions({
-        scaleMargins:{ top:0.8, bottom:0 },
+        scaleMargins: scaleMarginsVolume,
       });
     }
 
@@ -1801,7 +1839,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       try { chartRef.current?.remove(); } catch {}
       chartRef.current = null;
     };
-  },[showVolume]);
+  },[showVolume, isMobile]);
 
   // Troca de tema depois de montado: só reestiliza (applyOptions), nunca
   // recria o chart — recriar perderia todos os dados já plotados, porque
@@ -2695,7 +2733,7 @@ function AssetCard({a,onClick,favorito=false,onToggleFavorito}){
   return(
     <div className="ac" onClick={onClick}>
       <div className="ac-top">
-        <div className="ac-ic" style={{background:cor+"22",color:cor}}>{a.simbolo[0]}</div>
+        <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cor} tamanho={30}/>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {onToggleFavorito && (
             <button
@@ -2948,10 +2986,28 @@ const ICONE_ATIVO_INFO = {
   "ZC=F":     { tipo:"simbolo", texto:"Mi",  cor:"#8B949E" },
   "ZS=F":     { tipo:"simbolo", texto:"Sj",  cor:"#8B949E" },
   "KC=F":     { tipo:"simbolo", texto:"Ca",  cor:"#8B949E" },
-  "USDBRL=X": { tipo:"simbolo", texto:"$",   cor:"#9CA3AF" },
-  "EURUSD=X": { tipo:"simbolo", texto:"€",   cor:"#9CA3AF" },
-  "EURBRL=X": { tipo:"simbolo", texto:"€",   cor:"#9CA3AF" },
-  "GBPUSD=X": { tipo:"simbolo", texto:"£",   cor:"#9CA3AF" },
+  "USDBRL=X": { tipo:"simbolo", texto:"R$",  cor:"#009C3B" },
+  "EURBRL=X": { tipo:"simbolo", texto:"€",   cor:"#003399" },
+  "GBPBRL=X": { tipo:"simbolo", texto:"£",   cor:"#C8102E" },
+  "EURUSD=X": { tipo:"simbolo", texto:"€",   cor:"#003399" },
+  "GBPUSD=X": { tipo:"simbolo", texto:"£",   cor:"#C8102E" },
+  "USDJPY=X": { tipo:"simbolo", texto:"¥",   cor:"#BC002D" },
+  "USDCNY=X": { tipo:"simbolo", texto:"元",  cor:"#DE2910" },
+  "GBPJPY=X": { tipo:"simbolo", texto:"£",   cor:"#C8102E" },
+  "EURJPY=X": { tipo:"simbolo", texto:"€",   cor:"#003399" },
+  "EURGBP=X": { tipo:"simbolo", texto:"€",   cor:"#003399" },
+  "AUDUSD=X": { tipo:"simbolo", texto:"A$",  cor:"#00843D" },
+  "NZDUSD=X": { tipo:"simbolo", texto:"NZ$", cor:"#00247D" },
+  "USDCAD=X": { tipo:"simbolo", texto:"C$",  cor:"#FF0000" },
+  "USDCHF=X": { tipo:"simbolo", texto:"Fr",  cor:"#DA291C" },
+  "AUDJPY=X": { tipo:"simbolo", texto:"A$",  cor:"#00843D" },
+  "CHFJPY=X": { tipo:"simbolo", texto:"Fr",  cor:"#DA291C" },
+  "USDMXN=X": { tipo:"simbolo", texto:"MX$", cor:"#006341" },
+  "USDINR=X": { tipo:"simbolo", texto:"₹",   cor:"#FF9933" },
+  "USDKRW=X": { tipo:"simbolo", texto:"₩",   cor:"#003478" },
+  "USDSGD=X": { tipo:"simbolo", texto:"S$",  cor:"#EF3340" },
+  "USDHKD=X": { tipo:"simbolo", texto:"HK$", cor:"#A8112D" },
+  "USDZAR=X": { tipo:"simbolo", texto:"ZAR", cor:"#007A4D" },
 };
 
 // Ícone circular de um ativo nos cards do dashboard (32x32 por padrão) —
@@ -3744,16 +3800,9 @@ function PaginaListaAtivos({ titulo, ativos, carregando=false, mensagemVazio="Ne
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
   const navigate = useNavigate();
   const [tf, setTf] = useState(TFS[0]);
-  const isMobile = useIsMobile();
-  const [avisoMultitelas,setAvisoMultitelas] = useState(false);
-  useEffect(()=>{
-    if(!avisoMultitelas) return;
-    const timer = setTimeout(()=>setAvisoMultitelas(false), 2600);
-    return ()=>clearTimeout(timer);
-  },[avisoMultitelas]);
 
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
@@ -3882,20 +3931,27 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
     // uma linha do tempo nova, sem carregar ações de outro gráfico.
     setUndoStack([]);
     setRedoStack([]);
-    Promise.all([
-      fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`).then(r=>r.json()),
-      fetchPadroesMarcados(ativo.ticker, tf.intervalo),
-    ])
-      .then(([d, marcados])=>{
+    // Candles e padrões marcados disparam juntos, mas não esperam um pelo
+    // outro pra aparecer — antes um Promise.all travava o gráfico até os
+    // dois voltarem, e padrões-marcados (consulta ao Supabase) sozinho já
+    // leva mais de 1s. Candles aparece assim que chega; padrões (as
+    // lâmpadas) entram por cima logo depois, sem segurar o resto da tela.
+    const padroesPromise = fetchPadroesMarcados(ativo.ticker, tf.intervalo);
+    fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
+      .then(r=>r.json())
+      .then(d=>{
         if(cancelado) return;
         const candlesRecebidos = d.candles||[];
         setCandles(candlesRecebidos);
-        setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
         setNiveis(d.niveis||[]);
         if(d.info){
           setSel(prev=>({...prev, ...d.info, ticker}));
         }
         setLoading(false);
+        padroesPromise.then(marcados=>{
+          if(cancelado) return;
+          setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
+        });
       })
       .catch(()=>{ if(!cancelado) setLoading(false); });
 
@@ -3958,7 +4014,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
   if(!selAtivo) return null;
 
   return (
-    <div className="analysis">
+    <div className="analysis" style={ocultoMobile ? {display:"none"} : undefined}>
       <div className="atb">
         {!onClose && <button className="bbtn" onClick={()=>navigate("/mercados")} title="Voltar pra home">←</button>}
 
@@ -3985,10 +4041,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
 
         <div className="sep"/>
 
-        {/* Timeframe — select nativo (1D = histórico completo, 60m =
-            intraday, ~2 anos no Yahoo — limite da fonte de dado). Trocar
-            reseta indicadores/desenhos/histórico igual troca de ativo
-            (ver effect de fetch). */}
+        {/* Timeframe — select nativo (1D = histórico completo diário, 1S =
+            histórico completo semanal, 60m = intraday, ~2 anos no Yahoo —
+            limite da fonte de dado). Trocar reseta indicadores/desenhos/
+            histórico igual troca de ativo (ver effect de fetch). */}
         <select
           value={tf.label}
           onChange={e=>{
@@ -4102,17 +4158,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
 
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
-            <button
-              className="pane-btn"
-              onClick={()=>{
-                // Multitelas não cabe numa tela de celular — em vez de abrir
-                // a segunda tela (que ficaria espremida/ilegível), avisa e
-                // mantém só 1 gráfico.
-                if(isMobile){ setAvisoMultitelas(true); return; }
-                onAddSplit();
-              }}
-              title="Adicionar tela"
-            >+</button>
+            <button className="pane-btn" onClick={onAddSplit} title="Adicionar mesa">+</button>
           )}
           {onClose && (
             <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>
@@ -4126,12 +4172,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, tema=
           )}
         </div>
       </div>
-
-      {avisoMultitelas && (
-        <div className="mobile-toast" onAnimationEnd={()=>{}}>
-          Multitelas disponível apenas no desktop
-        </div>
-      )}
 
       <div className="abody">
         <div className="achart">
@@ -4609,15 +4649,37 @@ function AppInner(){
   // mesma tela (o effect de troca de ticker do ChartPane cuida do reset).
   const MAX_TELAS_EXTRAS = 3;
   const [telasExtras,setTelasExtras] = useState([]);
-  const adicionarTela = (ticker) => {
-    setTelasExtras(prev => prev.length < MAX_TELAS_EXTRAS ? [...prev, ticker] : prev);
-  };
   const fecharTela = (idx) => {
     setTelasExtras(prev => prev.filter((_,i)=>i!==idx));
   };
   const trocarTela = (idx, novoTicker) => {
     setTelasExtras(prev => prev.map((t,i)=> i===idx ? novoTicker : t));
   };
+
+  // Multitelas no celular — estilo "trocar de mesa" de app de poker: em vez
+  // de espremer os gráficos lado a lado (ilegível numa tela de celular),
+  // só uma tela fica visível por vez (ver ocultoMobile no ChartPane) e uma
+  // aba no topo troca qual delas aparece. `telaAtivaMobile` é o índice na
+  // lista combinada [principal, ...telasExtras] (0 = principal).
+  const isMobile = useIsMobile();
+  const [telaAtivaMobile, setTelaAtivaMobile] = useState(0);
+  const adicionarTelaEIrPara = (ticker) => {
+    if(telasExtras.length >= MAX_TELAS_EXTRAS) return;
+    setTelasExtras(prev => [...prev, ticker]);
+    setTelaAtivaMobile(telasExtras.length + 1); // combinado: 0=principal, 1..N=extras
+  };
+  const fecharTelaMobile = (idx) => {
+    fecharTela(idx);
+    setTelaAtivaMobile(atual => {
+      const idxCombinado = idx + 1;
+      if(atual === idxCombinado) return 0;      // estava vendo a que fechou → volta pra principal
+      if(atual > idxCombinado) return atual - 1; // as de trás "sobem" de índice junto
+      return atual;
+    });
+  };
+  // Rótulo curto da aba — usa o símbolo já conhecido em `mercado` quando dá
+  // (mesmo texto do resto do app); senão tira o sufixo técnico do ticker.
+  const labelMesa = (tk) => mercado.find(m=>m.ticker===tk)?.simbolo || tk.replace(/\.SA$|-USD$|=X$/,"");
 
   // Deriva qual "página" estamos baseado na URL
   const path = location.pathname;
@@ -4626,13 +4688,31 @@ function AppInner(){
   const listaTipo = isLista ? path.split("/lista/")[1] : null;
   const tickerUrl = isAnalysis ? decodeURIComponent(path.split("/ativo/")[1]) : null;
 
-  // Carrega mercado em lazy
+  // Ao trocar o ativo principal (nova navegação/URL), volta a aba mobile pra
+  // principal — foi ela que acabou de mudar, então é a que faz sentido ver.
+  // Ajuste durante a renderização (guardado pelo comparativo abaixo), não
+  // useEffect, pra não disparar um segundo render em cascata.
+  const [ultimoTickerUrlMesa, setUltimoTickerUrlMesa] = useState(tickerUrl);
+  if(tickerUrl !== ultimoTickerUrlMesa){
+    setUltimoTickerUrlMesa(tickerUrl);
+    setTelaAtivaMobile(0);
+  }
+
+  // Carrega mercado e mantém atualizado — antes só buscava 1x no mount,
+  // então a cotação da home ficava parada até a próxima navegação/refresh.
+  // O backend cacheia /mercado por 5min (TTL_CURTO), então repetir a cada
+  // 60s aqui é barato (na maioria das vezes cai no cache) e garante que o
+  // preço nunca fica mais que ~5min desatualizado na tela.
   useEffect(()=>{
-    // Primeiro: IBOV (gráfico principal)
-    fetch(`${API}/mercado`)
-      .then(r=>r.json())
-      .then(d=>setMercado(d.dados||[]))
-      .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
+    const buscar = () => {
+      fetch(`${API}/mercado`)
+        .then(r=>r.json())
+        .then(d=>setMercado(d.dados||[]))
+        .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
+    };
+    buscar();
+    const id = setInterval(buscar, 60000);
+    return () => clearInterval(id);
   },[]);
 
   // Busca gráfico do IBOV de acordo com o timeframe (1D/1S/1M)
@@ -5065,22 +5145,53 @@ function AppInner(){
         </div>
       )}
 
-      {/* ── ANÁLISE: 1 tela, 2 lado a lado, ou até 4 em grade 2×2
+      {/* ── ANÁLISE: 1 tela, 2 lado a lado, ou até 4 em grade 2×2 no desktop
           (multitelas) ── A tela principal usa key="primary" sempre — assim,
           ao abrir/fechar telas extras, o React reconcilia o mesmo
           componente em vez de desmontar e remontar (o que perderia
           indicadores/seleção e dispararia um refetch à toa). Com 3+ telas
           no total, `.analysis-row` ganha a classe "grid4" (ver CSS) e vira
           grade 2×2 em vez de linha única — 4 telas de 480px cada numa
-          linha só não caberia em tela nenhuma. */}
+          linha só não caberia em tela nenhuma.
+
+          No celular todas as telas continuam montadas (mesmo motivo acima),
+          mas só a ativa fica visível (`ocultoMobile` nas outras) — trocar de
+          "mesa" é só mudar `telaAtivaMobile`, igual ao seletor de mesas de
+          um app de poker, sem desmontar/refazer fetch de nada. */}
       {isAnalysis && tickerUrl && (
-        <div className={`analysis-row ${(1+telasExtras.length)>2 ? "grid4" : ""}`}>
+        <div className="analysis-wrap">
+          {isMobile && telasExtras.length>0 && (
+            <div className="mesa-tabs">
+              <button
+                className={`mesa-tab ${telaAtivaMobile===0 ? "active" : ""}`}
+                onClick={()=>setTelaAtivaMobile(0)}
+              >{labelMesa(tickerUrl)}</button>
+              {telasExtras.map((tk,idx)=>(
+                <button
+                  key={idx}
+                  className={`mesa-tab ${telaAtivaMobile===idx+1 ? "active" : ""}`}
+                  onClick={()=>setTelaAtivaMobile(idx+1)}
+                >
+                  {labelMesa(tk)}
+                  <span
+                    className="mesa-tab-x"
+                    onClick={e=>{ e.stopPropagation(); fecharTelaMobile(idx); }}
+                  >✕</span>
+                </button>
+              ))}
+              {telasExtras.length<MAX_TELAS_EXTRAS && (
+                <button className="mesa-tab mesa-tab-add" onClick={()=>adicionarTelaEIrPara(tickerUrl)} title="Adicionar mesa">+</button>
+              )}
+            </div>
+          )}
+          <div className={`analysis-row ${!isMobile && (1+telasExtras.length)>2 ? "grid4" : ""}`}>
           <ChartPane
             key="primary"
             mercado={mercado}
             ticker={tickerUrl}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
-            onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? ()=>adicionarTela(tickerUrl) : undefined}
+            onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? ()=>adicionarTelaEIrPara(tickerUrl) : undefined}
+            ocultoMobile={isMobile && telaAtivaMobile!==0}
             tema={tema}
             user={user}
             favoritos={favoritos}
@@ -5094,7 +5205,8 @@ function AppInner(){
               mercado={mercado}
               ticker={tk}
               onTickerChange={novo=>trocarTela(idx, novo)}
-              onClose={()=>fecharTela(idx)}
+              onClose={()=>fecharTelaMobile(idx)}
+              ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
               tema={tema}
               user={user}
               favoritos={favoritos}
@@ -5103,6 +5215,7 @@ function AppInner(){
               salvarConfigAtivo={salvarConfigAtivo}
             />
           ))}
+          </div>
         </div>
       )}
 
