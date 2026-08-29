@@ -95,6 +95,22 @@ def _formatar_topo_duplo(row: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _formatar_bandeira(row: Dict[str, Any], tipo: str) -> Dict[str, Any]:
+    janela = row.get("candles") or []
+    pontos = row.get("pontos") or {}
+    pontos_ts = {k: _ponto_ts(janela, v) for k, v in pontos.items()}
+    nome = "Bandeira de Alta" if tipo == "bandeira_alta" else "Bandeira de Baixa"
+    return {
+        "tipo": tipo,
+        "nome": nome,
+        "resultado": _resultado_normalizado(row.get("resultado")),
+        "confiabilidade": 100,
+        "explicacao": row.get("observacao") or f"{nome} confirmada manualmente por um analista.",
+        "pontos": pontos_ts,
+        "lampada": pontos_ts.get("mastro_fim"),
+    }
+
+
 def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     # Diferente do antigo detector automático (que desenhava uma reta de
     # preço atravessando o gráfico inteiro, sem limite de tempo), aqui é
@@ -145,6 +161,23 @@ def padroes_marcados(request: Request, ticker: str, timeframe: Optional[str] = Q
         formatado = _formatar_nivel(row)
         if formatado:
             padroes.append(formatado)
+
+    # try/except aqui (diferente das tabelas acima): templates_bandeira_alta
+    # e templates_bandeira_baixa só existem depois que a migration
+    # sql/006_templates_bandeira.sql rodar no Supabase — até lá, a tabela
+    # não existe e o Supabase responde com erro. Sem o try/except, isso
+    # derrubaria a rota inteira (500) pra QUALQUER ticker, pra todo mundo,
+    # não só pra bandeira — mesmo sem nenhum template de bandeira marcado
+    # ainda em lugar nenhum.
+    for tabela, tipo in (("templates_bandeira_alta", "bandeira_alta"), ("templates_bandeira_baixa", "bandeira_baixa")):
+        try:
+            q = supabase.table(tabela).select("*").eq("ticker", ticker_norm)
+            if timeframe:
+                q = q.eq("timeframe", timeframe)
+            for row in q.execute().data:
+                padroes.append(_formatar_bandeira(row, tipo))
+        except Exception:
+            pass
 
     # "niveis" fica sempre vazio agora — era o campo do detector automático
     # antigo (reta infinita); os níveis marcados manualmente já vão em

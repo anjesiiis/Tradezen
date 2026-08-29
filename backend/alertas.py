@@ -18,7 +18,7 @@ from supabase_client import supabase
 
 router = APIRouter(prefix="/alertas", tags=["alertas"])
 
-PADROES_VALIDOS = {"oco", "topo_duplo", "suporte", "resistencia"}
+PADROES_VALIDOS = {"oco", "topo_duplo", "suporte", "resistencia", "bandeira_alta", "bandeira_baixa"}
 
 
 def require_user(authorization: str = Header(None)) -> str:

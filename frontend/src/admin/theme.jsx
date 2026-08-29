@@ -106,6 +106,8 @@ export function AdminPatternNav({ active }) {
     { key: "oco", label: "OCO", href: "/admin/templates" },
     { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
     { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
+    { key: "bandeira-alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
+    { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
   ];
   return (
     <nav className="admin-nav">

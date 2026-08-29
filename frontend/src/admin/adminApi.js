@@ -86,3 +86,5 @@ function makeTemplateApi(basePath) {
 export const templatesOcoApi = makeTemplateApi("/admin/templates");
 export const templatesTopoDuploApi = makeTemplateApi("/admin/templates-topo-duplo");
 export const templatesNiveisApi = makeTemplateApi("/admin/templates-niveis");
+export const templatesBandeiraAltaApi = makeTemplateApi("/admin/templates-bandeira-alta");
+export const templatesBandeiraBaixaApi = makeTemplateApi("/admin/templates-bandeira-baixa");

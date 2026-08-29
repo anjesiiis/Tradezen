@@ -7,6 +7,8 @@ import AdminCallback from "./admin/AdminCallback.jsx";
 import AdminTemplates from "./admin/AdminTemplates.jsx";
 import AdminTemplatesTopoDuplo from "./admin/AdminTemplatesTopoDuplo.jsx";
 import AdminTemplatesNiveis from "./admin/AdminTemplatesNiveis.jsx";
+import AdminTemplatesBandeiraAlta from "./admin/AdminTemplatesBandeiraAlta.jsx";
+import AdminTemplatesBandeiraBaixa from "./admin/AdminTemplatesBandeiraBaixa.jsx";
 import RequireAdmin from "./admin/RequireAdmin.jsx";
 import { AuthProvider, useAuth } from "./auth/AuthContext.jsx";
 import RequireAuth from "./auth/RequireAuth.jsx";
@@ -592,7 +594,8 @@ const TOOLS=[
   {id:"suporte",       name:"Suporte",             type:"Nível",       free:true,  plano:"free"},
   {id:"resistencia",   name:"Resistência",         type:"Nível",       free:true,  plano:"free"},
   // PREMIUM
-  {id:"bandeira",        name:"Bandeira",              type:"Continuação", free:false, plano:"premium"},
+  {id:"bandeira_alta",   name:"Bandeira de Alta",      type:"Continuação", free:false, plano:"premium"},
+  {id:"bandeira_baixa",  name:"Bandeira de Baixa",     type:"Continuação", free:false, plano:"premium"},
   {id:"tri_descendente", name:"Triângulo Descendente", type:"Continuação", free:false, plano:"premium"},
   {id:"tri_ascendente",  name:"Triângulo",             type:"Continuação", free:false, plano:"premium"},
   {id:"cunha",           name:"Cunha",                 type:"Reversão",    free:false, plano:"premium"},
@@ -914,6 +917,83 @@ function _desenharTopoDuplo(ctx, toX, toY, p, isSel){
     ctx.font = "bold 9px 'JetBrains Mono',monospace";
     ctx.textAlign = "left";
     ctx.fillText("NECK " + fmtP(P.vale.preco), coords[2].x + 8, valeC.y - 4);
+  }
+
+  ctx.restore();
+}
+
+// Desenho da Bandeira (alta/baixa) — mastro (linha sólida, início→fim) +
+// canal de consolidação (as duas linhas tracejadas, topo1→topo2 e
+// fundo1→fundo2), mesmos 6 pontos marcados no admin (ver STEPS/linePairs em
+// AdminTemplatesBandeiraAlta/Baixa.jsx — aqui só redesenha o mesmo par de
+// linhas no gráfico real).
+function _desenharBandeira(ctx, toX, toY, p, isSel){
+  const P = p.pontos;
+  if(!P) return;
+
+  const par = (a, b) => {
+    if(!a || !b) return null;
+    const xa = toX(a.i), ya = toY(a.preco);
+    const xb = toX(b.i), yb = toY(b.preco);
+    return (xa==null || ya==null || xb==null || yb==null) ? null : {a:{x:xa,y:ya}, b:{x:xb,y:yb}};
+  };
+  const mastro = par(P.mastro_inicio, P.mastro_fim);
+  const canalTopo = par(P.topo1, P.topo2);
+  const canalFundo = par(P.fundo1, P.fundo2);
+  const fimMastro = mastro?.b;
+
+  ctx.save();
+
+  const resultado = p.resultado || "pendente";
+  const cor = resultado === "sucesso" ? "#F5A623" : resultado === "falhou" ? "#FF2D55" : "#888888";
+
+  if(!isSel){
+    if(fimMastro){
+      ctx.globalAlpha = resultado === "falhou" ? 0.7 : 1;
+      _desenharMarcadorResultado(ctx, fimMastro.x, fimMastro.y - 16, resultado, cor, 8);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+
+  if(mastro){
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = cor;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(mastro.a.x, mastro.a.y);
+    ctx.lineTo(mastro.b.x, mastro.b.y);
+    ctx.stroke();
+  }
+
+  for(const canal of [canalTopo, canalFundo]){
+    if(!canal) continue;
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = "#3D7EFF";
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(canal.a.x, canal.a.y);
+    ctx.lineTo(canal.b.x, canal.b.y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  if(fimMastro){
+    _desenharMarcadorResultado(ctx, fimMastro.x, fimMastro.y - 18, resultado, cor, 9);
+  }
+
+  for(const [key, pt] of Object.entries(P)){
+    const x = toX(pt.i), y = toY(pt.preco);
+    if(x==null || y==null) continue;
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = key.startsWith("mastro") ? cor : "#3D7EFF";
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI*2);
+    ctx.fill();
   }
 
   ctx.restore();
@@ -2483,6 +2563,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         const tipoNorm = normalizarTipo(p.tipo);
         if(tipoNorm === "topo_duplo") _desenharTopoDuplo(ctx, toX, toY, p, isSel);
         else if(tipoNorm === "suporte" || tipoNorm === "resistencia") _desenharNivel(ctx, toX, toY, p, isSel);
+        else if(tipoNorm === "bandeira_alta" || tipoNorm === "bandeira_baixa") _desenharBandeira(ctx, toX, toY, p, isSel);
         else _desenharOCO(ctx, toX, toY, p, isSel);
       }
 
@@ -2977,15 +3058,23 @@ const ICONE_ATIVO_INFO = {
   "BBDC4.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=bradesco.com.br&sz=128",      cor:"#003087" },
   "WEGE3.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=weg.net&sz=128",               cor:"#003087" },
   "MGLU3.SA": { tipo:"img", url:"https://www.google.com/s2/favicons?domain=magazineluiza.com.br&sz=128", cor:"#003087" },
-  // Commodities e forex — sem logo de empresa, símbolo dentro do círculo
+  // Commodities e forex — sem logo de empresa, símbolo dentro do círculo.
+  // Cor de cada uma remete à própria commodity (ouro amarelo, cobre
+  // alaranjado, WTI x Brent em tons diferentes de petróleo etc.) em vez de
+  // todas caírem no mesmo cinza genérico — mais fácil de reconhecer de
+  // relance na lista/ticker.
   "GC=F":     { tipo:"simbolo", texto:"Au",  cor:"#FFD700" },
   "SI=F":     { tipo:"simbolo", texto:"Ag",  cor:"#C0C0C0" },
-  "CL=F":     { tipo:"simbolo", texto:"Oil", cor:"#8B949E" },
-  "BZ=F":     { tipo:"simbolo", texto:"Oil", cor:"#8B949E" },
-  "NG=F":     { tipo:"simbolo", texto:"Gás", cor:"#8B949E" },
-  "ZC=F":     { tipo:"simbolo", texto:"Mi",  cor:"#8B949E" },
-  "ZS=F":     { tipo:"simbolo", texto:"Sj",  cor:"#8B949E" },
-  "KC=F":     { tipo:"simbolo", texto:"Ca",  cor:"#8B949E" },
+  "HG=F":     { tipo:"simbolo", texto:"Cu",  cor:"#B87333" },
+  "PL=F":     { tipo:"simbolo", texto:"Pt",  cor:"#A9B4C2" },
+  "CL=F":     { tipo:"simbolo", texto:"WTI", cor:"#4A4A4A" },
+  "BZ=F":     { tipo:"simbolo", texto:"BRT", cor:"#1B3A57" },
+  "NG=F":     { tipo:"simbolo", texto:"Gás", cor:"#4A90D9" },
+  "ZC=F":     { tipo:"simbolo", texto:"Mi",  cor:"#F4C430" },
+  "ZS=F":     { tipo:"simbolo", texto:"Sj",  cor:"#7CB342" },
+  "KC=F":     { tipo:"simbolo", texto:"Ca",  cor:"#6F4E37" },
+  "SB=F":     { tipo:"simbolo", texto:"Aç",  cor:"#E8B4B8" },
+  "CT=F":     { tipo:"simbolo", texto:"Al",  cor:"#D7DEE6" },
   "USDBRL=X": { tipo:"simbolo", texto:"R$",  cor:"#009C3B" },
   "EURBRL=X": { tipo:"simbolo", texto:"€",   cor:"#003399" },
   "GBPBRL=X": { tipo:"simbolo", texto:"£",   cor:"#C8102E" },
@@ -4708,7 +4797,7 @@ function AppInner(){
       fetch(`${API}/mercado`)
         .then(r=>r.json())
         .then(d=>setMercado(d.dados||[]))
-        .catch(()=>setErro("Backend offline. Rode: python -m uvicorn main:app --reload --port 8000"));
+        .catch(()=>setErro("Não foi possível carregar as cotações agora. Tentando de novo em instantes."));
     };
     buscar();
     const id = setInterval(buscar, 60000);
@@ -5261,6 +5350,12 @@ function Router(){
   }
   if (location.pathname === "/admin/templates/niveis") {
     return <RequireAdmin><AdminTemplatesNiveis/></RequireAdmin>;
+  }
+  if (location.pathname === "/admin/templates/bandeira-alta") {
+    return <RequireAdmin><AdminTemplatesBandeiraAlta/></RequireAdmin>;
+  }
+  if (location.pathname === "/admin/templates/bandeira-baixa") {
+    return <RequireAdmin><AdminTemplatesBandeiraBaixa/></RequireAdmin>;
   }
 
   if (location.pathname === "/login") return <Login/>;
