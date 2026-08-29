@@ -77,7 +77,19 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # sem isso, o navegador bloqueia toda chamada do frontend em produção pra
 # essa API por CORS. Em dev, sem a var, cai no default "localhost:5173"
 # (ver config.py) e as duas próximas linhas cobrem localhost/5173 e /3000.
-_origens_permitidas = {FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"}
+#
+# tradezen.com.br e www ficam fixos aqui (não só via FRONTEND_URL) — assim
+# o domínio de produção nunca depende de alguém lembrar de setar a env var
+# certa no Render; confirmado na prática que era exatamente isso que
+# estava faltando (preflight OPTIONS sem access-control-allow-origin pro
+# domínio real).
+_origens_permitidas = {
+    FRONTEND_URL,
+    "https://tradezen.com.br",
+    "https://www.tradezen.com.br",
+    "http://localhost:5173",
+    "http://localhost:3000",
+}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(_origens_permitidas),
