@@ -1833,6 +1833,11 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     const fiboArmado = activeTools.has("fibo") && !fibo?.b;
     const armado = !!(ferramentaAtiva || fiboArmado);
     containerRef.current.style.cursor = armado ? "crosshair" : "default";
+    // touch-action:none trava o navegador de tentar fazer pan/zoom nativo
+    // com o dedo enquanto uma ferramenta está armada — sem isso, mesmo com
+    // handleScroll/handleScale desligados no chart, o navegador ainda podia
+    // "roubar" o toque antes do nosso pointerdown/pointerup rodar.
+    containerRef.current.style.touchAction = armado ? "none" : "auto";
     chartRef.current?.applyOptions({ handleScroll: !armado, handleScale: !armado });
   },[ferramentaAtiva, activeTools, fibo]);
 
@@ -2507,14 +2512,20 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       }
     };
 
-    container.addEventListener("mousemove", onMouseMove);
-    container.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
+    // Pointer Events (não mouse) — cobre mouse E toque com o mesmo código,
+    // sem depender do navegador "traduzir" toque em mousedown/mouseup
+    // sintético (tradução que atrasa ou nem acontece quando outra coisa no
+    // elemento também está de olho no toque, ex: o próprio Lightweight
+    // Charts cuidando de pan/zoom) — era por isso que colocar ponto de
+    // desenho não funcionava de verdade no celular.
+    container.addEventListener("pointermove", onMouseMove);
+    container.addEventListener("pointerdown", onMouseDown);
+    window.addEventListener("pointerup", onMouseUp);
     container.addEventListener("contextmenu", onContextMenu);
     return () => {
-      container.removeEventListener("mousemove", onMouseMove);
-      container.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
+      container.removeEventListener("pointermove", onMouseMove);
+      container.removeEventListener("pointerdown", onMouseDown);
+      window.removeEventListener("pointerup", onMouseUp);
       container.removeEventListener("contextmenu", onContextMenu);
     };
   },[]);
