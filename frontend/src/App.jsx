@@ -1744,7 +1744,7 @@ function HomeLineChart({data, color, tema="dark"}){
 }
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico}){
+function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico}){
   const isMobile = useIsMobile();
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
@@ -1820,10 +1820,20 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
   // Cursor crosshair enquanto uma ferramenta (nova ou o fibo antigo) está
   // esperando clique; volta ao normal quando nenhuma está armada (o próprio
   // mousemove troca pra "move" ao passar perto de um handle arrastável).
+  //
+  // No mobile, o mesmo toque que devia marcar um ponto também é lido pelo
+  // Lightweight Charts como pan/zoom nativo (handleScroll/handleScale
+  // ficavam sempre ligados) — o gráfico se movia em vez de registrar o
+  // ponto, e o "slider" azul que aparecia era o próprio eixo de preço
+  // sendo arrastado sem querer. Desliga os dois enquanto uma ferramenta
+  // está armada (mesma condição do cursor acima) e religa assim que
+  // desarma — o desenho fica completo/cancelado.
   useEffect(()=>{
     if(!containerRef.current) return;
     const fiboArmado = activeTools.has("fibo") && !fibo?.b;
-    containerRef.current.style.cursor = (ferramentaAtiva || fiboArmado) ? "crosshair" : "default";
+    const armado = !!(ferramentaAtiva || fiboArmado);
+    containerRef.current.style.cursor = armado ? "crosshair" : "default";
+    chartRef.current?.applyOptions({ handleScroll: !armado, handleScale: !armado });
   },[ferramentaAtiva, activeTools, fibo]);
 
   // Inicializa o gráfico
@@ -2661,20 +2671,30 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
         <div style={{
           position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
           background:"rgba(6,8,15,.85)",border:"1px solid rgba(245,166,35,.4)",color:"#F5A623",
-          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 14px",borderRadius:20,zIndex:15,
-          pointerEvents:"none",whiteSpace:"nowrap",
+          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 8px 6px 14px",borderRadius:20,zIndex:15,
+          display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",
         }}>
-          {!fibo ? "Fibonacci: clique no 1º ponto do gráfico" : "Fibonacci: clique no 2º ponto do gráfico"}
+          <span style={{pointerEvents:"none"}}>{!fibo ? "Fibonacci: toque no 1º ponto" : "Fibonacci: toque no 2º ponto"}</span>
+          <button
+            onClick={()=>{ setFibo(null); toggleTool?.("fibo"); }}
+            title="Cancelar"
+            style={{background:"rgba(255,255,255,.08)",border:"none",color:"inherit",width:20,height:20,borderRadius:"50%",cursor:"pointer",fontSize:12,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
+          >✕</button>
         </div>
       )}
       {ferramentaAtiva && FERRAMENTA_INFO[ferramentaAtiva] && (
         <div style={{
           position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
           background:"rgba(6,8,15,.85)",border:"1px solid rgba(41,98,255,.4)",color:"#2962ff",
-          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 14px",borderRadius:20,zIndex:15,
-          pointerEvents:"none",whiteSpace:"nowrap",
+          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 8px 6px 14px",borderRadius:20,zIndex:15,
+          display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",
         }}>
-          {FERRAMENTA_INFO[ferramentaAtiva].hints[pontosProgresso.length] || "Clique no gráfico..."}
+          <span style={{pointerEvents:"none"}}>{FERRAMENTA_INFO[ferramentaAtiva].hints[pontosProgresso.length] || "Toque no gráfico..."}</span>
+          <button
+            onClick={()=>setFerramentaAtiva(null)}
+            title="Cancelar"
+            style={{background:"rgba(255,255,255,.08)",border:"none",color:"inherit",width:20,height:20,borderRadius:"50%",cursor:"pointer",fontSize:12,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
+          >✕</button>
         </div>
       )}
       {menuCtx && createPortal(
@@ -4311,6 +4331,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               tema={tema}
               ferramentaAtiva={ferramentaAtiva}
               setFerramentaAtiva={setFerramentaAtiva}
+              toggleTool={toggleTool}
               desenhos={desenhos}
               setDesenhos={setDesenhos}
               registrarHistorico={registrarHistorico}
