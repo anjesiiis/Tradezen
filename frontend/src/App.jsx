@@ -524,11 +524,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
   /* ── ANÁLISE (gráfico de um ativo) ── */
   .analysis{min-width:0!important;width:100%}
-  /* Piso de altura pro container do candlestick+volume — sem isso, num
-     viewport bem baixo (teclado aberto, celular deitado) o flex:1 podia
-     encolher demais e o volume (25% desse espaço) virar pixels de menos
-     pra aparecer de verdade. */
-  .achart{min-height:450px}
   /* Multitelas no celular = trocar de "mesa" (estilo poker), não grade lado
      a lado: força layout de bloco cheio mesmo se a classe grid4 (2x2 do
      desktop) estiver aplicada — a tela oculta já vem com display:none via
@@ -536,9 +531,22 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
      espaço. A classe analysis-wrap é quem reserva os 100vh-52px agora
      (mesa-tabs + o gráfico dividem essa altura); analysis-row vira flex:1
      dentro dela em vez de reservar a tela inteira sozinha — senão, com a
-     barra de abas visível, o gráfico vazaria pra baixo da tela. */
-  .analysis-wrap{display:flex;flex-direction:column;height:calc(100vh - 52px)}
-  .analysis-row, .analysis-row.grid4{display:block!important;overflow-x:hidden;flex:1;min-height:0}
+     barra de abas visível, o gráfico vazaria pra baixo da tela.
+
+     Nada aqui pode ter min-height fixo em px (tipo "450px") — num
+     viewport mais baixo isso força o miolo a crescer além do espaço real,
+     e como só overflow-x era travado (não overflow-y), o excesso vazava
+     pra fora do .analysis-row/.analysis-wrap e virava scroll da PÁGINA
+     inteira — daí o header/barra do ativo "sumindo" ao rolar e sem jeito
+     de voltar. Com flex:1 puro (sem piso de altura) + overflow-y:hidden
+     nos dois containers, o gráfico sempre cabe exatamente no que sobra,
+     nunca estoura, e a única coisa que rola é o próprio gráfico (arrastar
+     candles, já nativo da lib). O nav vira fixed só nesta página (via
+     :has(~ .analysis-wrap), não afeta as outras) pra nunca sumir junto. */
+  body:has(.analysis-wrap){overflow:hidden;height:100%}
+  .nav:has(~ .analysis-wrap){position:fixed;top:0;left:0;right:0}
+  .analysis-wrap{display:flex;flex-direction:column;height:calc(100vh - 52px);margin-top:52px;overflow-y:hidden}
+  .analysis-row, .analysis-row.grid4{display:block!important;overflow:hidden;flex:1;min-height:0}
   .analysis-row .analysis{min-width:0!important;width:100%!important;height:100%!important;border:none!important}
 
   /* Barra de abas das mesas — só aparece com 2+ telas abertas (ver JSX) */
