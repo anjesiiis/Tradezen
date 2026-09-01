@@ -17,6 +17,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 
 .admin-header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
 .admin-logo{font-family:var(--font-h);font-size:20px;letter-spacing:2px;color:#fff}
+.notranslate{translate:no}
 .admin-logo span{color:var(--accent)}
 .admin-header-title{color:var(--text2);font-size:13px;margin-left:12px}
 .admin-link-btn{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-b)}

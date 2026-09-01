@@ -169,7 +169,7 @@ export default function AdminTemplatesBandeiraAlta() {
     <AdminShell>
       <div className="admin-header">
         <div style={{ display: "flex", alignItems: "center" }}>
-          <span className="admin-logo">Trade<span>Up</span></span>
+          <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates Bandeira de Alta</span>
           <AdminPatternNav active="bandeira-alta" />
         </div>

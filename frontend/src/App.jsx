@@ -91,6 +91,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* NAV */
 .nav{height:52px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;z-index:200;position:relative}
 .logo{font-family:var(--font-h);font-size:22px;letter-spacing:3px;color:var(--text);cursor:pointer;user-select:none}
+.notranslate{translate:no}
 .logo span{color:var(--accent)}
 /* SEARCH BAR */
 .search{flex:1;max-width:440px;position:relative;display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;transition:border-color .2s}
@@ -527,7 +528,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
      viewport bem baixo (teclado aberto, celular deitado) o flex:1 podia
      encolher demais e o volume (25% desse espaço) virar pixels de menos
      pra aparecer de verdade. */
-  .achart{min-height:400px}
+  .achart{min-height:450px}
   /* Multitelas no celular = trocar de "mesa" (estilo poker), não grade lado
      a lado: força layout de bloco cheio mesmo se a classe grid4 (2x2 do
      desktop) estiver aplicada — a tela oculta já vem com display:none via
@@ -1960,6 +1961,25 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     const volData = [...volMap.values()].sort((a,b)=>a.time-b.time);
     volRef.current?.setData(volData);
 
+    // Reforça tamanho + margens do volume a cada troca de candles (ticker
+    // OU timeframe) — o ResizeObserver só dispara quando o container muda
+    // de tamanho de verdade; trocar de 60m pra 1D/1S não muda o tamanho da
+    // tela, só os dados, então sem isso um gráfico que nasceu com o
+    // tamanho errado (ex: container ainda não tinha o min-height mobile
+    // aplicado no primeiro paint) ficava preso naquele tamanho pro resto
+    // da sessão, em qualquer timeframe.
+    if(chartRef.current && containerRef.current){
+      chartRef.current.applyOptions({
+        width:  containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight,
+      });
+      if(volRef.current){
+        chartRef.current.priceScale("volume").applyOptions({
+          scaleMargins: { top: isMobile ? 0.75 : 0.8, bottom:0 },
+        });
+      }
+    }
+
     // Mostra os últimos 60 candles por padrão, bem próximo — usuário pode
     // arrastar pra ver o histórico completo.
     const totalCandles = candles.length;
@@ -2931,7 +2951,7 @@ function Abertura(){
         <div className="ab-head">
           <div className="ab-logo">
             <span className="ic">✦</span>
-            <span>TRADE<span>ZEN</span></span>
+            <span className="notranslate">TRADE<span>ZEN</span></span>
           </div>
         </div>
         <div className="ab-hero">
@@ -4950,7 +4970,7 @@ function AppInner(){
               <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
 
-            <div className="logo" onClick={()=>{ navigate("/mercados"); setDrawerAberto(false); setBuscaMobileAberta(false); }}>TRADE<span>ZEN</span></div>
+            <div className="logo notranslate" onClick={()=>{ navigate("/mercados"); setDrawerAberto(false); setBuscaMobileAberta(false); }}>TRADE<span>ZEN</span></div>
 
             <div className={`nav-search-wrap ${buscaMobileAberta?"aberta":""}`}>
               <SearchBar onSelect={a=>{ abrirAtivo(a); setBuscaMobileAberta(false); }} mercado={mercado}/>
@@ -4983,7 +5003,7 @@ function AppInner(){
               <div className="mobile-drawer-backdrop" onClick={()=>setDrawerAberto(false)}/>
               <div className="mobile-drawer">
                 <div className="mobile-drawer-head">
-                  <div className="logo" style={{fontSize:18}}>TRADE<span>ZEN</span></div>
+                  <div className="logo notranslate" style={{fontSize:18}}>TRADE<span>ZEN</span></div>
                   <button className="mobile-drawer-close" title="Fechar menu" onClick={()=>setDrawerAberto(false)}>✕</button>
                 </div>
                 <div className="mobile-drawer-nav">
