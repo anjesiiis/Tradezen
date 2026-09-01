@@ -2434,7 +2434,13 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       const proximo = acharHandleProximo(mx,my);
       if(proximo){
         arrastandoRef.current = proximo;
+        // Mesma dupla trava de "toque não pode vazar pro navegador" do
+        // effect que arma uma ferramenta nova (handleScroll/handleScale do
+        // chart + touch-action do container) — sem o touch-action aqui, o
+        // navegador ainda conseguia interpretar o arrastar de um ponto já
+        // colocado (não criar um novo) como gesto de pan da página inteira.
         chartRef.current?.applyOptions({ handleScroll:false, handleScale:false });
+        container.style.touchAction = "none";
         e.preventDefault();
       }
     };
@@ -2443,6 +2449,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       if(arrastandoRef.current){
         arrastandoRef.current = null;
         chartRef.current?.applyOptions({ handleScroll:true, handleScale:true });
+        container.style.touchAction = "auto";
         return;
       }
       const inicio = cliqueInicioRef.current;
