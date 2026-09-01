@@ -545,7 +545,12 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
      :has(~ .analysis-wrap), não afeta as outras) pra nunca sumir junto. */
   body:has(.analysis-wrap){overflow:hidden;height:100%}
   .nav:has(~ .analysis-wrap){position:fixed;top:0;left:0;right:0}
-  .analysis-wrap{display:flex;flex-direction:column;height:calc(100vh - 52px);margin-top:52px;overflow-y:hidden}
+  /* dvh (não vh) aqui é o que importa: 100vh é fixo do tamanho MÁXIMO
+     possível de tela, sem contar a barra do navegador quando ela está
+     visível — então o fundo do gráfico (onde fica o volume) ficava
+     desenhado embaixo da área real visível, coberto pela própria barra
+     do navegador. dvh se ajusta sozinho conforme a barra aparece/some. */
+  .analysis-wrap{display:flex;flex-direction:column;height:calc(100dvh - 52px);margin-top:52px;overflow-y:hidden}
   .analysis-row, .analysis-row.grid4{display:block!important;overflow:hidden;flex:1;min-height:0}
   .analysis-row .analysis{min-width:0!important;width:100%!important;height:100%!important;border:none!important}
 
