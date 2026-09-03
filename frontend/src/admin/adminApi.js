@@ -41,7 +41,11 @@ async function adminFetch(path, options = {}) {
 export function requestMagicLink(email) {
   return adminFetch("/admin/auth/magic-link", {
     method: "POST",
-    body: JSON.stringify({ email }),
+    // `origem` = de onde o link foi pedido. O backend valida contra uma
+    // allow-list e monta o destino do magic link a partir disso, em vez de
+    // depender de uma env var no servidor estar setada certa (ver
+    // _url_callback em admin_auth.py). Em dev isso vira localhost sozinho.
+    body: JSON.stringify({ email, origem: window.location.origin }),
   });
 }
 
