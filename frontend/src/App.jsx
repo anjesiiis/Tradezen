@@ -20,6 +20,11 @@ import AuthCallback from "./auth/AuthCallback.jsx";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// Hash da URL no instante em que o módulo carrega — antes do React
+// renderizar e antes do client do Supabase limpar a URL sozinho
+// (detectSessionInUrl). É onde chega o token do magic link do admin.
+const HASH_INICIAL = typeof window !== "undefined" ? window.location.hash : "";
+
 // Painel de padrões (OCO/Topo Duplo/Suporte-Resistência) escondido pro
 // primeiro grupo de teste — não está pronto pra eles verem ainda. Um
 // flag só, fácil de religar quando decidir trazer de volta.
@@ -5412,8 +5417,20 @@ function Router(){
   const location = useLocation();
   const naAbertura = location.pathname === "/";
 
+  // Magic link do admin pode cair em QUALQUER rota, não só em
+  // /admin/callback: quando a URL que pedimos não está na allow-list do
+  // painel do Supabase, ele ignora o pedido e manda pra "Site URL" (hoje a
+  // raiz do site). Como só o login do admin usa magic link neste projeto
+  // (usuário comum entra por senha — ver auth/Login.jsx), um token com
+  // type=magiclink é necessariamente dele, então tratamos aqui em vez de
+  // depender da configuração do painel estar correta.
+  const hashParams = new URLSearchParams(HASH_INICIAL.replace(/^#/, ""));
+  if (hashParams.get("access_token") && hashParams.get("type") === "magiclink") {
+    return <AdminCallback hashInicial={HASH_INICIAL}/>;
+  }
+
   if (location.pathname === "/admin/login") return <AdminLogin/>;
-  if (location.pathname === "/admin/callback") return <AdminCallback/>;
+  if (location.pathname === "/admin/callback") return <AdminCallback hashInicial={HASH_INICIAL}/>;
   if (location.pathname === "/admin/templates") {
     return <RequireAdmin><AdminTemplates/></RequireAdmin>;
   }

@@ -2,11 +2,17 @@ import { useEffect, useState } from "react";
 import AdminShell from "./theme.jsx";
 import { setAdminToken } from "./adminApi";
 
-export default function AdminCallback() {
+// `hashInicial`: o hash da URL capturado no carregamento do módulo (ver
+// HASH_INICIAL em App.jsx). É preciso porque o client do Supabase limpa o
+// hash da URL sozinho ao inicializar (detectSessionInUrl) — se lermos
+// window.location.hash tarde demais, o token já sumiu. Sem o prop, cai no
+// comportamento antigo (ler a URL na hora).
+export default function AdminCallback({ hashInicial }) {
   const [erro, setErro] = useState("");
 
   useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const bruto = hashInicial || window.location.hash;
+    const hash = new URLSearchParams(bruto.replace(/^#/, ""));
     const accessToken = hash.get("access_token");
     const errorDescription = hash.get("error_description");
 
@@ -21,7 +27,7 @@ export default function AdminCallback() {
 
     setAdminToken(accessToken);
     window.location.replace("/admin/templates/topo-duplo");
-  }, []);
+  }, [hashInicial]);
 
   return (
     <AdminShell>
