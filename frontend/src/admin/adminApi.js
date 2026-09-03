@@ -73,6 +73,13 @@ function makeTemplateApi(basePath) {
       const data = await adminFetch(basePath);
       return data.templates;
     },
+    // A listagem vem sem os candles de propósito (ver _COLUNAS_LISTA no
+    // backend — devolver tudo estourava o servidor). Quem precisa do
+    // template inteiro (visualizar/editar) busca por aqui.
+    async get(id) {
+      const data = await adminFetch(`${basePath}/${id}`);
+      return data.template;
+    },
     async create(payload) {
       const data = await adminFetch(basePath, { method: "POST", body: JSON.stringify(payload) });
       return data.template;

@@ -136,14 +136,25 @@ export default function AdminTemplatesNiveis() {
     }
   }
 
-  function iniciarEdicao(template) {
-    setEditando({ ...template, toquesEdit: template.pontos?.toques || [], readOnly: false });
+  // A listagem nao traz candles/pontos (respostas grandes demais derrubavam
+  // o servidor — ver _COLUNAS_LISTA no backend), entao busca o template
+  // completo aqui, so quando o usuario abre um.
+  async function abrirTemplate(template, readOnly) {
     setMensagem(null);
+    try {
+      const completo = await templatesNiveisApi.get(template.id);
+      setEditando({ ...completo, toquesEdit: completo.pontos?.toques || [], readOnly });
+    } catch {
+      setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
+    }
+  }
+
+  function iniciarEdicao(template) {
+    abrirTemplate(template, false);
   }
 
   function iniciarVisualizacao(template) {
-    setEditando({ ...template, toquesEdit: template.pontos?.toques || [], readOnly: true });
-    setMensagem(null);
+    abrirTemplate(template, true);
   }
 
   async function salvarEdicao() {

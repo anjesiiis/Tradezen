@@ -45,10 +45,20 @@ class TemplateUpdate(BaseModel):
     observacao: Optional[str] = None
 
 
+# Colunas leves de propósito: `candles` e `candles_contexto` guardam o
+# histórico inteiro de preços de cada template (chega a 2.500 candles por
+# linha). Devolver tudo isso na LISTAGEM gerava respostas de 13 MB, que o
+# servidor não aguentava montar — a página quebrava com 502/503 e aparecia
+# "Não foi possível carregar os templates". A tela de listagem só mostra
+# ticker/timeframe/resultado/data; os candles vêm no GET /{id}, na hora de
+# abrir um template.
+_COLUNAS_LISTA = "id,ticker,timeframe,resultado,observacao,criado_em"
+
+
 @router.get("")
 @limiter.limit("30/minute")
 def listar_templates(request: Request):
-    resp = supabase.table("templates_oco").select("*").order("criado_em", desc=True).execute()
+    resp = supabase.table("templates_oco").select(_COLUNAS_LISTA).order("criado_em", desc=True).execute()
     return {"status": "ok", "templates": resp.data, "total": len(resp.data)}
 
 

@@ -120,14 +120,25 @@ export default function AdminTemplatesBandeiraAlta() {
     }
   }
 
-  function iniciarEdicao(template) {
-    setEditando({ ...template, pontosEdit: template.pontos, readOnly: false });
+  // A listagem nao traz candles/pontos (respostas grandes demais derrubavam
+  // o servidor — ver _COLUNAS_LISTA no backend), entao busca o template
+  // completo aqui, so quando o usuario abre um.
+  async function abrirTemplate(template, readOnly) {
     setMensagem(null);
+    try {
+      const completo = await templatesBandeiraAltaApi.get(template.id);
+      setEditando({ ...completo, pontosEdit: completo.pontos, readOnly });
+    } catch {
+      setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
+    }
+  }
+
+  function iniciarEdicao(template) {
+    abrirTemplate(template, false);
   }
 
   function iniciarVisualizacao(template) {
-    setEditando({ ...template, pontosEdit: template.pontos, readOnly: true });
-    setMensagem(null);
+    abrirTemplate(template, true);
   }
 
   async function salvarEdicao() {
