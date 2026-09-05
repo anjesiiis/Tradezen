@@ -457,6 +457,11 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* ═══════════════════ MOBILE — <768px ═══════════════════ */
 @media (max-width:767px){
+  /* Fonte única das duas alturas fixas do layout mobile. Antes o 52px do
+     header estava escrito à mão em cada calc() — mudar exigia caçar todos.
+     Agora quem precisa do espaço usa var(). */
+  :root{ --h-header:44px; --h-nav-inferior:56px; }
+
   /* Só a página (documento) rola — não html/body/#root/.home todos com
      overflow-y próprio ao mesmo tempo. Essa pilha de scrolls aninhados era
      o motivo da rolagem travar: o dedo arrastava um container que não
@@ -480,8 +485,13 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .ac-fav{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .pane-btn{width:40px;height:40px}
 
-  /* ── HEADER ── */
-  .nav{padding:0 12px;gap:10px;position:relative}
+  /* ── HEADER (fixo, sempre visível) ── */
+  .nav{
+    position:fixed;top:0;left:0;right:0;height:var(--h-header);
+    padding:0 12px;gap:10px;z-index:100;
+    background:rgba(19,23,34,.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-bottom:.5px solid rgba(30,34,45,.6);
+  }
   .logo{font-size:19px;letter-spacing:2px}
   .nav-r{display:none}
   .hamburger-btn,.search-toggle-btn,.tema-toggle-mobile{display:flex}
@@ -498,8 +508,63 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .dash{display:block;width:100%}
   .dash-main{width:100%}
 
-  /* ── HOME / DASHBOARD ── */
-  .home{padding:14px 12px 40px;height:auto;overflow-y:visible}
+  /* ── HOME / DASHBOARD ──
+     Fundo com profundidade em vez de cor chapada: gradiente vertical mais
+     os dois brilhos difusos (::before/::after). São decorativos, então
+     pointer-events:none — não podem roubar toque de nada. O padding
+     reserva o espaço do header fixo e da barra inferior fixa. */
+  .home{
+    position:relative;height:auto;overflow-y:visible;
+    padding:calc(var(--h-header) + 12px) 12px calc(var(--h-nav-inferior) + 16px);
+    background:linear-gradient(180deg,#0f1118 0%,#0d1a2a 40%,#0f1118 100%);
+  }
+  .home::before,.home::after{content:"";position:absolute;pointer-events:none;z-index:0}
+  .home::before{
+    top:0;right:0;width:200px;height:200px;
+    background:radial-gradient(circle,rgba(41,98,255,.08) 0%,transparent 70%);
+  }
+  .home::after{
+    top:38%;left:0;width:180px;height:180px;
+    background:radial-gradient(circle,rgba(38,166,154,.06) 0%,transparent 70%);
+  }
+  /* Conteúdo acima dos brilhos */
+  .home>*{position:relative;z-index:1}
+
+  /* Cards da home somem no celular — a lista em linhas ocupa o lugar.
+     Classe própria (e não .crypto-main-grid direto) porque essa mesma
+     classe é usada na página de Criptomoedas, que continua com cards. */
+  .dash-so-desktop{display:none!important}
+
+  /* ── LISTA DE ATIVOS EM LINHAS (mobile) ── */
+  .mlista-secao{font-size:11px;letter-spacing:1.4px;font-weight:700;color:var(--text3);
+    text-transform:uppercase;margin:18px 0 6px;font-family:var(--font-m)}
+  .mlista{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;
+    background:rgba(19,23,34,.55);border:.5px solid rgba(30,34,45,.8)}
+  .mlista-item{display:flex;align-items:center;gap:11px;padding:11px 12px;min-height:56px;
+    border-bottom:.5px solid rgba(30,34,45,.7);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mlista-item:last-child{border-bottom:none}
+  .mlista-item:active{background:rgba(41,98,255,.07)}
+  .mlista-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .mlista-tk{font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-m);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mlista-nm{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mlista-dir{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+  .mlista-pr{font-size:13px;font-weight:600;color:var(--text);font-family:var(--font-m)}
+  .mlista-var{font-size:11px;font-weight:700;font-family:var(--font-m)}
+
+  /* ── BARRA DE NAVEGAÇÃO INFERIOR (5 abas) ── */
+  .mnav{position:fixed;bottom:0;left:0;right:0;height:var(--h-nav-inferior);z-index:100;
+    display:flex;align-items:stretch;
+    background:rgba(19,23,34,.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-top:.5px solid rgba(30,34,45,.6);
+    padding-bottom:env(safe-area-inset-bottom,0px)}
+  .mnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    background:none;border:none;padding:0;cursor:pointer;color:var(--text3);
+    font-family:var(--font-b);font-size:10px;font-weight:600;min-height:0;
+    -webkit-tap-highlight-color:transparent}
+  .mnav-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round}
+  .mnav-item.active{color:var(--accent)}
 
   /* Cards de ativos do topo — scroll horizontal, ~140px cada */
   .dash-top-row{display:flex!important;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:4px}
@@ -555,7 +620,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
      visível — então o fundo do gráfico (onde fica o volume) ficava
      desenhado embaixo da área real visível, coberto pela própria barra
      do navegador. dvh se ajusta sozinho conforme a barra aparece/some. */
-  .analysis-wrap{display:flex;flex-direction:column;height:calc(100dvh - 52px);margin-top:52px;overflow-y:hidden}
+  .analysis-wrap{display:flex;flex-direction:column;height:calc(100dvh - var(--h-header));margin-top:var(--h-header);overflow-y:hidden}
   .analysis-row, .analysis-row.grid4{display:block!important;overflow:hidden;flex:1;min-height:0}
   .analysis-row .analysis{min-width:0!important;width:100%!important;height:100%!important;border:none!important}
 
@@ -593,6 +658,10 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
 
   /* ── TICKER DE RODAPÉ ── */
+  /* Fita de cotacoes do rodape sai no mobile: o espaco de baixo agora e
+     da barra de navegacao de 5 abas (.mnav), as duas fixas no bottom:0
+     ficariam uma por cima da outra. */
+  .tbar{display:none}
   .ti{font-size:11px;padding:0 14px}
 
   /* ── LANDING PAGE ── */
@@ -4738,6 +4807,85 @@ function Pagina404(){
   );
 }
 
+// ── MOBILE: lista de ativos em linhas, agrupada por categoria ──
+// Substitui os cards no celular: linha ocupa a largura toda, o que cabe
+// mais informação por tela e fica mais fácil de escanear com o polegar.
+// A ordem das seções é fixa (índices → ações → cripto, o que a maioria
+// abre primeiro); o que sobrar de outras categorias entra depois, com o
+// próprio rótulo, pra nenhum ativo simplesmente sumir da lista.
+const MLISTA_SECOES = [
+  { rotulo:"Índices", mercados:["INDICE"] },
+  { rotulo:"Ações",   mercados:["B3","NASDAQ","NYSE"] },
+  { rotulo:"Cripto",  mercados:["CRIPTO"] },
+  { rotulo:"Moedas",  mercados:["FOREX"] },
+  { rotulo:"Commodities", mercados:["COMMODITY"] },
+];
+
+function ListaAtivosMobile({ mercado, abrirAtivo }){
+  const usados = new Set();
+  const grupos = MLISTA_SECOES.map(s=>{
+    const ativos = mercado.filter(a=>s.mercados.includes(a.mercado));
+    ativos.forEach(a=>usados.add(a.ticker));
+    return { rotulo:s.rotulo, ativos };
+  }).filter(g=>g.ativos.length>0);
+
+  const resto = mercado.filter(a=>!usados.has(a.ticker));
+  if(resto.length) grupos.push({ rotulo:"Outros", ativos:resto });
+
+  return (
+    <>
+      {grupos.map(g=>(
+        <div key={g.rotulo}>
+          <div className="mlista-secao">{g.rotulo}</div>
+          <div className="mlista">
+            {g.ativos.map(a=>(
+              <div key={a.ticker} className="mlista-item" onClick={()=>abrirAtivo(a)}>
+                <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={MKTC[a.mercado]} tamanho={30}/>
+                <span className="mlista-txt">
+                  <span className="mlista-tk">{a.simbolo}</span>
+                  <span className="mlista-nm">{a.nome}</span>
+                </span>
+                <span className="mlista-dir">
+                  <span className="mlista-pr">{fmtP(a.preco)}</span>
+                  <span className="mlista-var" style={{color:a.alta?"var(--up)":"var(--down)"}}>
+                    {a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── MOBILE: barra de navegação inferior (5 abas) ──
+const MNAV_ITENS = [
+  { id:"inicio",    label:"Lista",     icon:<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></> },
+  { id:"grafico",   label:"Gráfico",   icon:<><path d="M3 3v18h18"/><polyline points="7 14 11 9 15 13 20 6"/></> },
+  { id:"padroes",   label:"Padrões",   icon:<><path d="M3 17l4-6 4 3 5-8 5 5"/><circle cx="7" cy="11" r="1.6"/><circle cx="16" cy="6" r="1.6"/></> },
+  { id:"favoritos", label:"Favoritos", icon:<polygon points="12 2 15 9 22 9.5 17 14.5 18.5 21.5 12 17.8 5.5 21.5 7 14.5 2 9.5 9 9"/> },
+  { id:"menu",      label:"Menu",      icon:<><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></> },
+];
+
+function NavInferiorMobile({ ativo, onSelecionar }){
+  return (
+    <nav className="mnav">
+      {MNAV_ITENS.map(it=>(
+        <button
+          key={it.id}
+          className={`mnav-item ${ativo===it.id ? "active" : ""}`}
+          onClick={()=>onSelecionar(it.id)}
+        >
+          <svg viewBox="0 0 24 24">{it.icon}</svg>
+          {it.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function AppInner(){
   const navigate = useNavigate();
   const location = useLocation();
@@ -4754,6 +4902,30 @@ function AppInner(){
   // Suporta /mercados?secao=favoritos (usado pelo redirecionamento de
   // /favoritos) — só lido na primeira renderização, de propósito.
   const [secao,setSecao]     = useState(()=> new URLSearchParams(location.search).get("secao") || "inicio");
+
+  // Barra inferior do mobile. "Gráfico" abre o ativo que já está aberto (se
+  // houver) ou o primeiro da lista — sem isso a aba não teria pra onde ir.
+  // "Menu" reaproveita o drawer que já existe (o mesmo do hambúrguer), em
+  // vez de duplicar a navegação em dois lugares.
+  const aoTocarNavInferior = (id) => {
+    if(id === "menu"){ setDrawerAberto(true); return; }
+    if(id === "grafico"){
+      // Lê o ticker da própria URL (em vez de usar `tickerUrl`, que só é
+      // declarado mais abaixo) — assim o handler não depende da ordem das
+      // declarações dentro do componente.
+      const naRotaDeAtivo = location.pathname.startsWith("/ativo/");
+      const alvo = naRotaDeAtivo
+        ? decodeURIComponent(location.pathname.split("/ativo/")[1])
+        : mercado[0]?.ticker;
+      if(alvo) navigate(`/ativo/${encodeURIComponent(alvo)}`);
+      return;
+    }
+    setSecao(id);
+    if(location.pathname !== "/mercados") navigate("/mercados");
+  };
+
+  // Qual aba fica acesa: no gráfico é "grafico"; fora dele, segue a seção.
+  const abaAtiva = location.pathname.startsWith("/ativo/") ? "grafico" : secao;
 
   // Tema claro/escuro — persiste em localStorage, aplicado via atributo
   // data-theme na <html> (é o que os seletores :root[data-theme="light"] escutam).
@@ -5105,6 +5277,39 @@ function AppInner(){
           {secao==="cripto" && (
             <PaginaCriptomoedas tema={tema} mercado={mercado} abrirAtivo={abrirAtivo}/>
           )}
+          {secao==="padroes" && (
+            <div className="home">
+              <div className="sh" style={{marginTop:8}}>
+                <span className="st" style={{fontSize:18}}>Padrões gráficos</span>
+              </div>
+              <p style={{fontSize:12,color:"var(--text2)",margin:"0 0 4px"}}>
+                Os padrões que o TradeZen acompanha. Abra qualquer ativo e ligue-os pelo botão Indicadores.
+              </p>
+              {["Reversão","Continuação","Nível"].map(grupo=>{
+                const doGrupo = TOOLS.filter(t=>t.type===grupo);
+                if(!doGrupo.length) return null;
+                return (
+                  <div key={grupo}>
+                    <div className="mlista-secao">{grupo}</div>
+                    <div className="mlista">
+                      {doGrupo.map(t=>(
+                        <div key={t.id} className="mlista-item" style={{cursor:"default"}}>
+                          <span className="mlista-txt">
+                            <span className="mlista-tk" style={{fontFamily:"var(--font-b)"}}>{t.name}</span>
+                            <span className="mlista-nm">{t.type}</span>
+                          </span>
+                          {!t.free && (
+                            <span style={{fontSize:10,fontWeight:700,color:"var(--gold)",border:"1px solid var(--gold)",
+                              borderRadius:6,padding:"2px 7px",flexShrink:0,letterSpacing:.5}}>PRO</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {secao==="favoritos" && (
             <PaginaListaAtivos
               titulo="Favoritos"
@@ -5115,14 +5320,17 @@ function AppInner(){
           )}
           {secao==="inicio" && (
           <div className="home">
+          {isMobile && <ListaAtivosMobile mercado={mercado} abrirAtivo={abrirAtivo}/>}
           {erro&&(
             <div style={{padding:"10px 16px",color:"var(--down)",fontSize:11,fontFamily:"var(--font-m)",background:"rgba(255,69,96,.06)",borderRadius:8,border:"1px solid rgba(255,69,96,.2)"}}>
               {erro}
             </div>
           )}
 
-          {/* TOPO — mesmo estilo dos cards da página de Criptomoedas */}
-          <div className="dash-top-row">
+          {/* TOPO — mesmo estilo dos cards da página de Criptomoedas.
+              `dash-so-desktop`: no celular quem mostra os ativos é a
+              ListaAtivosMobile (linhas), não estes cards. */}
+          <div className="dash-top-row dash-so-desktop">
             {dashTop.map((a,i)=>{
               const cfg = DASH_TOP_CONFIG[i];
               if("semDados" in a){
@@ -5160,7 +5368,7 @@ function AppInner(){
           </div>
 
           {/* ÁREA PRINCIPAL — gráfico do Ibovespa (70%) + painel lateral (30%) */}
-          <div className="crypto-main-grid">
+          <div className="crypto-main-grid dash-so-desktop">
             <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",rowGap:6}}>
@@ -5387,6 +5595,15 @@ function AppInner(){
 
       {path!=="/" && path!=="/mercados" && path!=="/principais-ativos" && !isAnalysis && !isLista && (
         <Pagina404/>
+      )}
+
+      {/* Barra inferior — só mobile, e fora da abertura e do gráfico: a
+          página de ativo é tela cheia de propósito (ver .analysis-wrap, que
+          reserva exatamente a altura da tela menos o header) e ganhar mais
+          56px fixos ali cortaria o gráfico. A volta de lá é pela seta que
+          já existe na barra do ativo. */}
+      {isMobile && path!=="/" && !isAnalysis && (
+        <NavInferiorMobile ativo={abaAtiva} onSelecionar={aoTocarNavInferior}/>
       )}
 
       {avisoCadastro && (
