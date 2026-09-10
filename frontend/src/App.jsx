@@ -251,7 +251,10 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ind-item:hover{background:var(--s2)}
 .ind-chk{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .12s}
 .ind-chk.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.ind-label{font-size:11px;color:var(--text2);flex:1}
+/* Nome do indicador na lista: era --text2 (#5A7299, azul-acinzentado
+   apagado) e ficava dificil de ler. --text e o texto mais claro do
+   tema (quase branco no escuro) e vira escuro no tema claro sozinho. */
+.ind-label{font-size:11px;color:var(--text);flex:1}
 .ind-color{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .saiba-mais-btn{position:fixed;transform:translate(-50%,-100%) translateY(-18px);z-index:150;background:linear-gradient(135deg,#F5A623,#e8940f);color:#000;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 4px 16px rgba(245,166,35,.4);animation:smBtnIn .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
 .saiba-mais-btn:hover{filter:brightness(1.1);transform:translate(-50%,-100%) translateY(-18px) scale(1.04)}
