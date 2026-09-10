@@ -463,7 +463,28 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   /* Fonte única das duas alturas fixas do layout mobile. Antes o 52px do
      header estava escrito à mão em cada calc() — mudar exigia caçar todos.
      Agora quem precisa do espaço usa var(). */
-  :root{ --h-header:44px; --h-nav-inferior:56px; }
+  :root{
+    --h-header:44px; --h-nav-inferior:56px;
+    /* Superfícies do mobile como variáveis, não hex fixo: senão o tema
+       claro trocava só o texto (que usa --text) e deixava tudo escrito em
+       preto sobre fundo preto. */
+    --mob-superficie:rgba(19,23,34,.95);
+    --mob-borda:rgba(30,34,45,.6);
+    --mob-borda-forte:rgba(30,34,45,.8);
+    --mob-lista:rgba(19,23,34,.55);
+    --mob-fundo:linear-gradient(180deg,#0f1118 0%,#0d1a2a 40%,#0f1118 100%);
+    --mob-brilho-1:rgba(41,98,255,.08);
+    --mob-brilho-2:rgba(38,166,154,.06);
+  }
+  :root[data-theme="light"]{
+    --mob-superficie:rgba(255,255,255,.95);
+    --mob-borda:rgba(210,217,228,.9);
+    --mob-borda-forte:rgba(205,213,226,.95);
+    --mob-lista:#FFFFFF;
+    --mob-fundo:linear-gradient(180deg,#F3F5F9 0%,#E7EEF9 40%,#F3F5F9 100%);
+    --mob-brilho-1:rgba(41,98,255,.07);
+    --mob-brilho-2:rgba(38,166,154,.07);
+  }
 
   /* Só a página (documento) rola — não html/body/#root/.home todos com
      overflow-y próprio ao mesmo tempo. Essa pilha de scrolls aninhados era
@@ -492,8 +513,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .nav{
     position:fixed;top:0;left:0;right:0;height:var(--h-header);
     padding:0 12px;gap:10px;z-index:100;
-    background:rgba(19,23,34,.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    border-bottom:.5px solid rgba(30,34,45,.6);
+    background:var(--mob-superficie);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-bottom:.5px solid var(--mob-borda);
   }
   .logo{font-size:19px;letter-spacing:2px}
   .nav-r{display:none}
@@ -519,16 +540,16 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .home{
     position:relative;height:auto;overflow-y:visible;
     padding:calc(var(--h-header) + 12px) 12px calc(var(--h-nav-inferior) + 16px);
-    background:linear-gradient(180deg,#0f1118 0%,#0d1a2a 40%,#0f1118 100%);
+    background:var(--mob-fundo);
   }
   .home::before,.home::after{content:"";position:absolute;pointer-events:none;z-index:0}
   .home::before{
     top:0;right:0;width:200px;height:200px;
-    background:radial-gradient(circle,rgba(41,98,255,.08) 0%,transparent 70%);
+    background:radial-gradient(circle,var(--mob-brilho-1) 0%,transparent 70%);
   }
   .home::after{
     top:38%;left:0;width:180px;height:180px;
-    background:radial-gradient(circle,rgba(38,166,154,.06) 0%,transparent 70%);
+    background:radial-gradient(circle,var(--mob-brilho-2) 0%,transparent 70%);
   }
   /* Conteúdo acima dos brilhos */
   .home>*{position:relative;z-index:1}
@@ -542,9 +563,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .mlista-secao{font-size:11px;letter-spacing:1.4px;font-weight:700;color:var(--text3);
     text-transform:uppercase;margin:18px 0 6px;font-family:var(--font-m)}
   .mlista{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;
-    background:rgba(19,23,34,.55);border:.5px solid rgba(30,34,45,.8)}
+    background:var(--mob-lista);border:.5px solid var(--mob-borda-forte)}
   .mlista-item{display:flex;align-items:center;gap:11px;padding:11px 12px;min-height:56px;
-    border-bottom:.5px solid rgba(30,34,45,.7);cursor:pointer;-webkit-tap-highlight-color:transparent}
+    border-bottom:.5px solid var(--mob-borda);cursor:pointer;-webkit-tap-highlight-color:transparent}
   .mlista-item:last-child{border-bottom:none}
   .mlista-item:active{background:rgba(41,98,255,.07)}
   .mlista-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
@@ -558,8 +579,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   /* ── BARRA DE NAVEGAÇÃO INFERIOR (5 abas) ── */
   .mnav{position:fixed;bottom:0;left:0;right:0;height:var(--h-nav-inferior);z-index:100;
     display:flex;align-items:stretch;
-    background:rgba(19,23,34,.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    border-top:.5px solid rgba(30,34,45,.6);
+    background:var(--mob-superficie);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-top:.5px solid var(--mob-borda);
     padding-bottom:env(safe-area-inset-bottom,0px)}
   .mnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     background:none;border:none;padding:0;cursor:pointer;color:var(--text3);
