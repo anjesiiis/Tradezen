@@ -4867,9 +4867,11 @@ function ListaAtivosMobile({ mercado, abrirAtivo }){
 const MNAV_ITENS = [
   { id:"inicio",    label:"Lista",     icon:<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></> },
   { id:"grafico",   label:"Gráfico",   icon:<><path d="M3 3v18h18"/><polyline points="7 14 11 9 15 13 20 6"/></> },
-  { id:"padroes",   label:"Padrões",   icon:<><path d="M3 17l4-6 4 3 5-8 5 5"/><circle cx="7" cy="11" r="1.6"/><circle cx="16" cy="6" r="1.6"/></> },
+  { id:"cripto",    label:"Cripto",    icon:<><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h4a2 2 0 0 1 0 4h-4zm0 4h4.5a2 2 0 0 1 0 4h-4.5zm1.5-7v2m0 9v2"/></> },
   { id:"favoritos", label:"Favoritos", icon:<polygon points="12 2 15 9 22 9.5 17 14.5 18.5 21.5 12 17.8 5.5 21.5 7 14.5 2 9.5 9 9"/> },
-  { id:"menu",      label:"Menu",      icon:<><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></> },
+  // Grade 2x2 (e nao as linhas horizontais de antes): as linhas ficavam
+  // praticamente iguais ao icone de "Lista", dava pra confundir as duas abas.
+  { id:"menu",      label:"Menu",      icon:<><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></> },
 ];
 
 function NavInferiorMobile({ ativo, onSelecionar }){
@@ -5279,39 +5281,6 @@ function AppInner(){
           )}
           {secao==="cripto" && (
             <PaginaCriptomoedas tema={tema} mercado={mercado} abrirAtivo={abrirAtivo}/>
-          )}
-          {secao==="padroes" && (
-            <div className="home">
-              <div className="sh" style={{marginTop:8}}>
-                <span className="st" style={{fontSize:18}}>Padrões gráficos</span>
-              </div>
-              <p style={{fontSize:12,color:"var(--text2)",margin:"0 0 4px"}}>
-                Os padrões que o TradeZen acompanha. Abra qualquer ativo e ligue-os pelo botão Indicadores.
-              </p>
-              {["Reversão","Continuação","Nível"].map(grupo=>{
-                const doGrupo = TOOLS.filter(t=>t.type===grupo);
-                if(!doGrupo.length) return null;
-                return (
-                  <div key={grupo}>
-                    <div className="mlista-secao">{grupo}</div>
-                    <div className="mlista">
-                      {doGrupo.map(t=>(
-                        <div key={t.id} className="mlista-item" style={{cursor:"default"}}>
-                          <span className="mlista-txt">
-                            <span className="mlista-tk" style={{fontFamily:"var(--font-b)"}}>{t.name}</span>
-                            <span className="mlista-nm">{t.type}</span>
-                          </span>
-                          {!t.free && (
-                            <span style={{fontSize:10,fontWeight:700,color:"var(--gold)",border:"1px solid var(--gold)",
-                              borderRadius:6,padding:"2px 7px",flexShrink:0,letterSpacing:.5}}>PRO</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           )}
           {secao==="favoritos" && (
             <PaginaListaAtivos
