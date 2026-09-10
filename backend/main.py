@@ -26,6 +26,7 @@ ENDPOINTS:
 """
 
 import asyncio
+import threading
 import time
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -144,6 +145,48 @@ def cache_get(chave: str, ttl: int):
 
 def cache_set(chave: str, dados):
     _cache[chave] = (time.time(), dados)
+
+
+# ── AQUECIMENTO DO RESUMO DE MERCADO ──────────────────────────
+# Montar o resumo custa ~26s: são 65 ativos buscados no Yahoo, de 6 em 6
+# (mais que isso e o Yahoo derruba as requisições — ver buscar_resumo_
+# mercado). Antes isso acontecia DENTRO da requisição do usuário, então:
+#   1. quem chegava com o cache vencido esperava os 26s inteiros;
+#   2. pior, enquanto a busca rolava o servidor ficava ocupado e as
+#      outras requisições entravam na fila — um visitante atrasava o
+#      outro (medido: 30s pra responder até a rota mais simples).
+# Agora uma thread mantém o cache sempre quente por fora, e a rota nunca
+# faz a busca pesada durante o atendimento.
+_INTERVALO_AQUECIMENTO = 240  # 4 min — um pouco antes do TTL_CURTO vencer
+_lock_resumo = threading.Lock()
+
+
+def _resumo_mercado_atualizado():
+    """Busca o resumo e guarda no cache. O lock evita que duas buscas
+    iguais rodem ao mesmo tempo (thread de aquecimento + requisição de
+    usuário no primeiro acesso, por exemplo) — a segunda espera a
+    primeira e aproveita o resultado, em vez de martelar o Yahoo em
+    dobro."""
+    with _lock_resumo:
+        ja_pronto = cache_get("resumo_mercado", TTL_CURTO)
+        if ja_pronto is not None:
+            return ja_pronto
+        dados = buscar_resumo_mercado()
+        if dados:
+            cache_set("resumo_mercado", dados)
+        return dados
+
+
+def _loop_aquecimento():
+    while True:
+        try:
+            _resumo_mercado_atualizado()
+        except Exception as e:  # nunca deixa a thread morrer
+            print(f"[aquecimento] resumo de mercado falhou: {e}")
+        time.sleep(_INTERVALO_AQUECIMENTO)
+
+
+threading.Thread(target=_loop_aquecimento, daemon=True).start()
 
 
 # ── LISTA COMPLETA DE ATIVOS DISPONÍVEIS ──────────────────────
@@ -311,9 +354,19 @@ def resumo_mercado(request: Request):
     if em_cache is not None:
         return {"status": "ok", "dados": em_cache, "cache": True}
 
+    # Cache vencido, mas existe: devolve o antigo NA HORA. A thread de
+    # aquecimento já está cuidando de atualizar. Preço de alguns minutos
+    # atrás na hora é melhor que preço exato depois de 26 segundos de
+    # tela branca — ainda mais porque o front recarrega sozinho a cada
+    # 60s e pega o valor novo assim que ele existir.
+    vencido = _cache.get("resumo_mercado")
+    if vencido and vencido[1]:
+        return {"status": "ok", "dados": vencido[1], "cache": True, "vencido": True}
+
+    # Só cai aqui no primeiro acesso depois de subir o servidor, antes da
+    # thread de aquecimento terminar a primeira rodada.
     try:
-        dados = buscar_resumo_mercado()
-        cache_set("resumo_mercado", dados)
+        dados = _resumo_mercado_atualizado()
         return {"status": "ok", "dados": dados, "cache": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
