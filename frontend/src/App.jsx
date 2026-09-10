@@ -252,7 +252,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .ind-chk{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .12s}
 .ind-chk.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .ind-label{font-size:11px;color:var(--text2);flex:1}
-.ind-color{width:8px;height:8px;border-radius:50%;flex-shrink:0;border:1px solid rgba(128,128,128,.45)}
+.ind-color{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .saiba-mais-btn{position:fixed;transform:translate(-50%,-100%) translateY(-18px);z-index:150;background:linear-gradient(135deg,#F5A623,#e8940f);color:#000;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 4px 16px rgba(245,166,35,.4);animation:smBtnIn .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
 .saiba-mais-btn:hover{filter:brightness(1.1);transform:translate(-50%,-100%) translateY(-18px) scale(1.04)}
 @keyframes smBtnIn{from{opacity:0;transform:translate(-50%,-100%) translateY(-18px) scale(.8)}to{opacity:1;transform:translate(-50%,-100%) translateY(-18px) scale(1)}}
@@ -706,13 +706,9 @@ const TFS=[
 ];
 
 const INDICADORES = [
-  // Médias móveis em branco (pedido: as cores antigas — laranja/roxo/azul —
-  // ficavam difíceis de enxergar sobre os candles). Como as três ficam da
-  // mesma cor, quem as diferencia agora é a espessura da linha (ver
-  // upsertSMA no CandleChart): 20 fina, 100 média, 200 grossa.
-  {id:"sma20",  label:"SMA 20",             cor:"#FFFFFF", grupo:"Médias Móveis"},
-  {id:"sma100", label:"SMA 100",             cor:"#FFFFFF", grupo:"Médias Móveis"},
-  {id:"sma200", label:"SMA 200",             cor:"#FFFFFF", grupo:"Médias Móveis"},
+  {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},
+  {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
+  {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
   {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
   {id:"atr",    label:"ATR",                cor:"#F5A623", grupo:"Volatilidade"},
   {id:"rsi",         label:"RSI",         cor:"#3D7EFF", grupo:"Osciladores"},
@@ -2120,15 +2116,10 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     };
 
     // Helper: cria ou atualiza uma SMA
-    // applyOptions também no caminho de atualização (não só na criação):
-    // sem isso, trocar de tema deixava a linha na cor antiga até a série
-    // ser recriada do zero.
-    const upsertSMA = (ref, period, color, lineWidth, condition) => {
+    const upsertSMA = (ref, period, color, condition) => {
       if(condition){
         if(!ref.current){
-          ref.current = chartRef.current.addSeries(LineSeries, { color, lineWidth, priceLineVisible:false, lastValueVisible:false });
-        } else {
-          ref.current.applyOptions({ color, lineWidth });
+          ref.current = chartRef.current.addSeries(LineSeries, { color, lineWidth:1.5, priceLineVisible:false, lastValueVisible:false });
         }
         ref.current.setData(calcSMA(period));
       } else {
@@ -2136,14 +2127,9 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
       }
     };
 
-    // Médias móveis em branco. No tema claro o fundo do gráfico é branco,
-    // então lá a linha vira quase preta — senão simplesmente sumiria.
-    // Como as três compartilham a cor, a espessura é o que diz qual é
-    // qual: quanto mais longa a média, mais grossa a linha.
-    const corSMA = tema === "light" ? "#111827" : "#FFFFFF";
-    upsertSMA(sma20Ref,  20,  corSMA, 1.2, activeTools.has("sma20")  && candles.length >= 20);
-    upsertSMA(sma100Ref, 100, corSMA, 1.7, activeTools.has("sma100") && candles.length >= 100);
-    upsertSMA(sma200Ref, 200, corSMA, 2.4, activeTools.has("sma200") && candles.length >= 200);
+    upsertSMA(sma20Ref,  20,  "#F5A623", activeTools.has("sma20")  && candles.length >= 20);
+    upsertSMA(sma100Ref, 100, "#9B6DFF", activeTools.has("sma100") && candles.length >= 100);
+    upsertSMA(sma200Ref, 200, "#3D7EFF", activeTools.has("sma200") && candles.length >= 200);
 
     // Bandas de Bollinger (período 20, 2 desvios)
     const hasBB = activeTools.has("bb") && candles.length >= 20;
@@ -2193,7 +2179,7 @@ function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPa
     } else {
       safeRemove(volMaRef);
     }
-  },[candles, activeTools, tema]);
+  },[candles, activeTools]);
 
   // Osciladores (RSI, Estocástico, ATR, OBV) — cada um no seu próprio pane,
   // abaixo do preço/volume. Mais simples reconstruir tudo a cada mudança do
