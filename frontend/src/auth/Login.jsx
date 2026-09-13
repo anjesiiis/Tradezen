@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthShell from "./theme.jsx";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase, supabaseConfigurado } from "../lib/supabaseClient.js";
 import { useAuth } from "./AuthContext.jsx";
 
 export default function Login() {
@@ -21,6 +21,13 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    // Sem chave configurada o Supabase responde "Invalid API key",
+    // que não diz nada pro usuário. Avisa o que realmente falta.
+    if (!supabaseConfigurado) {
+      setStatus("error");
+      setErro("Este site está sem a chave de acesso ao banco (VITE_SUPABASE_ANON_KEY). Avise o administrador — nenhum login ou cadastro funciona até isso ser configurado.");
+      return;
+    }
     setStatus("sending");
     setErro("");
     const { error } = await supabase.auth.signInWithPassword({

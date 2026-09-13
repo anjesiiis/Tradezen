@@ -15,6 +15,13 @@ if (!url || !anonKey) {
   );
 }
 
+// Deixa explícito se o client é real ou de mentira. Sem isso, faltar a
+// chave virava um "Invalid API key" cru no meio do cadastro — mensagem
+// que parece problema de formato de chave/versão de biblioteca e manda a
+// investigação pro lado errado (foi exatamente o que aconteceu). As telas
+// de login/cadastro leem isso e avisam o que realmente falta.
+export const supabaseConfigurado = Boolean(url && anonKey);
+
 export const supabase = createClient(
   url || "https://placeholder.supabase.co",
   anonKey || "placeholder-anon-key"
