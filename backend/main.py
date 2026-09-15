@@ -338,7 +338,10 @@ ATIVOS_DISPONIVEIS = [
 
 # ── ROTAS ─────────────────────────────────────────────────────
 
-@app.get("/")
+# HEAD também: monitores de uptime (UptimeRobot, cron do GitHub) costumam
+# bater com HEAD, e só GET devolveria 405 — o monitor acharia que caiu.
+# Essa rota é o alvo do keep-alive: leve, sem yfinance nem Supabase.
+@app.api_route("/", methods=["GET", "HEAD"])
 def raiz():
     return {"status": "online", "produto": "TradeZen API", "versao": "1.2.0"}
 
