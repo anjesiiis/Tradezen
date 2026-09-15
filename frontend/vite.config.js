@@ -11,4 +11,12 @@ export default defineConfig({
   server: {
     allowedHosts: [".trycloudflare.com"],
   },
+  // Testes (Vitest): jsdom simula o navegador; setup.js carrega os
+  // matchers do jest-dom e os mocks globais (API, Supabase, gráficos).
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.js",
+    css: true,
+  },
 })

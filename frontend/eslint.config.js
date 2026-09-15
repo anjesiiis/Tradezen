@@ -18,4 +18,18 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  // Testes: vitest com globals:true (vite.config.js) expõe describe/it/
+  // expect sem import; helpers não são componentes de página.
+  {
+    files: ['src/test/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        describe: 'readonly', it: 'readonly', test: 'readonly', expect: 'readonly',
+        vi: 'readonly', beforeEach: 'readonly', afterEach: 'readonly',
+        beforeAll: 'readonly', afterAll: 'readonly',
+      },
+    },
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])
