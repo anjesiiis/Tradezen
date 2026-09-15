@@ -496,7 +496,12 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
      overflow-y:auto duplicado) e overflow só no html/body, é uma rolagem
      só, do jeito que o navegador já faz sozinho — inclusive some a barra
      de rolagem visível (webkit-scrollbar abaixo). */
-  html,body{overflow-x:hidden;overflow-y:auto;height:auto;-webkit-overflow-scrolling:touch}
+  /* Só o html rola; body fica overflow visível. Com overflow nos DOIS, o
+     body virava um segundo container de rolagem, e no Chrome/Safari do
+     celular a barra inferior fixa descia junto quando a barra de endereço
+     do navegador recolhia ao rolar a lista. */
+  html{overflow-x:hidden;overflow-y:auto;height:auto;-webkit-overflow-scrolling:touch}
+  body{overflow:visible;overflow-x:clip;height:auto}
   #root{overflow:visible;height:auto;min-height:100%}
   html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
   html,body{scrollbar-width:none}
@@ -578,11 +583,20 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .mlista-var{font-size:11px;font-weight:700;font-family:var(--font-m)}
 
   /* ── BARRA DE NAVEGAÇÃO INFERIOR (5 abas) ── */
-  .mnav{position:fixed;bottom:0;left:0;right:0;height:var(--h-nav-inferior);z-index:100;
+  /* Sempre fixa e visível: renderizada direto no body (portal), sem
+     transform/opacity/hide-on-scroll. A altura soma a área segura do
+     iPhone pra os ícones não ficarem sob a barra de gestos. */
+  .mnav{position:fixed!important;bottom:0;left:0;right:0;z-index:9999;
+    height:calc(var(--h-nav-inferior) + env(safe-area-inset-bottom,0px));
     display:flex;align-items:stretch;
-    background:var(--mob-superficie);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    background-color:#131722;background:var(--mob-superficie);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     border-top:.5px solid var(--mob-borda);
     padding-bottom:env(safe-area-inset-bottom,0px)}
+  :root[data-theme="light"] .mnav{background-color:#fff}
+  /* Espaço no fim de qualquer página com a barra (Lista, Favoritos,
+     Cripto...), pra o último ativo não ficar escondido atrás dela. */
+  html.com-mnav #root{padding-bottom:calc(var(--h-nav-inferior) + env(safe-area-inset-bottom,0px) + 12px)}
+  html.com-mnav .home{padding-bottom:16px}
   .mnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     background:none;border:none;padding:0;cursor:pointer;color:var(--text3);
     font-family:var(--font-b);font-size:10px;font-weight:600;min-height:0;
@@ -4987,7 +5001,15 @@ const MNAV_ITENS = [
 ];
 
 function NavInferiorMobile({ ativo, onSelecionar }){
-  return (
+  // Classe no <html> enquanto a barra existe: o CSS usa pra reservar o
+  // espaço dela no fim da página.
+  useEffect(()=>{
+    document.documentElement.classList.add("com-mnav");
+    return ()=>document.documentElement.classList.remove("com-mnav");
+  },[]);
+  // Portal no body: nenhum ancestral com transform/filter consegue
+  // "prender" o position:fixed e arrastar a barra junto com a rolagem.
+  return createPortal(
     <nav className="mnav">
       {MNAV_ITENS.map(it=>(
         <button
@@ -4999,7 +5021,8 @@ function NavInferiorMobile({ ativo, onSelecionar }){
           {it.label}
         </button>
       ))}
-    </nav>
+    </nav>,
+    document.body
   );
 }
 
