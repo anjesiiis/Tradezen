@@ -1,4 +1,4 @@
-export const ADMIN_CSS = `
+const ADMIN_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-inline:none!important;text-align:left}

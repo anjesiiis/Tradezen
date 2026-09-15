@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 // :root[data-theme="light"]) — copiada aqui porque essas páginas são
 // montadas fora do AppInner (que é quem injeta o <style> com essas
 // variáveis), então precisam da própria folha de estilo pra existir.
-export const AUTH_CSS = `
+const AUTH_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-inline:none!important;text-align:left}

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Relatório do rollup-plugin-visualizer (gerado a cada build)
+bundle-report.html
