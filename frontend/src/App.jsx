@@ -17,6 +17,7 @@ import Cadastro from "./auth/Cadastro.jsx";
 import RecuperarSenha from "./auth/RecuperarSenha.jsx";
 import RedefinirSenha from "./auth/RedefinirSenha.jsx";
 import AuthCallback from "./auth/AuthCallback.jsx";
+import heroBg from "./assets/hero-bg.jpg";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -688,10 +689,44 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .tbar{display:none}
   .ti{font-size:11px;padding:0 14px}
 
-  /* ── LANDING PAGE ── */
-  .ab-hero h1{font-size:2.25rem!important;letter-spacing:1px}
-  .ab-hero p{font-size:15px;font-weight:600;padding:0 4px}
-  .ab-entrar{width:100%;padding:17px 24px;font-size:17px}
+  /* ── LANDING (mobile) ──
+     No celular a landing é outro componente (AberturaMobile): foto de fundo
+     no lugar da malha animada, texto centralizado. Cores fixas de propósito,
+     fora do sistema de tema: o fundo é uma fotografia escura, então o texto
+     precisa continuar claro mesmo no tema claro — senão fica escuro sobre
+     escuro, o mesmo bug que já aconteceu no dashboard. */
+  .abm{
+    position:fixed;inset:0;z-index:1000;overflow-y:auto;
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;
+    background-color:#0b0e14;background-size:cover;
+    background-position:center right;background-repeat:no-repeat;
+    font-family:var(--font-b);color:#fff;
+  }
+  .abm-head{position:relative;z-index:2;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
+  .abm-logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:500;letter-spacing:4px;color:#fff;user-select:none}
+  .abm-logo b{font-weight:inherit}.abm-logo span{color:#4d8bff}
+  .abm-logo svg{width:28px;height:24px;flex-shrink:0}
+  .abm-acoes{display:flex;align-items:center;gap:14px}
+  .abm-entrar{background:none;border:none;color:#fff;font-family:var(--font-b);font-size:15px;font-weight:500;padding:8px 4px;cursor:pointer}
+  .abm-menu-btn{background:none;border:none;padding:0;margin-right:-10px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:44px}
+  .abm-menu-btn svg{width:24px;height:18px;stroke:#4d8bff;stroke-width:2;stroke-linecap:round;fill:none}
+  .abm-conteudo{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:clamp(32px,10vh,110px) 24px 24px}
+  /* letter-spacing soma espaço depois da última letra também; o padding
+     à esquerda devolve o texto pro centro visual */
+  .abm-tags{font-family:var(--font-m);font-size:12px;letter-spacing:3px;padding-left:3px;color:#a0a4ad;text-transform:uppercase;margin:0}
+  .abm-tags i{font-style:normal;margin:0 8px}
+  .abm-titulo{font-family:var(--font-b);font-size:48px;font-weight:400;line-height:1.1;color:#fff;margin:24px 0 0;letter-spacing:-.5px}
+  .abm-titulo span{color:#4d8bff}
+  .abm-sub{font-size:16px;line-height:1.5;color:#c0c4cc;max-width:320px;margin:24px auto 40px}
+  .abm-cta{display:inline-flex;align-items:center;gap:12px;background:#2962ff;color:#fff;border:none;padding:16px 40px;border-radius:32px;font-family:var(--font-b);font-size:16px;font-weight:500;cursor:pointer;box-shadow:0 4px 24px rgba(41,98,255,.4);transition:opacity .15s;-webkit-tap-highlight-color:transparent}
+  .abm-cta:hover,.abm-cta:active{opacity:.9}
+  .abm-cta svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .abm-entrar:focus-visible,.abm-menu-btn:focus-visible,.abm-cta:focus-visible,.abm-menu button:focus-visible{outline:2px solid #4d8bff;outline-offset:3px}
+  /* Menu do ícone: só destinos que já existem no site */
+  .abm-menu{position:absolute;top:62px;right:14px;z-index:3;min-width:210px;display:flex;flex-direction:column;padding:6px;border-radius:14px;background:rgba(15,19,28,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:.5px solid rgba(77,139,255,.25);box-shadow:0 12px 36px rgba(0,0,0,.5)}
+  .abm-menu button{background:none;border:none;text-align:left;color:#e6e8ec;font-family:var(--font-b);font-size:15px;padding:12px 14px;border-radius:9px;cursor:pointer}
+  .abm-menu button:active{background:rgba(77,139,255,.12)}
 }
 `;
 
@@ -3016,9 +3051,63 @@ function SkeletonCard(){
 
 // ── App ───────────────────────────────────────────────────────
 // ── PÁGINA DE ABERTURA (tela inicial leve com efeito de fundo) ──
+// Landing no celular — layout próprio sobre foto (ver .abm no CSS). O texto
+// é diferente do desktop, então é um componente à parte em vez de esconder
+// metade do HTML por CSS (ficariam dois <h1> na mesma página).
+const ABM_OVERLAY = "linear-gradient(180deg,rgba(11,14,20,.4) 0%,rgba(11,14,20,.2) 50%,rgba(11,14,20,.6) 100%)";
+
+function AberturaMobile(){
+  const navigate = useNavigate();
+  const [menuAberto, setMenuAberto] = useState(false);
+  const ir = (rota) => { setMenuAberto(false); navigate(rota); };
+
+  return (
+    <div className="abm" style={{backgroundImage:`${ABM_OVERLAY}, url(${heroBg})`}}>
+      <header className="abm-head">
+        <div className="abm-logo notranslate">
+          <svg viewBox="0 0 28 24" aria-hidden="true">
+            <path d="M5 2h20l-2.4 5.4H15L10.6 22H4.4L8.8 7.4H2.6z" fill="#2962ff"/>
+            <path d="M16.8 10.4H27l-2.2 5.2h-4.1l-2.6 6.4h-5.9z" fill="#4d8bff"/>
+          </svg>
+          <b>TRADE<span>ZEN</span></b>
+        </div>
+        <div className="abm-acoes">
+          <button className="abm-entrar" onClick={()=>ir("/login")}>Entrar</button>
+          <button
+            className="abm-menu-btn"
+            aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menuAberto}
+            onClick={()=>setMenuAberto(v=>!v)}
+          >
+            <svg viewBox="0 0 24 18"><line x1="1" y1="2" x2="23" y2="2"/><line x1="1" y1="9" x2="23" y2="9"/><line x1="1" y1="16" x2="23" y2="16"/></svg>
+          </button>
+        </div>
+        {menuAberto && (
+          <nav className="abm-menu">
+            <button onClick={()=>ir("/mercados")}>Explorar mercados</button>
+            <button onClick={()=>ir("/login")}>Entrar</button>
+            <button onClick={()=>ir("/cadastro")}>Criar conta grátis</button>
+          </nav>
+        )}
+      </header>
+
+      <main className="abm-conteudo" onClick={()=>menuAberto && setMenuAberto(false)}>
+        <p className="abm-tags">Análise<i>·</i>Gráficos<i>·</i>Mercado</p>
+        <h1 className="abm-titulo">Mercado<br/>com mais<br/><span>clareza.</span></h1>
+        <p className="abm-sub">Explore padrões, visualize movimentos e entenda o comportamento dos ativos.</p>
+        <button className="abm-cta" onClick={()=>ir("/mercados")}>
+          Explorar TradeZen
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </main>
+    </div>
+  );
+}
+
 function Abertura(){
   const navigate = useNavigate();
   const canvasRef = useRef(null);
+  const isMobile = useIsMobile();
 
   useEffect(()=>{
     const canvas = canvasRef.current;
@@ -3090,7 +3179,9 @@ function Abertura(){
       window.removeEventListener("mouseout",onOut);
       window.removeEventListener("resize",resize);
     };
-  },[]);
+  },[isMobile]);
+
+  if(isMobile) return <AberturaMobile/>;
 
   return(
     <div className="abertura">
