@@ -8,6 +8,7 @@ import { IconeAtivo } from "../components/IconeAtivo.jsx";
 import { MiniLine } from "../components/MiniLine.jsx";
 import { NavInferiorMobile } from "../components/NavBarMobile.jsx";
 import { Sidebar } from "../components/Sidebar.jsx";
+import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../components/Skeleton.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
@@ -23,13 +24,6 @@ const ChartPane = lazy(() => import("./Grafico.jsx"));
 const Pagina404 = lazy(() => import("./NaoEncontrada.jsx"));
 const HomeLineChart = lazy(() => import("../components/HomeLineChart.jsx"));
 
-function CarregandoSecao(){
-  return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh"}}>
-      <div className="spin"/>
-    </div>
-  );
-}
 import { fmtP } from "../lib/mercado.js";
 
 function AppInner(){
@@ -300,7 +294,7 @@ function AppInner(){
         />
       )}
 
-      <Suspense fallback={<CarregandoSecao/>}>
+      <Suspense fallback={<SkeletonSecao tipo={isAnalysis ? "grafico" : "painel"} mobile={isMobile}/>}>
       {/* ── HOME (mercados) com SIDEBAR ── */}
       {path==="/mercados"&&(
         <div className="dash">
@@ -345,9 +339,7 @@ function AppInner(){
                     <div className="idx-line">
                       {a.semDados
                         ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                        : <span style={{fontSize:11,color:"var(--text3)",display:"flex",alignItems:"center",gap:6}}>
-                            <span className="spin" style={{width:10,height:10,borderWidth:2}}/>Carregando
-                          </span>
+                        : <SkeletonValor/>
                       }
                     </div>
                   </div>
@@ -408,10 +400,10 @@ function AppInner(){
                     escondido (.dash-so-desktop) e montar o gráfico ali
                     baixava o lightweight-charts à toa. */}
                 {ibovSerie.length>0 && !isMobile
-                  ?<Suspense fallback={<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>}>
+                  ?<Suspense fallback={<SkeletonGraficoLinha/>}>
                     <HomeLineChart data={ibovSerie} color={ibov?.alta?"#00D68F":"#FF4560"} tema={tema}/>
                   </Suspense>
-                  :<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+                  :<SkeletonGraficoLinha/>
                 }
               </div>
             </div>
@@ -434,9 +426,7 @@ function AppInner(){
                       <div className="idx-line">
                         {a.semDados
                           ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                          : <span style={{fontSize:11,color:"var(--text3)",display:"flex",alignItems:"center",gap:6}}>
-                              <span className="spin" style={{width:10,height:10,borderWidth:2}}/>Carregando
-                            </span>
+                          : <SkeletonValor/>
                         }
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
+import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { FERRAMENTAS_DESENHO_LISTA, INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TOOLS } from "../lib/grafico/config.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp } from "../lib/grafico/padroes.js";
@@ -387,7 +388,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
       <div className="abody">
         <div className="achart">
-          {loading&&<div className="ld"><div className="spin"/><div className="ldtxt">CARREGANDO...</div></div>}
+          {loading&&<SkeletonGraficoArea/>}
           {!loading&&candles.length>0&&(
             <CandleChart
               candles={candles}

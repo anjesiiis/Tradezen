@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ColorType, CrosshairMode, LineSeries, createChart } from "lightweight-charts";
+import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { fmtP } from "../lib/mercado.js";
 import { BadgeMkt3, IconeAtivoMkt3, LinhaAtivoMkt3, SeloEstimadoMkt3, VariacaoMkt3 } from "./MercadosOverview.jsx";
@@ -261,7 +262,7 @@ function PaginaPrincipaisAtivosComparativo({ tema, abrirAtivo }){
           </div>
           <div style={{position:"relative",height:400,flex:1}}>
             {carregando
-              ? <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+              ? <SkeletonGraficoLinha/>
               : <ComparativoChart series={seriesNormalizadas} config={COMPARATIVO_ATIVOS} ligados={ligados} selecionado={selecionado} tema={tema}/>
             }
           </div>

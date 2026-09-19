@@ -1,47 +1,56 @@
 import { useEffect, useState } from "react";
+import { SkeletonPagina } from "../components/Skeleton.jsx";
 import AdminShell from "./theme.jsx";
 import { setAdminToken } from "./adminApi";
 
-// `hashInicial`: o hash da URL capturado no carregamento do módulo (ver
-// HASH_INICIAL em App.jsx). É preciso porque o client do Supabase limpa o
-// hash da URL sozinho ao inicializar (detectSessionInUrl) — se lermos
-// window.location.hash tarde demais, o token já sumiu. Sem o prop, cai no
+// `hashInicial` / `queryInicial`: hash e query da URL capturados no
+// carregamento do módulo (ver App.jsx). São necessários porque o client do
+// Supabase limpa a URL sozinho ao inicializar (detectSessionInUrl) — se
+// lermos tarde demais, o token já sumiu. Sem os props, cai no
 // comportamento antigo (ler a URL na hora).
-export default function AdminCallback({ hashInicial }) {
+export default function AdminCallback({ hashInicial, queryInicial }) {
   const [erro, setErro] = useState("");
 
   useEffect(() => {
-    const bruto = hashInicial || window.location.hash;
-    const hash = new URLSearchParams(bruto.replace(/^#/, ""));
-    const accessToken = hash.get("access_token");
-    const errorDescription = hash.get("error_description");
+    const noHash = new URLSearchParams((hashInicial || window.location.hash).replace(/^#/, ""));
+    const naQuery = new URLSearchParams(queryInicial || window.location.search);
+    const ler = (nome) => noHash.get(nome) || naQuery.get(nome);
 
-    if (errorDescription) {
-      setErro(decodeURIComponent(errorDescription.replace(/\+/g, " ")));
+    // Link expirado ou já usado: o Supabase devolve error/error_code em vez
+    // do token. Antes isso caía na página inicial do site sem mensagem.
+    const codigo = ler("error_code") || ler("error");
+    const descricao = ler("error_description");
+    if (codigo || descricao) {
+      const texto = decodeURIComponent(`${codigo || ""} ${descricao || ""}`.replace(/\+/g, " "));
+      setErro(/expired|invalid|denied/i.test(texto)
+        ? "Esse link de acesso expirou ou já foi usado."
+        : texto.trim());
       return;
     }
+
+    const accessToken = ler("access_token");
     if (!accessToken) {
-      setErro("Link inválido ou expirado.");
+      // Inclui o formato ?code= (PKCE), que não traz o token direto: não dá
+      // pra concluir o acesso por aqui, pedir outro link resolve.
+      setErro("Não foi possível concluir o acesso por esse link.");
       return;
     }
 
     setAdminToken(accessToken);
     window.location.replace("/admin/templates/topo-duplo");
-  }, [hashInicial]);
+  }, [hashInicial, queryInicial]);
+
+  if (!erro) return <SkeletonPagina />;
 
   return (
     <AdminShell>
       <div className="admin-center">
-        {erro ? (
-          <div style={{ textAlign: "center" }}>
-            <p style={{ color: "var(--down)", fontSize: 13, marginBottom: 10 }}>{erro}</p>
-            <a href="/admin/login" style={{ color: "var(--accent)", fontSize: 13 }}>
-              Voltar ao login
-            </a>
-          </div>
-        ) : (
-          <p style={{ color: "var(--text2)", fontSize: 13 }}>Autenticando...</p>
-        )}
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "var(--down)", fontSize: 13, marginBottom: 14 }}>{erro}</p>
+          <a href="/admin/login" className="admin-btn" style={{ textDecoration: "none" }}>
+            Pedir novo link de acesso
+          </a>
+        </div>
       </div>
     </AdminShell>
   );

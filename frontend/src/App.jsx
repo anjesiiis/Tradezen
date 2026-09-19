@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext.jsx";
 import RequireAuth from "./auth/RequireAuth.jsx";
+import { SkeletonPagina } from "./components/Skeleton.jsx";
 
 // Code splitting: cada página é um chunk próprio, baixado só quando a rota
 // abre. O gráfico de candles (pages/Grafico.jsx) é carregado sob demanda
@@ -19,30 +20,26 @@ const AuthCallback = lazy(() => import("./auth/AuthCallback.jsx"));
 // renderizar e antes do client do Supabase limpar a URL sozinho
 // (detectSessionInUrl). É onde chega o token do magic link do admin.
 const HASH_INICIAL = typeof window !== "undefined" ? window.location.hash : "";
+const QUERY_INICIAL = typeof window !== "undefined" ? window.location.search : "";
 
-// Mesmas rotas de pages/Admin.jsx. Ficam duplicadas aqui de propósito:
-// importar a lista de lá traria o chunk do admin inteiro pro bundle inicial.
-const ROTAS_ADMIN = new Set([
-  "/admin/login",
-  "/admin/callback",
-  "/admin/templates",
-  "/admin/templates/topo-duplo",
-  "/admin/templates/niveis",
-  "/admin/templates/bandeira-alta",
-  "/admin/templates/bandeira-baixa",
-]);
-
-function magicLinkNaUrl(hash){
-  const params = new URLSearchParams(hash.replace(/^#/, ""));
-  return Boolean(params.get("access_token")) && params.get("type") === "magiclink";
+// Lê um parâmetro do retorno de autenticação, venha ele no hash
+// (#access_token=..., #error=...) ou na query (?code=..., ?error=...).
+function paramAuth(nome){
+  const hash = new URLSearchParams((HASH_INICIAL || window.location.hash).replace(/^#/, ""));
+  const query = new URLSearchParams(QUERY_INICIAL || window.location.search);
+  return hash.get(nome) || query.get(nome);
 }
 
-function Carregando(){
-  return (
-    <div style={{background:"#0f1118",height:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <span style={{color:"#787b86"}}>Carregando...</span>
-    </div>
-  );
+// O retorno do magic link do admin pode cair em QUALQUER rota: quando a URL
+// que pedimos não está na allow-list do Supabase, ele manda pra "Site URL"
+// (a raiz do site). Além do token, entram aqui os retornos de ERRO (link
+// expirado ou já usado) e o formato ?code= — antes esses dois caíam na
+// landing caladinhos, e o usuário achava que o painel tinha sumido.
+function retornoDeAuthAdmin(pathname){
+  if (pathname.startsWith("/auth/")) return false;     // callback do usuário comum
+  if (paramAuth("type") === "recovery") return false;  // troca de senha do usuário
+  if (paramAuth("access_token")) return paramAuth("type") === "magiclink";
+  return Boolean(paramAuth("error") || paramAuth("error_code") || paramAuth("error_description") || paramAuth("code"));
 }
 
 // Redireciona client-side (sem reload) — usado pelas rotas protegidas
@@ -59,8 +56,10 @@ function Router(){
   const naAbertura = location.pathname === "/";
 
   // Magic link do admin pode cair em qualquer rota (ver pages/Admin.jsx)
-  if (magicLinkNaUrl(HASH_INICIAL) || ROTAS_ADMIN.has(location.pathname)) {
-    return <Admin hashInicial={HASH_INICIAL}/>;
+  // startsWith("/admin"): cobre barra no fim (/admin/templates/) e rotas
+  // de admin desconhecidas, que antes caíam no 404 do site.
+  if (retornoDeAuthAdmin(location.pathname) || location.pathname.startsWith("/admin")) {
+    return <Admin hashInicial={HASH_INICIAL} queryInicial={QUERY_INICIAL}/>;
   }
 
   if (location.pathname === "/login") return <Login/>;
@@ -81,11 +80,11 @@ function Router(){
   // Dashboard (que é bem maior).
   return (
     <>
-      <Suspense fallback={naAbertura ? null : <Carregando/>}>
+      <Suspense fallback={naAbertura ? null : <SkeletonPagina/>}>
         <Dashboard/>
       </Suspense>
       {naAbertura && (
-        <Suspense fallback={<Carregando/>}>
+        <Suspense fallback={<SkeletonPagina/>}>
           <Landing/>
         </Suspense>
       )}
@@ -98,7 +97,7 @@ export default function App(){
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Suspense fallback={<Carregando/>}>
+        <Suspense fallback={<SkeletonPagina/>}>
           <Router/>
         </Suspense>
       </AuthProvider>

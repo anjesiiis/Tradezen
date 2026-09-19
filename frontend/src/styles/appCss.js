@@ -236,10 +236,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .sbox{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px}
 .slbl{font-size:9px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
 .sval{font-family:var(--font-m);font-size:11px;color:var(--text)}
-.ld{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);z-index:10}
-.spin{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-.ldtxt{font-size:10px;color:var(--text2);font-family:var(--font-m);letter-spacing:2px}
 .upg{margin:0 16px 16px;background:linear-gradient(135deg,rgba(61,126,255,.1),rgba(155,109,255,.1));border:1px solid rgba(155,109,255,.2);border-radius:10px;padding:14px}
 .ubt{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
 .ubd{font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:10px}

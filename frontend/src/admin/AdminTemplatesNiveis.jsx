@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
@@ -286,10 +287,11 @@ export default function AdminTemplatesNiveis() {
                 <TipoToggle value={tipo} onChange={setTipo} />
               </Campo>
               <button onClick={() => carregarGrafico()} disabled={carregando || !ticker.trim()} className="admin-btn">
-                {carregando ? "Carregando..." : "Carregar gráfico"}
+                Carregar gráfico
               </button>
             </div>
 
+            {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
                 <NivelMarkerChart

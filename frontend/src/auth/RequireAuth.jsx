@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { SkeletonPagina } from "../components/Skeleton.jsx";
 import { useAuth } from "./AuthContext.jsx";
 
 // Mesmo espírito do RequireAdmin (admin/RequireAdmin.jsx), mas reage à
@@ -14,6 +15,7 @@ export default function RequireAuth({ children }) {
     if (!loading && !user) navigate("/login", { replace: true });
   }, [loading, user, navigate]);
 
-  if (loading || !user) return null;
+  if (loading) return <SkeletonPagina />;
+  if (!user) return null;
   return children;
 }

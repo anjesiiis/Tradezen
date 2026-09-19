@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
@@ -249,10 +250,11 @@ export default function AdminTemplatesTopoDuplo() {
                 </select>
               </Campo>
               <button onClick={() => carregarGrafico()} disabled={carregando || !ticker.trim()} className="admin-btn">
-                {carregando ? "Carregando..." : "Carregar gráfico"}
+                Carregar gráfico
               </button>
             </div>
 
+            {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
                 <TemplateMarkerChart candles={candlesContexto} steps={STEPS} onChange={setPontos} />

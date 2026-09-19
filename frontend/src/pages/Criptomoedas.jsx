@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HomeLineChart } from "../components/HomeLineChart.jsx";
 import { IconeAtivo } from "../components/IconeAtivo.jsx";
 import { MiniLine } from "../components/MiniLine.jsx";
+import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { fmtP } from "../lib/mercado.js";
 import { SeloEstimadoMkt3, VariacaoMkt3, fmtGrandeMkt3 } from "./MercadosOverview.jsx";
@@ -89,7 +90,7 @@ function PaginaCriptomoedas({ tema, mercado, abrirAtivo }){
               <div style={{position:"relative",height:300,flex:1}}>
                 {marketCapSerie24h.length>0
                   ? <HomeLineChart data={marketCapSerie24h} color={capPositiva?"#00D68F":"#FF4560"} tema={tema}/>
-                  : <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}><div className="spin"/></div>
+                  : <SkeletonGraficoLinha/>
                 }
               </div>
             </>
