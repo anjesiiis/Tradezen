@@ -6,7 +6,6 @@ import { renderApp } from './helpers.jsx';
 const TEXTO_LANDING = /VEJA PADRÕES|Explorar TradeZen|Mercado/i;
 
 function naoCaiuNaPaginaInicial() {
-  expect(document.querySelector('.abertura')).toBeNull();
   expect(document.querySelector('.abm')).toBeNull();
   expect(screen.queryByText('Página não encontrada')).not.toBeInTheDocument();
 }
@@ -66,7 +65,7 @@ describe('Retorno do link de acesso do admin', () => {
   it('link de troca de senha do usuário não é tratado como admin', async () => {
     renderApp('/#access_token=tok123&type=recovery');
 
-    await waitFor(() => expect(document.querySelector('nav.nav, .abertura, .abm')).not.toBeNull());
+    await waitFor(() => expect(document.querySelector('nav.nav, .abm')).not.toBeNull());
     expect(screen.queryByText(/Pedir novo link/i)).not.toBeInTheDocument();
   });
 });

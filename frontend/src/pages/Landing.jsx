@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import heroBg from "../assets/hero-bg.jpg";
-import { useIsMobile } from "../hooks/useIsMobile.js";
 import { CSS } from "../styles/appCss.js";
 
-// ── App ───────────────────────────────────────────────────────
-// ── PÁGINA DE ABERTURA (tela inicial leve com efeito de fundo) ──
-// Landing no celular — layout próprio sobre foto (ver .abm no CSS). O texto
-// é diferente do desktop, então é um componente à parte em vez de esconder
-// metade do HTML por CSS (ficariam dois <h1> na mesma página).
+// ── PÁGINA DE ABERTURA ────────────────────────────────────────
+// Uma tela só pro celular e pro computador: foto de fundo, texto
+// centralizado e o botão azul. O que muda entre os dois são só os
+// tamanhos, no CSS (.abm* + o bloco @media (min-width:768px)) — antes o
+// computador tinha uma landing própria, com malha animada em canvas e
+// outro texto.
 const ABM_OVERLAY = "linear-gradient(180deg,rgba(11,14,20,.4) 0%,rgba(11,14,20,.2) 50%,rgba(11,14,20,.6) 100%)";
 
-function AberturaMobile(){
+function Abertura(){
   const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   const ir = (rota) => { setMenuAberto(false); navigate(rota); };
@@ -55,112 +55,6 @@ function AberturaMobile(){
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </main>
-    </div>
-  );
-}
-
-function Abertura(){
-  const navigate = useNavigate();
-  const canvasRef = useRef(null);
-  const isMobile = useIsMobile();
-
-  useEffect(()=>{
-    const canvas = canvasRef.current;
-    if(!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let w, h, points = [], raf;
-    const mouse = { x:-9999, y:-9999 };
-
-    // Lê o tema salvo direto do localStorage (não do atributo da <html>,
-    // que pode ainda não ter sido setado pelo efeito do AppInner na hora
-    // que esse efeito monta) — no claro, o mesh precisa de mais opacidade
-    // pra não sumir num fundo quase branco.
-    const claro = localStorage.getItem("tradezen-tema") === "light";
-    const corPonto  = claro ? "rgba(47,111,239,0.6)" : "rgba(61,126,255,0.7)";
-    const corLinha  = claro ? "47,111,239" : "99,130,200";
-    const opLinhaMax = claro ? 0.28 : 0.12;
-
-    const resize = ()=>{
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-      const count = Math.min(90, Math.floor(w*h/16000));
-      points = [];
-      for(let i=0;i<count;i++){
-        points.push({
-          x:Math.random()*w, y:Math.random()*h,
-          vx:(Math.random()-0.5)*0.4, vy:(Math.random()-0.5)*0.4
-        });
-      }
-    };
-    const onMove = e=>{ mouse.x=e.clientX; mouse.y=e.clientY; };
-    const onOut  = ()=>{ mouse.x=-9999; mouse.y=-9999; };
-
-    const draw = ()=>{
-      ctx.clearRect(0,0,w,h);
-      for(const p of points){
-        p.x+=p.vx; p.y+=p.vy;
-        if(p.x<0||p.x>w) p.vx*=-1;
-        if(p.y<0||p.y>h) p.vy*=-1;
-        const dx=mouse.x-p.x, dy=mouse.y-p.y, dist=Math.hypot(dx,dy);
-        if(dist<160){ p.x+=dx*0.008; p.y+=dy*0.008; }
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,1.6,0,Math.PI*2);
-        ctx.fillStyle=corPonto;
-        ctx.fill();
-      }
-      for(let i=0;i<points.length;i++){
-        for(let j=i+1;j<points.length;j++){
-          const a=points[i], b=points[j];
-          const d=Math.hypot(a.x-b.x,a.y-b.y);
-          if(d<130){
-            ctx.beginPath();
-            ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
-            ctx.strokeStyle=`rgba(${corLinha},${opLinhaMax*(1-d/130)})`;
-            ctx.stroke();
-          }
-        }
-      }
-      raf=requestAnimationFrame(draw);
-    };
-
-    resize();
-    draw();
-    window.addEventListener("mousemove",onMove);
-    window.addEventListener("mouseout",onOut);
-    window.addEventListener("resize",resize);
-    return ()=>{
-      cancelAnimationFrame(raf);
-      window.removeEventListener("mousemove",onMove);
-      window.removeEventListener("mouseout",onOut);
-      window.removeEventListener("resize",resize);
-    };
-  },[isMobile]);
-
-  if(isMobile) return <AberturaMobile/>;
-
-  return(
-    <div className="abertura">
-      <canvas ref={canvasRef} className="ab-fx"/>
-      <div className="ab-glow"/>
-      <div className="ab-wrap">
-        <div className="ab-head">
-          <div className="ab-logo">
-            <span className="ic">✦</span>
-            <span className="notranslate">TRADE<span>ZEN</span></span>
-          </div>
-        </div>
-        <div className="ab-hero">
-          <h1>
-            VEJA PADRÕES DE ANÁLISE
-            <span className="l2">TÉCNICA DIARIAMENTE</span>
-          </h1>
-          <p>Estude padrões gráficos e veja como cada ativo tende a reagir às flutuações do mercado.</p>
-          <button className="ab-entrar" onClick={()=>navigate("/mercados")}>Entrar</button>
-          {/* "Sobre Nós" / "Perguntas Frequentes" / "Termos de Uso" — tiradas
-              por enquanto (as rotas /sobre, /faq, /termos nem existem ainda).
-              Volta fácil quando essas páginas forem criadas de verdade. */}
-        </div>
-      </div>
     </div>
   );
 }

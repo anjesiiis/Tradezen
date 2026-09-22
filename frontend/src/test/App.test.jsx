@@ -3,28 +3,42 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from './helpers.jsx';
 
 describe('App', () => {
-  it('renderiza a abertura no desktop sem crash', async () => {
+  it('renderiza a abertura no desktop com o mesmo conteúdo do mobile', async () => {
     renderApp('/');
 
     const abertura = await waitFor(() => {
-      const el = document.querySelector('.abertura');
+      const el = document.querySelector('.abm');
       expect(el).not.toBeNull();
       return el;
     });
-    expect(within(abertura).getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(within(abertura).getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+    const nela = within(abertura);
+    expect(nela.getByRole('heading', { name: /Mercado\s*com mais\s*clareza\./ })).toBeInTheDocument();
+    expect(abertura.querySelector('.abm-tags')).toHaveTextContent('Análise·Gráficos·Mercado');
+    expect(nela.getByRole('button', { name: /Explorar TradeZen/ })).toBeInTheDocument();
+    expect(nela.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+    // usa a mesma foto de fundo do celular
+    expect(abertura.getAttribute('style')).toMatch(/hero-bg/);
   });
 
-  it('abertura desktop: botão Entrar leva pra /mercados', async () => {
+  it('abertura desktop: botão Entrar leva pra /login', async () => {
     const user = userEvent.setup();
     renderApp('/');
 
     const abertura = await waitFor(() => {
-      const el = document.querySelector('.abertura');
+      const el = document.querySelector('.abm');
       expect(el).not.toBeNull();
       return el;
     });
     await user.click(within(abertura).getByRole('button', { name: 'Entrar' }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/login'));
+  });
+
+  it('abertura desktop: CTA leva pra /mercados', async () => {
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await user.click(await screen.findByRole('button', { name: /Explorar TradeZen/ }));
 
     await waitFor(() => expect(window.location.pathname).toBe('/mercados'));
   });

@@ -341,22 +341,63 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .pa-carousel-card:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--s2)}
 
 /* ───────── PÁGINA DE ABERTURA ───────── */
-.abertura{position:fixed;inset:0;background:var(--bg);overflow:hidden;z-index:1000}
-.ab-fx{position:absolute;inset:0;z-index:0;display:block}
-.ab-glow{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 50% at 50% 38%,rgba(61,126,255,.10),transparent 70%),radial-gradient(40% 40% at 80% 82%,rgba(155,109,255,.08),transparent 70%)}
-.ab-wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
-.ab-head{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;flex-shrink:0}
-.ab-logo{font-family:var(--font-h);font-size:24px;letter-spacing:3px;color:var(--text);display:flex;align-items:center;gap:10px;user-select:none}
-.ab-logo span{color:var(--accent)}
-.ab-logo .ic{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--pro));display:inline-flex;align-items:center;justify-content:center;font-size:15px}
-.ab-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 24px 60px;overflow-y:auto}
-.ab-hero h1{font-family:var(--font-h);font-size:clamp(44px,8.5vw,104px);line-height:.98;font-weight:400;letter-spacing:2px;color:var(--text);margin-bottom:28px;opacity:0;animation:abrise .9s ease forwards .15s;text-shadow:0 2px 24px rgba(61,126,255,.25)}
-.ab-hero h1 .l2{display:block;color:var(--accent)}
-.ab-hero p{max-width:600px;font-size:clamp(16px,2.2vw,21px);font-weight:500;line-height:1.6;color:var(--text);margin-bottom:44px;opacity:0;animation:abrise .9s ease forwards .35s}
-.ab-entrar{background:var(--accent);color:#fff;border:none;font-family:var(--font-b);font-size:19px;font-weight:800;letter-spacing:.3px;padding:18px 64px;border-radius:999px;cursor:pointer;transition:transform .18s,box-shadow .18s;opacity:0;animation:abrise .9s ease forwards .55s;box-shadow:0 10px 40px rgba(61,126,255,.35)}
-.ab-entrar:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(47,111,239,.35)}
-@keyframes abrise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-@media (max-width:600px){.ab-head{padding:18px 20px}}
+/* ── LANDING (abertura) ──
+   Mesma tela no celular e no computador: foto de fundo, texto centralizado
+   e o botão azul. Cores fixas de propósito, fora do sistema de tema: o fundo
+   é uma fotografia escura, então o texto precisa continuar claro mesmo no
+   tema claro — senão fica escuro sobre escuro, o mesmo bug que já aconteceu
+   no dashboard. Os tamanhos abaixo são os do celular; o bloco
+   @media (min-width:768px) logo depois amplia tudo pro computador. */
+.abm{
+  position:fixed;inset:0;z-index:1000;overflow-y:auto;
+  min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;
+  background-color:#0b0e14;background-size:cover;
+  background-position:right center;background-repeat:no-repeat;
+  font-family:var(--font-b);color:#fff;
+}
+.abm-head{position:relative;z-index:2;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
+.abm-logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:500;letter-spacing:4px;color:#fff;user-select:none}
+.abm-logo b{font-weight:inherit}.abm-logo span{color:#4d8bff}
+.abm-logo svg{width:28px;height:24px;flex-shrink:0}
+.abm-acoes{display:flex;align-items:center;gap:14px}
+.abm-entrar{background:none;border:none;color:#fff;font-family:var(--font-b);font-size:15px;font-weight:500;padding:8px 4px;cursor:pointer}
+.abm-menu-btn{background:none;border:none;padding:0;margin-right:-10px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:44px}
+.abm-menu-btn svg{width:24px;height:18px;stroke:#4d8bff;stroke-width:2;stroke-linecap:round;fill:none}
+.abm-conteudo{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:clamp(32px,10vh,110px) 24px 24px}
+/* letter-spacing soma espaço depois da última letra também; o padding
+   à esquerda devolve o texto pro centro visual */
+.abm-tags{font-family:var(--font-m);font-size:12px;letter-spacing:3px;padding-left:3px;color:#a0a4ad;text-transform:uppercase;margin:0}
+.abm-tags i{font-style:normal;margin:0 8px}
+.abm-titulo{font-family:var(--font-b);font-size:48px;font-weight:400;line-height:1.1;color:#fff;margin:24px 0 0;letter-spacing:-.5px}
+.abm-titulo span{color:#4d8bff}
+.abm-sub{font-size:16px;line-height:1.5;color:#c0c4cc;max-width:320px;margin:24px auto 40px}
+.abm-cta{display:inline-flex;align-items:center;gap:12px;background:#2962ff;color:#fff;border:none;padding:16px 40px;border-radius:32px;font-family:var(--font-b);font-size:16px;font-weight:500;cursor:pointer;box-shadow:0 4px 24px rgba(41,98,255,.4);transition:opacity .15s;-webkit-tap-highlight-color:transparent}
+.abm-cta:hover,.abm-cta:active{opacity:.9}
+.abm-cta svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.abm-entrar:focus-visible,.abm-menu-btn:focus-visible,.abm-cta:focus-visible,.abm-menu button:focus-visible{outline:2px solid #4d8bff;outline-offset:3px}
+/* Menu do ícone: só destinos que já existem no site */
+.abm-menu{position:absolute;top:62px;right:14px;z-index:3;min-width:210px;display:flex;flex-direction:column;padding:6px;border-radius:14px;background:rgba(15,19,28,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:.5px solid rgba(77,139,255,.25);box-shadow:0 12px 36px rgba(0,0,0,.5)}
+.abm-menu button{background:none;border:none;text-align:left;color:#e6e8ec;font-family:var(--font-b);font-size:15px;padding:12px 14px;border-radius:9px;cursor:pointer}
+.abm-menu button:active{background:rgba(77,139,255,.12)}
+
+/* Landing no computador — mesma tela do celular, em tamanho de monitor */
+@media (min-width:768px){
+  .abm{background-position:center 40%}
+  .abm-head{padding:24px 48px}
+  .abm-logo{font-size:22px;letter-spacing:5px;gap:12px}
+  .abm-logo svg{width:34px;height:29px}
+  .abm-acoes{gap:22px}
+  .abm-entrar{font-size:16px}
+  .abm-conteudo{justify-content:center;padding:0 40px 80px}
+  .abm-tags{font-size:14px;letter-spacing:4px;padding-left:4px}
+  .abm-titulo{font-size:clamp(56px,6.5vw,96px);margin-top:28px}
+  .abm-sub{font-size:20px;max-width:560px;margin:28px auto 48px}
+  .abm-cta{padding:18px 48px;font-size:18px;border-radius:40px;gap:14px}
+  .abm-cta svg{width:20px;height:20px}
+  .abm-menu{top:78px;right:44px}
+}
+
 
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVO — breakpoints do site inteiro:
@@ -650,43 +691,5 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .tbar{display:none}
   .ti{font-size:11px;padding:0 14px}
 
-  /* ── LANDING (mobile) ──
-     No celular a landing é outro componente (AberturaMobile): foto de fundo
-     no lugar da malha animada, texto centralizado. Cores fixas de propósito,
-     fora do sistema de tema: o fundo é uma fotografia escura, então o texto
-     precisa continuar claro mesmo no tema claro — senão fica escuro sobre
-     escuro, o mesmo bug que já aconteceu no dashboard. */
-  .abm{
-    position:fixed;inset:0;z-index:1000;overflow-y:auto;
-    min-height:100vh;min-height:100dvh;
-    display:flex;flex-direction:column;
-    background-color:#0b0e14;background-size:cover;
-    background-position:center right;background-repeat:no-repeat;
-    font-family:var(--font-b);color:#fff;
-  }
-  .abm-head{position:relative;z-index:2;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
-  .abm-logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:500;letter-spacing:4px;color:#fff;user-select:none}
-  .abm-logo b{font-weight:inherit}.abm-logo span{color:#4d8bff}
-  .abm-logo svg{width:28px;height:24px;flex-shrink:0}
-  .abm-acoes{display:flex;align-items:center;gap:14px}
-  .abm-entrar{background:none;border:none;color:#fff;font-family:var(--font-b);font-size:15px;font-weight:500;padding:8px 4px;cursor:pointer}
-  .abm-menu-btn{background:none;border:none;padding:0;margin-right:-10px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:44px}
-  .abm-menu-btn svg{width:24px;height:18px;stroke:#4d8bff;stroke-width:2;stroke-linecap:round;fill:none}
-  .abm-conteudo{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:clamp(32px,10vh,110px) 24px 24px}
-  /* letter-spacing soma espaço depois da última letra também; o padding
-     à esquerda devolve o texto pro centro visual */
-  .abm-tags{font-family:var(--font-m);font-size:12px;letter-spacing:3px;padding-left:3px;color:#a0a4ad;text-transform:uppercase;margin:0}
-  .abm-tags i{font-style:normal;margin:0 8px}
-  .abm-titulo{font-family:var(--font-b);font-size:48px;font-weight:400;line-height:1.1;color:#fff;margin:24px 0 0;letter-spacing:-.5px}
-  .abm-titulo span{color:#4d8bff}
-  .abm-sub{font-size:16px;line-height:1.5;color:#c0c4cc;max-width:320px;margin:24px auto 40px}
-  .abm-cta{display:inline-flex;align-items:center;gap:12px;background:#2962ff;color:#fff;border:none;padding:16px 40px;border-radius:32px;font-family:var(--font-b);font-size:16px;font-weight:500;cursor:pointer;box-shadow:0 4px 24px rgba(41,98,255,.4);transition:opacity .15s;-webkit-tap-highlight-color:transparent}
-  .abm-cta:hover,.abm-cta:active{opacity:.9}
-  .abm-cta svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-  .abm-entrar:focus-visible,.abm-menu-btn:focus-visible,.abm-cta:focus-visible,.abm-menu button:focus-visible{outline:2px solid #4d8bff;outline-offset:3px}
-  /* Menu do ícone: só destinos que já existem no site */
-  .abm-menu{position:absolute;top:62px;right:14px;z-index:3;min-width:210px;display:flex;flex-direction:column;padding:6px;border-radius:14px;background:rgba(15,19,28,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:.5px solid rgba(77,139,255,.25);box-shadow:0 12px 36px rgba(0,0,0,.5)}
-  .abm-menu button{background:none;border:none;text-align:left;color:#e6e8ec;font-family:var(--font-b);font-size:15px;padding:12px 14px;border-radius:9px;cursor:pointer}
-  .abm-menu button:active{background:rgba(77,139,255,.12)}
 }
 `;
