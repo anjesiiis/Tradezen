@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
 }
 
 // Componente genérico: não sabe nada sobre nenhum padrão específico.
-// Quem chama decide os `steps` (quais pontos marcar) e `linePairs`
-// (quais pares de pontos ligar com uma linha, ex: a neckline do OCO).
-export default function TemplateMarkerChart({ candles, steps, linePairs = [], initialPontos, onChange, readOnly = false }) {
+// Quem chama decide os `steps` (quais pontos marcar) e como ligar esses
+// pontos, de duas formas:
+//   • `linePairs` — pares de pontos ligados por uma linha (neckline do OCO)
+//   • `linhas`    — função (pontos, candles) => linhas calculadas, cada uma
+//     com cor, espessura e tracejado próprios. É o que a bandeira usa pra
+//     esticar o canal até o rompimento e projetar o alvo.
+export default function TemplateMarkerChart({ candles, steps, linePairs = [], linhas, initialPontos, onChange, readOnly = false }) {
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -52,16 +56,9 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
       wickDownColor: "#FF4560",
     });
 
-    lineSeriesRef.current = linePairs.map(() =>
-      chart.addSeries(LineSeries, {
-        color: "#9B6DFF",
-        lineWidth: 2,
-        lineStyle: 2,
-        crosshairMarkerVisible: false,
-        lastValueVisible: false,
-        priceLineVisible: false,
-      })
-    );
+    // As séries de linha são criadas sob demanda (ver `serieDeLinha`): o
+    // número delas muda conforme o padrão e quantos pontos já foram marcados.
+    lineSeriesRef.current = [];
 
     chartRef.current = chart;
     seriesRef.current = series;
@@ -117,6 +114,20 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
 
+  // Pega a série de linha nº `idx`, criando se ainda não existir.
+  function serieDeLinha(idx) {
+    const chart = chartRef.current;
+    if (!chart) return null;
+    if (!lineSeriesRef.current[idx]) {
+      lineSeriesRef.current[idx] = chart.addSeries(LineSeries, {
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+    }
+    return lineSeriesRef.current[idx];
+  }
+
   useEffect(() => {
     if (!markersApiRef.current || !candles?.length) return;
 
@@ -131,18 +142,32 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], in
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
 
-    linePairs.forEach(([keyA, keyB], idx) => {
-      const lineSeries = lineSeriesRef.current[idx];
-      if (!lineSeries) return;
-      if (pontos[keyA] && pontos[keyB]) {
-        const pA = { time: toChartTime(candles[pontos[keyA].i]), value: pontos[keyA].preco };
-        const pB = { time: toChartTime(candles[pontos[keyB].i]), value: pontos[keyB].preco };
-        const [a, b] = pA.time <= pB.time ? [pA, pB] : [pB, pA];
-        lineSeries.setData([a, b]);
-      } else {
-        lineSeries.setData([]);
-      }
+    // Une as duas formas de desenhar num formato só
+    const defs = linhas
+      ? linhas(pontos, candles)
+      : linePairs
+          .filter(([a, b]) => pontos[a] && pontos[b])
+          .map(([a, b]) => ({
+            cor: "#9B6DFF", largura: 2, tracejada: true,
+            dados: [{ i: pontos[a].i, preco: pontos[a].preco }, { i: pontos[b].i, preco: pontos[b].preco }],
+          }));
+
+    defs.forEach((def, idx) => {
+      const serie = serieDeLinha(idx);
+      if (!serie) return;
+      serie.applyOptions({
+        color: def.cor,
+        lineWidth: def.largura ?? 2,
+        lineStyle: def.tracejada ? LineStyle.Dashed : LineStyle.Solid,
+      });
+      const pontosValidos = (def.dados || [])
+        .filter((d) => candles[d.i] && d.preco !== null && d.preco !== undefined)
+        .map((d) => ({ time: toChartTime(candles[d.i]), value: d.preco }))
+        .sort((a, b) => a.time - b.time);
+      serie.setData(pontosValidos.length >= 2 ? pontosValidos : []);
     });
+    // Sobrou série de uma marcação anterior (o usuário apagou um ponto)? esvazia
+    lineSeriesRef.current.slice(defs.length).forEach((serie) => serie.setData([]));
 
     onChange?.(pontos);
     // eslint-disable-next-line react-hooks/exhaustive-deps

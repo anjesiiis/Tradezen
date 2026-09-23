@@ -265,9 +265,28 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
     const xb = toX(b.i), yb = toY(b.preco);
     return (xa==null || ya==null || xb==null || yb==null) ? null : {a:{x:xa,y:ya}, b:{x:xb,y:yb}};
   };
-  const mastro = par(P.mastro_inicio, P.mastro_fim);
-  const canalTopo = par(P.topo1, P.topo2);
-  const canalFundo = par(P.fundo1, P.fundo2);
+  // Preço da reta que passa por dois pontos, no índice `i` (extrapola)
+  const naReta = (a, b, i) => b.i === a.i ? a.preco : a.preco + ((b.preco - a.preco) * (i - a.i)) / (b.i - a.i);
+
+  // Marcação nova: 6 pontos em ordem cronológica (ver admin/bandeira.js).
+  // O formato antigo (mastro + 2 topos + 2 fundos do canal) continua
+  // desenhando do jeito de antes — templates salvos não mudam de cara.
+  const novo = ["p1_inicio_mastro","p2_topo_mastro","p3_fundo1","p4_topo1","p5_fundo2","p6_rompimento"].every(k => P[k]);
+
+  let mastro, canalTopo, canalFundo, alvo;
+  if(novo){
+    const {p1_inicio_mastro:p1, p2_topo_mastro:p2, p3_fundo1:p3, p4_topo1:p4, p5_fundo2:p5, p6_rompimento:p6} = P;
+    mastro     = par(p1, p2);
+    // canal esticado até o candle do rompimento
+    canalTopo  = par(p2, { i:p6.i, preco: naReta(p2, p4, p6.i) });
+    canalFundo = par(p3, { i:p6.i, preco: naReta(p3, p5, p6.i) });
+    // alvo: a altura do mastro projetada a partir do rompimento
+    alvo = par(p6, { i: p6.i + Math.max(1, p2.i - p1.i), preco: p6.preco + (p2.preco - p1.preco) });
+  } else {
+    mastro     = par(P.mastro_inicio, P.mastro_fim);
+    canalTopo  = par(P.topo1, P.topo2);
+    canalFundo = par(P.fundo1, P.fundo2);
+  }
   const fimMastro = mastro?.b;
 
   ctx.save();
@@ -288,20 +307,25 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
 
-  if(mastro){
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = cor;
-    ctx.setLineDash([]);
+  // Mastro e alvo em verde, canal em azul (mesmas cores da marcação no
+  // admin, pra o padrão ser reconhecido na hora nas duas telas)
+  for(const linha of [mastro, alvo]){
+    if(!linha) continue;
+    ctx.globalAlpha = linha === alvo ? 0.75 : 1;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#26a69a";
+    ctx.setLineDash(linha === alvo ? [7, 5] : []);
     ctx.beginPath();
-    ctx.moveTo(mastro.a.x, mastro.a.y);
-    ctx.lineTo(mastro.b.x, mastro.b.y);
+    ctx.moveTo(linha.a.x, linha.a.y);
+    ctx.lineTo(linha.b.x, linha.b.y);
     ctx.stroke();
   }
 
   for(const canal of [canalTopo, canalFundo]){
     if(!canal) continue;
     ctx.globalAlpha = 0.85;
-    ctx.strokeStyle = "#3D7EFF";
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#2962ff";
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(canal.a.x, canal.a.y);
@@ -318,7 +342,8 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
     const x = toX(pt.i), y = toY(pt.preco);
     if(x==null || y==null) continue;
     ctx.globalAlpha = 0.95;
-    ctx.fillStyle = key.startsWith("mastro") ? cor : "#3D7EFF";
+    const doMastro = key.startsWith("mastro") || key.startsWith("p1_") || key.startsWith("p2_") || key.startsWith("p6_");
+    ctx.fillStyle = doMastro ? "#26a69a" : "#2962ff";
     ctx.beginPath();
     ctx.arc(x, y, 3.5, 0, Math.PI*2);
     ctx.fill();

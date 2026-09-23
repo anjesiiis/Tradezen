@@ -40,6 +40,8 @@ export async function respostaFake(url) {
   if (u.includes('/ativos/batch')) return json({ resultados: [] });
   if (u.includes('/ativos/buscar')) return json({ resultados: [] });
   if (u.includes('/padroes-marcados/')) return json({ padroes: [] });
+  // rotas do admin (templates de padrões)
+  if (u.includes('/admin/templates')) return json({ templates: [], template: {} });
   if (u.includes('/ativo/')) return json({ candles: CANDLES_FAKE, niveis: [] });
   return json({});
 }

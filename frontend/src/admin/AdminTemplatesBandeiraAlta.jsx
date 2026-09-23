@@ -1,26 +1,23 @@
 import { useEffect, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
-import AdminShell, { AdminPatternNav } from "./theme.jsx";
+import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
+import { LINE_PAIRS_LEGADO, linhasBandeira, stepsBandeira, stepsLegado, temFormatoNovo, validarBandeira } from "./bandeira.js";
 import { fetchAtivoCandles, templatesBandeiraAltaApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
-// Mastro (o movimento forte que antecede a bandeira) em azul, canal de
-// consolidação em verde (topo) / vermelho (fundo) — mesma cor de
-// resistência/suporte no resto do app (ver _desenharNivel em App.jsx).
-const STEPS = [
-  { key: "mastro_inicio", label: "Início do Mastro", short: "M1", color: "#3D7EFF" },
-  { key: "mastro_fim",    label: "Fim do Mastro",    short: "M2", color: "#3D7EFF" },
-  { key: "topo1",         label: "Topo 1 (canal)",   short: "T1", color: "#00D68F" },
-  { key: "topo2",         label: "Topo 2 (canal)",   short: "T2", color: "#00D68F" },
-  { key: "fundo1",        label: "Fundo 1 (canal)",  short: "F1", color: "#FF4560" },
-  { key: "fundo2",        label: "Fundo 2 (canal)",  short: "F2", color: "#FF4560" },
-];
-const LINE_PAIRS = [["mastro_inicio", "mastro_fim"], ["topo1", "topo2"], ["fundo1", "fundo2"]];
+// 6 pontos na ordem em que o padrão acontece no tempo (ver bandeira.js):
+// mastro → consolidação dentro do canal → rompimento. O desenho sai de
+// `linhasBandeira`: mastro, as duas linhas do canal esticadas até o
+// rompimento e o alvo projetado.
+const ALTA = true;
+const STEPS = stepsBandeira(ALTA);
+const STEPS_LEGADO = stepsLegado();
+const desenharLinhas = (pontos, candles) => linhasBandeira(pontos, candles, { alta: ALTA });
 const PASSOS = STEPS.map((s) => s.key);
 
 function janelaDoPadrao(candlesContexto, pontos) {
@@ -55,11 +52,23 @@ export default function AdminTemplatesBandeiraAlta() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
+  const [avisos, setAvisos] = useState([]);
   const [editando, setEditando] = useState(null);
 
   useEffect(() => {
     carregarTemplates();
   }, []);
+
+  // Cada erro de validação vira um toast próprio, some sozinho em 8s
+  function mostrarErros(erros) {
+    const novos = erros.map((texto, i) => ({ id: `${Date.now()}-${i}`, texto, tipo: "erro" }));
+    setAvisos((prev) => [...prev, ...novos]);
+    novos.forEach((a) => setTimeout(() => fecharAviso(a.id), 8000));
+  }
+
+  function fecharAviso(id) {
+    setAvisos((prev) => prev.filter((a) => a.id !== id));
+  }
 
   async function carregarTemplates() {
     try {
@@ -95,6 +104,11 @@ export default function AdminTemplatesBandeiraAlta() {
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
+    const erros = validarBandeira(pontos, { alta: ALTA });
+    if (erros.length) {
+      mostrarErros(erros);
+      return;
+    }
     setSalvando(true);
     setMensagem(null);
     try {
@@ -144,6 +158,15 @@ export default function AdminTemplatesBandeiraAlta() {
 
   async function salvarEdicao() {
     if (!editando) return;
+    // Template no formato antigo continua salvando como está — as regras
+    // novas só valem pra marcação em 6 pontos cronológicos.
+    if (temFormatoNovo(editando.pontosEdit)) {
+      const erros = validarBandeira(editando.pontosEdit, { alta: ALTA });
+      if (erros.length) {
+        mostrarErros(erros);
+        return;
+      }
+    }
     setSalvando(true);
     setMensagem(null);
     try {
@@ -205,8 +228,9 @@ export default function AdminTemplatesBandeiraAlta() {
             <TemplateMarkerChart
               key={`${editando.id}-${editando.readOnly}`}
               candles={editando.candles}
-              steps={STEPS}
-              linePairs={LINE_PAIRS}
+              steps={temFormatoNovo(editando.pontos) ? STEPS : STEPS_LEGADO}
+              linePairs={temFormatoNovo(editando.pontos) ? [] : LINE_PAIRS_LEGADO}
+              linhas={temFormatoNovo(editando.pontos) ? desenharLinhas : undefined}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               readOnly={editando.readOnly}
@@ -265,7 +289,7 @@ export default function AdminTemplatesBandeiraAlta() {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
-                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linePairs={LINE_PAIRS} onChange={setPontos} />
+                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linhas={desenharLinhas} onChange={setPontos} />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">
@@ -286,9 +310,11 @@ export default function AdminTemplatesBandeiraAlta() {
                   </Campo>
                 </div>
 
-                <button onClick={salvarNovo} disabled={!completo || salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
-                  {salvando ? "Salvando..." : "Salvar template"}
-                </button>
+                {completo && (
+                  <button onClick={salvarNovo} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
+                    {salvando ? "Salvando..." : "Salvar Template"}
+                  </button>
+                )}
               </>
             )}
           </section>
@@ -331,6 +357,8 @@ export default function AdminTemplatesBandeiraAlta() {
           </div>
         </section>
       </main>
+
+      <AdminToast avisos={avisos} onFechar={fecharAviso} />
     </AdminShell>
   );
 }

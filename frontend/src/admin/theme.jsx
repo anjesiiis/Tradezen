@@ -44,6 +44,13 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-btn-ghost:hover{color:var(--text)}
 
 .admin-msg{font-size:13px;padding:10px 14px;border-radius:8px;border:1px solid}
+/* Toast — avisos de validação da marcação (ex: pontos fora de ordem). Fica
+   flutuando no canto pra não empurrar o gráfico pra baixo enquanto o
+   usuário corrige os pontos. */
+.admin-toast{position:fixed;right:20px;bottom:20px;z-index:400;max-width:min(420px,calc(100vw - 40px));display:flex;flex-direction:column;gap:8px}
+.admin-toast-item{display:flex;align-items:flex-start;gap:10px;background:#1a1216;border:1px solid rgba(239,83,80,.45);border-left:3px solid #ef5350;color:var(--text);font-size:13px;line-height:1.45;padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.admin-toast-item.ok{background:#101c18;border-color:rgba(38,166,154,.45);border-left-color:#26a69a}
+.admin-toast-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0;margin-left:auto}
 .admin-msg-ok{background:rgba(0,214,143,.08);border-color:rgba(0,214,143,.25);color:var(--up)}
 .admin-msg-err{background:rgba(255,69,96,.08);border-color:rgba(255,69,96,.25);color:var(--down)}
 
@@ -118,5 +125,21 @@ export function AdminPatternNav({ active }) {
         </a>
       ))}
     </nav>
+  );
+}
+
+// Avisos flutuantes (usados pelas validações da marcação de bandeira).
+// `avisos`: array de { id, texto, tipo } — tipo "erro" (padrão) ou "ok".
+export function AdminToast({ avisos = [], onFechar }) {
+  if (!avisos.length) return null;
+  return (
+    <div className="admin-toast" role="alert" aria-live="assertive">
+      {avisos.map((a) => (
+        <div key={a.id} className={`admin-toast-item${a.tipo === "ok" ? " ok" : ""}`}>
+          <span>{a.texto}</span>
+          <button className="admin-toast-x" title="Fechar" onClick={() => onFechar?.(a.id)}>✕</button>
+        </div>
+      ))}
+    </div>
   );
 }

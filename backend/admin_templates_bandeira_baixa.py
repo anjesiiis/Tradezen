@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from admin_auth import require_admin
+from bandeira_pontos import PontosBandeira, garantir_valido
 from rate_limit import limiter
 from supabase_client import supabase
 
@@ -14,22 +15,8 @@ router = APIRouter(
 )
 
 
-class Ponto(BaseModel):
-    i: int
-    preco: float
-
-
-# Mastro (o movimento forte que antecede a bandeira) + o canal de
-# consolidação: 2 toques no topo e 2 no fundo do canal, mesmo nível de
-# detalhe do OCO (7 pontos) — dá pra desenhar o mastro e as duas linhas do
-# canal (ver linePairs no admin e _desenharBandeira no gráfico principal).
-class PontosBandeira(BaseModel):
-    mastro_inicio: Ponto
-    mastro_fim: Ponto
-    topo1: Ponto
-    topo2: Ponto
-    fundo1: Ponto
-    fundo2: Ponto
+# Os 6 pontos e as regras de validação vivem em bandeira_pontos.py
+# (compartilhado com a bandeira de alta).
 
 
 class TemplateCreate(BaseModel):
@@ -77,6 +64,7 @@ def obter_template(request: Request, template_id: int):
 @router.post("")
 @limiter.limit("30/minute")
 def criar_template(request: Request, payload: TemplateCreate):
+    garantir_valido(payload.pontos, alta=False)
     body = payload.model_dump()
     resp = supabase.table("templates_bandeira_baixa").insert(body).execute()
     return {"status": "ok", "template": resp.data[0]}
@@ -85,6 +73,8 @@ def criar_template(request: Request, payload: TemplateCreate):
 @router.put("/{template_id}")
 @limiter.limit("30/minute")
 def atualizar_template(request: Request, template_id: int, payload: TemplateUpdate):
+    if payload.pontos is not None:
+        garantir_valido(payload.pontos, alta=False)
     body = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not body:
         raise HTTPException(status_code=400, detail="Nada para atualizar.")
