@@ -3,7 +3,10 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
-import { LINE_PAIRS_LEGADO, linhasBandeira, stepsBandeira, stepsLegado, temFormatoNovo, validarBandeira } from "./bandeira.js";
+import {
+  LINE_PAIRS_LEGADO, linhasAltaPares, linhasBandeira, stepsAltaPares, stepsBandeira, stepsLegado,
+  temFormatoPares, temFormatoNovo, validarAltaPares, validarBandeira,
+} from "./bandeira.js";
 import { fetchAtivoCandles, templatesBandeiraAltaApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
@@ -15,10 +18,24 @@ const PADDING = 15;
 // `linhasBandeira`: mastro, as duas linhas do canal esticadas até o
 // rompimento e o alvo projetado.
 const ALTA = true;
-const STEPS = stepsBandeira(ALTA);
-const STEPS_LEGADO = stepsLegado();
-const desenharLinhas = (pontos, candles) => linhasBandeira(pontos, candles, { alta: ALTA });
+
+// 8 pontos em 4 pares independentes (ver PARES_ALTA em bandeira.js): cada
+// par são 2 cliques e vira uma linha própria, que aparece assim que os 2
+// pontos daquele par são marcados.
+const STEPS = stepsAltaPares();
 const PASSOS = STEPS.map((s) => s.key);
+
+// Formatos anteriores — só pra abrir/editar o que já foi salvo antes
+const STEPS_6 = stepsBandeira(ALTA);
+const STEPS_LEGADO = stepsLegado();
+
+function configDoTemplate(pontos) {
+  if (temFormatoPares(pontos)) return { steps: STEPS, linhas: linhasAltaPares, linePairs: [] };
+  if (temFormatoNovo(pontos)) {
+    return { steps: STEPS_6, linhas: (p, candles) => linhasBandeira(p, candles, { alta: ALTA }), linePairs: [] };
+  }
+  return { steps: STEPS_LEGADO, linhas: undefined, linePairs: LINE_PAIRS_LEGADO };
+}
 
 function janelaDoPadrao(candlesContexto, pontos) {
   const indices = Object.values(pontos).map((p) => p.i);
@@ -104,7 +121,7 @@ export default function AdminTemplatesBandeiraAlta() {
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
-    const erros = validarBandeira(pontos, { alta: ALTA });
+    const erros = validarAltaPares(pontos);
     if (erros.length) {
       mostrarErros(erros);
       return;
@@ -158,14 +175,16 @@ export default function AdminTemplatesBandeiraAlta() {
 
   async function salvarEdicao() {
     if (!editando) return;
-    // Template no formato antigo continua salvando como está — as regras
-    // novas só valem pra marcação em 6 pontos cronológicos.
-    if (temFormatoNovo(editando.pontosEdit)) {
-      const erros = validarBandeira(editando.pontosEdit, { alta: ALTA });
-      if (erros.length) {
-        mostrarErros(erros);
-        return;
-      }
+    // Cada template é validado pelas regras do formato em que foi marcado
+    const p = editando.pontosEdit;
+    const erros = temFormatoPares(p)
+      ? validarAltaPares(p)
+      : temFormatoNovo(p)
+        ? validarBandeira(p, { alta: ALTA })
+        : [];
+    if (erros.length) {
+      mostrarErros(erros);
+      return;
     }
     setSalvando(true);
     setMensagem(null);
@@ -228,9 +247,9 @@ export default function AdminTemplatesBandeiraAlta() {
             <TemplateMarkerChart
               key={`${editando.id}-${editando.readOnly}`}
               candles={editando.candles}
-              steps={temFormatoNovo(editando.pontos) ? STEPS : STEPS_LEGADO}
-              linePairs={temFormatoNovo(editando.pontos) ? [] : LINE_PAIRS_LEGADO}
-              linhas={temFormatoNovo(editando.pontos) ? desenharLinhas : undefined}
+              steps={configDoTemplate(editando.pontos).steps}
+              linePairs={configDoTemplate(editando.pontos).linePairs}
+              linhas={configDoTemplate(editando.pontos).linhas}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               readOnly={editando.readOnly}
@@ -289,7 +308,7 @@ export default function AdminTemplatesBandeiraAlta() {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
-                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linhas={desenharLinhas} onChange={setPontos} />
+                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} linhas={linhasAltaPares} onChange={setPontos} />
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">

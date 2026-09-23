@@ -273,8 +273,18 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
   // desenhando do jeito de antes — templates salvos não mudam de cara.
   const novo = ["p1_inicio_mastro","p2_topo_mastro","p3_fundo1","p4_topo1","p5_fundo2","p6_rompimento"].every(k => P[k]);
 
+  // Formato atual da bandeira de ALTA: 8 pontos em 4 pares independentes,
+  // cada par uma linha (mastro 1, fundo e topo do canal, mastro 2).
+  const pares = ["p1_inicio_mastro1","p2_topo_mastro1","p3_inicio_fundo","p4_fim_fundo",
+                 "p5_inicio_topo","p6_fim_topo","p7_inicio_mastro2","p8_topo_mastro2"].every(k => P[k]);
+
   let mastro, canalTopo, canalFundo, alvo;
-  if(novo){
+  if(pares){
+    mastro     = par(P.p1_inicio_mastro1, P.p2_topo_mastro1);
+    canalFundo = par(P.p3_inicio_fundo, P.p4_fim_fundo);
+    canalTopo  = par(P.p5_inicio_topo, P.p6_fim_topo);
+    alvo       = par(P.p7_inicio_mastro2, P.p8_topo_mastro2);
+  } else if(novo){
     const {p1_inicio_mastro:p1, p2_topo_mastro:p2, p3_fundo1:p3, p4_topo1:p4, p5_fundo2:p5, p6_rompimento:p6} = P;
     mastro     = par(p1, p2);
     // canal esticado até o candle do rompimento
@@ -311,10 +321,14 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
   // admin, pra o padrão ser reconhecido na hora nas duas telas)
   for(const linha of [mastro, alvo]){
     if(!linha) continue;
-    ctx.globalAlpha = linha === alvo ? 0.75 : 1;
+    // No formato em pares o "alvo" é o mastro 2 de verdade (marcado pelo
+    // analista), então é linha cheia; nos formatos antigos ele é uma
+    // projeção calculada, e aí vai tracejado e mais apagado.
+    const projetado = linha === alvo && !pares;
+    ctx.globalAlpha = projetado ? 0.75 : 1;
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#26a69a";
-    ctx.setLineDash(linha === alvo ? [7, 5] : []);
+    ctx.setLineDash(projetado ? [7, 5] : []);
     ctx.beginPath();
     ctx.moveTo(linha.a.x, linha.a.y);
     ctx.lineTo(linha.b.x, linha.b.y);
@@ -342,7 +356,9 @@ export function _desenharBandeira(ctx, toX, toY, p, isSel){
     const x = toX(pt.i), y = toY(pt.preco);
     if(x==null || y==null) continue;
     ctx.globalAlpha = 0.95;
-    const doMastro = key.startsWith("mastro") || key.startsWith("p1_") || key.startsWith("p2_") || key.startsWith("p6_");
+    const doMastro = pares
+      ? /^(p1_|p2_|p7_|p8_)/.test(key)
+      : key.startsWith("mastro") || key.startsWith("p1_") || key.startsWith("p2_") || key.startsWith("p6_");
     ctx.fillStyle = doMastro ? "#26a69a" : "#2962ff";
     ctx.beginPath();
     ctx.arc(x, y, 3.5, 0, Math.PI*2);

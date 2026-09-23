@@ -47,40 +47,54 @@ alter table templates_bandeira_baixa enable row level security;
 -- disparar quando uma bandeira é marcada — sem isso, um usuário que criasse
 -- um alerta pra "bandeira_alta"/"bandeira_baixa" nunca receberia
 -- notificação nenhuma, mesmo com PADROES_VALIDOS já aceitando esses tipos
--- (ver alertas.py). CREATE OR REPLACE em vez de criar uma função nova —
--- é a mesma função, só com mais dois `when` no case.
-create or replace function public.notificar_alertas_padrao()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  v_tipo text;
+-- (ver alertas.py).
+--
+-- Tudo dentro de um DO que só roda se as tabelas de alertas existirem: se
+-- o 005 ainda não tiver sido aplicado, criar o gatilho aqui faria QUALQUER
+-- template de bandeira falhar na hora de salvar ("relation
+-- notificacoes_alerta does not exist"). Assim este arquivo pode ser rodado
+-- sozinho, e o gatilho entra depois, quando o 005 for aplicado.
+do $bandeira$
 begin
-  v_tipo := case
-    when TG_TABLE_NAME = 'templates_oco'            then 'oco'
-    when TG_TABLE_NAME = 'templates_topo_duplo'     then 'topo_duplo'
-    when TG_TABLE_NAME = 'templates_niveis'         then NEW.tipo
-    when TG_TABLE_NAME = 'templates_bandeira_alta'  then 'bandeira_alta'
-    when TG_TABLE_NAME = 'templates_bandeira_baixa' then 'bandeira_baixa'
+  if to_regclass('public.notificacoes_alerta') is null or to_regclass('public.alertas') is null then
+    raise notice 'Tabelas de alertas ausentes (sql/005_alertas.sql) — gatilho de notificação não criado.';
+    return;
+  end if;
+
+  create or replace function public.notificar_alertas_padrao()
+  returns trigger
+  language plpgsql
+  security definer set search_path = public
+  as $fn$
+  declare
+    v_tipo text;
+  begin
+    v_tipo := case
+      when TG_TABLE_NAME = 'templates_oco'            then 'oco'
+      when TG_TABLE_NAME = 'templates_topo_duplo'     then 'topo_duplo'
+      when TG_TABLE_NAME = 'templates_niveis'         then NEW.tipo
+      when TG_TABLE_NAME = 'templates_bandeira_alta'  then 'bandeira_alta'
+      when TG_TABLE_NAME = 'templates_bandeira_baixa' then 'bandeira_baixa'
+    end;
+
+    insert into notificacoes_alerta (usuario_id, alerta_id, ticker, padrao, template_id, template_tabela)
+    select a.usuario_id, a.id, NEW.ticker, v_tipo, NEW.id, TG_TABLE_NAME
+    from alertas a
+    where a.ticker = NEW.ticker
+      and v_tipo = any(a.padroes);
+
+    return NEW;
   end;
+  $fn$;
 
-  insert into notificacoes_alerta (usuario_id, alerta_id, ticker, padrao, template_id, template_tabela)
-  select a.usuario_id, a.id, NEW.ticker, v_tipo, NEW.id, TG_TABLE_NAME
-  from alertas a
-  where a.ticker = NEW.ticker
-    and v_tipo = any(a.padroes);
+  drop trigger if exists ao_marcar_bandeira_alta_notificar on templates_bandeira_alta;
+  create trigger ao_marcar_bandeira_alta_notificar
+    after insert on templates_bandeira_alta
+    for each row execute function public.notificar_alertas_padrao();
 
-  return NEW;
-end;
-$$;
-
-drop trigger if exists ao_marcar_bandeira_alta_notificar on templates_bandeira_alta;
-create trigger ao_marcar_bandeira_alta_notificar
-  after insert on templates_bandeira_alta
-  for each row execute function public.notificar_alertas_padrao();
-
-drop trigger if exists ao_marcar_bandeira_baixa_notificar on templates_bandeira_baixa;
-create trigger ao_marcar_bandeira_baixa_notificar
-  after insert on templates_bandeira_baixa
-  for each row execute function public.notificar_alertas_padrao();
+  drop trigger if exists ao_marcar_bandeira_baixa_notificar on templates_bandeira_baixa;
+  create trigger ao_marcar_bandeira_baixa_notificar
+    after insert on templates_bandeira_baixa
+    for each row execute function public.notificar_alertas_padrao();
+end
+$bandeira$;

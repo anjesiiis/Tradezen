@@ -55,7 +55,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-msg-err{background:rgba(255,69,96,.08);border-color:rgba(255,69,96,.25);color:var(--down)}
 
 .admin-chip{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font-b)}
-.admin-chip.active{border-color:#fff;color:#fff;background:rgba(255,255,255,.08)}
+.admin-chip.active{border-color:#2962ff;color:#fff;background:#2962ff}
 .admin-chip.filled{color:var(--text);background:var(--s2)}
 .admin-chip .val{color:var(--text3);margin-left:4px}
 

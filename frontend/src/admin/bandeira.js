@@ -165,3 +165,108 @@ export function stepsLegado() {
     { key: "fundo2",        label: "Fundo 2 (canal)",  short: "F2", color: "#FF4560" },
   ];
 }
+
+// ── BANDEIRA DE ALTA — 8 pontos em 4 PARES independentes ──────
+// Cada par é uma linha própria, marcada com 2 cliques: o analista desenha
+// o mastro, as duas bordas do canal e o mastro pós-rompimento. Os pares
+// NÃO precisam se encostar — é isso que diferencia deste modelo pro
+// anterior (6 pontos encadeados), onde cada ponto dependia do vizinho.
+export const PARES_ALTA = [
+  { id: "mastro1",         rotulo: "Mastro 1",           cor: VERDE, largura: 2,   tracejada: false, de: "p1_inicio_mastro1",  ate: "p2_topo_mastro1" },
+  { id: "fundo_bandeira",  rotulo: "Fundo da Bandeira",  cor: AZUL,  largura: 1.5, tracejada: true,  de: "p3_inicio_fundo",    ate: "p4_fim_fundo" },
+  { id: "topo_bandeira",   rotulo: "Topo da Bandeira",   cor: AZUL,  largura: 1.5, tracejada: true,  de: "p5_inicio_topo",     ate: "p6_fim_topo" },
+  { id: "mastro2",         rotulo: "Mastro 2",           cor: VERDE, largura: 2,   tracejada: false, de: "p7_inicio_mastro2",  ate: "p8_topo_mastro2" },
+];
+
+const ROTULOS_ALTA_PARES = {
+  p1_inicio_mastro1: "Início Mastro 1",
+  p2_topo_mastro1: "Topo Mastro 1",
+  p3_inicio_fundo: "Início Fundo Bandeira",
+  p4_fim_fundo: "Fim Fundo Bandeira",
+  p5_inicio_topo: "Início Topo Bandeira",
+  p6_fim_topo: "Fim Topo Bandeira",
+  p7_inicio_mastro2: "Início Mastro 2",
+  p8_topo_mastro2: "Topo Mastro 2",
+};
+
+export const PASSOS_ALTA_PARES = PARES_ALTA.flatMap((p) => [p.de, p.ate]);
+
+export function stepsAltaPares() {
+  return PARES_ALTA.flatMap((par, iPar) =>
+    [par.de, par.ate].map((key, iPonto) => ({
+      key,
+      label: ROTULOS_ALTA_PARES[key],
+      short: `P${iPar * 2 + iPonto + 1}`,
+      color: par.cor,
+      par: par.id,
+    }))
+  );
+}
+
+export function temFormatoPares(pontos) {
+  return Boolean(pontos) && PASSOS_ALTA_PARES.every((k) => pontos[k]);
+}
+
+// Uma linha por par COMPLETO — a linha aparece assim que os 2 cliques
+// daquele par acontecem, sem esperar os outros pares.
+export function linhasAltaPares(pontos) {
+  if (!pontos) return [];
+  return PARES_ALTA.filter((par) => pontos[par.de] && pontos[par.ate]).map((par) => ({
+    id: par.id,
+    cor: par.cor,
+    largura: par.largura,
+    tracejada: par.tracejada,
+    dados: [
+      { i: pontos[par.de].i, preco: pontos[par.de].preco },
+      { i: pontos[par.ate].i, preco: pontos[par.ate].preco },
+    ],
+  }));
+}
+
+export function validarAltaPares(pontos) {
+  if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
+
+  const p = Object.fromEntries(PASSOS_ALTA_PARES.map((k) => [k, pontos[k]]));
+  const erros = [];
+  const rot = (k) => ROTULOS_ALTA_PARES[k];
+
+  // 1) cada par é cronológico (o 2º clique vem depois do 1º)
+  for (const par of PARES_ALTA) {
+    if (p[par.ate].i <= p[par.de].i) {
+      erros.push(`${par.rotulo}: "${rot(par.ate)}" precisa vir depois de "${rot(par.de)}" no tempo.`);
+    }
+  }
+
+  // 2) os dois mastros são de alta
+  if (p.p2_topo_mastro1.preco <= p.p1_inicio_mastro1.preco) {
+    erros.push(`Mastro 1: "Topo Mastro 1" precisa estar acima de "Início Mastro 1" — o mastro é uma subida.`);
+  }
+  if (p.p8_topo_mastro2.preco <= p.p7_inicio_mastro2.preco) {
+    erros.push(`Mastro 2: "Topo Mastro 2" precisa estar acima de "Início Mastro 2" — o mastro é uma subida.`);
+  }
+
+  // 3) a bandeira (consolidação) vem depois do mastro 1
+  if (p.p3_inicio_fundo.i <= p.p1_inicio_mastro1.i) {
+    erros.push(`"Início Fundo Bandeira" precisa vir depois de "Início Mastro 1" no tempo.`);
+  }
+
+  // 4) o mastro 2 vem depois da bandeira inteira
+  if (p.p7_inicio_mastro2.i <= p.p4_fim_fundo.i) {
+    erros.push(`"Início Mastro 2" precisa vir depois de "Fim Fundo Bandeira" no tempo.`);
+  }
+  if (p.p7_inicio_mastro2.i <= p.p6_fim_topo.i) {
+    erros.push(`"Início Mastro 2" precisa vir depois de "Fim Topo Bandeira" no tempo.`);
+  }
+
+  return erros;
+}
+
+// Medidas do padrão (mesmas contas das colunas geradas no Supabase —
+// ver sql/008_bandeira_alta_8_pontos.sql)
+export function medidasAltaPares(pontos) {
+  if (!temFormatoPares(pontos)) return null;
+  return {
+    altura_mastro1: pontos.p2_topo_mastro1.preco - pontos.p1_inicio_mastro1.preco,
+    altura_mastro2: pontos.p8_topo_mastro2.preco - pontos.p7_inicio_mastro2.preco,
+  };
+}

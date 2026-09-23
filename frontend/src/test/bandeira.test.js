@@ -149,3 +149,110 @@ describe('Bandeira — medidas pro ML', () => {
     expect(medidasBandeira(BOA)).toEqual({ altura_mastro: 10, retracao_bandeira: (20 - 17) / 10 });
   });
 });
+
+// ── Bandeira de ALTA no formato atual: 8 pontos em 4 pares ────
+import {
+  PARES_ALTA, PASSOS_ALTA_PARES,
+  linhasAltaPares, medidasAltaPares, stepsAltaPares, temFormatoPares, validarAltaPares,
+} from '../admin/bandeira.js';
+
+// mastro 1 sobe (10→20), bandeira consolida, mastro 2 sobe depois (19→28)
+const PARES = {
+  p1_inicio_mastro1: { i: 0, preco: 10 },
+  p2_topo_mastro1:   { i: 5, preco: 20 },
+  p3_inicio_fundo:   { i: 7, preco: 17 },
+  p4_fim_fundo:      { i: 13, preco: 16 },
+  p5_inicio_topo:    { i: 8, preco: 19.5 },
+  p6_fim_topo:       { i: 14, preco: 18.5 },
+  p7_inicio_mastro2: { i: 16, preco: 19 },
+  p8_topo_mastro2:   { i: 22, preco: 28 },
+};
+const comPar = (mudancas) => ({ ...PARES, ...mudancas });
+
+describe('Bandeira de alta — 8 pontos em 4 pares', () => {
+  it('os 8 botões saem na ordem dos pares', () => {
+    expect(stepsAltaPares().map((s) => s.label)).toEqual([
+      'Início Mastro 1', 'Topo Mastro 1',
+      'Início Fundo Bandeira', 'Fim Fundo Bandeira',
+      'Início Topo Bandeira', 'Fim Topo Bandeira',
+      'Início Mastro 2', 'Topo Mastro 2',
+    ]);
+    expect(PASSOS_ALTA_PARES).toHaveLength(8);
+    expect(PARES_ALTA).toHaveLength(4);
+  });
+
+  it('cada ponto tem a cor da linha do seu par', () => {
+    const cores = stepsAltaPares().map((s) => s.color);
+    expect(cores).toEqual([VERDE, VERDE, AZUL, AZUL, AZUL, AZUL, VERDE, VERDE]);
+  });
+
+  it('só está completo com os 8 pontos', () => {
+    expect(temFormatoPares(PARES)).toBe(true);
+    const faltando = { ...PARES };
+    delete faltando.p8_topo_mastro2;
+    expect(temFormatoPares(faltando)).toBe(false);
+  });
+});
+
+describe('Bandeira de alta em pares — as 4 linhas', () => {
+  it('uma linha por par, com a cor e o traço certos', () => {
+    expect(linhasAltaPares(PARES)).toEqual([
+      { id: 'mastro1',        cor: VERDE, largura: 2,   tracejada: false, dados: [{ i: 0, preco: 10 }, { i: 5, preco: 20 }] },
+      { id: 'fundo_bandeira', cor: AZUL,  largura: 1.5, tracejada: true,  dados: [{ i: 7, preco: 17 }, { i: 13, preco: 16 }] },
+      { id: 'topo_bandeira',  cor: AZUL,  largura: 1.5, tracejada: true,  dados: [{ i: 8, preco: 19.5 }, { i: 14, preco: 18.5 }] },
+      { id: 'mastro2',        cor: VERDE, largura: 2,   tracejada: false, dados: [{ i: 16, preco: 19 }, { i: 22, preco: 28 }] },
+    ]);
+  });
+
+  it('a linha de um par aparece assim que os 2 cliques dele acontecem', () => {
+    const soUmPar = { p1_inicio_mastro1: PARES.p1_inicio_mastro1, p2_topo_mastro1: PARES.p2_topo_mastro1 };
+    expect(linhasAltaPares(soUmPar).map((l) => l.id)).toEqual(['mastro1']);
+  });
+
+  it('par pela metade não desenha nada', () => {
+    expect(linhasAltaPares({ p1_inicio_mastro1: PARES.p1_inicio_mastro1 })).toEqual([]);
+  });
+});
+
+describe('Bandeira de alta em pares — validações', () => {
+  it('aceita uma marcação correta', () => {
+    expect(validarAltaPares(PARES)).toEqual([]);
+  });
+
+  it('exige os 8 pontos', () => {
+    expect(validarAltaPares({ p1_inicio_mastro1: { i: 0, preco: 1 } })).toEqual(['Marque os 8 pontos antes de salvar.']);
+  });
+
+  it.each([
+    ['mastro 1 invertido no tempo', { p2_topo_mastro1: { i: 0, preco: 20 } }, /Mastro 1: "Topo Mastro 1" precisa vir depois/],
+    ['fundo da bandeira invertido', { p4_fim_fundo: { i: 6, preco: 16 } }, /Fundo da Bandeira: "Fim Fundo Bandeira" precisa vir depois/],
+    ['topo da bandeira invertido', { p6_fim_topo: { i: 7, preco: 18.5 } }, /Topo da Bandeira: "Fim Topo Bandeira" precisa vir depois/],
+    ['mastro 2 invertido no tempo', { p8_topo_mastro2: { i: 15, preco: 28 } }, /Mastro 2: "Topo Mastro 2" precisa vir depois/],
+    ['mastro 1 que não sobe', { p2_topo_mastro1: { i: 5, preco: 9 } }, /"Topo Mastro 1" precisa estar acima de "Início Mastro 1"/],
+    ['mastro 2 que não sobe', { p8_topo_mastro2: { i: 22, preco: 18 } }, /"Topo Mastro 2" precisa estar acima de "Início Mastro 2"/],
+    ['bandeira antes do mastro 1', { p3_inicio_fundo: { i: 0, preco: 17 } }, /"Início Fundo Bandeira" precisa vir depois de "Início Mastro 1"/],
+  ])('recusa %s', (_, mudanca, mensagem) => {
+    expect(validarAltaPares(comPar(mudanca)).join(' ')).toMatch(mensagem);
+  });
+
+  it('recusa mastro 2 que começa antes da bandeira terminar', () => {
+    const erros = validarAltaPares(comPar({ p7_inicio_mastro2: { i: 10, preco: 19 } })).join(' ');
+    expect(erros).toMatch(/"Início Mastro 2" precisa vir depois de "Fim Fundo Bandeira"/);
+    expect(erros).toMatch(/"Início Mastro 2" precisa vir depois de "Fim Topo Bandeira"/);
+  });
+
+  it('os pares são independentes: o fundo pode começar antes do topo', () => {
+    // p5 (i=8) vem antes de p4 (i=13) e isso é permitido
+    expect(validarAltaPares(PARES)).toEqual([]);
+  });
+});
+
+describe('Bandeira de alta em pares — medidas pro ML', () => {
+  it('altura dos dois mastros', () => {
+    expect(medidasAltaPares(PARES)).toEqual({ altura_mastro1: 10, altura_mastro2: 9 });
+  });
+
+  it('marcação incompleta não tem medidas', () => {
+    expect(medidasAltaPares({ p1_inicio_mastro1: { i: 0, preco: 1 } })).toBeNull();
+  });
+});
