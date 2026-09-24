@@ -4,7 +4,7 @@ import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import {
-  avisosDoPadrao, configDoTemplate, linhasDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
+  avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha, stepsDoPadrao, temFormatoPares, validarPadrao,
 } from "./bandeira.js";
 import { fetchAtivoCandles, clearAdminToken } from "./adminApi";
 
@@ -231,6 +231,7 @@ export default function PainelMarcacao({ padrao, api }) {
               steps={configEdicao.steps}
               linePairs={configEdicao.linePairs}
               linhas={configEdicao.linhas}
+              pares={configEdicao.pares}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               readOnly={editando.readOnly}
@@ -294,6 +295,7 @@ export default function PainelMarcacao({ padrao, api }) {
                   candles={candlesContexto}
                   steps={STEPS}
                   linhas={desenharLinhas}
+                  pares={paresDeLinha(padrao)}
                   onChange={setPontos}
                 />
 

@@ -59,6 +59,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-chip.active{border-color:#2962ff;color:#fff;background:#2962ff}
 .admin-chip.filled{color:var(--text);background:var(--s2)}
 .admin-chip .val{color:var(--text3);margin-left:4px}
+.admin-chip-x{margin-left:6px;color:var(--text3);cursor:pointer;font-size:11px;line-height:1;padding:0 2px;border-radius:4px}
+.admin-chip-x:hover{color:#ef5350;background:rgba(239,83,80,.14)}
 
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th{text-align:left;color:var(--text2);font-size:11px;font-weight:500;padding:8px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}

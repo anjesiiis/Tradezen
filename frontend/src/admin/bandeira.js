@@ -223,12 +223,31 @@ export function stepsLegado() {
 }
 
 // Qual configuração usar pra abrir um template já salvo
+// Pares de pontos que formam cada linha — é o que permite arrastar a linha
+// inteira (as duas pontas juntas) no gráfico de marcação.
+export function paresDeLinha(padrao) {
+  return paresDoPadrao(padrao).map((par) => [par.de, par.ate]);
+}
+
 export function configDoTemplate(pontos, padrao) {
   if (temFormatoPares(pontos)) {
-    return { steps: stepsDoPadrao(padrao), linhas: (p) => linhasDoPadrao(p, padrao), linePairs: [] };
+    return {
+      steps: stepsDoPadrao(padrao),
+      linhas: (p) => linhasDoPadrao(p, padrao),
+      linePairs: [],
+      pares: paresDeLinha(padrao),
+    };
   }
   if (temFormato6(pontos)) {
-    return { steps: steps6(padrao.alta), linhas: (p, candles) => linhas6(p, candles, { alta: padrao.alta }), linePairs: [] };
+    // Formato antigo: as linhas são calculadas (canal esticado, alvo
+    // projetado), então só os pontos são arrastáveis — não faz sentido
+    // arrastar uma linha que é resultado de conta.
+    return {
+      steps: steps6(padrao.alta),
+      linhas: (p, candles) => linhas6(p, candles, { alta: padrao.alta }),
+      linePairs: [],
+      pares: [],
+    };
   }
-  return { steps: stepsLegado(), linhas: undefined, linePairs: LINE_PAIRS_LEGADO };
+  return { steps: stepsLegado(), linhas: undefined, linePairs: LINE_PAIRS_LEGADO, pares: LINE_PAIRS_LEGADO };
 }
