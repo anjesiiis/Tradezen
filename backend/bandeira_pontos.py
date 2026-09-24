@@ -103,15 +103,10 @@ def validar_pares(pontos: PontosBandeira) -> List[str]:
     if p["p8_topo_mastro2"].preco <= p["p7_inicio_mastro2"].preco:
         erros.append('Mastro 2: "Topo Mastro 2" precisa estar acima de "Início Mastro 2" — o mastro é uma subida.')
 
-    # 3) a bandeira vem depois do mastro 1
-    if p["p3_inicio_fundo"].i <= p["p1_inicio_mastro1"].i:
-        erros.append('"Início Fundo Bandeira" precisa vir depois de "Início Mastro 1" no tempo.')
-
-    # 4) o mastro 2 vem depois da bandeira inteira
-    if p["p7_inicio_mastro2"].i <= p["p4_fim_fundo"].i:
-        erros.append('"Início Mastro 2" precisa vir depois de "Fim Fundo Bandeira" no tempo.')
-    if p["p7_inicio_mastro2"].i <= p["p6_fim_topo"].i:
-        erros.append('"Início Mastro 2" precisa vir depois de "Fim Topo Bandeira" no tempo.')
+    # A ordem ENTRE pares não bloqueia: é comum esticar as linhas do canal
+    # pra direita, além do rompimento, e aí "Fim Fundo Bandeira" cai depois
+    # de "Início Mastro 2" sem que a marcação esteja errada. No admin isso
+    # aparece como aviso amarelo (avisosAltaPares em admin/bandeira.js).
 
     return erros
 

@@ -153,7 +153,7 @@ describe('Bandeira — medidas pro ML', () => {
 // ── Bandeira de ALTA no formato atual: 8 pontos em 4 pares ────
 import {
   PARES_ALTA, PASSOS_ALTA_PARES,
-  linhasAltaPares, medidasAltaPares, stepsAltaPares, temFormatoPares, validarAltaPares,
+  avisosAltaPares, linhasAltaPares, medidasAltaPares, stepsAltaPares, temFormatoPares, validarAltaPares,
 } from '../admin/bandeira.js';
 
 // mastro 1 sobe (10→20), bandeira consolida, mastro 2 sobe depois (19→28)
@@ -230,20 +230,42 @@ describe('Bandeira de alta em pares — validações', () => {
     ['mastro 2 invertido no tempo', { p8_topo_mastro2: { i: 15, preco: 28 } }, /Mastro 2: "Topo Mastro 2" precisa vir depois/],
     ['mastro 1 que não sobe', { p2_topo_mastro1: { i: 5, preco: 9 } }, /"Topo Mastro 1" precisa estar acima de "Início Mastro 1"/],
     ['mastro 2 que não sobe', { p8_topo_mastro2: { i: 22, preco: 18 } }, /"Topo Mastro 2" precisa estar acima de "Início Mastro 2"/],
-    ['bandeira antes do mastro 1', { p3_inicio_fundo: { i: 0, preco: 17 } }, /"Início Fundo Bandeira" precisa vir depois de "Início Mastro 1"/],
   ])('recusa %s', (_, mudanca, mensagem) => {
     expect(validarAltaPares(comPar(mudanca)).join(' ')).toMatch(mensagem);
   });
 
-  it('recusa mastro 2 que começa antes da bandeira terminar', () => {
-    const erros = validarAltaPares(comPar({ p7_inicio_mastro2: { i: 10, preco: 19 } })).join(' ');
-    expect(erros).toMatch(/"Início Mastro 2" precisa vir depois de "Fim Fundo Bandeira"/);
-    expect(erros).toMatch(/"Início Mastro 2" precisa vir depois de "Fim Topo Bandeira"/);
+  // Caso real que estava sendo barrado: o analista estica as linhas do
+  // canal pra direita, além do rompimento — marcação correta.
+  it('aceita canal esticado além do início do mastro 2', () => {
+    const esticado = comPar({
+      p4_fim_fundo: { i: 25, preco: 15 },
+      p6_fim_topo: { i: 25, preco: 17.5 },
+    });
+    expect(validarAltaPares(esticado)).toEqual([]);
+    expect(avisosAltaPares(esticado)).toEqual([]);
   });
 
   it('os pares são independentes: o fundo pode começar antes do topo', () => {
     // p5 (i=8) vem antes de p4 (i=13) e isso é permitido
     expect(validarAltaPares(PARES)).toEqual([]);
+  });
+});
+
+describe('Bandeira de alta em pares — avisos (não bloqueiam)', () => {
+  it('marcação normal não gera aviso', () => {
+    expect(avisosAltaPares(PARES)).toEqual([]);
+  });
+
+  it('avisa quando a bandeira começa antes do mastro 1', () => {
+    const avisos = avisosAltaPares(comPar({ p3_inicio_fundo: { i: 0, preco: 17 } }));
+    expect(avisos.join(' ')).toMatch(/"Início Fundo Bandeira" está antes de "Início Mastro 1"/);
+    // mas não impede salvar
+    expect(validarAltaPares(comPar({ p3_inicio_fundo: { i: 0, preco: 17 } }))).toEqual([]);
+  });
+
+  it('avisa quando o mastro 2 começa antes da bandeira', () => {
+    const avisos = avisosAltaPares(comPar({ p7_inicio_mastro2: { i: 6, preco: 19 } }));
+    expect(avisos.join(' ')).toMatch(/"Início Mastro 2" está antes do começo da bandeira/);
   });
 });
 

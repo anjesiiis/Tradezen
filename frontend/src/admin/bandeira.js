@@ -223,6 +223,7 @@ export function linhasAltaPares(pontos) {
   }));
 }
 
+// Bloqueiam o salvamento: sem isso a marcação não descreve o padrão.
 export function validarAltaPares(pontos) {
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
 
@@ -245,20 +246,26 @@ export function validarAltaPares(pontos) {
     erros.push(`Mastro 2: "Topo Mastro 2" precisa estar acima de "Início Mastro 2" — o mastro é uma subida.`);
   }
 
-  // 3) a bandeira (consolidação) vem depois do mastro 1
-  if (p.p3_inicio_fundo.i <= p.p1_inicio_mastro1.i) {
-    erros.push(`"Início Fundo Bandeira" precisa vir depois de "Início Mastro 1" no tempo.`);
-  }
-
-  // 4) o mastro 2 vem depois da bandeira inteira
-  if (p.p7_inicio_mastro2.i <= p.p4_fim_fundo.i) {
-    erros.push(`"Início Mastro 2" precisa vir depois de "Fim Fundo Bandeira" no tempo.`);
-  }
-  if (p.p7_inicio_mastro2.i <= p.p6_fim_topo.i) {
-    erros.push(`"Início Mastro 2" precisa vir depois de "Fim Topo Bandeira" no tempo.`);
-  }
-
   return erros;
+}
+
+// NÃO bloqueiam: a ordem ENTRE pares é só um indício de marcação estranha.
+// Na prática é comum esticar as linhas do canal pra direita, além do
+// rompimento — aí "Fim Fundo Bandeira" cai depois de "Início Mastro 2" e a
+// marcação continua correta. Vira aviso amarelo, e o analista decide.
+export function avisosAltaPares(pontos) {
+  if (!temFormatoPares(pontos)) return [];
+  const p = Object.fromEntries(PASSOS_ALTA_PARES.map((k) => [k, pontos[k]]));
+  const avisos = [];
+
+  if (p.p3_inicio_fundo.i <= p.p1_inicio_mastro1.i) {
+    avisos.push(`Confira: "Início Fundo Bandeira" está antes de "Início Mastro 1" — a bandeira costuma vir depois do mastro.`);
+  }
+  if (p.p7_inicio_mastro2.i <= p.p3_inicio_fundo.i) {
+    avisos.push(`Confira: "Início Mastro 2" está antes do começo da bandeira — o rompimento costuma vir depois da consolidação.`);
+  }
+
+  return avisos;
 }
 
 // Medidas do padrão (mesmas contas das colunas geradas no Supabase —

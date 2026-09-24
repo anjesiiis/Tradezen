@@ -5,7 +5,7 @@ import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import {
   LINE_PAIRS_LEGADO, linhasAltaPares, linhasBandeira, stepsAltaPares, stepsBandeira, stepsLegado,
-  temFormatoPares, temFormatoNovo, validarAltaPares, validarBandeira,
+  avisosAltaPares, temFormatoPares, temFormatoNovo, validarAltaPares, validarBandeira,
 } from "./bandeira.js";
 import { fetchAtivoCandles, templatesBandeiraAltaApi, clearAdminToken } from "./adminApi";
 
@@ -76,12 +76,15 @@ export default function AdminTemplatesBandeiraAlta() {
     carregarTemplates();
   }, []);
 
-  // Cada erro de validação vira um toast próprio, some sozinho em 8s
-  function mostrarErros(erros) {
-    const novos = erros.map((texto, i) => ({ id: `${Date.now()}-${i}`, texto, tipo: "erro" }));
+  // Cada mensagem vira um toast próprio, some sozinho em 8s. Vermelho
+  // (erro) impede salvar; amarelo (aviso) é só um "confira isso".
+  function mostrarToasts(mensagens, tipo = "erro") {
+    const novos = mensagens.map((texto, i) => ({ id: `${Date.now()}-${tipo}-${i}`, texto, tipo }));
     setAvisos((prev) => [...prev, ...novos]);
     novos.forEach((a) => setTimeout(() => fecharAviso(a.id), 8000));
   }
+
+  const mostrarErros = (erros) => mostrarToasts(erros, "erro");
 
   function fecharAviso(id) {
     setAvisos((prev) => prev.filter((a) => a.id !== id));
@@ -126,6 +129,8 @@ export default function AdminTemplatesBandeiraAlta() {
       mostrarErros(erros);
       return;
     }
+    // Avisos não impedem o salvamento — só chamam atenção pra marcação
+    mostrarToasts(avisosAltaPares(pontos), "aviso");
     setSalvando(true);
     setMensagem(null);
     try {
