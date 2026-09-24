@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
+import { limitarIndice, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
@@ -20,6 +21,23 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
   const lineSeriesRef = useRef([]);
   const timeToIndexRef = useRef(new Map());
   const activeStepRef = useRef(steps[0].key);
+  // Arrastar ponto já marcado: os refs guardam o estado do gesto sem
+  // depender do ciclo de render (os handlers do gráfico são registrados
+  // uma vez só, no mount, e ficariam com valores velhos).
+  const candlesRef = useRef(candles);
+  const pontosRef = useRef(initialPontos || {});
+  const arrastandoRef = useRef(null);
+  const origemRef = useRef(null);
+  const fimDoArrastoRef = useRef(0);
+  const cursorRef = useRef(null);
+  const panTravadoRef = useRef(false);
+  // Onde cada ponto está na tela agora. Serve pro cursor "grab" e é o que
+  // os testes de navegador usam pra saber onde pegar um ponto — a escala
+  // do gráfico muda sozinha quando as linhas entram, então o ponto raramente
+  // fica no pixel onde foi clicado.
+  const [posicoes, setPosicoes] = useState({});
+  const [arrastando, setArrastando] = useState(null);
+  const [sobrePonto, setSobrePonto] = useState(false);
 
   const [pontos, setPontos] = useState(initialPontos || {});
   const [activeStep, setActiveStep] = useState(() => {
@@ -64,8 +82,38 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     seriesRef.current = series;
     markersApiRef.current = createSeriesMarkers(series, []);
 
+    // Posição do cursor DENTRO do gráfico. Vem do próprio gráfico, no mesmo
+    // sistema de coordenadas de timeToCoordinate/priceToCoordinate — tentar
+    // deduzir isso do retângulo do canvas não bate (as escalas deslocam a
+    // origem) e o arrasto simplesmente não pegava no ponto.
+    chart.subscribeCrosshairMove((param) => {
+      cursorRef.current = param.point || null;
+      if (readOnly) return;
+
+      const chave = arrastandoRef.current;
+      if (!chave) {
+        const emCima = Boolean(param.point && pontoSobCursor(posicoesDosPontos(), param.point.x, param.point.y));
+        setSobrePonto(emCima);
+        // Trava o pan do gráfico ENQUANTO o cursor está sobre um ponto. Tem
+        // que ser antes do clique: se o gráfico começar a arrastar o painel,
+        // ele para de reportar a posição do cursor e o ponto não se move.
+        travarPan(emCima);
+        return;
+      }
+      if (!param.point) return;
+      if (!passouDoArrasto(origemRef.current, param.point.x, param.point.y)) return;
+
+      const indice = limitarIndice(chart.timeScale().coordinateToLogical(param.point.x), candlesRef.current?.length || 0);
+      const preco = series.coordinateToPrice(param.point.y);
+      if (indice == null || preco == null) return;
+      setPontos((prev) => ({ ...prev, [chave]: { i: indice, preco: Math.round(preco * 10000) / 10000 } }));
+    });
+
     chart.subscribeClick((param) => {
       if (readOnly) return;
+      // Clique que veio de um arrasto (ou de pegar um ponto) não marca
+      // nada — senão mover o ponto 4 criaria um ponto novo por baixo.
+      if (Date.now() - fimDoArrastoRef.current < 250) return;
       if (!param.point || param.time === undefined) return;
       const idx = timeToIndexRef.current.get(param.time);
       if (idx === undefined) return;
@@ -98,6 +146,14 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
   }, []);
 
   useEffect(() => {
+    pontosRef.current = pontos;
+  }, [pontos]);
+
+  useEffect(() => {
+    candlesRef.current = candles;
+  }, [candles]);
+
+  useEffect(() => {
     if (!seriesRef.current || !candles?.length) return;
 
     const data = candles.map((c) => ({
@@ -113,6 +169,56 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
 
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
+
+  // ── Arrastar pontos ─────────────────────────────────────────
+  // Onde cada ponto marcado está na tela, em pixels
+  function posicoesDosPontos() {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const lista = candlesRef.current;
+    if (!chart || !series || !lista?.length) return {};
+    const escalaTempo = chart.timeScale();
+    const posicoes = {};
+    for (const [chave, ponto] of Object.entries(pontosRef.current || {})) {
+      const candle = lista[ponto.i];
+      if (!candle) continue;
+      const x = escalaTempo.timeToCoordinate(toChartTime(candle));
+      const y = series.priceToCoordinate(ponto.preco);
+      if (x == null || y == null) continue;
+      posicoes[chave] = { x, y };
+    }
+    return posicoes;
+  }
+
+  // Liga/desliga o arrasto do próprio gráfico (pan e zoom). Guarda o
+  // estado num ref pra não mandar applyOptions a cada movimento do mouse.
+  function travarPan(travar) {
+    if (panTravadoRef.current === travar) return;
+    panTravadoRef.current = travar;
+    chartRef.current?.applyOptions({ handleScroll: !travar, handleScale: !travar });
+  }
+
+  function aoPressionar() {
+    if (readOnly) return;
+    const cursor = cursorRef.current;
+    if (!cursor) return;
+    const chave = pontoSobCursor(posicoesDosPontos(), cursor.x, cursor.y);
+    if (!chave) return;
+
+    arrastandoRef.current = chave;
+    origemRef.current = { x: cursor.x, y: cursor.y };
+    setArrastando(chave);
+    travarPan(true);
+  }
+
+  function aoSoltar() {
+    if (!arrastandoRef.current) return;
+    arrastandoRef.current = null;
+    origemRef.current = null;
+    setArrastando(null);
+    fimDoArrastoRef.current = Date.now();
+    travarPan(false);
+  }
 
   // Pega a série de linha nº `idx`, criando se ainda não existir.
   function serieDeLinha(idx) {
@@ -170,6 +276,11 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     lineSeriesRef.current.slice(defs.length).forEach((serie) => serie.setData([]));
 
     onChange?.(pontos);
+
+    // Depois que o gráfico repinta (a escala pode ter mudado), guarda onde
+    // cada ponto ficou.
+    const quadro = requestAnimationFrame(() => setPosicoes(posicoesDosPontos()));
+    return () => cancelAnimationFrame(quadro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pontos, candles]);
 
@@ -208,11 +319,26 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
         {readOnly
           ? "Visualização — somente leitura."
           : completo
-            ? "Todos os pontos marcados. Clique em um chip acima para refazer algum ponto."
-            : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label}`}
+            ? "Todos os pontos marcados. Arraste qualquer ponto no gráfico para ajustar, ou clique em um chip acima para refazer."
+            : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label} — os pontos já marcados podem ser arrastados.`}
       </p>
 
-      <div ref={containerRef} style={{ padding: "8px" }} />
+      <div
+        ref={containerRef}
+        data-marcacao="grafico"
+        data-sobre-ponto={sobrePonto ? "1" : "0"}
+        data-arrastando={arrastando || ""}
+        data-posicoes={JSON.stringify(posicoes)}
+        onPointerDown={aoPressionar}
+        onPointerUp={aoSoltar}
+        onPointerCancel={aoSoltar}
+        onPointerLeave={aoSoltar}
+        style={{
+          padding: "8px",
+          cursor: arrastando ? "grabbing" : sobrePonto ? "grab" : "default",
+          touchAction: arrastando ? "none" : undefined,
+        }}
+      />
     </div>
   );
 }
