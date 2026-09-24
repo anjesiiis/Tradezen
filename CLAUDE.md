@@ -182,6 +182,136 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - Tag `<title>` em português: "TradeZen — Análise Técnica com Inteligência Artificial"
 - Favicon e meta tags Open Graph configurados
 
+## Mapa de arquivos — LEIA ANTES DE EXPLORAR O CÓDIGO
+
+> **REGRA CRÍTICA:** NÃO leia o projeto inteiro. Use este mapa para ir direto ao arquivo certo.
+> Isso economiza tokens e tempo. Só explore além se o mapa não cobrir o pedido.
+
+### Frontend — Páginas (frontend/src/pages/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| Landing page / página inicial | `pages/Landing.jsx` |
+| Tela de login | `pages/Login.jsx` |
+| Tela de cadastro | `pages/Cadastro.jsx` |
+| Dashboard / lista de ativos | `pages/Dashboard.jsx` |
+| Gráfico de candles | `pages/Grafico.jsx` |
+| Painel admin | `pages/Admin.jsx` |
+| Favoritos | `pages/Favoritos.jsx` |
+| Criptomoedas | `pages/Criptomoedas.jsx` |
+| Mercados | `pages/MercadosOverview.jsx` |
+| Principais ativos | `pages/PrincipaisAtivos.jsx` |
+| Página 404 | `pages/NaoEncontrada.jsx` |
+
+### Frontend — Componentes (frontend/src/components/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| Header / navbar topo | `components/Header.jsx` |
+| Nav bar inferior mobile | `components/NavBarMobile.jsx` |
+| Lista de ativos | `components/AssetList.jsx` |
+| Card de ativo | `components/AssetCard.jsx` |
+| Gráfico de candles (componente) | `components/CandleChart.jsx` |
+| Sidebar desktop | `components/Sidebar.jsx` |
+| Barra de busca | `components/SearchBar.jsx` |
+| Mini gráfico de linha | `components/MiniLine.jsx` |
+| Ícone de ativo | `components/IconeAtivo.jsx` |
+| Skeleton loading | `components/Skeleton.jsx` |
+| Toggle de tema | `components/ThemeToggle.jsx` |
+
+### Frontend — Libs (frontend/src/lib/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| Chamadas API ao backend | `lib/api.js` |
+| Config do gráfico TradingView | `lib/grafico/config.js` |
+| Desenhos no gráfico (linhas, markers) | `lib/grafico/desenhos.js` |
+| Indicadores técnicos (médias, volume) | `lib/grafico/indicadores.js` |
+| Detecção de padrões no frontend | `lib/grafico/padroes.js` |
+| Dados de mercado (tickers, categorias) | `lib/mercado.js` |
+| Cliente Supabase | `lib/supabaseClient.js` |
+
+### Frontend — Auth (frontend/src/auth/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| Contexto de autenticação | `auth/AuthContext.jsx` |
+| Callback OAuth | `auth/AuthCallback.jsx` |
+| Tela de cadastro (auth) | `auth/Cadastro.jsx` |
+| Tela de login (auth) | `auth/Login.jsx` |
+| Recuperar senha | `auth/RecuperarSenha.jsx` |
+| Redefinir senha | `auth/RedefinirSenha.jsx` |
+| Proteção de rota | `auth/RequireAuth.jsx` |
+
+### Frontend — Admin / Templates ML (frontend/src/admin/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| Painel de templates (hub) | `admin/AdminTemplates.jsx` |
+| Marcação de Bandeira de Alta | `admin/AdminTemplatesBandeiraAlta.jsx` |
+| Marcação de Bandeira de Baixa | `admin/AdminTemplatesBandeiraBaixa.jsx` |
+| Marcação de Flâmula de Alta | `admin/AdminTemplatesFlamulaAlta.jsx` |
+| Marcação de Flâmula de Baixa | `admin/AdminTemplatesFlamulaBaixa.jsx` |
+| Tela de marcação compartilhada (bandeira/flâmula) | `admin/PainelMarcacao.jsx` |
+| Marcação de Topo Duplo | `admin/AdminTemplatesTopoDuplo.jsx` |
+| Marcação de Níveis (suporte/resistência) | `admin/AdminTemplatesNiveis.jsx` |
+| Gráfico de marcação (clique → ponto) | `admin/TemplateMarkerChart.jsx` |
+| Gráfico de marcação de níveis | `admin/NivelMarkerChart.jsx` |
+| Lógica dos padrões de continuação (pontos, validação, linhas) | `admin/bandeira.js` |
+| API calls do admin | `admin/adminApi.js` |
+| Seletor de ativo | `admin/AtivoPicker.jsx` |
+| Login admin | `admin/AdminLogin.jsx` |
+| Proteção de rota admin | `admin/RequireAdmin.jsx` |
+
+### Frontend — Outros
+| Pedido sobre... | Arquivo |
+|---|---|
+| Rotas do app (lazy loading) | `App.jsx` |
+| CSS global | `index.css` |
+| Estilos inline do app | `styles/appCss.js` |
+| Hook mobile detect | `hooks/useIsMobile.js` |
+| Entry point | `main.jsx` |
+
+### Backend (backend/)
+| Pedido sobre... | Arquivo |
+|---|---|
+| App principal FastAPI (rotas) | `main.py` |
+| Config (env vars, Supabase URL) | `config.py` |
+| Cliente Supabase | `supabase_client.py` |
+| Auth admin | `admin_auth.py` |
+| CRUD templates (hub) | `admin_templates.py` |
+| Templates Bandeira de Alta | `admin_templates_bandeira_alta.py` |
+| Templates Bandeira de Baixa | `admin_templates_bandeira_baixa.py` |
+| Templates Flâmula de Alta | `admin_templates_flamula_alta.py` |
+| Templates Flâmula de Baixa | `admin_templates_flamula_baixa.py` |
+| Templates Topo Duplo | `admin_templates_topo_duplo.py` |
+| Templates Níveis | `admin_templates_niveis.py` |
+| Pontos de bandeira/flâmula (validação) | `bandeira_pontos.py` |
+| Busca de dados de mercado | `data/fetcher.py` |
+| DTW (similaridade de formas) | `ml/dtw.py` |
+| Teste DTW topo duplo | `ml/testar_dtw_topo_duplo.py` |
+| Padrões marcados | `padroes_marcados.py` |
+| Detecção clássica | `patterns/classicos.py` |
+| Detecção de níveis | `patterns/niveis.py` |
+| Detecção de pivôs | `patterns/pivos.py` |
+| Alertas | `alertas.py` |
+| Análises diárias | `analises.py` |
+| Backtest | `backtest.py` |
+| Rate limiting | `rate_limit.py` |
+
+### Testes (frontend/src/test/)
+| Pedido sobre... | Arquivo de teste |
+|---|---|
+| Setup do Vitest | `test/setup.js` |
+| Dados fake para testes | `test/dadosFake.js` |
+| Helpers de teste | `test/helpers.jsx` |
+| Teste do App.jsx | `test/App.test.jsx` |
+| Teste de bandeira | `test/bandeira.test.js` |
+| Teste do admin bandeira | `test/AdminBandeira.test.jsx` |
+| Teste rotas admin | `test/AdminRotas.test.jsx` |
+| Teste cadastro | `test/Cadastro.test.jsx` |
+| Teste dashboard | `test/Dashboard.test.jsx` |
+| Teste gráfico | `test/Grafico.test.jsx` |
+| Teste header | `test/Header.test.jsx` |
+| Teste login | `test/Login.test.jsx` |
+| Teste nav bar | `test/NavBar.test.jsx` |
+| Teste skeleton | `test/Skeleton.test.jsx` |
+
 ## O que NÃO faz parte deste projeto
 
 - Deep learning / redes neurais (usamos Random Forest, não precisa de GPU)

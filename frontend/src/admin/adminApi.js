@@ -99,3 +99,5 @@ export const templatesTopoDuploApi = makeTemplateApi("/admin/templates-topo-dupl
 export const templatesNiveisApi = makeTemplateApi("/admin/templates-niveis");
 export const templatesBandeiraAltaApi = makeTemplateApi("/admin/templates-bandeira-alta");
 export const templatesBandeiraBaixaApi = makeTemplateApi("/admin/templates-bandeira-baixa");
+export const templatesFlamulaAltaApi = makeTemplateApi("/admin/templates-flamula-alta");
+export const templatesFlamulaBaixaApi = makeTemplateApi("/admin/templates-flamula-baixa");

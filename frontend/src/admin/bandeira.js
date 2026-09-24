@@ -1,42 +1,189 @@
-// ── BANDEIRA (flag pattern) — 6 pontos em ordem cronológica ──
-// O analista marca na ordem em que o padrão acontece no tempo: o mastro
-// (movimento forte), a consolidação dentro do canal e o rompimento. Antes
-// eram 6 pontos "por função" (2 topos e 2 fundos do canal), que não diziam
-// a ordem e deixavam marcar um topo antes do mastro.
+// ── PADRÕES DE CONTINUAÇÃO — 8 pontos em 4 PARES ──────────────
+// Vale pros quatro: Bandeira de Alta/Baixa e Flâmula de Alta/Baixa. Todos
+// têm a mesma estrutura — um mastro, uma consolidação com duas bordas e o
+// mastro seguinte — e mudam só o desenho da consolidação (bandeira =
+// retângulo inclinado, flâmula = triângulo que fecha) e a direção.
 //
-// Mesmo arquivo serve pras duas telas: na bandeira de BAIXA tudo é o
-// espelho (mastro cai, canal sobe, rompimento fura pra baixo).
+// Cada par são 2 cliques e vira uma linha própria. Os pares são
+// INDEPENDENTES: os pontos podem se tocar, coincidir ou cair dentro do
+// trecho de outro par — é o caso normal, já que o início do Mastro 2 é o
+// fundo da consolidação, ou seja, fica dentro dela. Por isso nada que
+// compare um par com outro bloqueia o salvamento; no máximo vira aviso.
 
 // Cores do design system (CLAUDE.md)
 export const VERDE = "#26a69a";
 export const AZUL = "#2962ff";
 export const VERMELHO = "#ef5350";
 
-export const PASSOS_BANDEIRA = [
-  "p1_inicio_mastro",
-  "p2_topo_mastro",
-  "p3_fundo1",
-  "p4_topo1",
-  "p5_fundo2",
-  "p6_rompimento",
+// Os 8 pontos usam as MESMAS chaves nos quatro padrões — o que muda é o
+// rótulo na tela. Assim o backend, o banco e o desenho no gráfico tratam
+// todos do mesmo jeito.
+export const PASSOS_PARES = [
+  "p1_inicio_mastro1", "p2_topo_mastro1",
+  "p3_inicio_fundo", "p4_fim_fundo",
+  "p5_inicio_topo", "p6_fim_topo",
+  "p7_inicio_mastro2", "p8_topo_mastro2",
 ];
 
-// `alta`: bandeira de alta (mastro sobe). `false` = bandeira de baixa, com
-// todos os rótulos e regras espelhados.
-export function stepsBandeira(alta = true) {
+export const PADROES = {
+  bandeira_alta:  { id: "bandeira_alta",  rotulo: "Bandeira de Alta",  forma: "bandeira", alta: true,  nav: "bandeira-alta",  rota: "/admin/templates/bandeira-alta" },
+  bandeira_baixa: { id: "bandeira_baixa", rotulo: "Bandeira de Baixa", forma: "bandeira", alta: false, nav: "bandeira-baixa", rota: "/admin/templates/bandeira-baixa" },
+  flamula_alta:   { id: "flamula_alta",   rotulo: "Flâmula de Alta",   forma: "flamula",  alta: true,  nav: "flamula-alta",   rota: "/admin/templates/flamula-alta" },
+  flamula_baixa:  { id: "flamula_baixa",  rotulo: "Flâmula de Baixa",  forma: "flamula",  alta: false, nav: "flamula-baixa",  rota: "/admin/templates/flamula-baixa" },
+};
+
+const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula" };
+
+// Os 4 pares, já com os rótulos do padrão escolhido
+export function paresDoPadrao(padrao) {
+  const { forma, alta } = padrao;
   const corMastro = alta ? VERDE : VERMELHO;
+  const nome = NOME_FORMA[forma];
+  const ponta = alta ? "Topo" : "Fundo";
+
   return [
-    { key: "p1_inicio_mastro", label: "Início do Mastro", short: "P1", color: corMastro },
-    { key: "p2_topo_mastro",   label: alta ? "Topo do Mastro" : "Fundo do Mastro",    short: "P2", color: corMastro },
-    { key: "p3_fundo1",        label: alta ? "Fundo 1" : "Topo 1",                    short: "P3", color: AZUL },
-    { key: "p4_topo1",         label: alta ? "Topo 1" : "Fundo 1",                    short: "P4", color: AZUL },
-    { key: "p5_fundo2",        label: alta ? "Fundo 2" : "Topo 2",                    short: "P5", color: AZUL },
-    { key: "p6_rompimento",    label: "Rompimento",                                   short: "P6", color: corMastro },
+    {
+      id: "mastro1", rotulo: "Mastro 1", cor: corMastro, largura: 2, tracejada: false,
+      de: "p1_inicio_mastro1", ate: "p2_topo_mastro1",
+      rotuloDe: "Início Mastro 1", rotuloAte: `${ponta} Mastro 1`,
+    },
+    {
+      id: "fundo", rotulo: `Fundo da ${nome}`, cor: AZUL, largura: 1.5, tracejada: true,
+      de: "p3_inicio_fundo", ate: "p4_fim_fundo",
+      rotuloDe: `Início Fundo ${nome}`, rotuloAte: `Fim Fundo ${nome}`,
+    },
+    {
+      id: "topo", rotulo: `Topo da ${nome}`, cor: AZUL, largura: 1.5, tracejada: true,
+      de: "p5_inicio_topo", ate: "p6_fim_topo",
+      rotuloDe: `Início Topo ${nome}`, rotuloAte: `Fim Topo ${nome}`,
+    },
+    {
+      id: "mastro2", rotulo: "Mastro 2", cor: corMastro, largura: 2, tracejada: false,
+      de: "p7_inicio_mastro2", ate: "p8_topo_mastro2",
+      rotuloDe: "Início Mastro 2", rotuloAte: `${ponta} Mastro 2`,
+    },
   ];
 }
 
-export function temFormatoNovo(pontos) {
-  return Boolean(pontos) && PASSOS_BANDEIRA.every((k) => pontos[k]);
+export function stepsDoPadrao(padrao) {
+  return paresDoPadrao(padrao).flatMap((par, iPar) => [
+    { key: par.de,  label: par.rotuloDe,  short: `P${iPar * 2 + 1}`, color: par.cor, par: par.id },
+    { key: par.ate, label: par.rotuloAte, short: `P${iPar * 2 + 2}`, color: par.cor, par: par.id },
+  ]);
+}
+
+export function temFormatoPares(pontos) {
+  return Boolean(pontos) && PASSOS_PARES.every((k) => pontos[k]);
+}
+
+// Uma linha por par COMPLETO — aparece assim que os 2 cliques daquele par
+// acontecem, sem depender dos outros pares.
+export function linhasDoPadrao(pontos, padrao) {
+  if (!pontos) return [];
+  return paresDoPadrao(padrao)
+    .filter((par) => pontos[par.de] && pontos[par.ate])
+    .map((par) => ({
+      id: par.id,
+      cor: par.cor,
+      largura: par.largura,
+      tracejada: par.tracejada,
+      dados: [
+        { i: pontos[par.de].i, preco: pontos[par.de].preco },
+        { i: pontos[par.ate].i, preco: pontos[par.ate].preco },
+      ],
+    }));
+}
+
+// ── Validações que BLOQUEIAM o salvamento ─────────────────────
+// Só o que tornaria a marcação impossível de ler: os 8 pontos, a ordem
+// dentro de cada par e a direção dos dois mastros. Nada entre pares.
+export function validarPadrao(pontos, padrao) {
+  if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
+
+  const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
+  const pares = paresDoPadrao(padrao);
+  const erros = [];
+
+  for (const par of pares) {
+    if (p[par.ate].i <= p[par.de].i) {
+      erros.push(`${par.rotulo}: "${par.rotuloAte}" precisa vir depois de "${par.rotuloDe}" no tempo.`);
+    }
+  }
+
+  const contraMao = padrao.alta
+    ? (a, b) => b.preco <= a.preco
+    : (a, b) => b.preco >= a.preco;
+  const sentido = padrao.alta ? "acima" : "abaixo";
+  const movimento = padrao.alta ? "subida" : "queda";
+
+  for (const par of [pares[0], pares[3]]) {
+    if (contraMao(p[par.de], p[par.ate])) {
+      erros.push(`${par.rotulo}: "${par.rotuloAte}" precisa estar ${sentido} de "${par.rotuloDe}" — o mastro é uma ${movimento}.`);
+    }
+  }
+
+  return erros;
+}
+
+// ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
+export function avisosDoPadrao(pontos, padrao) {
+  if (!temFormatoPares(pontos)) return [];
+  const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
+  const pares = paresDoPadrao(padrao);
+  const avisos = [];
+
+  // A consolidação costuma começar depois do mastro 1 — mas marcar antes
+  // não é impossível (o analista pode estar pegando uma faixa mais larga).
+  if (p.p3_inicio_fundo.i <= p.p1_inicio_mastro1.i) {
+    avisos.push(`Confira: "${pares[1].rotuloDe}" está antes de "Início Mastro 1".`);
+  }
+
+  // Flâmula é um TRIÂNGULO: as duas bordas têm que se aproximar. Se a
+  // distância no fim não for menor que no começo, provavelmente é bandeira.
+  if (padrao.forma === "flamula") {
+    const aberturaInicio = Math.abs(p.p5_inicio_topo.preco - p.p3_inicio_fundo.preco);
+    const aberturaFim = Math.abs(p.p6_fim_topo.preco - p.p4_fim_fundo.preco);
+    if (aberturaFim >= aberturaInicio) {
+      avisos.push("Confira: as bordas da flâmula não estão se fechando — numa flâmula elas convergem (triângulo). Se ficarem paralelas, o padrão é bandeira.");
+    }
+  }
+
+  return avisos;
+}
+
+// Medidas que o ML usa (mesmas contas das colunas geradas no Supabase —
+// ver sql/008 e sql/009)
+export function medidasDoPadrao(pontos) {
+  if (!temFormatoPares(pontos)) return null;
+  return {
+    altura_mastro1: pontos.p2_topo_mastro1.preco - pontos.p1_inicio_mastro1.preco,
+    altura_mastro2: pontos.p8_topo_mastro2.preco - pontos.p7_inicio_mastro2.preco,
+  };
+}
+
+// ── Formatos antigos (templates salvos antes) ─────────────────
+// 1) 6 pontos encadeados em ordem cronológica (mastro → consolidação →
+//    rompimento);
+// 2) 6 pontos "por função" (mastro + 2 toques no topo e 2 no fundo).
+// Continuam abrindo e sendo editados do jeito que foram marcados.
+export const PASSOS_6 = [
+  "p1_inicio_mastro", "p2_topo_mastro", "p3_fundo1", "p4_topo1", "p5_fundo2", "p6_rompimento",
+];
+
+export function temFormato6(pontos) {
+  return Boolean(pontos) && PASSOS_6.every((k) => pontos[k]);
+}
+
+export function steps6(alta = true) {
+  const corMastro = alta ? VERDE : VERMELHO;
+  return [
+    { key: "p1_inicio_mastro", label: "Início do Mastro", short: "P1", color: corMastro },
+    { key: "p2_topo_mastro",   label: alta ? "Topo do Mastro" : "Fundo do Mastro", short: "P2", color: corMastro },
+    { key: "p3_fundo1",        label: alta ? "Fundo 1" : "Topo 1", short: "P3", color: AZUL },
+    { key: "p4_topo1",         label: alta ? "Topo 1" : "Fundo 1", short: "P4", color: AZUL },
+    { key: "p5_fundo2",        label: alta ? "Fundo 2" : "Topo 2", short: "P5", color: AZUL },
+    { key: "p6_rompimento",    label: "Rompimento", short: "P6", color: corMastro },
+  ];
 }
 
 // Preço da reta que passa por dois pontos, no índice `i` (extrapola).
@@ -46,113 +193,22 @@ export function precoNaReta(a, b, i) {
   return a.preco + ((b.preco - a.preco) * (i - a.i)) / (b.i - a.i);
 }
 
-// ── Validações ────────────────────────────────────────────────
-// Devolve [] quando está tudo certo, ou a lista de mensagens do que está
-// errado — cada uma dizendo exatamente qual ponto corrigir.
-export function validarBandeira(pontos, { alta = true } = {}) {
-  const erros = [];
-  if (!temFormatoNovo(pontos)) return ["Marque os 6 pontos antes de salvar."];
-
-  const p = PASSOS_BANDEIRA.map((k) => pontos[k]);
-  const [p1, p2, p3, p4, p5, p6] = p;
-  const rotulos = stepsBandeira(alta).map((s) => s.label);
-
-  // 1) ordem cronológica obrigatória
-  for (let k = 1; k < p.length; k++) {
-    if (p[k].i <= p[k - 1].i) {
-      erros.push(`"${rotulos[k]}" precisa vir depois de "${rotulos[k - 1]}" no tempo.`);
-    }
-  }
-
-  // 2) o mastro tem que ser forte na direção do padrão
-  if (alta ? p2.preco <= p1.preco : p2.preco >= p1.preco) {
-    erros.push(alta
-      ? `"Topo do Mastro" precisa estar acima do "Início do Mastro" — o mastro é de alta.`
-      : `"Fundo do Mastro" precisa estar abaixo do "Início do Mastro" — o mastro é de baixa.`);
-  }
-
-  // 3) a consolidação começa contra o mastro
-  if (alta ? p3.preco >= p2.preco : p3.preco <= p2.preco) {
-    erros.push(alta
-      ? `"Fundo 1" precisa estar abaixo do "Topo do Mastro".`
-      : `"Topo 1" precisa estar acima do "Fundo do Mastro".`);
-  }
-
-  // 4) canal inclinado contra o mastro (ou lateral): tolera 1% pra cima,
-  //    senão marcações boas de canal quase horizontal seriam recusadas
-  const tolerancia = Math.abs(p3.preco) * 0.01;
-  if (alta ? p5.preco > p3.preco + tolerancia : p5.preco < p3.preco - tolerancia) {
-    erros.push(alta
-      ? `"Fundo 2" precisa estar no mesmo nível ou abaixo do "Fundo 1" — o canal da bandeira é descendente.`
-      : `"Topo 2" precisa estar no mesmo nível ou acima do "Topo 1" — o canal da bandeira é ascendente.`);
-  }
-
-  // 5) rompimento confirmado: P6 fura a linha do canal no tempo dele
-  const linhaCanal = precoNaReta(p2, p4, p6.i);
-  if (linhaCanal !== null) {
-    if (alta ? p6.preco <= linhaCanal : p6.preco >= linhaCanal) {
-      erros.push(alta
-        ? `"Rompimento" precisa fechar acima da linha superior do canal (${linhaCanal.toFixed(2)}).`
-        : `"Rompimento" precisa fechar abaixo da linha inferior do canal (${linhaCanal.toFixed(2)}).`);
-    }
-  }
-
-  return erros;
-}
-
-// ── Desenho: as 4 linhas do padrão ────────────────────────────
-// 1. Mastro          P1 → P2                      (verde, cheia)
-// 2. Canal superior  P2 → P4, esticado até P6      (azul, tracejada)
-// 3. Canal inferior  P3 → P5, esticado até P6      (azul, tracejada)
-// 4. Alvo projetado  P6 → P6 + altura do mastro    (verde, cheia)
-export function linhasBandeira(pontos, candles, { alta = true } = {}) {
-  if (!temFormatoNovo(pontos)) return [];
+export function linhas6(pontos, candles, { alta = true } = {}) {
+  if (!temFormato6(pontos)) return [];
   const { p1_inicio_mastro: p1, p2_topo_mastro: p2, p3_fundo1: p3, p4_topo1: p4, p5_fundo2: p5, p6_rompimento: p6 } = pontos;
   const corMastro = alta ? VERDE : VERMELHO;
-
-  // O alvo é projetado pra frente com a mesma duração do mastro, limitado
-  // ao último candle disponível — assim a linha sempre cai dentro do gráfico.
   const ultimo = Math.max(0, (candles?.length || 0) - 1);
-  const duracaoMastro = Math.max(1, p2.i - p1.i);
-  const alturaMastro = p2.preco - p1.preco;
-  const iAlvo = candles?.length ? Math.min(p6.i + duracaoMastro, ultimo) : p6.i + duracaoMastro;
+  const passo = Math.max(1, p2.i - p1.i);
+  const iAlvo = candles?.length ? Math.min(p6.i + passo, ultimo) : p6.i + passo;
 
   return [
-    { id: "mastro", cor: corMastro, largura: 2, tracejada: false, dados: [
-      { i: p1.i, preco: p1.preco },
-      { i: p2.i, preco: p2.preco },
-    ] },
-    { id: "canal_superior", cor: AZUL, largura: 1, tracejada: true, dados: [
-      { i: p2.i, preco: p2.preco },
-      { i: p6.i, preco: precoNaReta(p2, p4, p6.i) },
-    ] },
-    { id: "canal_inferior", cor: AZUL, largura: 1, tracejada: true, dados: [
-      { i: p3.i, preco: p3.preco },
-      { i: p6.i, preco: precoNaReta(p3, p5, p6.i) },
-    ] },
-    { id: "alvo", cor: corMastro, largura: 2, tracejada: false, dados: [
-      { i: p6.i, preco: p6.preco },
-      { i: iAlvo, preco: p6.preco + alturaMastro },
-    ] },
+    { id: "mastro", cor: corMastro, largura: 2, tracejada: false, dados: [{ i: p1.i, preco: p1.preco }, { i: p2.i, preco: p2.preco }] },
+    { id: "canal_superior", cor: AZUL, largura: 1, tracejada: true, dados: [{ i: p2.i, preco: p2.preco }, { i: p6.i, preco: precoNaReta(p2, p4, p6.i) }] },
+    { id: "canal_inferior", cor: AZUL, largura: 1, tracejada: true, dados: [{ i: p3.i, preco: p3.preco }, { i: p6.i, preco: precoNaReta(p3, p5, p6.i) }] },
+    { id: "alvo", cor: corMastro, largura: 2, tracejada: false, dados: [{ i: p6.i, preco: p6.preco }, { i: iAlvo, preco: p6.preco + (p2.preco - p1.preco) }] },
   ];
 }
 
-// Medidas que o ML usa (mesmas contas das colunas geradas no Supabase —
-// ver sql/007_bandeira_6_pontos.sql)
-export function medidasBandeira(pontos) {
-  if (!temFormatoNovo(pontos)) return null;
-  const { p1_inicio_mastro: p1, p2_topo_mastro: p2, p3_fundo1: p3 } = pontos;
-  const altura = p2.preco - p1.preco;
-  return {
-    altura_mastro: altura,
-    retracao_bandeira: altura === 0 ? null : (p2.preco - p3.preco) / altura,
-  };
-}
-
-// ── Formato antigo (templates salvos antes desta mudança) ─────
-// Eram 6 pontos "por função", sem ordem no tempo: mastro + 2 toques no topo
-// e 2 no fundo do canal. Continuam abrindo e sendo editáveis do jeito que
-// foram marcados — quem decide é `temFormatoNovo(pontos)`.
 export const LINE_PAIRS_LEGADO = [["mastro_inicio", "mastro_fim"], ["topo1", "topo2"], ["fundo1", "fundo2"]];
 
 export function stepsLegado() {
@@ -166,114 +222,13 @@ export function stepsLegado() {
   ];
 }
 
-// ── BANDEIRA DE ALTA — 8 pontos em 4 PARES independentes ──────
-// Cada par é uma linha própria, marcada com 2 cliques: o analista desenha
-// o mastro, as duas bordas do canal e o mastro pós-rompimento. Os pares
-// NÃO precisam se encostar — é isso que diferencia deste modelo pro
-// anterior (6 pontos encadeados), onde cada ponto dependia do vizinho.
-export const PARES_ALTA = [
-  { id: "mastro1",         rotulo: "Mastro 1",           cor: VERDE, largura: 2,   tracejada: false, de: "p1_inicio_mastro1",  ate: "p2_topo_mastro1" },
-  { id: "fundo_bandeira",  rotulo: "Fundo da Bandeira",  cor: AZUL,  largura: 1.5, tracejada: true,  de: "p3_inicio_fundo",    ate: "p4_fim_fundo" },
-  { id: "topo_bandeira",   rotulo: "Topo da Bandeira",   cor: AZUL,  largura: 1.5, tracejada: true,  de: "p5_inicio_topo",     ate: "p6_fim_topo" },
-  { id: "mastro2",         rotulo: "Mastro 2",           cor: VERDE, largura: 2,   tracejada: false, de: "p7_inicio_mastro2",  ate: "p8_topo_mastro2" },
-];
-
-const ROTULOS_ALTA_PARES = {
-  p1_inicio_mastro1: "Início Mastro 1",
-  p2_topo_mastro1: "Topo Mastro 1",
-  p3_inicio_fundo: "Início Fundo Bandeira",
-  p4_fim_fundo: "Fim Fundo Bandeira",
-  p5_inicio_topo: "Início Topo Bandeira",
-  p6_fim_topo: "Fim Topo Bandeira",
-  p7_inicio_mastro2: "Início Mastro 2",
-  p8_topo_mastro2: "Topo Mastro 2",
-};
-
-export const PASSOS_ALTA_PARES = PARES_ALTA.flatMap((p) => [p.de, p.ate]);
-
-export function stepsAltaPares() {
-  return PARES_ALTA.flatMap((par, iPar) =>
-    [par.de, par.ate].map((key, iPonto) => ({
-      key,
-      label: ROTULOS_ALTA_PARES[key],
-      short: `P${iPar * 2 + iPonto + 1}`,
-      color: par.cor,
-      par: par.id,
-    }))
-  );
-}
-
-export function temFormatoPares(pontos) {
-  return Boolean(pontos) && PASSOS_ALTA_PARES.every((k) => pontos[k]);
-}
-
-// Uma linha por par COMPLETO — a linha aparece assim que os 2 cliques
-// daquele par acontecem, sem esperar os outros pares.
-export function linhasAltaPares(pontos) {
-  if (!pontos) return [];
-  return PARES_ALTA.filter((par) => pontos[par.de] && pontos[par.ate]).map((par) => ({
-    id: par.id,
-    cor: par.cor,
-    largura: par.largura,
-    tracejada: par.tracejada,
-    dados: [
-      { i: pontos[par.de].i, preco: pontos[par.de].preco },
-      { i: pontos[par.ate].i, preco: pontos[par.ate].preco },
-    ],
-  }));
-}
-
-// Bloqueiam o salvamento: sem isso a marcação não descreve o padrão.
-export function validarAltaPares(pontos) {
-  if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
-
-  const p = Object.fromEntries(PASSOS_ALTA_PARES.map((k) => [k, pontos[k]]));
-  const erros = [];
-  const rot = (k) => ROTULOS_ALTA_PARES[k];
-
-  // 1) cada par é cronológico (o 2º clique vem depois do 1º)
-  for (const par of PARES_ALTA) {
-    if (p[par.ate].i <= p[par.de].i) {
-      erros.push(`${par.rotulo}: "${rot(par.ate)}" precisa vir depois de "${rot(par.de)}" no tempo.`);
-    }
+// Qual configuração usar pra abrir um template já salvo
+export function configDoTemplate(pontos, padrao) {
+  if (temFormatoPares(pontos)) {
+    return { steps: stepsDoPadrao(padrao), linhas: (p) => linhasDoPadrao(p, padrao), linePairs: [] };
   }
-
-  // 2) os dois mastros são de alta
-  if (p.p2_topo_mastro1.preco <= p.p1_inicio_mastro1.preco) {
-    erros.push(`Mastro 1: "Topo Mastro 1" precisa estar acima de "Início Mastro 1" — o mastro é uma subida.`);
+  if (temFormato6(pontos)) {
+    return { steps: steps6(padrao.alta), linhas: (p, candles) => linhas6(p, candles, { alta: padrao.alta }), linePairs: [] };
   }
-  if (p.p8_topo_mastro2.preco <= p.p7_inicio_mastro2.preco) {
-    erros.push(`Mastro 2: "Topo Mastro 2" precisa estar acima de "Início Mastro 2" — o mastro é uma subida.`);
-  }
-
-  return erros;
-}
-
-// NÃO bloqueiam: a ordem ENTRE pares é só um indício de marcação estranha.
-// Na prática é comum esticar as linhas do canal pra direita, além do
-// rompimento — aí "Fim Fundo Bandeira" cai depois de "Início Mastro 2" e a
-// marcação continua correta. Vira aviso amarelo, e o analista decide.
-export function avisosAltaPares(pontos) {
-  if (!temFormatoPares(pontos)) return [];
-  const p = Object.fromEntries(PASSOS_ALTA_PARES.map((k) => [k, pontos[k]]));
-  const avisos = [];
-
-  if (p.p3_inicio_fundo.i <= p.p1_inicio_mastro1.i) {
-    avisos.push(`Confira: "Início Fundo Bandeira" está antes de "Início Mastro 1" — a bandeira costuma vir depois do mastro.`);
-  }
-  if (p.p7_inicio_mastro2.i <= p.p3_inicio_fundo.i) {
-    avisos.push(`Confira: "Início Mastro 2" está antes do começo da bandeira — o rompimento costuma vir depois da consolidação.`);
-  }
-
-  return avisos;
-}
-
-// Medidas do padrão (mesmas contas das colunas geradas no Supabase —
-// ver sql/008_bandeira_alta_8_pontos.sql)
-export function medidasAltaPares(pontos) {
-  if (!temFormatoPares(pontos)) return null;
-  return {
-    altura_mastro1: pontos.p2_topo_mastro1.preco - pontos.p1_inicio_mastro1.preco,
-    altura_mastro2: pontos.p8_topo_mastro2.preco - pontos.p7_inicio_mastro2.preco,
-  };
+  return { steps: stepsLegado(), linhas: undefined, linePairs: LINE_PAIRS_LEGADO };
 }

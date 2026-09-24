@@ -4,6 +4,8 @@ import AdminLogin from "../admin/AdminLogin.jsx";
 import AdminTemplates from "../admin/AdminTemplates.jsx";
 import AdminTemplatesBandeiraAlta from "../admin/AdminTemplatesBandeiraAlta.jsx";
 import AdminTemplatesBandeiraBaixa from "../admin/AdminTemplatesBandeiraBaixa.jsx";
+import AdminTemplatesFlamulaAlta from "../admin/AdminTemplatesFlamulaAlta.jsx";
+import AdminTemplatesFlamulaBaixa from "../admin/AdminTemplatesFlamulaBaixa.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
@@ -17,6 +19,8 @@ const TEMPLATES = {
   "/admin/templates/niveis": AdminTemplatesNiveis,
   "/admin/templates/bandeira-alta": AdminTemplatesBandeiraAlta,
   "/admin/templates/bandeira-baixa": AdminTemplatesBandeiraBaixa,
+  "/admin/templates/flamula-alta": AdminTemplatesFlamulaAlta,
+  "/admin/templates/flamula-baixa": AdminTemplatesFlamulaBaixa,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

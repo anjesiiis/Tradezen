@@ -50,6 +50,8 @@ from admin_templates_topo_duplo import router as admin_templates_topo_duplo_rout
 from admin_templates_niveis import router as admin_templates_niveis_router
 from admin_templates_bandeira_alta import router as admin_templates_bandeira_alta_router
 from admin_templates_bandeira_baixa import router as admin_templates_bandeira_baixa_router
+from admin_templates_flamula_alta import router as admin_templates_flamula_alta_router
+from admin_templates_flamula_baixa import router as admin_templates_flamula_baixa_router
 from padroes_marcados import router as padroes_marcados_router
 from analises import router as analises_router
 from alertas import router as alertas_router
@@ -125,6 +127,8 @@ app.include_router(admin_templates_topo_duplo_router)
 app.include_router(admin_templates_niveis_router)
 app.include_router(admin_templates_bandeira_alta_router)
 app.include_router(admin_templates_bandeira_baixa_router)
+app.include_router(admin_templates_flamula_alta_router)
+app.include_router(admin_templates_flamula_baixa_router)
 app.include_router(padroes_marcados_router)
 app.include_router(analises_router)
 app.include_router(alertas_router)

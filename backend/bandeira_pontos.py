@@ -86,8 +86,14 @@ def preco_na_reta(a: Ponto, b: Ponto, i: int) -> Optional[float]:
     return a.preco + ((b.preco - a.preco) * (i - a.i)) / (b.i - a.i)
 
 
-def validar_pares(pontos: PontosBandeira) -> List[str]:
-    """Regras da bandeira de alta em 4 pares (o formato atual)."""
+def validar_pares(pontos: PontosBandeira, alta: bool = True) -> List[str]:
+    """Regras dos padrões de continuação em 4 pares (formato atual).
+
+    Bloqueiam só o essencial: a ordem DENTRO de cada par e a direção dos
+    dois mastros. Nada que compare um par com outro — os pares são
+    independentes e os pontos podem se tocar ou cair dentro do trecho de
+    outro par (o início do mastro 2 é o fundo da consolidação, por exemplo).
+    """
     p = pontos.root
     rot = ROTULOS_PARES
     erros: List[str] = []
@@ -97,11 +103,17 @@ def validar_pares(pontos: PontosBandeira) -> List[str]:
         if p[ate].i <= p[de].i:
             erros.append(f'{rotulo}: "{rot[ate]}" precisa vir depois de "{rot[de]}" no tempo.')
 
-    # 2) os dois mastros são de alta
-    if p["p2_topo_mastro1"].preco <= p["p1_inicio_mastro1"].preco:
-        erros.append('Mastro 1: "Topo Mastro 1" precisa estar acima de "Início Mastro 1" — o mastro é uma subida.')
-    if p["p8_topo_mastro2"].preco <= p["p7_inicio_mastro2"].preco:
-        erros.append('Mastro 2: "Topo Mastro 2" precisa estar acima de "Início Mastro 2" — o mastro é uma subida.')
+    # 2) os dois mastros vão na direção do padrão
+    ponta = "Topo" if alta else "Fundo"
+    sentido = "acima" if alta else "abaixo"
+    movimento = "subida" if alta else "queda"
+    for numero, de, ate in (("1", "p1_inicio_mastro1", "p2_topo_mastro1"), ("2", "p7_inicio_mastro2", "p8_topo_mastro2")):
+        contra_mao = p[ate].preco <= p[de].preco if alta else p[ate].preco >= p[de].preco
+        if contra_mao:
+            erros.append(
+                f'Mastro {numero}: "{ponta} Mastro {numero}" precisa estar {sentido} de '
+                f'"Início Mastro {numero}" — o mastro é uma {movimento}.'
+            )
 
     # A ordem ENTRE pares não bloqueia: é comum esticar as linhas do canal
     # pra direita, além do rompimento, e aí "Fim Fundo Bandeira" cai depois
@@ -116,7 +128,7 @@ def validar(pontos: PontosBandeira, alta: bool = True) -> List[str]:
     if pontos.e_legado:
         return []
     if pontos.e_pares:
-        return validar_pares(pontos)
+        return validar_pares(pontos, alta=alta)
 
     p = [pontos.root[k] for k in PASSOS]
     p1, p2, p3, p4, p5, p6 = p

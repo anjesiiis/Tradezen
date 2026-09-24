@@ -117,6 +117,8 @@ export function AdminPatternNav({ active }) {
     { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
     { key: "bandeira-alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
     { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
+    { key: "flamula-alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
+    { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
   ];
   return (
     <nav className="admin-nav">

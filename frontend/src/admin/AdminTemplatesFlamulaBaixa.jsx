@@ -1,9 +1,9 @@
 import PainelMarcacao from "./PainelMarcacao.jsx";
 import { PADROES } from "./bandeira.js";
-import { templatesBandeiraAltaApi } from "./adminApi";
+import { templatesFlamulaBaixaApi } from "./adminApi";
 
 // Bandeira e flâmula (alta e baixa) usam a mesma tela de marcação — 8
 // pontos em 4 pares. Aqui só se escolhe o padrão e a tabela.
-export default function AdminTemplatesBandeiraAlta() {
-  return <PainelMarcacao padrao={PADROES.bandeira_alta} api={templatesBandeiraAltaApi} />;
+export default function AdminTemplatesFlamulaBaixa() {
+  return <PainelMarcacao padrao={PADROES.flamula_baixa} api={templatesFlamulaBaixaApi} />;
 }

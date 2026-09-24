@@ -887,7 +887,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         const tipoNorm = normalizarTipo(p.tipo);
         if(tipoNorm === "topo_duplo") _desenharTopoDuplo(ctx, toX, toY, p, isSel);
         else if(tipoNorm === "suporte" || tipoNorm === "resistencia") _desenharNivel(ctx, toX, toY, p, isSel);
-        else if(tipoNorm === "bandeira_alta" || tipoNorm === "bandeira_baixa") _desenharBandeira(ctx, toX, toY, p, isSel);
+        // bandeira e flâmula têm a mesma marcação (8 pontos em 4 pares) —
+        // muda só o formato da consolidação, que o próprio desenho reflete
+        else if(["bandeira_alta","bandeira_baixa","flamula_alta","flamula_baixa"].includes(tipoNorm)) _desenharBandeira(ctx, toX, toY, p, isSel);
         else _desenharOCO(ctx, toX, toY, p, isSel);
       }
 
