@@ -101,12 +101,6 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
         horzLines: { color: "rgba(255,255,255,0.04)" },
       },
       crosshair: { mode: 1 },
-      // Arrastar com o botão pressionado é PRA MOVER PONTO, não pra rolar o
-      // gráfico. Desligado já na criação de propósito: ligar/desligar isso
-      // no meio (a cada passada do mouse sobre um ponto) fazia o gráfico
-      // perder o clique seguinte — metade das marcações sumia. Rolar e dar
-      // zoom pela rodinha do mouse continua funcionando.
-      handleScroll: { mouseWheel: true, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
       rightPriceScale: { borderColor: "#21262D" },
       timeScale: { borderColor: "#21262D", timeVisible: false },
     });
@@ -236,6 +230,11 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
 
   // ── Arrastar pontos ─────────────────────────────────────────
 
+  // Liga/desliga o arrastar-para-rolar do próprio gráfico
+  function pan(ligado) {
+    chartRef.current?.applyOptions({ handleScroll: { pressedMouseMove: ligado } });
+  }
+
   // O que está sob o cursor: um ponto (prioridade) ou uma linha inteira
   function alvoSobCursor(x, y) {
     const posicoes = posicoesDosPontos();
@@ -276,6 +275,11 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       : alvo;
     origemRef.current = { x: cursor.x, y: cursor.y };
     moveuRef.current = false;
+    // Só enquanto este gesto durar: senão o gráfico rolaria junto com o
+    // ponto. Trocar essa opção a cada passada do mouse (o que eu fazia
+    // antes) fazia o gráfico perder o clique seguinte — por isso a troca
+    // acontece uma vez só, quando algo é realmente pego.
+    pan(false);
     setArrastando(alvo.tipo === "linha" ? alvo.chaves.join("+") : alvo.chave);
   }
 
@@ -315,6 +319,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     // cliques pra marcar os pontos seguintes se perdia.
     if (gesto.tipo === "ponto" || moveuRef.current) fimDoArrastoRef.current = Date.now();
     moveuRef.current = false;
+    pan(true);
   }
 
   // Pega a série de linha nº `idx`, criando se ainda não existir.
