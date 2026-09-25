@@ -103,6 +103,12 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       crosshair: { mode: 1 },
       rightPriceScale: { borderColor: "#21262D" },
       timeScale: { borderColor: "#21262D", timeVisible: false },
+      // Navegação do gráfico ligada explicitamente: arrastar pra rolar,
+      // rodinha e pinça pra dar zoom, arrastar as escalas pra esticar e
+      // duplo clique pra voltar ao normal. O arrastar-para-rolar é suspenso
+      // só enquanto um ponto ou uma linha está sendo movido (ver `pan`).
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
     });
 
     const series = chart.addSeries(CandlestickSeries, {
@@ -167,7 +173,12 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       setPontos((prev) => ({ ...prev, [gesto.chave]: { i: indice, preco: Math.round(preco * 10000) / 10000 } }));
     });
 
-    chart.subscribeClick((param) => {
+    // Marca o ponto onde o usuário clicou. Vale pro clique normal E pro
+    // duplo clique: quando dois cliques vêm rápido (menos de meio segundo),
+    // a biblioteca do gráfico entende o segundo como duplo clique e não
+    // dispara "click" — sem isso, marcar dois pontos em sequência rápida
+    // perdia o segundo.
+    const marcar = (param) => {
       if (readOnly) return;
       // Clique que veio de um arrasto (ou de pegar um ponto) não marca
       // nada — senão mover o ponto 4 criaria um ponto novo por baixo.
@@ -189,7 +200,10 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
         setActiveStep(activeStepRef.current);
         return atualizado;
       });
-    });
+    };
+
+    chart.subscribeClick(marcar);
+    chart.subscribeDblClick(marcar);
 
     const observer = new ResizeObserver(() => {
       if (containerRef.current) chart.applyOptions({ width: containerRef.current.clientWidth });
