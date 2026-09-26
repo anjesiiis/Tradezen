@@ -1,9 +1,9 @@
 import PainelMarcacao from "./PainelMarcacao.jsx";
 import { PADROES } from "./bandeira.js";
-import { templatesFlamulaBaixaApi } from "./adminApi";
 
-// Bandeira e flâmula (alta e baixa) usam a mesma tela de marcação — 8
-// pontos em 4 pares. Aqui só se escolhe o padrão e a tabela.
+// Bandeira, flâmula e cunha usam a mesma tela de marcação — 8 pontos em 4
+// pares. Aqui só se escolhe com qual padrão a tela abre; o seletor no topo
+// permite trocar sem sair da página.
 export default function AdminTemplatesFlamulaBaixa() {
-  return <PainelMarcacao padrao={PADROES.flamula_baixa} api={templatesFlamulaBaixaApi} />;
+  return <PainelMarcacao padraoInicial={PADROES.flamula_baixa} />;
 }

@@ -4,9 +4,10 @@ import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import {
-  avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha, stepsDoPadrao, temFormatoPares, validarPadrao,
+  PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha,
+  siglaDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
 } from "./bandeira.js";
-import { fetchAtivoCandles, clearAdminToken } from "./adminApi";
+import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -39,7 +40,11 @@ function Campo({ label, children }) {
   );
 }
 
-export default function PainelMarcacao({ padrao, api }) {
+export default function PainelMarcacao({ padraoInicial }) {
+  // O seletor do topo troca o padrão sem sair da página: a marcação em
+  // andamento é descartada e a tela recarrega a lista daquele padrão.
+  const [padrao, setPadrao] = useState(padraoInicial);
+  const api = API_DO_PADRAO[padrao.id];
   const STEPS = stepsDoPadrao(padrao);
   const PASSOS = STEPS.map((s) => s.key);
   const desenharLinhas = (pontos) => linhasDoPadrao(pontos, padrao);
@@ -57,11 +62,45 @@ export default function PainelMarcacao({ padrao, api }) {
   const [templates, setTemplates] = useState([]);
   const [editando, setEditando] = useState(null);
   const [avisos, setAvisos] = useState([]);
+  // Marcadores cinzas dos templates já salvos DESTE ativo (todos os padrões)
+  const [marcadoresSalvos, setMarcadoresSalvos] = useState([]);
 
   useEffect(() => {
     carregarTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [padrao.id]);
+
+  // Templates já salvos pra este ticker, de QUALQUER padrão — viram os
+  // marcadores cinzas no gráfico (ver marcadoresExtras).
+  useEffect(() => {
+    let cancelado = false;
+    const alvo = ticker.trim().toUpperCase();
+    const busca = !alvo ? Promise.resolve([]) : Promise.all(
+      Object.entries(API_DO_PADRAO).map(async ([id, apiDoTipo]) => {
+        try {
+          const lista = await apiDoTipo.list();
+          return (lista || [])
+            .filter((t) => (t.ticker || "").toUpperCase() === alvo && t.data_p1)
+            .map((t) => ({ time: Math.floor(new Date(t.data_p1).getTime() / 1000), texto: siglaDoPadrao(id) }));
+        } catch {
+          return []; // um padrão sem tabela ainda não pode derrubar o resto
+        }
+      })
+    );
+    busca.then((listas) => {
+      if (!cancelado) setMarcadoresSalvos(listas.flat().filter((m) => Number.isFinite(m.time)));
+    });
+    return () => { cancelado = true; };
+  }, [ticker, templates]);
+
+  function trocarPadrao(id) {
+    const novo = PADROES[id];
+    if (!novo || novo.id === padrao.id) return;
+    setPadrao(novo);
+    setPontos({});          // a marcação em andamento não serve pro outro padrão
+    setEditando(null);
+    setMensagem(null);
+  }
 
   // Cada mensagem vira um toast próprio, some sozinho em 8s. Vermelho
   // (erro) impede salvar; amarelo (aviso) é só um "confira isso".
@@ -121,12 +160,16 @@ export default function PainelMarcacao({ padrao, api }) {
     setMensagem(null);
     try {
       const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
+      // Data do primeiro ponto: guardada em coluna própria pra a lista e os
+      // marcadores do gráfico não precisarem abrir os candles de cada template.
+      const candleP1 = candlesContexto[pontos[PASSOS[0]]?.i];
       await api.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         candles,
         candles_contexto: candlesContexto,
         pontos: pontosAjustados,
+        data_p1: candleP1 ? new Date(candleP1.timestamp).toISOString() : null,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
       });
@@ -269,6 +312,16 @@ export default function PainelMarcacao({ padrao, api }) {
             <h2>Nova marcação</h2>
 
             <div className="admin-row">
+              <Campo label="Padrão">
+                <select
+                  value={padrao.id}
+                  onChange={(e) => trocarPadrao(e.target.value)}
+                  className="admin-select"
+                  title="Trocar o padrão marcado — a marcação em andamento é descartada"
+                >
+                  {Object.values(PADROES).map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+                </select>
+              </Campo>
               <Campo label="Ticker">
                 <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
@@ -296,27 +349,28 @@ export default function PainelMarcacao({ padrao, api }) {
                   steps={STEPS}
                   linhas={desenharLinhas}
                   pares={paresDeLinha(padrao)}
+                  marcadoresExtras={marcadoresSalvos}
                   onChange={setPontos}
                 />
 
-                <div className="admin-grid2">
-                  <Campo label="Resultado">
-                    <input
-                      placeholder="ex: sucesso, falha"
-                      value={resultado}
-                      onChange={(e) => setResultado(e.target.value)}
-                      className="admin-input"
-                    />
-                  </Campo>
-                  <Campo label="Observação">
-                    <input
-                      placeholder="anotações sobre o template"
-                      value={observacao}
-                      onChange={(e) => setObservacao(e.target.value)}
-                      className="admin-input"
-                    />
-                  </Campo>
-                </div>
+                <Campo label="Resultado">
+                  <input
+                    placeholder="ex: sucesso, falha"
+                    value={resultado}
+                    onChange={(e) => setResultado(e.target.value)}
+                    className="admin-input"
+                    style={{ maxWidth: 260 }}
+                  />
+                </Campo>
+                <Campo label="Anotação">
+                  <textarea
+                    placeholder="o que chamou atenção nesse padrão — ex: rompimento forte, volume baixo na bandeira"
+                    value={observacao}
+                    onChange={(e) => setObservacao(e.target.value)}
+                    className="admin-input admin-textarea"
+                    rows={3}
+                  />
+                </Campo>
 
                 {completo && (
                   <button onClick={salvarNovo} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
@@ -328,42 +382,37 @@ export default function PainelMarcacao({ padrao, api }) {
           </section>
         )}
 
-        <section className="admin-card" style={{ padding: 0 }}>
-          <h2 style={{ padding: "16px 16px 12px" }}>Templates salvos ({templates.length})</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Ticker</th>
-                  <th>Timeframe</th>
-                  <th>Resultado</th>
-                  <th>Criado em</th>
-                  <th style={{ textAlign: "right" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {templates.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.ticker}</td>
-                    <td>{t.timeframe}</td>
-                    <td>{t.resultado || "—"}</td>
-                    <td className="muted">{new Date(t.criado_em).toLocaleString("pt-BR")}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <a className="action" onClick={() => abrirTemplate(t, true)}>Visualizar</a>
-                      <a className="action" onClick={() => abrirTemplate(t, false)}>Editar</a>
-                      <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
-                    </td>
-                  </tr>
-                ))}
-                {templates.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text2)", padding: 24 }}>Nenhum template ainda.</td></tr>
-                )}
-              </tbody>
-            </table>
+        <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2>Marcados em {padrao.rotulo} ({templates.length})</h2>
+
+          {templates.length === 0 && (
+            <p style={{ color: "var(--text2)", fontSize: 13, margin: 0 }}>Nenhum template ainda.</p>
+          )}
+
+          <div className="admin-cards">
+            {templates.map((t) => (
+              <article key={t.id} className="admin-card-item">
+                <header>
+                  <strong>{t.ticker}</strong>
+                  <span className="admin-tag">{padrao.rotulo}</span>
+                </header>
+                <dl>
+                  <div><dt>P1</dt><dd>{t.data_p1 ? new Date(t.data_p1).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</dd></div>
+                  <div><dt>Timeframe</dt><dd>{t.timeframe}</dd></div>
+                  <div><dt>Resultado</dt><dd>{t.resultado || "—"}</dd></div>
+                  <div><dt>Salvo em</dt><dd>{new Date(t.criado_em).toLocaleDateString("pt-BR")}</dd></div>
+                </dl>
+                {t.observacao && <p className="admin-card-nota">{t.observacao}</p>}
+                <footer>
+                  <a className="action" onClick={() => abrirTemplate(t, true)}>Visualizar</a>
+                  <a className="action" onClick={() => abrirTemplate(t, false)}>Editar</a>
+                  <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
+                </footer>
+              </article>
+            ))}
           </div>
         </section>
+
       </main>
 
       <AdminToast avisos={avisos} onFechar={fecharAviso} />

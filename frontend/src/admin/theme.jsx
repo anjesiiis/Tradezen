@@ -59,6 +59,19 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-chip.active{border-color:#2962ff;color:#fff;background:#2962ff}
 .admin-chip.filled{color:var(--text);background:var(--s2)}
 .admin-chip .val{color:var(--text3);margin-left:4px}
+.admin-textarea{min-height:76px;resize:vertical;font-family:var(--font-b);line-height:1.5;width:100%}
+/* Lista de marcações salvas — cards em vez de tabela: cabe a anotação
+   inteira, que é o que interessa relembrar depois. */
+.admin-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.admin-card-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.admin-card-item header{display:flex;align-items:center;gap:8px}
+.admin-card-item header strong{font-size:14px;color:var(--text)}
+.admin-tag{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin-left:auto}
+.admin-card-item dl{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:0}
+.admin-card-item dt{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:0}
+.admin-card-item dd{font-size:13px;color:var(--text);margin:0}
+.admin-card-nota{font-size:12px;color:var(--text2);line-height:1.5;margin:0;border-left:2px solid var(--border);padding-left:8px}
+.admin-card-item footer{display:flex;gap:10px;margin-top:2px}
 .admin-chip-x{margin-left:6px;color:var(--text3);cursor:pointer;font-size:11px;line-height:1;padding:0 2px;border-radius:4px}
 .admin-chip-x:hover{color:#ef5350;background:rgba(239,83,80,.14)}
 
@@ -121,6 +134,8 @@ export function AdminPatternNav({ active }) {
     { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
     { key: "flamula-alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
     { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
+    { key: "cunha-alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
+    { key: "cunha-baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
   ];
   return (
     <nav className="admin-nav">

@@ -26,6 +26,19 @@ export const CANDLES_FAKE = Array.from({ length: 40 }, (_, i) => {
   };
 });
 
+// Um template já salvo: alimenta os cards da lista e os marcadores cinzas
+export const TEMPLATE_FAKE = {
+  id: 1,
+  ticker: 'PETR4.SA',
+  timeframe: '1d',
+  resultado: 'sucesso',
+  observacao: 'rompimento forte, volume alto',
+  criado_em: new Date(Date.UTC(2026, 6, 20)).toISOString(),
+  data_p1: new Date(Date.UTC(2026, 6, 1)).toISOString(),
+  pontos: {},
+  candles: CANDLES_FAKE,
+};
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -41,7 +54,9 @@ export async function respostaFake(url) {
   if (u.includes('/ativos/buscar')) return json({ resultados: [] });
   if (u.includes('/padroes-marcados/')) return json({ padroes: [] });
   // rotas do admin (templates de padrões)
-  if (u.includes('/admin/templates')) return json({ templates: [], template: {} });
+  if (u.includes('/admin/templates')) {
+    return json({ templates: [TEMPLATE_FAKE], template: TEMPLATE_FAKE });
+  }
   if (u.includes('/ativo/')) return json({ candles: CANDLES_FAKE, niveis: [] });
   return json({});
 }

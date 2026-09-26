@@ -30,9 +30,19 @@ export const PADROES = {
   bandeira_baixa: { id: "bandeira_baixa", rotulo: "Bandeira de Baixa", forma: "bandeira", alta: false, nav: "bandeira-baixa", rota: "/admin/templates/bandeira-baixa" },
   flamula_alta:   { id: "flamula_alta",   rotulo: "Flâmula de Alta",   forma: "flamula",  alta: true,  nav: "flamula-alta",   rota: "/admin/templates/flamula-alta" },
   flamula_baixa:  { id: "flamula_baixa",  rotulo: "Flâmula de Baixa",  forma: "flamula",  alta: false, nav: "flamula-baixa",  rota: "/admin/templates/flamula-baixa" },
+  cunha_alta:     { id: "cunha_alta",     rotulo: "Cunha de Alta",     forma: "cunha",    alta: true,  nav: "cunha-alta",     rota: "/admin/templates/cunha-alta" },
+  cunha_baixa:    { id: "cunha_baixa",    rotulo: "Cunha de Baixa",    forma: "cunha",    alta: false, nav: "cunha-baixa",    rota: "/admin/templates/cunha-baixa" },
 };
 
-const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula" };
+const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula", cunha: "Cunha" };
+
+// Abreviação usada nos marcadores cinzas dos templates já salvos (ver
+// PainelMarcacao): 3 letras, que é o que cabe num marcador do gráfico.
+export const SIGLA_FORMA = { bandeira: "BAN", flamula: "FLA", cunha: "CUN" };
+
+export function siglaDoPadrao(id) {
+  return SIGLA_FORMA[PADROES[id]?.forma] || "???";
+}
 
 // Os 4 pares, já com os rótulos do padrão escolhido
 export function paresDoPadrao(padrao) {
@@ -138,13 +148,25 @@ export function avisosDoPadrao(pontos, padrao) {
     avisos.push(`Confira: "${pares[1].rotuloDe}" está antes de "Início Mastro 1".`);
   }
 
-  // Flâmula é um TRIÂNGULO: as duas bordas têm que se aproximar. Se a
-  // distância no fim não for menor que no começo, provavelmente é bandeira.
-  if (padrao.forma === "flamula") {
+  // Flâmula e cunha fecham (as bordas convergem). O que separa as duas é a
+  // inclinação: na flâmula as bordas vão em sentidos opostos (triângulo
+  // simétrico); na cunha as duas apontam para o mesmo lado.
+  if (padrao.forma === "flamula" || padrao.forma === "cunha") {
     const aberturaInicio = Math.abs(p.p5_inicio_topo.preco - p.p3_inicio_fundo.preco);
     const aberturaFim = Math.abs(p.p6_fim_topo.preco - p.p4_fim_fundo.preco);
+    const nome = NOME_FORMA[padrao.forma].toLowerCase();
     if (aberturaFim >= aberturaInicio) {
-      avisos.push("Confira: as bordas da flâmula não estão se fechando — numa flâmula elas convergem (triângulo). Se ficarem paralelas, o padrão é bandeira.");
+      avisos.push(`Confira: as bordas da ${nome} não estão se fechando — numa ${nome} elas convergem. Se ficarem paralelas, o padrão é bandeira.`);
+    }
+
+    const inclinaFundo = p.p4_fim_fundo.preco - p.p3_inicio_fundo.preco;
+    const inclinaTopo = p.p6_fim_topo.preco - p.p5_inicio_topo.preco;
+    const mesmoLado = inclinaFundo * inclinaTopo > 0;
+    if (padrao.forma === "cunha" && !mesmoLado) {
+      avisos.push("Confira: numa cunha as duas bordas inclinam para o mesmo lado. Com elas em sentidos opostos, o padrão é flâmula.");
+    }
+    if (padrao.forma === "flamula" && mesmoLado) {
+      avisos.push("Confira: as duas bordas da flâmula estão inclinando para o mesmo lado — isso é uma cunha.");
     }
   }
 

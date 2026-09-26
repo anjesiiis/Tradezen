@@ -1,7 +1,7 @@
 import {
   AZUL, PADROES, PASSOS_PARES, VERDE, VERMELHO,
   avisosDoPadrao, configDoTemplate, linhasDoPadrao, medidasDoPadrao,
-  stepsDoPadrao, temFormatoPares, validarPadrao,
+  siglaDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
 } from '../admin/bandeira.js';
 
 // Marcação típica de bandeira de alta: mastro sobe (10→20), a consolidação
@@ -23,10 +23,28 @@ const BAIXA = Object.fromEntries(
 const com = (base, mudancas) => ({ ...base, ...mudancas });
 
 describe('Padrões de continuação — os 4 templates', () => {
-  it('bandeira e flâmula, de alta e de baixa', () => {
-    expect(Object.keys(PADROES)).toEqual(['bandeira_alta', 'bandeira_baixa', 'flamula_alta', 'flamula_baixa']);
+  it('bandeira, flâmula e cunha — de alta e de baixa', () => {
+    expect(Object.keys(PADROES)).toEqual([
+      'bandeira_alta', 'bandeira_baixa', 'flamula_alta', 'flamula_baixa', 'cunha_alta', 'cunha_baixa',
+    ]);
     expect(Object.values(PADROES).map((p) => p.rotulo)).toEqual([
       'Bandeira de Alta', 'Bandeira de Baixa', 'Flâmula de Alta', 'Flâmula de Baixa',
+      'Cunha de Alta', 'Cunha de Baixa',
+    ]);
+  });
+
+  it('cada padrão tem sua sigla de 3 letras (marcadores do gráfico)', () => {
+    expect(siglaDoPadrao('bandeira_alta')).toBe('BAN');
+    expect(siglaDoPadrao('flamula_baixa')).toBe('FLA');
+    expect(siglaDoPadrao('cunha_alta')).toBe('CUN');
+  });
+
+  it('cunha usa os mesmos 8 pontos, com nome próprio', () => {
+    expect(stepsDoPadrao(PADROES.cunha_alta).map((s) => s.label)).toEqual([
+      'Início Mastro 1', 'Topo Mastro 1',
+      'Início Fundo Cunha', 'Fim Fundo Cunha',
+      'Início Topo Cunha', 'Fim Topo Cunha',
+      'Início Mastro 2', 'Topo Mastro 2',
     ]);
   });
 
@@ -132,6 +150,24 @@ describe('Avisos (não bloqueiam)', () => {
   it('flâmula com bordas convergindo não gera aviso', () => {
     const triangulo = com(ALTA, { p4_fim_fundo: { i: 13, preco: 17.8 }, p6_fim_topo: { i: 14, preco: 18.2 } });
     expect(avisosDoPadrao(triangulo, PADROES.flamula_alta)).toEqual([]);
+  });
+
+  it('cunha avisa quando as bordas inclinam para lados opostos', () => {
+    // no ALTA as bordas vão em sentidos opostos (fundo desce, topo desce?)
+    const opostas = com(ALTA, {
+      p3_inicio_fundo: { i: 7, preco: 17 }, p4_fim_fundo: { i: 13, preco: 16 },   // desce
+      p5_inicio_topo: { i: 8, preco: 18 }, p6_fim_topo: { i: 14, preco: 19 },     // sobe
+    });
+    expect(avisosDoPadrao(opostas, PADROES.cunha_alta).join(' ')).toMatch(/inclinam para o mesmo lado/);
+    expect(validarPadrao(opostas, PADROES.cunha_alta)).toEqual([]);
+  });
+
+  it('flâmula avisa quando as bordas inclinam para o mesmo lado (é cunha)', () => {
+    const mesmoLado = com(ALTA, {
+      p3_inicio_fundo: { i: 7, preco: 17 }, p4_fim_fundo: { i: 13, preco: 16 },
+      p5_inicio_topo: { i: 8, preco: 19.5 }, p6_fim_topo: { i: 14, preco: 18 },
+    });
+    expect(avisosDoPadrao(mesmoLado, PADROES.flamula_alta).join(' ')).toMatch(/isso é uma cunha/);
   });
 
   it('bandeira não recebe o aviso de convergência', () => {

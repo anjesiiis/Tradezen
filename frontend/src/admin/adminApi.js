@@ -101,3 +101,16 @@ export const templatesBandeiraAltaApi = makeTemplateApi("/admin/templates-bandei
 export const templatesBandeiraBaixaApi = makeTemplateApi("/admin/templates-bandeira-baixa");
 export const templatesFlamulaAltaApi = makeTemplateApi("/admin/templates-flamula-alta");
 export const templatesFlamulaBaixaApi = makeTemplateApi("/admin/templates-flamula-baixa");
+export const templatesCunhaAltaApi = makeTemplateApi("/admin/templates-cunha-alta");
+export const templatesCunhaBaixaApi = makeTemplateApi("/admin/templates-cunha-baixa");
+
+// Qual API usar pra cada padrão de continuação — é o que permite trocar de
+// padrão sem sair da tela de marcação (ver o seletor em PainelMarcacao).
+export const API_DO_PADRAO = {
+  bandeira_alta: templatesBandeiraAltaApi,
+  bandeira_baixa: templatesBandeiraBaixaApi,
+  flamula_alta: templatesFlamulaAltaApi,
+  flamula_baixa: templatesFlamulaBaixaApi,
+  cunha_alta: templatesCunhaAltaApi,
+  cunha_baixa: templatesCunhaBaixaApi,
+};

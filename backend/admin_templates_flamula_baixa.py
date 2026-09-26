@@ -25,6 +25,10 @@ class TemplateCreate(BaseModel):
     candles: List[Dict[str, Any]]
     candles_contexto: List[Dict[str, Any]]
     pontos: PontosBandeira
+    # Data do primeiro ponto do padrão — guardada em coluna própria pra
+    # a listagem e os marcadores cinzas no gráfico não precisarem abrir os
+    # candles de cada template.
+    data_p1: Optional[str] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
 
@@ -42,7 +46,7 @@ class TemplateUpdate(BaseModel):
 # "Não foi possível carregar os templates". A tela de listagem só mostra
 # ticker/timeframe/resultado/data; os candles vêm no GET /{id}, na hora de
 # abrir um template.
-_COLUNAS_LISTA = "id,ticker,timeframe,resultado,observacao,criado_em"
+_COLUNAS_LISTA = "id,ticker,timeframe,resultado,observacao,criado_em,data_p1"
 
 
 @router.get("")

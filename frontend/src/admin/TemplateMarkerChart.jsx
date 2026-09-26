@@ -13,7 +13,7 @@ function toChartTime(candle) {
 //   • `linhas`    — função (pontos, candles) => linhas calculadas, cada uma
 //     com cor, espessura e tracejado próprios. É o que a bandeira usa pra
 //     esticar o canal até o rompimento e projetar o alvo.
-export default function TemplateMarkerChart({ candles, steps, linePairs = [], linhas, pares, initialPontos, onChange, readOnly = false }) {
+export default function TemplateMarkerChart({ candles, steps, linePairs = [], linhas, pares, marcadoresExtras = [], initialPontos, onChange, readOnly = false }) {
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -361,6 +361,25 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       shape: "circle",
       text: s.short,
     }));
+
+    // Templates JÁ SALVOS deste ativo: um marcador cinza no primeiro ponto
+    // de cada um, com a sigla do padrão (BAN/FLA/CUN). Só pra situar quem
+    // está marcando — não entra na marcação nem atrapalha o clique.
+    const tempos = candles.map(toChartTime);
+    for (const extra of marcadoresExtras) {
+      if (!Number.isFinite(extra?.time)) continue;
+      // encaixa no candle mais próximo: a data salva pode não bater exatamente
+      // com o recorte/intervalo que está na tela agora
+      const maisProximo = tempos.reduce((a, b) => (Math.abs(b - extra.time) < Math.abs(a - extra.time) ? b : a), tempos[0]);
+      if (maisProximo === undefined) continue;
+      marcadores.push({
+        time: maisProximo,
+        position: "belowBar",
+        color: "#787b86",
+        shape: "square",
+        text: extra.texto,
+      });
+    }
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
 
@@ -398,7 +417,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     const quadro = requestAnimationFrame(atualizarPosicoesSeMudaram);
     return () => cancelAnimationFrame(quadro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pontos, candles]);
+  }, [pontos, candles, marcadoresExtras]);
 
   function limpar() {
     setPontos({});

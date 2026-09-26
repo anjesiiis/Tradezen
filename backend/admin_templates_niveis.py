@@ -32,6 +32,10 @@ class TemplateCreate(BaseModel):
     candles: List[Dict[str, Any]]
     candles_contexto: List[Dict[str, Any]]
     pontos: PontosNivel
+    # Data do primeiro ponto do padrão — guardada em coluna própria pra
+    # a listagem e os marcadores cinzas no gráfico não precisarem abrir os
+    # candles de cada template.
+    data_p1: Optional[str] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
 

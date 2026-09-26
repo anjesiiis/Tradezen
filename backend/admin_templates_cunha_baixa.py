@@ -9,8 +9,8 @@ from rate_limit import limiter
 from supabase_client import supabase
 
 router = APIRouter(
-    prefix="/admin/templates-flamula-alta",
-    tags=["admin-templates-flamula-alta"],
+    prefix="/admin/templates-cunha-baixa",
+    tags=["admin-templates-cunha-baixa"],
     dependencies=[Depends(require_admin)],
 )
 
@@ -52,14 +52,14 @@ _COLUNAS_LISTA = "id,ticker,timeframe,resultado,observacao,criado_em,data_p1"
 @router.get("")
 @limiter.limit("30/minute")
 def listar_templates(request: Request):
-    resp = supabase.table("templates_flamula_alta").select(_COLUNAS_LISTA).order("criado_em", desc=True).execute()
+    resp = supabase.table("templates_cunha_baixa").select(_COLUNAS_LISTA).order("criado_em", desc=True).execute()
     return {"status": "ok", "templates": resp.data, "total": len(resp.data)}
 
 
 @router.get("/{template_id}")
 @limiter.limit("30/minute")
 def obter_template(request: Request, template_id: int):
-    resp = supabase.table("templates_flamula_alta").select("*").eq("id", template_id).limit(1).execute()
+    resp = supabase.table("templates_cunha_baixa").select("*").eq("id", template_id).limit(1).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok", "template": resp.data[0]}
@@ -68,9 +68,9 @@ def obter_template(request: Request, template_id: int):
 @router.post("")
 @limiter.limit("30/minute")
 def criar_template(request: Request, payload: TemplateCreate):
-    garantir_valido(payload.pontos, alta=True)
+    garantir_valido(payload.pontos, alta=False)
     body = payload.model_dump()
-    resp = supabase.table("templates_flamula_alta").insert(body).execute()
+    resp = supabase.table("templates_cunha_baixa").insert(body).execute()
     return {"status": "ok", "template": resp.data[0]}
 
 
@@ -78,12 +78,12 @@ def criar_template(request: Request, payload: TemplateCreate):
 @limiter.limit("30/minute")
 def atualizar_template(request: Request, template_id: int, payload: TemplateUpdate):
     if payload.pontos is not None:
-        garantir_valido(payload.pontos, alta=True)
+        garantir_valido(payload.pontos, alta=False)
     body = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not body:
         raise HTTPException(status_code=400, detail="Nada para atualizar.")
 
-    resp = supabase.table("templates_flamula_alta").update(body).eq("id", template_id).execute()
+    resp = supabase.table("templates_cunha_baixa").update(body).eq("id", template_id).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok", "template": resp.data[0]}
@@ -92,7 +92,7 @@ def atualizar_template(request: Request, template_id: int, payload: TemplateUpda
 @router.delete("/{template_id}")
 @limiter.limit("30/minute")
 def remover_template(request: Request, template_id: int):
-    resp = supabase.table("templates_flamula_alta").delete().eq("id", template_id).execute()
+    resp = supabase.table("templates_cunha_baixa").delete().eq("id", template_id).execute()
     if not resp.data:
         raise HTTPException(status_code=404, detail="Template não encontrado.")
     return {"status": "ok"}
