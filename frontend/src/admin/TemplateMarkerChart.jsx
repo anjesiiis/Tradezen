@@ -107,7 +107,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       // rodinha e pinça pra dar zoom, arrastar as escalas pra esticar e
       // duplo clique pra voltar ao normal. O arrastar-para-rolar é suspenso
       // só enquanto um ponto ou uma linha está sendo movido (ver `pan`).
-      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
     });
 
