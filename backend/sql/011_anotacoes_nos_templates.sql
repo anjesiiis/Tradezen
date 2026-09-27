@@ -10,31 +10,18 @@
 -- A âncora é candle + preço (índice dentro de `candles` do template, o
 -- mesmo sistema de `pontos`) — nunca pixel, senão a etiqueta sairia do
 -- lugar com zoom ou em outra tela.
+--
+-- Sem NOT NULL: templates antigos e payloads que não mandam o campo gravam
+-- null, e a tela trata null como lista vazia.
+-- `if exists` / `if not exists`: pode rodar mais de uma vez e não quebra em
+-- tabela que ainda não foi criada.
 
-do $anotacoes$
-declare
-  tabela text;
-begin
-  foreach tabela in array array[
-    'templates_oco',
-    'templates_topo_duplo',
-    'templates_niveis',
-    'templates_bandeira_alta',
-    'templates_bandeira_baixa',
-    'templates_flamula_alta',
-    'templates_flamula_baixa',
-    'templates_cunha_alta',
-    'templates_cunha_baixa'
-  ]
-  loop
-    if to_regclass(tabela) is not null then
-      -- sem NOT NULL: templates antigos e payloads que não mandam o
-      -- campo gravam null, e a tela trata null como lista vazia.
-      execute format(
-        'alter table %I add column if not exists anotacoes jsonb default ''[]''::jsonb',
-        tabela
-      );
-    end if;
-  end loop;
-end
-$anotacoes$;
+alter table if exists templates_oco            add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_topo_duplo     add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_niveis         add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_bandeira_alta  add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_bandeira_baixa add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_flamula_alta   add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_flamula_baixa  add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_cunha_alta     add column if not exists anotacoes jsonb default '[]'::jsonb;
+alter table if exists templates_cunha_baixa    add column if not exists anotacoes jsonb default '[]'::jsonb;
