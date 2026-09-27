@@ -85,16 +85,12 @@ export default function PainelMarcacao({ padraoInicial }) {
     }
     try {
       const salvo = await APIS_DE_TEMPLATE[lampada.tipo].get(lampada.templateId);
-      // padrões de continuação abrem com a config deles; os outros (OCO,
-      // topo duplo, níveis) entram com os pontos que tiverem
-      const padraoDoTemplate = PADROES[lampada.tipo] || padrao;
-      const config = configDoTemplate(salvo.pontos, padraoDoTemplate);
       const desenho = montarDesenhoSalvo({
         chave: lampada.id,
-        rotulo: `${lampada.rotulo} · ${salvo.ticker}`,
+        rotulo: `${lampada.rotulo} · ${salvo.ticker}${salvo.resultado ? ` · ${salvo.resultado}` : ""}`,
+        tipo: lampada.tipo,
         salvo,
         candlesAtuais: candlesContexto,
-        config,
       });
       if (desenho) setDesenhoSalvo(desenho);
     } catch {

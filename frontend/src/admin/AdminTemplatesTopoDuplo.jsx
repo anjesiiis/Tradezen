@@ -3,6 +3,7 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
+import { STEPS_TOPO_DUPLO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
@@ -11,11 +12,6 @@ const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
-const STEPS = [
-  { key: "topo1", label: "Topo 1", short: "T1", color: "#3D7EFF" },
-  { key: "vale", label: "Vale", short: "V", color: "#9B6DFF" },
-  { key: "topo2", label: "Topo 2", short: "T2", color: "#3D7EFF" },
-];
 const PASSOS = STEPS.map((s) => s.key);
 
 function janelaDoPadrao(candlesContexto, pontos) {
@@ -72,10 +68,10 @@ export default function AdminTemplatesTopoDuplo() {
       const salvo = await APIS_DE_TEMPLATE[lampada.tipo].get(lampada.templateId);
       const desenho = montarDesenhoSalvo({
         chave: lampada.id,
-        rotulo: `${lampada.rotulo} · ${salvo.ticker}`,
+        rotulo: `${lampada.rotulo} · ${salvo.ticker}${salvo.resultado ? ` · ${salvo.resultado}` : ""}`,
+        tipo: lampada.tipo,
         salvo,
         candlesAtuais: candlesContexto,
-        config: { steps: STEPS },
       });
       if (desenho) setDesenhoSalvo(desenho);
     } catch {

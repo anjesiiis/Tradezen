@@ -3,6 +3,7 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
+import { LINE_PAIRS_OCO as LINE_PAIRS, STEPS_OCO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
@@ -11,16 +12,6 @@ const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
-const STEPS = [
-  { key: "comeco", label: "Começo", short: "I", color: "#5A7299" },
-  { key: "topo_ombro_esq", label: "Topo Ombro Esquerdo", short: "TOE", color: "#3D7EFF" },
-  { key: "fundo_ombro_esq", label: "Fundo Ombro Esquerdo", short: "FOE", color: "#9B6DFF" },
-  { key: "topo_cabeca", label: "Topo Cabeça", short: "TC", color: "#F5A623" },
-  { key: "fundo_cabeca", label: "Fundo Cabeça", short: "FC", color: "#9B6DFF" },
-  { key: "inicio_ombro_dir", label: "Início Ombro Direito", short: "IOD", color: "#00D68F" },
-  { key: "topo_ombro_dir", label: "Topo Ombro Direito", short: "TOD", color: "#3D7EFF" },
-];
-const LINE_PAIRS = [["fundo_ombro_esq", "fundo_cabeca"]];
 const PASSOS = STEPS.map((s) => s.key);
 
 function janelaDoPadrao(candlesContexto, pontos) {
@@ -77,10 +68,10 @@ export default function AdminTemplates() {
       const salvo = await APIS_DE_TEMPLATE[lampada.tipo].get(lampada.templateId);
       const desenho = montarDesenhoSalvo({
         chave: lampada.id,
-        rotulo: `${lampada.rotulo} · ${salvo.ticker}`,
+        rotulo: `${lampada.rotulo} · ${salvo.ticker}${salvo.resultado ? ` · ${salvo.resultado}` : ""}`,
+        tipo: lampada.tipo,
         salvo,
         candlesAtuais: candlesContexto,
-        config: { steps: STEPS, linePairs: LINE_PAIRS },
       });
       if (desenho) setDesenhoSalvo(desenho);
     } catch {

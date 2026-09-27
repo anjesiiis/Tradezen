@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_DO_PADRAO, templatesNiveisApi, templatesOcoApi, templatesTopoDuploApi } from "./adminApi";
-import { PADROES } from "./bandeira.js";
+import { PADROES, configDoTemplate } from "./bandeira.js";
+import { LINE_PAIRS_OCO, LINE_PAIRS_TOPO_DUPLO, STEPS_OCO, STEPS_TOPO_DUPLO } from "./padroesClassicos.js";
 
 // 💡 dos templates JÁ SALVOS de um ativo, em qualquer tela de marcação.
 // Cada lâmpada é clicável e abre o desenho daquele padrão — sem rótulo de
@@ -87,13 +88,26 @@ export function converterParaGraficoAtual(salvo, candlesAtuais) {
 }
 
 /**
+ * Como desenhar um template salvo, conforme o padrão DELE — e não conforme
+ * a tela em que se está. Sem isso, abrir a 💡 de um OCO estando na tela de
+ * bandeira desenhava as linhas erradas.
+ */
+export function configDeDesenho(tipo, pontos) {
+  if (PADROES[tipo]) return configDoTemplate(pontos, PADROES[tipo]);
+  if (tipo === "oco") return { steps: STEPS_OCO, linePairs: LINE_PAIRS_OCO };
+  if (tipo === "topo_duplo") return { steps: STEPS_TOPO_DUPLO, linePairs: LINE_PAIRS_TOPO_DUPLO };
+  return { steps: [], linePairs: [] };
+}
+
+/**
  * Monta o desenho de um template salvo pro gráfico atual.
  * `config`: { steps, linhas?, linePairs? } — o mesmo formato que a tela usa
  * pra desenhar a marcação em andamento.
  */
-export function montarDesenhoSalvo({ chave, rotulo, salvo, candlesAtuais, config }) {
+export function montarDesenhoSalvo({ chave, rotulo, tipo, salvo, candlesAtuais, config }) {
   const pontos = converterParaGraficoAtual(salvo, candlesAtuais);
   if (!pontos) return null;
+  config = config || configDeDesenho(tipo, salvo.pontos);
 
   const linhas = config.linhas
     ? config.linhas(pontos, candlesAtuais)

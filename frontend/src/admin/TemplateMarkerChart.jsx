@@ -364,6 +364,23 @@ export default function TemplateMarkerChart({
     });
   }
 
+  // Ao abrir um padrão salvo, enquadra ele inteiro (com folga): o zoom fixo
+  // do clique na 💡 costuma cortar metade do desenho.
+  useEffect(() => {
+    const pontosDoDesenho = desenhoSalvo?.pontos || [];
+    if (!pontosDoDesenho.length || !candles?.length || !chartRef.current) return;
+
+    const indices = pontosDoDesenho.map((pt) => pt.i).filter((i) => candles[i]);
+    if (!indices.length) return;
+    const folga = Math.max(5, Math.round((Math.max(...indices) - Math.min(...indices)) * 0.25));
+    const de = Math.max(0, Math.min(...indices) - folga);
+    const ate = Math.min(candles.length - 1, Math.max(...indices) + folga);
+    chartRef.current.timeScale().setVisibleRange({
+      from: toChartTime(candles[de]),
+      to: toChartTime(candles[ate]),
+    });
+  }, [desenhoSalvo, candles]);
+
   // Onde desenhar a 💡 de um template salvo: em cima da máxima do candle
   // do primeiro ponto dele.
   function posicaoDaLampada(extra) {
