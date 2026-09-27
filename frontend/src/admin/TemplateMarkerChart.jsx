@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
+import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
@@ -36,6 +37,10 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
   // do gráfico muda sozinha quando as linhas entram, então o ponto raramente
   // fica no pixel onde foi clicado.
   const [posicoes, setPosicoes] = useState({});
+  const [modoTexto, setModoTexto] = useState(false);
+  // muda a cada rolagem/zoom: é o gatilho pra as anotações se reposicionarem
+  const [versaoGrafico, setVersaoGrafico] = useState(0);
+  const marcadoresSalvosRef = useRef(new Map());
   const posicoesRef = useRef({});
   const [arrastando, setArrastando] = useState(null);
   const [sobreAlgo, setSobreAlgo] = useState(null); // "ponto" | "linha" | null
@@ -179,6 +184,15 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     // dispara "click" — sem isso, marcar dois pontos em sequência rápida
     // perdia o segundo.
     const marcar = (param) => {
+      // Clique numa 💡 (template já salvo): aproxima aquele trecho em vez de
+      // marcar ponto. ~30 dias pra cada lado, que é o que costuma mostrar o
+      // padrão inteiro com folga.
+      const tempoSalvo = marcadoresSalvosRef.current.get(param.hoveredObjectId);
+      if (tempoSalvo !== undefined) {
+        const trintaDias = 30 * 24 * 60 * 60;
+        chart.timeScale().setVisibleRange({ from: tempoSalvo - trintaDias, to: tempoSalvo + trintaDias });
+        return;
+      }
       if (readOnly) return;
       // Clique que veio de um arrasto (ou de pegar um ponto) não marca
       // nada — senão mover o ponto 4 criaria um ponto novo por baixo.
@@ -204,6 +218,8 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
 
     chart.subscribeClick(marcar);
     chart.subscribeDblClick(marcar);
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => setVersaoGrafico((v) => v + 1));
 
     const observer = new ResizeObserver(() => {
       if (containerRef.current) chart.applyOptions({ width: containerRef.current.clientWidth });
@@ -362,24 +378,28 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       text: s.short,
     }));
 
-    // Templates JÁ SALVOS deste ativo: um marcador cinza no primeiro ponto
-    // de cada um, com a sigla do padrão (BAN/FLA/CUN). Só pra situar quem
-    // está marcando — não entra na marcação nem atrapalha o clique.
+    // Templates JÁ SALVOS deste ativo: uma 💡 no primeiro ponto de cada um.
+    // Só pra situar quem está marcando — não entra na marcação. Clicar na
+    // lâmpada dá zoom naquele trecho (ver `marcar`).
     const tempos = candles.map(toChartTime);
-    for (const extra of marcadoresExtras) {
-      if (!Number.isFinite(extra?.time)) continue;
+    marcadoresSalvosRef.current = new Map();
+    marcadoresExtras.forEach((extra, idx) => {
+      if (!Number.isFinite(extra?.time)) return;
       // encaixa no candle mais próximo: a data salva pode não bater exatamente
       // com o recorte/intervalo que está na tela agora
       const maisProximo = tempos.reduce((a, b) => (Math.abs(b - extra.time) < Math.abs(a - extra.time) ? b : a), tempos[0]);
-      if (maisProximo === undefined) continue;
+      if (maisProximo === undefined) return;
+      const id = `salvo-${idx}`;
+      marcadoresSalvosRef.current.set(id, maisProximo);
       marcadores.push({
+        id,
         time: maisProximo,
-        position: "belowBar",
-        color: "#787b86",
-        shape: "square",
-        text: extra.texto,
+        position: "aboveBar",
+        color: "#FFD700",
+        shape: "circle",
+        text: "💡",
       });
-    }
+    });
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
 
@@ -457,7 +477,16 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
             );
           })}
         </div>
-        {!readOnly && <button onClick={limpar} className="admin-link-btn">Limpar</button>}
+        {!readOnly && (
+          <div style={{ display: "flex", gap: 10, marginLeft: "auto" }}>
+            <button
+              onClick={() => setModoTexto((v) => !v)}
+              className={`admin-chip-acao${modoTexto ? " active" : ""}`}
+              title="Escrever uma anotação em cima do gráfico"
+            >📝 Texto</button>
+            <button onClick={limpar} className="admin-link-btn">Limpar</button>
+          </div>
+        )}
       </div>
 
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
@@ -468,6 +497,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
             : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label} — o que já está marcado pode ser arrastado (ponto ou linha inteira) e apagado no ✕.`}
       </p>
 
+      <div style={{ position: "relative" }}>
       <div
         ref={containerRef}
         data-marcacao="grafico"
@@ -486,6 +516,27 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
           touchAction: arrastando ? "none" : undefined,
         }}
       />
+
+      {!readOnly && (
+        <AnotacoesGrafico
+          modo={modoTexto}
+          aoSairDoModo={() => setModoTexto(false)}
+          versao={versaoGrafico}
+          paraPixel={({ i, preco }) => {
+            const candle = candlesRef.current?.[i];
+            if (!candle) return null;
+            const x = chartRef.current?.timeScale().timeToCoordinate(toChartTime(candle));
+            const y = seriesRef.current?.priceToCoordinate(preco);
+            return x == null || y == null ? null : { x, y };
+          }}
+          paraAncora={(x, y) => {
+            const i = limitarIndice(chartRef.current?.timeScale().coordinateToLogical(x), candlesRef.current?.length || 0);
+            const preco = seriesRef.current?.coordinateToPrice(y);
+            return i == null || preco == null ? null : { i, preco };
+          }}
+        />
+      )}
+      </div>
     </div>
   );
 }

@@ -59,6 +59,22 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-chip.active{border-color:#2962ff;color:#fff;background:#2962ff}
 .admin-chip.filled{color:var(--text);background:var(--s2)}
 .admin-chip .val{color:var(--text3);margin-left:4px}
+/* Botão de ação da barra do gráfico (ex: 📝 Texto). Classe própria: a
+   .admin-chip é só dos pontos do padrão. */
+.admin-chip-acao{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font-b)}
+.admin-chip-acao:hover{color:var(--text)}
+.admin-chip-acao.active{border-color:#2962ff;background:#2962ff;color:#fff}
+/* Anotações de texto por cima do gráfico (só durante a sessão) */
+.anotacoes{position:absolute;inset:8px;pointer-events:none;z-index:5}
+.anotacoes-modo{pointer-events:auto;cursor:text}
+.anotacao{position:absolute;transform:translate(-4px,-50%);pointer-events:auto;background:rgba(13,17,23,.92);border:1px solid var(--border);border-radius:8px;display:flex;align-items:stretch;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.anotacao-texto{flex:1;padding:7px 9px;font-size:12px;line-height:1.4;color:var(--text);overflow:auto;cursor:grab;white-space:pre-wrap;word-break:break-word}
+.anotacao-texto:active{cursor:grabbing}
+.anotacao-vazia{color:var(--text3);font-style:italic}
+.anotacao-campo{flex:1;background:transparent;border:none;outline:none;resize:none;padding:7px 9px;font-size:12px;line-height:1.4;color:var(--text);font-family:var(--font-b)}
+.anotacao-x{position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:var(--s2);color:var(--text3);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.anotacao-x:hover{color:#ef5350;border-color:rgba(239,83,80,.5)}
+.anotacao-canto{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;cursor:nwse-resize;border-right:2px solid var(--text3);border-bottom:2px solid var(--text3);border-bottom-right-radius:6px;opacity:.7}
 .admin-textarea{min-height:76px;resize:vertical;font-family:var(--font-b);line-height:1.5;width:100%}
 /* Lista de marcações salvas — cards em vez de tabela: cabe a anotação
    inteira, que é o que interessa relembrar depois. */
