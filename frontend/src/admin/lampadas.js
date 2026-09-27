@@ -72,19 +72,41 @@ export function useLampadas(ticker, gatilho) {
  */
 export function converterParaGraficoAtual(salvo, candlesAtuais) {
   if (!salvo?.pontos || !salvo?.candles?.length || !candlesAtuais?.length) return null;
-  const tempos = candlesAtuais.map((c) => c.timestamp);
+  const mapear = criarMapeador(salvo, candlesAtuais);
 
   const pontos = {};
   for (const [chave, ponto] of Object.entries(salvo.pontos)) {
-    const candle = salvo.candles[ponto.i];
-    if (!candle) continue;
+    const i = mapear(ponto.i);
+    if (i != null) pontos[chave] = { i, preco: ponto.preco };
+  }
+  return Object.keys(pontos).length ? pontos : null;
+}
+
+// O índice `i` guardado no template é dentro dos candles DELE. Aqui vira o
+// índice do candle mais próximo no gráfico que está na tela.
+function criarMapeador(salvo, candlesAtuais) {
+  const tempos = candlesAtuais.map((c) => c.timestamp);
+  return (indiceSalvo) => {
+    const candle = salvo.candles[indiceSalvo];
+    if (!candle) return null;
     let melhor = 0;
     for (let i = 1; i < tempos.length; i++) {
       if (Math.abs(tempos[i] - candle.timestamp) < Math.abs(tempos[melhor] - candle.timestamp)) melhor = i;
     }
-    pontos[chave] = { i: melhor, preco: ponto.preco };
-  }
-  return Object.keys(pontos).length ? pontos : null;
+    return melhor;
+  };
+}
+
+/** Etiquetas de texto do template, reancoradas no gráfico atual. */
+export function converterAnotacoes(salvo, candlesAtuais) {
+  if (!salvo?.anotacoes?.length || !salvo?.candles?.length || !candlesAtuais?.length) return [];
+  const mapear = criarMapeador(salvo, candlesAtuais);
+  return salvo.anotacoes
+    .map((a, n) => {
+      const i = mapear(a.ancora?.i);
+      return i == null ? null : { ...a, id: a.id || `salva-${n}`, ancora: { i, preco: a.ancora.preco } };
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -123,6 +145,7 @@ export function montarDesenhoSalvo({ chave, rotulo, tipo, salvo, candlesAtuais, 
     chave,
     rotulo,
     linhas,
+    anotacoes: converterAnotacoes(salvo, candlesAtuais),
     pontos: Object.entries(pontos).map(([nome, pt]) => ({ ...pt, cor: cores[nome] })),
   };
 }

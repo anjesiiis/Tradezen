@@ -7,23 +7,11 @@ import { STEPS_TOPO_DUPLO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
+import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
-const PADDING = 15;
-
 const PASSOS = STEPS.map((s) => s.key);
-
-function janelaDoPadrao(candlesContexto, pontos) {
-  const indices = Object.values(pontos).map((p) => p.i);
-  const minIdx = Math.max(0, Math.min(...indices) - PADDING);
-  const maxIdx = Math.min(candlesContexto.length - 1, Math.max(...indices) + PADDING);
-  const candles = candlesContexto.slice(minIdx, maxIdx + 1);
-  const pontosAjustados = Object.fromEntries(
-    Object.entries(pontos).map(([k, p]) => [k, { i: p.i - minIdx, preco: p.preco }])
-  );
-  return { candles, pontosAjustados };
-}
 
 function Campo({ label, children }) {
   return (
@@ -43,6 +31,8 @@ export default function AdminTemplatesTopoDuplo() {
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
+  // Etiquetas de texto escritas em cima do gráfico — salvas junto
+  const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
@@ -96,6 +86,7 @@ export default function AdminTemplatesTopoDuplo() {
       const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
       setPontos({});
+      setAnotacoes([]);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
@@ -116,7 +107,7 @@ export default function AdminTemplatesTopoDuplo() {
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
+      const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontos, anotacoes);
       await templatesTopoDuploApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
@@ -125,12 +116,14 @@ export default function AdminTemplatesTopoDuplo() {
         pontos: pontosAjustados,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
+        anotacoes: anotacoesAjustadas,
       });
       setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
       setCandlesContexto(null);
       setPontos({});
       setResultado("");
       setObservacao("");
+      setAnotacoes([]);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -146,7 +139,12 @@ export default function AdminTemplatesTopoDuplo() {
     setMensagem(null);
     try {
       const completo = await templatesTopoDuploApi.get(template.id);
-      setEditando({ ...completo, pontosEdit: completo.pontos, readOnly });
+      setEditando({
+        ...completo,
+        pontosEdit: completo.pontos,
+        anotacoesEdit: completo.anotacoes || [],
+        readOnly,
+      });
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
     }
@@ -169,6 +167,7 @@ export default function AdminTemplatesTopoDuplo() {
         pontos: editando.pontosEdit,
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
+        anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);
@@ -226,6 +225,8 @@ export default function AdminTemplatesTopoDuplo() {
               steps={STEPS}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
+              anotacoes={editando.anotacoesEdit}
+              aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
               readOnly={editando.readOnly}
             />
 
@@ -288,6 +289,8 @@ export default function AdminTemplatesTopoDuplo() {
                   marcadoresExtras={lampadas}
                   desenhoSalvo={desenhoSalvo}
                   aoClicarLampada={abrirDesenhoSalvo}
+                  anotacoes={anotacoes}
+                  aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}
                 />
 

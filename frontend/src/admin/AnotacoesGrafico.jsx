@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 
 // Anotações de texto soltas por cima do gráfico de marcação.
 // São divs posicionados sobre o canvas — o TradingView não desenha texto
-// livre. Ficam só nesta sessão (não vão pro Supabase): servem pra pensar em
-// voz alta enquanto se marca ("aqui o volume seca", "rompeu e voltou").
+// livre. Servem pra sinalizar o que chamou atenção ao lado de um ponto
+// ("aqui o volume seca", "rompeu e voltou") e vão pro banco junto com o
+// template, na coluna `anotacoes`.
 //
 // Cada anotação é ancorada em (candle, preço), e não em pixels: assim ela
 // continua grudada no ponto certo do gráfico quando você rola ou dá zoom.
@@ -22,15 +23,27 @@ export default function AnotacoesGrafico({
   paraPixel,       // ({ i, preco }) => { x, y } | null
   paraAncora,      // (x, y) => { i, preco } | null
   versao,          // muda quando o gráfico rola/zoom: re-renderiza e as posições se recalculam
+  valor,           // lista vinda de fora (template sendo editado/visto); sem ela, o estado é interno
+  aoMudar,         // avisa o pai a cada mudança — é o que acaba indo pro banco
+  somenteLeitura,  // desenho de um template salvo: dá pra ler, não pra mexer
 }) {
   void versao;
-  const [anotacoes, setAnotacoes] = useState([]);
+  const [internas, setInternas] = useState(() => valor || []);
+  // Controlado quando o pai passa `valor`; senão guarda por conta própria
+  // (é assim que os testes do componente sozinho usam).
+  const anotacoes = valor ?? internas;
+
+  function setAnotacoes(proximas) {
+    const lista = typeof proximas === "function" ? proximas(anotacoes) : proximas;
+    if (valor === undefined) setInternas(lista);
+    aoMudar?.(lista);
+  }
   const [editando, setEditando] = useState(null);
   const gestoRef = useRef(null);
   const areaRef = useRef(null);
 
   function criarAnotacao(evento) {
-    if (!modo) return;
+    if (!modo || somenteLeitura) return;
     const area = areaRef.current?.getBoundingClientRect();
     if (!area) return;
     const ancora = paraAncora(evento.clientX - area.left, evento.clientY - area.top);
@@ -53,6 +66,7 @@ export default function AnotacoesGrafico({
 
   // ── Mover e redimensionar ───────────────────────────────────
   function iniciarGesto(evento, anotacao, tipo) {
+    if (somenteLeitura) return;
     evento.preventDefault();
     evento.stopPropagation();
     const area = areaRef.current?.getBoundingClientRect();
@@ -109,9 +123,9 @@ export default function AnotacoesGrafico({
             style={{ left: pos.x, top: pos.y, width: a.largura, height: a.altura }}
             // clique DENTRO da anotação não pode criar outra por baixo dela
             onClick={(e) => e.stopPropagation()}
-            onDoubleClick={() => setEditando(a.id)}
+            onDoubleClick={() => !somenteLeitura && setEditando(a.id)}
           >
-            {emEdicao ? (
+            {emEdicao && !somenteLeitura ? (
               <textarea
                 autoFocus
                 className="anotacao-campo"
@@ -127,19 +141,23 @@ export default function AnotacoesGrafico({
             ) : (
               <div
                 className="anotacao-texto"
-                title="Duplo clique para editar · arraste para mover"
+                title={somenteLeitura ? undefined : "Duplo clique para editar · arraste para mover"}
                 onPointerDown={(e) => iniciarGesto(e, a, "mover")}
               >
-                {a.texto || <span className="anotacao-vazia">duplo clique para escrever</span>}
+                {a.texto || (somenteLeitura ? null : <span className="anotacao-vazia">duplo clique para escrever</span>)}
               </div>
             )}
 
-            <button className="anotacao-x" title="Excluir anotação" onClick={() => apagar(a.id)}>✕</button>
-            <span
-              className="anotacao-canto"
-              title="Arraste para redimensionar"
-              onPointerDown={(e) => iniciarGesto(e, a, "redimensionar")}
-            />
+            {!somenteLeitura && (
+              <>
+                <button className="anotacao-x" title="Excluir anotação" onClick={() => apagar(a.id)}>✕</button>
+                <span
+                  className="anotacao-canto"
+                  title="Arraste para redimensionar"
+                  onPointerDown={(e) => iniciarGesto(e, a, "redimensionar")}
+                />
+              </>
+            )}
           </div>
         );
       })}

@@ -37,12 +37,17 @@ class TemplateCreate(BaseModel):
     data_p1: Optional[str] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
+    # Etiquetas de texto que o admin escreveu ao lado dos pontos.
+    # Cada uma é { texto, ancora: { i, preco }, largura, altura }: fica
+    # presa ao candle/preço, não a pixels, pra voltar no lugar certo.
+    anotacoes: Optional[List[Dict[str, Any]]] = None
 
 
 class TemplateUpdate(BaseModel):
     pontos: Optional[PontosTopoDuplo] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
+    anotacoes: Optional[List[Dict[str, Any]]] = None
 
 
 # Colunas leves de propósito: `candles` e `candles_contexto` guardam o

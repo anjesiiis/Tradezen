@@ -17,8 +17,10 @@ function toChartTime(candle) {
 export default function TemplateMarkerChart({
   candles, steps, linePairs = [], linhas, pares,
   marcadoresExtras = [],   // templates já salvos deste ativo: viram 💡 clicáveis
-  desenhoSalvo,            // { linhas, pontos } do template aberto pela 💡
+  desenhoSalvo,            // { linhas, pontos, anotacoes } do template aberto pela 💡
   aoClicarLampada,
+  anotacoes,               // etiquetas de texto do template (vão pro banco)
+  aoMudarAnotacoes,
   initialPontos, onChange, readOnly = false,
 }) {
   const containerRef = useRef();
@@ -487,6 +489,24 @@ export default function TemplateMarkerChart({
 
   const completo = steps.every((s) => pontos[s.key]);
 
+
+  // Âncora (candle, preço) ⇄ pixel na tela. As anotações guardam âncora, não
+  // pixel: assim voltam grudadas no mesmo candle depois de zoom, scroll — e
+  // depois de fechar e reabrir o template.
+  function ancoraParaPixel({ i, preco }) {
+    const candle = candlesRef.current?.[i];
+    if (!candle) return null;
+    const x = chartRef.current?.timeScale().timeToCoordinate(toChartTime(candle));
+    const y = seriesRef.current?.priceToCoordinate(preco);
+    return x == null || y == null ? null : { x, y };
+  }
+
+  function pixelParaAncora(x, y) {
+    const i = limitarIndice(chartRef.current?.timeScale().coordinateToLogical(x), candlesRef.current?.length || 0);
+    const preco = seriesRef.current?.coordinateToPrice(y);
+    return i == null || preco == null ? null : { i, preco };
+  }
+
   return (
     <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
@@ -578,23 +598,27 @@ export default function TemplateMarkerChart({
         })}
       </div>
 
-      {!readOnly && (
+      {/* As etiquetas do que está sendo marcado — no modo leitura elas
+          continuam aparecendo, só não dá pra mexer. */}
+      <AnotacoesGrafico
+        modo={modoTexto && !readOnly}
+        aoSairDoModo={() => setModoTexto(false)}
+        versao={versaoGrafico}
+        valor={anotacoes}
+        aoMudar={aoMudarAnotacoes}
+        somenteLeitura={readOnly}
+        paraPixel={ancoraParaPixel}
+        paraAncora={pixelParaAncora}
+      />
+
+      {/* E as do template aberto pela 💡, por cima, só pra ler */}
+      {desenhoSalvo?.anotacoes?.length > 0 && (
         <AnotacoesGrafico
-          modo={modoTexto}
-          aoSairDoModo={() => setModoTexto(false)}
+          somenteLeitura
           versao={versaoGrafico}
-          paraPixel={({ i, preco }) => {
-            const candle = candlesRef.current?.[i];
-            if (!candle) return null;
-            const x = chartRef.current?.timeScale().timeToCoordinate(toChartTime(candle));
-            const y = seriesRef.current?.priceToCoordinate(preco);
-            return x == null || y == null ? null : { x, y };
-          }}
-          paraAncora={(x, y) => {
-            const i = limitarIndice(chartRef.current?.timeScale().coordinateToLogical(x), candlesRef.current?.length || 0);
-            const preco = seriesRef.current?.coordinateToPrice(y);
-            return i == null || preco == null ? null : { i, preco };
-          }}
+          valor={desenhoSalvo.anotacoes}
+          paraPixel={ancoraParaPixel}
+          paraAncora={pixelParaAncora}
         />
       )}
       </div>

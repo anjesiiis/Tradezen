@@ -7,23 +7,11 @@ import { LINE_PAIRS_OCO as LINE_PAIRS, STEPS_OCO as STEPS } from "./padroesClass
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
+import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
-const PADDING = 15;
-
 const PASSOS = STEPS.map((s) => s.key);
-
-function janelaDoPadrao(candlesContexto, pontos) {
-  const indices = Object.values(pontos).map((p) => p.i);
-  const minIdx = Math.max(0, Math.min(...indices) - PADDING);
-  const maxIdx = Math.min(candlesContexto.length - 1, Math.max(...indices) + PADDING);
-  const candles = candlesContexto.slice(minIdx, maxIdx + 1);
-  const pontosAjustados = Object.fromEntries(
-    Object.entries(pontos).map(([k, p]) => [k, { i: p.i - minIdx, preco: p.preco }])
-  );
-  return { candles, pontosAjustados };
-}
 
 function Campo({ label, children }) {
   return (
@@ -43,6 +31,8 @@ export default function AdminTemplates() {
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
+  // Etiquetas de texto escritas em cima do gráfico — salvas junto
+  const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
@@ -96,6 +86,7 @@ export default function AdminTemplates() {
       const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
       setPontos({});
+      setAnotacoes([]);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
@@ -116,7 +107,7 @@ export default function AdminTemplates() {
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
+      const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontos, anotacoes);
       await templatesOcoApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
@@ -125,12 +116,14 @@ export default function AdminTemplates() {
         pontos: pontosAjustados,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
+        anotacoes: anotacoesAjustadas,
       });
       setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
       setCandlesContexto(null);
       setPontos({});
       setResultado("");
       setObservacao("");
+      setAnotacoes([]);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -146,7 +139,12 @@ export default function AdminTemplates() {
     setMensagem(null);
     try {
       const completo = await templatesOcoApi.get(template.id);
-      setEditando({ ...completo, pontosEdit: completo.pontos, readOnly });
+      setEditando({
+        ...completo,
+        pontosEdit: completo.pontos,
+        anotacoesEdit: completo.anotacoes || [],
+        readOnly,
+      });
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
     }
@@ -169,6 +167,7 @@ export default function AdminTemplates() {
         pontos: editando.pontosEdit,
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
+        anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);
@@ -227,6 +226,8 @@ export default function AdminTemplates() {
               linePairs={LINE_PAIRS}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
+              anotacoes={editando.anotacoesEdit}
+              aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
               readOnly={editando.readOnly}
             />
 
@@ -290,6 +291,8 @@ export default function AdminTemplates() {
                   marcadoresExtras={lampadas}
                   desenhoSalvo={desenhoSalvo}
                   aoClicarLampada={abrirDesenhoSalvo}
+                  anotacoes={anotacoes}
+                  aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}
                 />
 

@@ -10,6 +10,7 @@ import {
 } from "./bandeira.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
+import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -18,21 +19,6 @@ import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js
 // quase idênticos, que é onde um conserto entra em três e esquece o quarto.
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
-const PADDING = 15;
-
-// Recorta a janela em volta do padrão (com folga) — é ela que vai pro
-// banco como `candles`, junto com os pontos já reindexados.
-function janelaDoPadrao(candlesContexto, pontos) {
-  const indices = Object.values(pontos).map((p) => p.i);
-  const minIdx = Math.max(0, Math.min(...indices) - PADDING);
-  const maxIdx = Math.min(candlesContexto.length - 1, Math.max(...indices) + PADDING);
-  const candles = candlesContexto.slice(minIdx, maxIdx + 1);
-  const pontosAjustados = Object.fromEntries(
-    Object.entries(pontos).map(([k, p]) => [k, { i: p.i - minIdx, preco: p.preco }])
-  );
-  return { candles, pontosAjustados };
-}
-
 function Campo({ label, children }) {
   return (
     <div className="admin-field">
@@ -59,6 +45,8 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
+  // Etiquetas de texto escritas em cima do gráfico — salvas junto
+  const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
@@ -103,6 +91,7 @@ export default function PainelMarcacao({ padraoInicial }) {
     if (!novo || novo.id === padrao.id) return;
     setPadrao(novo);
     setPontos({});          // a marcação em andamento não serve pro outro padrão
+    setAnotacoes([]);
     setDesenhoSalvo(null);
     setEditando(null);
     setMensagem(null);
@@ -137,6 +126,7 @@ export default function PainelMarcacao({ padraoInicial }) {
       const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
       setPontos({});
+      setAnotacoes([]);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
@@ -165,7 +155,7 @@ export default function PainelMarcacao({ padraoInicial }) {
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, pontosAjustados } = janelaDoPadrao(candlesContexto, pontos);
+      const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontos, anotacoes);
       // Data do primeiro ponto: guardada em coluna própria pra a lista e os
       // marcadores do gráfico não precisarem abrir os candles de cada template.
       const candleP1 = candlesContexto[pontos[PASSOS[0]]?.i];
@@ -178,12 +168,14 @@ export default function PainelMarcacao({ padraoInicial }) {
         data_p1: candleP1 ? new Date(candleP1.timestamp).toISOString() : null,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
+        anotacoes: anotacoesAjustadas,
       });
       setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
       setCandlesContexto(null);
       setPontos({});
       setResultado("");
       setObservacao("");
+      setAnotacoes([]);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -199,7 +191,12 @@ export default function PainelMarcacao({ padraoInicial }) {
     setMensagem(null);
     try {
       const completoDoBanco = await api.get(template.id);
-      setEditando({ ...completoDoBanco, pontosEdit: completoDoBanco.pontos, readOnly });
+      setEditando({
+        ...completoDoBanco,
+        pontosEdit: completoDoBanco.pontos,
+        anotacoesEdit: completoDoBanco.anotacoes || [],
+        readOnly,
+      });
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
     }
@@ -221,6 +218,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         pontos: editando.pontosEdit,
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
+        anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);
@@ -283,6 +281,8 @@ export default function PainelMarcacao({ padraoInicial }) {
               pares={configEdicao.pares}
               initialPontos={editando.pontos}
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
+              anotacoes={editando.anotacoesEdit}
+              aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
               readOnly={editando.readOnly}
             />
 
@@ -358,6 +358,8 @@ export default function PainelMarcacao({ padraoInicial }) {
                   marcadoresExtras={marcadoresSalvos}
                   desenhoSalvo={desenhoSalvo}
                   aoClicarLampada={abrirDesenhoSalvo}
+                  anotacoes={anotacoes}
+                  aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}
                 />
 
