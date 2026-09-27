@@ -86,15 +86,21 @@ export default function PainelMarcacao({ padraoInicial }) {
     }
   }
 
+  // Trocar o padrão MANTÉM a marcação: os seis padrões de continuação usam
+  // os mesmos 8 pontos, então perceber no meio do caminho que aquilo é uma
+  // flâmula e não uma bandeira é só trocar aqui — salva na tabela da
+  // flâmula, sem remarcar nada. O que muda é a validação na hora de salvar.
   function trocarPadrao(id) {
-    const novo = PADROES[id];
-    if (!novo || novo.id === padrao.id) return;
-    setPadrao(novo);
-    setPontos({});          // a marcação em andamento não serve pro outro padrão
-    setAnotacoes([]);
+    const novoPadrao = PADROES[id];
+    if (!novoPadrao || novoPadrao.id === padrao.id) return;
+    const marcados = Object.keys(pontos).length;
+    setPadrao(novoPadrao);
     setDesenhoSalvo(null);
     setEditando(null);
     setMensagem(null);
+    if (marcados) {
+      mostrarToasts([`Marcação mantida: os ${marcados} ponto(s) vão ser salvos como ${novoPadrao.rotulo}.`], "ok");
+    }
   }
 
   // Cada mensagem vira um toast próprio, some sozinho em 8s. Vermelho
@@ -358,6 +364,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                   marcadoresExtras={marcadoresSalvos}
                   desenhoSalvo={desenhoSalvo}
                   aoClicarLampada={abrirDesenhoSalvo}
+                  initialPontos={pontos}
                   anotacoes={anotacoes}
                   aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}

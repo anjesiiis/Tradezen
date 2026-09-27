@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 const ADMIN_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -161,9 +162,12 @@ export function AdminPatternNav({ active }) {
   return (
     <nav className="admin-nav">
       {links.map((l) => (
-        <a key={l.key} href={l.href} className={active === l.key ? "active" : ""}>
+        /* Link, e não <a>: trocar de padrão não recarrega o app inteiro
+           (o que refazia todas as chamadas e, com token vencido, caía no
+           pedido de email). */
+        <Link key={l.key} to={l.href} className={active === l.key ? "active" : ""}>
           {l.label}
-        </a>
+        </Link>
       ))}
     </nav>
   );

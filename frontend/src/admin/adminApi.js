@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabaseClient";
+
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const ADMIN_TOKEN_KEY = "admin_token";
 
@@ -11,13 +13,44 @@ export function clearAdminToken() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
-async function adminFetch(path, options = {}) {
-  const token = getAdminToken();
+// O que fica guardado é o access_token do magic link, que vale 1 hora. O
+// client do Supabase mantém a sessão viva sozinho (refresh token), então
+// quando o backend recusa o token velho dá pra pegar o novo da sessão em
+// vez de mandar o admin pedir outro link por email — que era o que
+// acontecia ao abrir cada tela de template.
+async function tokenDaSessao() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (token) {
+      setAdminToken(token);
+      return token;
+    }
+  } catch { /* sem sessão do Supabase: aí é login mesmo */ }
+  return null;
+}
+
+/** Token válido pra esta aba: o guardado ou um renovado pela sessão. */
+export async function sincronizarTokenAdmin() {
+  return getAdminToken() || (await tokenDaSessao());
+}
+
+function enviar(path, options, token) {
   const headers = { ...(options.headers || {}) };
   if (options.body) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  return fetch(`${API}${path}`, { ...options, headers });
+}
 
-  const res = await fetch(`${API}${path}`, { ...options, headers });
+async function adminFetch(path, options = {}) {
+  let res = await enviar(path, options, getAdminToken());
+
+  // 401 = token expirado: renova e repete uma vez só. 403 é outra coisa
+  // (email sem acesso ao painel), repetir não ajudaria.
+  if (res.status === 401) {
+    const renovado = await tokenDaSessao();
+    if (renovado) res = await enviar(path, options, renovado);
+  }
 
   if (res.status === 401 || res.status === 403) {
     clearAdminToken();
