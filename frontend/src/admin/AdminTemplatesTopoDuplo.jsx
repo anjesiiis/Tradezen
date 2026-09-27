@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
+import ListaTemplates from "./ListaTemplates.jsx";
+import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
 
@@ -48,11 +50,38 @@ export default function AdminTemplatesTopoDuplo() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
+  // 💡 dos templates já salvos deste ativo (de qualquer padrão) e o
+  // desenho que a lâmpada abre — sem rótulo de ponto, como o usuário verá
+  const [desenhoSalvo, setDesenhoSalvo] = useState(null);
   const [editando, setEditando] = useState(null);
+
+  const lampadas = useLampadas(ticker, templates);
 
   useEffect(() => {
     carregarTemplates();
   }, []);
+
+  // Clique na 💡: mostra o desenho daquele padrão no gráfico da tela.
+  // Clicar de novo na mesma lâmpada fecha.
+  async function abrirDesenhoSalvo(lampada) {
+    if (desenhoSalvo?.chave === lampada.id) {
+      setDesenhoSalvo(null);
+      return;
+    }
+    try {
+      const salvo = await APIS_DE_TEMPLATE[lampada.tipo].get(lampada.templateId);
+      const desenho = montarDesenhoSalvo({
+        chave: lampada.id,
+        rotulo: `${lampada.rotulo} · ${salvo.ticker}`,
+        salvo,
+        candlesAtuais: candlesContexto,
+        config: { steps: STEPS },
+      });
+      if (desenho) setDesenhoSalvo(desenho);
+    } catch {
+      setMensagem({ tipo: "erro", texto: "Não foi possível abrir esse padrão." });
+    }
+  }
 
   async function carregarTemplates() {
     try {
@@ -257,7 +286,23 @@ export default function AdminTemplatesTopoDuplo() {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
-                <TemplateMarkerChart candles={candlesContexto} steps={STEPS} onChange={setPontos} />
+                <TemplateMarkerChart
+                  candles={candlesContexto}
+                  steps={STEPS}
+                  marcadoresExtras={lampadas}
+                  desenhoSalvo={desenhoSalvo}
+                  aoClicarLampada={abrirDesenhoSalvo}
+                  onChange={setPontos}
+                />
+
+                {desenhoSalvo && (
+                  <div className="admin-msg admin-msg-ok" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span>Mostrando o padrão salvo: <strong>{desenhoSalvo.rotulo}</strong></span>
+                    <button className="admin-link-btn" style={{ marginLeft: "auto" }} onClick={() => setDesenhoSalvo(null)}>
+                      Fechar desenho
+                    </button>
+                  </div>
+                )}
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">
@@ -286,42 +331,13 @@ export default function AdminTemplatesTopoDuplo() {
           </section>
         )}
 
-        <section className="admin-card" style={{ padding: 0 }}>
-          <h2 style={{ padding: "16px 16px 12px" }}>Templates salvos ({templates.length})</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Ticker</th>
-                  <th>Timeframe</th>
-                  <th>Resultado</th>
-                  <th>Criado em</th>
-                  <th style={{ textAlign: "right" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {templates.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.ticker}</td>
-                    <td>{t.timeframe}</td>
-                    <td>{t.resultado || "—"}</td>
-                    <td className="muted">{new Date(t.criado_em).toLocaleString("pt-BR")}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <a className="action" onClick={() => iniciarVisualizacao(t)}>Visualizar</a>
-                      <a className="action" onClick={() => iniciarEdicao(t)}>Editar</a>
-                      <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
-                    </td>
-                  </tr>
-                ))}
-                {templates.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text2)", padding: 24 }}>Nenhum template ainda.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <ListaTemplates
+          templates={templates}
+          rotulo="Topo Duplo"
+          aoVisualizar={iniciarVisualizacao}
+          aoEditar={iniciarEdicao}
+          aoExcluir={remover}
+        />
       </main>
     </AdminShell>
   );

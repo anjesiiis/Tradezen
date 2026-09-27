@@ -3,6 +3,7 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
+import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
@@ -331,44 +332,13 @@ export default function AdminTemplatesNiveis() {
           </section>
         )}
 
-        <section className="admin-card" style={{ padding: 0 }}>
-          <h2 style={{ padding: "16px 16px 12px" }}>Templates salvos ({templates.length})</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Tipo</th>
-                  <th>Ticker</th>
-                  <th>Timeframe</th>
-                  <th>Resultado</th>
-                  <th>Criado em</th>
-                  <th style={{ textAlign: "right" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {templates.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td style={{ color: corDoTipo(t.tipo) }}>{t.tipo === "resistencia" ? "Resistência" : "Suporte"}</td>
-                    <td>{t.ticker}</td>
-                    <td>{t.timeframe}</td>
-                    <td>{t.resultado || "—"}</td>
-                    <td className="muted">{new Date(t.criado_em).toLocaleString("pt-BR")}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <a className="action" onClick={() => iniciarVisualizacao(t)}>Visualizar</a>
-                      <a className="action" onClick={() => iniciarEdicao(t)}>Editar</a>
-                      <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
-                    </td>
-                  </tr>
-                ))}
-                {templates.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text2)", padding: 24 }}>Nenhum template ainda.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <ListaTemplates
+          templates={templates}
+          rotulo="Suporte/Resistência"
+          aoVisualizar={iniciarVisualizacao}
+          aoEditar={iniciarEdicao}
+          aoExcluir={remover}
+        />
       </main>
     </AdminShell>
   );

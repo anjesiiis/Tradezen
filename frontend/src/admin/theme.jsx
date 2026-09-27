@@ -64,6 +64,11 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-chip-acao{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font-b)}
 .admin-chip-acao:hover{color:var(--text)}
 .admin-chip-acao.active{border-color:#2962ff;background:#2962ff;color:#fff}
+/* 💡 dos templates já salvos: só o emoji, clicável — sem marcador do
+   gráfico embaixo (a bolinha amarela saía junto e poluía o candle). */
+.lampadas{position:absolute;inset:8px;pointer-events:none;z-index:6}
+.lampada{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:none;border:none;padding:2px;cursor:pointer;font-size:15px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));transition:transform .12s}
+.lampada:hover{transform:translate(-50%,-100%) scale(1.25)}
 /* Anotações de texto por cima do gráfico (só durante a sessão) */
 .anotacoes{position:absolute;inset:8px;pointer-events:none;z-index:5}
 .anotacoes-modo{pointer-events:auto;cursor:text}

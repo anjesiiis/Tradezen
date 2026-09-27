@@ -14,7 +14,13 @@ function toChartTime(candle) {
 //   • `linhas`    — função (pontos, candles) => linhas calculadas, cada uma
 //     com cor, espessura e tracejado próprios. É o que a bandeira usa pra
 //     esticar o canal até o rompimento e projetar o alvo.
-export default function TemplateMarkerChart({ candles, steps, linePairs = [], linhas, pares, marcadoresExtras = [], initialPontos, onChange, readOnly = false }) {
+export default function TemplateMarkerChart({
+  candles, steps, linePairs = [], linhas, pares,
+  marcadoresExtras = [],   // templates já salvos deste ativo: viram 💡 clicáveis
+  desenhoSalvo,            // { linhas, pontos } do template aberto pela 💡
+  aoClicarLampada,
+  initialPontos, onChange, readOnly = false,
+}) {
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -40,7 +46,6 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
   const [modoTexto, setModoTexto] = useState(false);
   // muda a cada rolagem/zoom: é o gatilho pra as anotações se reposicionarem
   const [versaoGrafico, setVersaoGrafico] = useState(0);
-  const marcadoresSalvosRef = useRef(new Map());
   const posicoesRef = useRef({});
   const [arrastando, setArrastando] = useState(null);
   const [sobreAlgo, setSobreAlgo] = useState(null); // "ponto" | "linha" | null
@@ -184,15 +189,6 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     // dispara "click" — sem isso, marcar dois pontos em sequência rápida
     // perdia o segundo.
     const marcar = (param) => {
-      // Clique numa 💡 (template já salvo): aproxima aquele trecho em vez de
-      // marcar ponto. ~30 dias pra cada lado, que é o que costuma mostrar o
-      // padrão inteiro com folga.
-      const tempoSalvo = marcadoresSalvosRef.current.get(param.hoveredObjectId);
-      if (tempoSalvo !== undefined) {
-        const trintaDias = 30 * 24 * 60 * 60;
-        chart.timeScale().setVisibleRange({ from: tempoSalvo - trintaDias, to: tempoSalvo + trintaDias });
-        return;
-      }
       if (readOnly) return;
       // Clique que veio de um arrasto (ou de pegar um ponto) não marca
       // nada — senão mover o ponto 4 criaria um ponto novo por baixo.
@@ -352,6 +348,41 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     pan(true);
   }
 
+  // As lâmpadas visíveis, já empilhadas: dois padrões que começam no mesmo
+  // candle cairiam exatamente no mesmo pixel e uma cobriria a outra.
+  function lampadasVisiveis() {
+    const lista = marcadoresExtras
+      .map((extra) => ({ extra, pos: posicaoDaLampada(extra) }))
+      .filter((l) => l.pos);
+
+    const ocupados = new Map();
+    return lista.map(({ extra, pos }) => {
+      const coluna = Math.round(pos.x / 14);
+      const quantas = ocupados.get(coluna) || 0;
+      ocupados.set(coluna, quantas + 1);
+      return { extra, pos: { ...pos, y: pos.y - quantas * 19 } };
+    });
+  }
+
+  // Onde desenhar a 💡 de um template salvo: em cima da máxima do candle
+  // do primeiro ponto dele.
+  function posicaoDaLampada(extra) {
+    const lista = candlesRef.current;
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!lista?.length || !chart || !series || !Number.isFinite(extra?.time)) return null;
+
+    let melhor = 0;
+    for (let i = 1; i < lista.length; i++) {
+      if (Math.abs(toChartTime(lista[i]) - extra.time) < Math.abs(toChartTime(lista[melhor]) - extra.time)) melhor = i;
+    }
+    const time = toChartTime(lista[melhor]);
+    const x = chart.timeScale().timeToCoordinate(time);
+    const y = series.priceToCoordinate(lista[melhor].maxima);
+    if (x == null || y == null) return null;
+    return { x, y: y - 10, time };
+  }
+
   // Pega a série de linha nº `idx`, criando se ainda não existir.
   function serieDeLinha(idx) {
     const chart = chartRef.current;
@@ -378,28 +409,20 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       text: s.short,
     }));
 
-    // Templates JÁ SALVOS deste ativo: uma 💡 no primeiro ponto de cada um.
-    // Só pra situar quem está marcando — não entra na marcação. Clicar na
-    // lâmpada dá zoom naquele trecho (ver `marcar`).
-    const tempos = candles.map(toChartTime);
-    marcadoresSalvosRef.current = new Map();
-    marcadoresExtras.forEach((extra, idx) => {
-      if (!Number.isFinite(extra?.time)) return;
-      // encaixa no candle mais próximo: a data salva pode não bater exatamente
-      // com o recorte/intervalo que está na tela agora
-      const maisProximo = tempos.reduce((a, b) => (Math.abs(b - extra.time) < Math.abs(a - extra.time) ? b : a), tempos[0]);
-      if (maisProximo === undefined) return;
-      const id = `salvo-${idx}`;
-      marcadoresSalvosRef.current.set(id, maisProximo);
+    // O desenho do template aberto pela 💡 entra sem rótulo nenhum: é como
+    // o padrão vai aparecer pro usuário, sem P1/P2/M1 em cima.
+    for (const ponto of desenhoSalvo?.pontos || []) {
+      const candle = candles[ponto.i];
+      if (!candle) continue;
       marcadores.push({
-        id,
-        time: maisProximo,
-        position: "aboveBar",
-        color: "#FFD700",
+        time: toChartTime(candle),
+        position: "atPriceMiddle",
+        price: ponto.preco,
+        color: ponto.cor || "#FFD700",
         shape: "circle",
-        text: "💡",
+        text: "",
       });
-    });
+    }
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
 
@@ -413,7 +436,8 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
             dados: [{ i: pontos[a].i, preco: pontos[a].preco }, { i: pontos[b].i, preco: pontos[b].preco }],
           }));
 
-    defs.forEach((def, idx) => {
+    const todasAsLinhas = [...defs, ...(desenhoSalvo?.linhas || [])];
+    todasAsLinhas.forEach((def, idx) => {
       const serie = serieDeLinha(idx);
       if (!serie) return;
       serie.applyOptions({
@@ -428,7 +452,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
       serie.setData(pontosValidos.length >= 2 ? pontosValidos : []);
     });
     // Sobrou série de uma marcação anterior (o usuário apagou um ponto)? esvazia
-    lineSeriesRef.current.slice(defs.length).forEach((serie) => serie.setData([]));
+    lineSeriesRef.current.slice(todasAsLinhas.length).forEach((serie) => serie.setData([]));
 
     onChange?.(pontos);
 
@@ -437,7 +461,7 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
     const quadro = requestAnimationFrame(atualizarPosicoesSeMudaram);
     return () => cancelAnimationFrame(quadro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pontos, candles, marcadoresExtras]);
+  }, [pontos, candles, desenhoSalvo]);
 
   function limpar() {
     setPontos({});
@@ -516,6 +540,26 @@ export default function TemplateMarkerChart({ candles, steps, linePairs = [], li
           touchAction: arrastando ? "none" : undefined,
         }}
       />
+
+      {/* 💡 dos templates já salvos: elemento próprio por cima do gráfico,
+          sem bolinha nenhuma embaixo. Clicar abre o desenho daquele padrão. */}
+      <div className="lampadas">
+        {lampadasVisiveis().map(({ extra, pos }) => {
+          return (
+            <button
+              key={extra.id ?? extra.time}
+              className="lampada"
+              style={{ left: pos.x, top: pos.y }}
+              title={`${extra.rotulo || "Padrão marcado"} — clique para ver o desenho`}
+              onClick={() => {
+                const trintaDias = 30 * 24 * 60 * 60;
+                chartRef.current?.timeScale().setVisibleRange({ from: pos.time - trintaDias, to: pos.time + trintaDias });
+                aoClicarLampada?.(extra);
+              }}
+            >💡</button>
+          );
+        })}
+      </div>
 
       {!readOnly && (
         <AnotacoesGrafico

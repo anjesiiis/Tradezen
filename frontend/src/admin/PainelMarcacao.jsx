@@ -3,11 +3,13 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
+import ListaTemplates from "./ListaTemplates.jsx";
 import {
   PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha,
-  siglaDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
+  stepsDoPadrao, temFormatoPares, validarPadrao,
 } from "./bandeira.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
+import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -62,42 +64,50 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [templates, setTemplates] = useState([]);
   const [editando, setEditando] = useState(null);
   const [avisos, setAvisos] = useState([]);
-  // Marcadores cinzas dos templates já salvos DESTE ativo (todos os padrões)
-  const [marcadoresSalvos, setMarcadoresSalvos] = useState([]);
+  // 💡 dos templates já salvos DESTE ativo (todos os padrões)
+  const marcadoresSalvos = useLampadas(ticker, templates);
+  // Desenho do template aberto por uma 💡 — sem rótulos, como o usuário verá
+  const [desenhoSalvo, setDesenhoSalvo] = useState(null);
 
   useEffect(() => {
     carregarTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [padrao.id]);
 
-  // Templates já salvos pra este ticker, de QUALQUER padrão — viram os
-  // marcadores cinzas no gráfico (ver marcadoresExtras).
-  useEffect(() => {
-    let cancelado = false;
-    const alvo = ticker.trim().toUpperCase();
-    const busca = !alvo ? Promise.resolve([]) : Promise.all(
-      Object.entries(API_DO_PADRAO).map(async ([id, apiDoTipo]) => {
-        try {
-          const lista = await apiDoTipo.list();
-          return (lista || [])
-            .filter((t) => (t.ticker || "").toUpperCase() === alvo && t.data_p1)
-            .map((t) => ({ time: Math.floor(new Date(t.data_p1).getTime() / 1000), texto: siglaDoPadrao(id) }));
-        } catch {
-          return []; // um padrão sem tabela ainda não pode derrubar o resto
-        }
-      })
-    );
-    busca.then((listas) => {
-      if (!cancelado) setMarcadoresSalvos(listas.flat().filter((m) => Number.isFinite(m.time)));
-    });
-    return () => { cancelado = true; };
-  }, [ticker, templates]);
+
+  // Clique na 💡: busca o template e desenha os pontos dele no gráfico que
+  // está na tela. Sem rótulos — é assim que o padrão vai aparecer pro
+  // usuário. Clicar de novo na mesma lâmpada fecha o desenho.
+  async function abrirDesenhoSalvo(lampada) {
+    if (desenhoSalvo?.chave === lampada.id) {
+      setDesenhoSalvo(null);
+      return;
+    }
+    try {
+      const salvo = await APIS_DE_TEMPLATE[lampada.tipo].get(lampada.templateId);
+      // padrões de continuação abrem com a config deles; os outros (OCO,
+      // topo duplo, níveis) entram com os pontos que tiverem
+      const padraoDoTemplate = PADROES[lampada.tipo] || padrao;
+      const config = configDoTemplate(salvo.pontos, padraoDoTemplate);
+      const desenho = montarDesenhoSalvo({
+        chave: lampada.id,
+        rotulo: `${lampada.rotulo} · ${salvo.ticker}`,
+        salvo,
+        candlesAtuais: candlesContexto,
+        config,
+      });
+      if (desenho) setDesenhoSalvo(desenho);
+    } catch {
+      setMensagem({ tipo: "erro", texto: "Não foi possível abrir esse padrão." });
+    }
+  }
 
   function trocarPadrao(id) {
     const novo = PADROES[id];
     if (!novo || novo.id === padrao.id) return;
     setPadrao(novo);
     setPontos({});          // a marcação em andamento não serve pro outro padrão
+    setDesenhoSalvo(null);
     setEditando(null);
     setMensagem(null);
   }
@@ -350,8 +360,19 @@ export default function PainelMarcacao({ padraoInicial }) {
                   linhas={desenharLinhas}
                   pares={paresDeLinha(padrao)}
                   marcadoresExtras={marcadoresSalvos}
+                  desenhoSalvo={desenhoSalvo}
+                  aoClicarLampada={abrirDesenhoSalvo}
                   onChange={setPontos}
                 />
+
+                {desenhoSalvo && (
+                  <div className="admin-msg admin-msg-ok" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span>Mostrando o padrão salvo: <strong>{desenhoSalvo.rotulo}</strong></span>
+                    <button className="admin-link-btn" style={{ marginLeft: "auto" }} onClick={() => setDesenhoSalvo(null)}>
+                      Fechar desenho
+                    </button>
+                  </div>
+                )}
 
                 <Campo label="Resultado">
                   <input
@@ -382,36 +403,13 @@ export default function PainelMarcacao({ padraoInicial }) {
           </section>
         )}
 
-        <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2>Marcados em {padrao.rotulo} ({templates.length})</h2>
-
-          {templates.length === 0 && (
-            <p style={{ color: "var(--text2)", fontSize: 13, margin: 0 }}>Nenhum template ainda.</p>
-          )}
-
-          <div className="admin-cards">
-            {templates.map((t) => (
-              <article key={t.id} className="admin-card-item">
-                <header>
-                  <strong>{t.ticker}</strong>
-                  <span className="admin-tag">{padrao.rotulo}</span>
-                </header>
-                <dl>
-                  <div><dt>P1</dt><dd>{t.data_p1 ? new Date(t.data_p1).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</dd></div>
-                  <div><dt>Timeframe</dt><dd>{t.timeframe}</dd></div>
-                  <div><dt>Resultado</dt><dd>{t.resultado || "—"}</dd></div>
-                  <div><dt>Salvo em</dt><dd>{new Date(t.criado_em).toLocaleDateString("pt-BR")}</dd></div>
-                </dl>
-                {t.observacao && <p className="admin-card-nota">{t.observacao}</p>}
-                <footer>
-                  <a className="action" onClick={() => abrirTemplate(t, true)}>Visualizar</a>
-                  <a className="action" onClick={() => abrirTemplate(t, false)}>Editar</a>
-                  <a className="action danger" onClick={() => remover(t.id)}>Excluir</a>
-                </footer>
-              </article>
-            ))}
-          </div>
-        </section>
+        <ListaTemplates
+          templates={templates}
+          rotulo={padrao.rotulo}
+          aoVisualizar={(t) => abrirTemplate(t, true)}
+          aoEditar={(t) => abrirTemplate(t, false)}
+          aoExcluir={remover}
+        />
 
       </main>
 
