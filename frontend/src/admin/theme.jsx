@@ -147,7 +147,11 @@ export default function AdminShell({ children }) {
 
 // Navegação entre as páginas de padrões — cada padrão tem sua própria
 // página/tabela/endpoint; isso só troca de tela, não mistura os dados.
-export function AdminPatternNav({ active }) {
+// `aoTrocar(chave)`: a tela pode assumir o clique e trocar o padrão no
+// lugar (devolvendo true), em vez de navegar e recarregar tudo. É o que
+// mantém o gráfico no mesmo zoom quando se percebe que a bandeira de alta
+// era, na verdade, de baixa.
+export function AdminPatternNav({ active, aoTrocar }) {
   const links = [
     { key: "oco", label: "OCO", href: "/admin/templates" },
     { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
@@ -165,7 +169,12 @@ export function AdminPatternNav({ active }) {
         /* Link, e não <a>: trocar de padrão não recarrega o app inteiro
            (o que refazia todas as chamadas e, com token vencido, caía no
            pedido de email). */
-        <Link key={l.key} to={l.href} className={active === l.key ? "active" : ""}>
+        <Link
+          key={l.key}
+          to={l.href}
+          className={active === l.key ? "active" : ""}
+          onClick={(e) => { if (aoTrocar?.(l.key, l.href)) e.preventDefault(); }}
+        >
           {l.label}
         </Link>
       ))}

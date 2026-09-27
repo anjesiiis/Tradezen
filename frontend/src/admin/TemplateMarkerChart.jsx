@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
+import { faixaDeLeitura } from "./enquadrar.js";
+
+const DURACAO_ZOOM = 500;   // ms da animação do zoom ao abrir um padrão salvo
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
@@ -21,6 +24,8 @@ export default function TemplateMarkerChart({
   aoClicarLampada,
   anotacoes,               // etiquetas de texto do template (vão pro banco)
   aoMudarAnotacoes,
+  faixaInicial,            // { from, to } em índice de candle: abre o gráfico já nesse zoom
+  aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   initialPontos, onChange, readOnly = false,
 }) {
   const containerRef = useRef();
@@ -40,6 +45,8 @@ export default function TemplateMarkerChart({
   const fimDoArrastoRef = useRef(0);
   const moveuRef = useRef(false);
   const cursorRef = useRef(null);
+  const aoMudarFaixaRef = useRef(aoMudarFaixa);
+  aoMudarFaixaRef.current = aoMudarFaixa;
   // Onde cada ponto está na tela agora. Serve pro cursor "grab" e é o que
   // os testes de navegador usam pra saber onde pegar um ponto — a escala
   // do gráfico muda sozinha quando as linhas entram, então o ponto raramente
@@ -217,7 +224,12 @@ export default function TemplateMarkerChart({
     chart.subscribeClick(marcar);
     chart.subscribeDblClick(marcar);
 
-    chart.timeScale().subscribeVisibleLogicalRangeChange(() => setVersaoGrafico((v) => v + 1));
+    chart.timeScale().subscribeVisibleLogicalRangeChange((faixa) => {
+      setVersaoGrafico((v) => v + 1);
+      // quem chama guarda isso pra devolver no `faixaInicial` quando o
+      // gráfico for remontado (trocar de padrão, por exemplo)
+      if (faixa && Number.isFinite(faixa.from)) aoMudarFaixaRef.current?.(faixa);
+    });
 
     const observer = new ResizeObserver(() => {
       if (containerRef.current) chart.applyOptions({ width: containerRef.current.clientWidth });
@@ -253,7 +265,13 @@ export default function TemplateMarkerChart({
 
     timeToIndexRef.current = new Map(candles.map((c, i) => [toChartTime(c), i]));
 
-    chartRef.current?.timeScale().fitContent();
+    // Trocar de padrão não pode fazer perder o lugar: se veio uma faixa de
+    // fora (a de antes da troca), o gráfico abre exatamente nela em vez de
+    // voltar pro gráfico inteiro.
+    const ts = chartRef.current?.timeScale();
+    if (faixaInicial && Number.isFinite(faixaInicial.from)) ts?.setVisibleLogicalRange(faixaInicial);
+    else ts?.fitContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candles]);
 
   // ── Arrastar pontos ─────────────────────────────────────────
@@ -366,21 +384,44 @@ export default function TemplateMarkerChart({
     });
   }
 
-  // Ao abrir um padrão salvo, enquadra ele inteiro (com folga): o zoom fixo
-  // do clique na 💡 costuma cortar metade do desenho.
+  // Ao abrir um padrão salvo pela 💡, o gráfico vai pra uma distância
+  // confortável de leitura — e não pro zoom em que o padrão foi marcado,
+  // que costuma ser coladíssimo (a marcação exige precisão, a leitura não).
+  // O padrão ocupa mais ou menos 40% da largura, com um mínimo de candles
+  // na tela pra dar contexto e um máximo pra o candle não virar risco.
   useEffect(() => {
     const pontosDoDesenho = desenhoSalvo?.pontos || [];
     if (!pontosDoDesenho.length || !candles?.length || !chartRef.current) return;
 
     const indices = pontosDoDesenho.map((pt) => pt.i).filter((i) => candles[i]);
     if (!indices.length) return;
-    const folga = Math.max(5, Math.round((Math.max(...indices) - Math.min(...indices)) * 0.25));
-    const de = Math.max(0, Math.min(...indices) - folga);
-    const ate = Math.min(candles.length - 1, Math.max(...indices) + folga);
-    chartRef.current.timeScale().setVisibleRange({
-      from: toChartTime(candles[de]),
-      to: toChartTime(candles[ate]),
-    });
+
+    const alvo = faixaDeLeitura(indices, candles.length);
+    if (!alvo) return;
+
+    const escala = chartRef.current.timeScale();
+    const inicio = escala.getVisibleLogicalRange();
+    if (!inicio || !Number.isFinite(inicio.from) || !Number.isFinite(inicio.to)) {
+      escala.setVisibleLogicalRange(alvo);
+      return;
+    }
+
+    // Deslizar em vez de saltar: com o corte seco se perde a noção de onde
+    // o padrão estava no gráfico.
+    let quadro;
+    const comeco = performance.now();
+    const suavizar = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const passo = (agora) => {
+      const t = Math.min(1, (agora - comeco) / DURACAO_ZOOM);
+      const k = suavizar(t);
+      escala.setVisibleLogicalRange({
+        from: inicio.from + (alvo.from - inicio.from) * k,
+        to: inicio.to + (alvo.to - inicio.to) * k,
+      });
+      if (t < 1) quadro = requestAnimationFrame(passo);
+    };
+    quadro = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro);
   }, [desenhoSalvo, candles]);
 
   // Onde desenhar a 💡 de um template salvo: em cima da máxima do candle
@@ -588,11 +629,9 @@ export default function TemplateMarkerChart({
               className="lampada"
               style={{ left: pos.x, top: pos.y }}
               title={`${extra.rotulo || "Padrão marcado"} — clique para ver o desenho`}
-              onClick={() => {
-                const trintaDias = 30 * 24 * 60 * 60;
-                chartRef.current?.timeScale().setVisibleRange({ from: pos.time - trintaDias, to: pos.time + trintaDias });
-                aoClicarLampada?.(extra);
-              }}
+              /* Sem salto seco aqui: quem enquadra é a animação de cima,
+                 quando o desenho do padrão chega. */
+              onClick={() => aoClicarLampada?.(extra)}
             >💡</button>
           );
         })}

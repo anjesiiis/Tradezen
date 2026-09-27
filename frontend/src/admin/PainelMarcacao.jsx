@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
@@ -56,6 +56,9 @@ export default function PainelMarcacao({ padraoInicial }) {
   const marcadoresSalvos = useLampadas(ticker, templates);
   // Desenho do template aberto por uma 💡 — sem rótulos, como o usuário verá
   const [desenhoSalvo, setDesenhoSalvo] = useState(null);
+  // Última faixa visível do gráfico: o gráfico é remontado ao trocar de
+  // padrão, e é isso que devolve o zoom e a posição de antes.
+  const faixaRef = useRef(null);
 
   useEffect(() => {
     carregarTemplates();
@@ -81,6 +84,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         candlesAtuais: candlesContexto,
       });
       if (desenho) setDesenhoSalvo(desenho);
+      else mostrarToasts(["Esse padrão não está na faixa de candles carregada — carregue um período maior."], "aviso");
     } catch {
       setMensagem({ tipo: "erro", texto: "Não foi possível abrir esse padrão." });
     }
@@ -90,6 +94,24 @@ export default function PainelMarcacao({ padraoInicial }) {
   // os mesmos 8 pontos, então perceber no meio do caminho que aquilo é uma
   // flâmula e não uma bandeira é só trocar aqui — salva na tabela da
   // flâmula, sem remarcar nada. O que muda é a validação na hora de salvar.
+  // Chave da nav do topo ("bandeira-baixa") → padrão. Só os de continuação:
+  // OCO, topo duplo e níveis marcam outros pontos, aí é tela mesmo.
+  function padraoDaNav(chave) {
+    return Object.values(PADROES).find((p) => p.nav === chave) || null;
+  }
+
+  function trocarPeloMenu(chave, href) {
+    const novoPadrao = padraoDaNav(chave);
+    if (!novoPadrao) return false;                 // deixa navegar normalmente
+    if (novoPadrao.id !== padrao.id) {
+      trocarPadrao(novoPadrao.id);
+      // endereço acompanha o padrão sem remontar a tela (recarregar aqui
+      // jogaria fora candles, zoom e marcação — que é o que se quer manter)
+      window.history.replaceState(null, "", href);
+    }
+    return true;
+  }
+
   function trocarPadrao(id) {
     const novoPadrao = PADROES[id];
     if (!novoPadrao || novoPadrao.id === padrao.id) return;
@@ -259,7 +281,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates {padrao.rotulo}</span>
-          <AdminPatternNav active={padrao.nav} />
+          <AdminPatternNav active={padrao.nav} aoTrocar={trocarPeloMenu} />
         </div>
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
@@ -365,6 +387,8 @@ export default function PainelMarcacao({ padraoInicial }) {
                   desenhoSalvo={desenhoSalvo}
                   aoClicarLampada={abrirDesenhoSalvo}
                   initialPontos={pontos}
+                  faixaInicial={faixaRef.current}
+                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; }}
                   anotacoes={anotacoes}
                   aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}
