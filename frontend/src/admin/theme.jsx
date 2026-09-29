@@ -101,9 +101,10 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-table th{text-align:left;color:var(--text2);font-size:11px;font-weight:500;padding:8px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
 .admin-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text)}
 .admin-table td.muted{color:var(--text2)}
-.admin-table a.action{color:var(--accent);cursor:pointer;font-size:12px;margin-right:12px;text-decoration:none}
-.admin-table a.action.danger{color:var(--down)}
-.admin-table a.action:hover{text-decoration:underline}
+.action{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;font-size:12px;margin-right:12px;text-decoration:none;user-select:none}
+.action.danger{color:var(--down)}
+.action:hover{text-decoration:underline}
+.action:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}

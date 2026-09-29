@@ -223,6 +223,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         ...completoDoBanco,
         pontosEdit: completoDoBanco.pontos,
         anotacoesEdit: completoDoBanco.anotacoes || [],
+        tipoEdit: padrao.id,   // pode ser trocado na edição (ver salvarEdicao)
         readOnly,
       });
     } catch {
@@ -232,30 +233,73 @@ export default function PainelMarcacao({ padraoInicial }) {
 
   async function salvarEdicao() {
     if (!editando) return;
+    const padraoDestino = PADROES[editando.tipoEdit] || padrao;
     // Templates salvos em formatos antigos não passam pelas regras novas
-    const erros = temFormatoPares(editando.pontosEdit) ? validarPadrao(editando.pontosEdit, padrao) : [];
+    const erros = temFormatoPares(editando.pontosEdit) ? validarPadrao(editando.pontosEdit, padraoDestino) : [];
     if (erros.length) {
       mostrarToasts(erros, "erro");
       return;
     }
-    mostrarToasts(avisosDoPadrao(editando.pontosEdit, padrao), "aviso");
+    mostrarToasts(avisosDoPadrao(editando.pontosEdit, padraoDestino), "aviso");
     setSalvando(true);
     setMensagem(null);
+
+    const campos = {
+      pontos: editando.pontosEdit,
+      resultado: editando.resultado?.trim() || null,
+      observacao: editando.observacao?.trim() || null,
+      anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
+    };
+
     try {
-      await api.update(editando.id, {
-        pontos: editando.pontosEdit,
-        resultado: editando.resultado?.trim() || null,
-        observacao: editando.observacao?.trim() || null,
-        anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
-      });
-      setMensagem({ tipo: "ok", texto: "Template atualizado." });
+      if (padraoDestino.id === padrao.id) {
+        await api.update(editando.id, campos);
+        setMensagem({ tipo: "ok", texto: "Template atualizado." });
+      } else {
+        await mudarDePadrao(padraoDestino, campos);
+      }
       setEditando(null);
       carregarTemplates();
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Erro ao atualizar o template." });
+    } catch (err) {
+      setMensagem({ tipo: "erro", texto: err?.mensagemAmigavel || "Erro ao atualizar o template." });
     } finally {
       setSalvando(false);
     }
+  }
+
+  // Cada padrão tem tabela própria, então corrigir o tipo de um template já
+  // salvo é recriar do outro lado e apagar deste. A ordem importa: só apaga
+  // depois que o novo existe — se o segundo passo falhar, o template não se
+  // perde (fica nos dois lugares, e o aviso diz o que apagar).
+  async function mudarDePadrao(padraoDestino, campos) {
+    const destino = API_DO_PADRAO[padraoDestino.id];
+    let criado;
+    try {
+      criado = await destino.create({
+        ticker: editando.ticker,
+        timeframe: editando.timeframe,
+        candles: editando.candles,
+        candles_contexto: editando.candles_contexto,
+        data_p1: editando.data_p1 || null,
+        ...campos,
+      });
+    } catch (err) {
+      err.mensagemAmigavel = `Não foi possível salvar como ${padraoDestino.rotulo} — a marcação não passou nas regras desse padrão.`;
+      throw err;
+    }
+
+    try {
+      await api.remove(editando.id);
+    } catch {
+      setMensagem({
+        tipo: "erro",
+        texto: `Salvo como ${padraoDestino.rotulo}, mas a cópia antiga em ${padrao.rotulo} (#${editando.id}) não foi apagada — apague à mão.`,
+      });
+      return criado;
+    }
+
+    setMensagem({ tipo: "ok", texto: `Template movido para ${padraoDestino.rotulo}.` });
+    return criado;
   }
 
   async function remover(id) {
@@ -273,7 +317,8 @@ export default function PainelMarcacao({ padraoInicial }) {
     window.location.href = "/admin/login";
   }
 
-  const configEdicao = editando ? configDoTemplate(editando.pontos, padrao) : null;
+  const padraoEmEdicao = (editando && PADROES[editando.tipoEdit]) || padrao;
+  const configEdicao = editando ? configDoTemplate(editando.pontos, padraoEmEdicao) : null;
 
   return (
     <AdminShell>
@@ -301,7 +346,9 @@ export default function PainelMarcacao({ padraoInicial }) {
             </div>
 
             <TemplateMarkerChart
-              key={`${editando.id}-${editando.readOnly}`}
+              /* tipoEdit na key: trocar o padrão redesenha com as cores e
+                 as linhas do padrão novo */
+              key={`${editando.id}-${editando.readOnly}-${padraoEmEdicao.id}`}
               candles={editando.candles}
               steps={configEdicao.steps}
               linePairs={configEdicao.linePairs}
@@ -313,6 +360,26 @@ export default function PainelMarcacao({ padraoInicial }) {
               aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
               readOnly={editando.readOnly}
             />
+
+            <Campo label="Padrão">
+              {/* Errou o tipo na marcação? Troca aqui: o template vai pra
+                  tabela do padrão certo, com os mesmos pontos. */}
+              <select
+                value={padraoEmEdicao.id}
+                onChange={(e) => setEditando((prev) => ({ ...prev, tipoEdit: e.target.value }))}
+                className="admin-select"
+                disabled={editando.readOnly}
+                title="Trocar o padrão deste template — ele passa para a tabela do padrão escolhido"
+                style={{ maxWidth: 260 }}
+              >
+                {Object.values(PADROES).map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+              </select>
+              {padraoEmEdicao.id !== padrao.id && (
+                <span style={{ fontSize: 12, color: "var(--text2)" }}>
+                  Ao salvar, sai de {padrao.rotulo} e passa a ser {padraoEmEdicao.rotulo}.
+                </span>
+              )}
+            </Campo>
 
             <div className="admin-grid2">
               <Campo label="Resultado">

@@ -29,10 +29,12 @@ export default function ListaTemplates({ templates = [], rotulo, aoVisualizar, a
               <div><dt>Salvo em</dt><dd>{new Date(t.criado_em).toLocaleDateString("pt-BR")}</dd></div>
             </dl>
             {t.observacao && <p className="admin-card-nota">{t.observacao}</p>}
+            {/* botão de verdade, não <a> sem href: o mouse vira mãozinha, dá
+                pra chegar pelo teclado e o leitor de tela anuncia como botão */}
             <footer>
-              <a className="action" onClick={() => aoVisualizar(t)}>Visualizar</a>
-              <a className="action" onClick={() => aoEditar(t)}>Editar</a>
-              <a className="action danger" onClick={() => aoExcluir(t.id)}>Excluir</a>
+              <button type="button" className="action" onClick={() => aoVisualizar(t)}>Visualizar</button>
+              <button type="button" className="action" onClick={() => aoEditar(t)}>Editar</button>
+              <button type="button" className="action danger" onClick={() => aoExcluir(t.id)}>Excluir</button>
             </footer>
           </article>
         ))}
