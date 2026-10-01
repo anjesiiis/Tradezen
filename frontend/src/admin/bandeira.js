@@ -10,6 +10,15 @@
 // fundo da consolidação, ou seja, fica dentro dela. Por isso nada que
 // compare um par com outro bloqueia o salvamento; no máximo vira aviso.
 
+import {
+  PADROES_CANAL, avisosDoCanal, configDoCanal, ehCanal, linhasDoCanal,
+  stepsDoCanal, temFormatoCanal, validarCanal,
+} from "./canal.js";
+
+// O canal (6 pontos, 2 linhas de toque) tem regras próprias, em canal.js.
+// As funções daqui apenas encaminham quando o padrão é um canal, pra quem
+// chama (PainelMarcacao) continuar tratando todos os padrões igual.
+
 // Cores do design system (CLAUDE.md)
 export const VERDE = "#26a69a";
 export const AZUL = "#2962ff";
@@ -32,13 +41,14 @@ export const PADROES = {
   flamula_baixa:  { id: "flamula_baixa",  rotulo: "Flâmula de Baixa",  forma: "flamula",  alta: false, nav: "flamula-baixa",  rota: "/admin/templates/flamula-baixa" },
   cunha_alta:     { id: "cunha_alta",     rotulo: "Cunha de Alta",     forma: "cunha",    alta: true,  nav: "cunha-alta",     rota: "/admin/templates/cunha-alta" },
   cunha_baixa:    { id: "cunha_baixa",    rotulo: "Cunha de Baixa",    forma: "cunha",    alta: false, nav: "cunha-baixa",    rota: "/admin/templates/cunha-baixa" },
+  ...PADROES_CANAL,
 };
 
 const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula", cunha: "Cunha" };
 
 // Abreviação usada nos marcadores cinzas dos templates já salvos (ver
 // PainelMarcacao): 3 letras, que é o que cabe num marcador do gráfico.
-export const SIGLA_FORMA = { bandeira: "BAN", flamula: "FLA", cunha: "CUN" };
+export const SIGLA_FORMA = { bandeira: "BAN", flamula: "FLA", cunha: "CUN", canal: "CAN" };
 
 export function siglaDoPadrao(id) {
   return SIGLA_FORMA[PADROES[id]?.forma] || "???";
@@ -76,6 +86,7 @@ export function paresDoPadrao(padrao) {
 }
 
 export function stepsDoPadrao(padrao) {
+  if (ehCanal(padrao)) return stepsDoCanal();
   return paresDoPadrao(padrao).flatMap((par, iPar) => [
     { key: par.de,  label: par.rotuloDe,  short: `P${iPar * 2 + 1}`, color: par.cor, par: par.id },
     { key: par.ate, label: par.rotuloAte, short: `P${iPar * 2 + 2}`, color: par.cor, par: par.id },
@@ -88,8 +99,9 @@ export function temFormatoPares(pontos) {
 
 // Uma linha por par COMPLETO — aparece assim que os 2 cliques daquele par
 // acontecem, sem depender dos outros pares.
-export function linhasDoPadrao(pontos, padrao) {
+export function linhasDoPadrao(pontos, padrao, candles) {
   if (!pontos) return [];
+  if (ehCanal(padrao)) return linhasDoCanal(pontos, candles);
   return paresDoPadrao(padrao)
     .filter((par) => pontos[par.de] && pontos[par.ate])
     .map((par) => ({
@@ -108,6 +120,7 @@ export function linhasDoPadrao(pontos, padrao) {
 // Só o que tornaria a marcação impossível de ler: os 8 pontos, a ordem
 // dentro de cada par e a direção dos dois mastros. Nada entre pares.
 export function validarPadrao(pontos, padrao) {
+  if (ehCanal(padrao)) return validarCanal(pontos, padrao);
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
 
   const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
@@ -137,6 +150,7 @@ export function validarPadrao(pontos, padrao) {
 
 // ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
 export function avisosDoPadrao(pontos, padrao) {
+  if (ehCanal(padrao)) return avisosDoCanal(pontos);
   if (!temFormatoPares(pontos)) return [];
   const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
   const pares = paresDoPadrao(padrao);
@@ -171,6 +185,15 @@ export function avisosDoPadrao(pontos, padrao) {
   }
 
   return avisos;
+}
+
+/**
+ * Dá pra validar esses pontos com as regras deste padrão? Templates
+ * salvos em formatos antigos passam longe das regras novas — abrir e
+ * editar um deles não pode virar uma parede de erros.
+ */
+export function podeValidar(pontos, padrao) {
+  return ehCanal(padrao) ? temFormatoCanal(pontos) : temFormatoPares(pontos);
 }
 
 // Medidas que o ML usa (mesmas contas das colunas geradas no Supabase —
@@ -248,10 +271,12 @@ export function stepsLegado() {
 // Pares de pontos que formam cada linha — é o que permite arrastar a linha
 // inteira (as duas pontas juntas) no gráfico de marcação.
 export function paresDeLinha(padrao) {
+  if (ehCanal(padrao)) return [];   // as linhas do canal são conta, não par de pontos
   return paresDoPadrao(padrao).map((par) => [par.de, par.ate]);
 }
 
 export function configDoTemplate(pontos, padrao) {
+  if (ehCanal(padrao) || temFormatoCanal(pontos)) return configDoCanal();
   if (temFormatoPares(pontos)) {
     return {
       steps: stepsDoPadrao(padrao),

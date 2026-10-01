@@ -22,6 +22,7 @@ PADROES_VALIDOS = {
     "oco", "topo_duplo", "suporte", "resistencia",
     "bandeira_alta", "bandeira_baixa", "flamula_alta", "flamula_baixa",
     "cunha_alta", "cunha_baixa",
+    "canal_alta", "canal_baixa",
 }
 
 

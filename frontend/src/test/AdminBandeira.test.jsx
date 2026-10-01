@@ -95,7 +95,7 @@ describe('Admin — marcação dos padrões de continuação', () => {
 });
 
 describe('Admin — seletor de padrão', () => {
-  it('lista os 6 padrões e abre no padrão da rota', async () => {
+  it('lista todos os padrões marcáveis e abre no padrão da rota', async () => {
     localStorage.setItem('admin_token', 'token-de-teste');
     renderApp('/admin/templates/flamula-alta');
     await screen.findByText('Nova marcação');
@@ -103,7 +103,7 @@ describe('Admin — seletor de padrão', () => {
     const seletor = screen.getByTitle(/Trocar o padrão marcado/);
     expect([...seletor.options].map((o) => o.textContent)).toEqual([
       'Bandeira de Alta', 'Bandeira de Baixa', 'Flâmula de Alta', 'Flâmula de Baixa',
-      'Cunha de Alta', 'Cunha de Baixa',
+      'Cunha de Alta', 'Cunha de Baixa', 'Canal de Alta', 'Canal de Baixa',
     ]);
     expect(seletor.value).toBe('flamula_alta');
   });

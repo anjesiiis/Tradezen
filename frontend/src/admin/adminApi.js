@@ -136,6 +136,8 @@ export const templatesFlamulaAltaApi = makeTemplateApi("/admin/templates-flamula
 export const templatesFlamulaBaixaApi = makeTemplateApi("/admin/templates-flamula-baixa");
 export const templatesCunhaAltaApi = makeTemplateApi("/admin/templates-cunha-alta");
 export const templatesCunhaBaixaApi = makeTemplateApi("/admin/templates-cunha-baixa");
+export const templatesCanalAltaApi = makeTemplateApi("/admin/templates-canal-alta");
+export const templatesCanalBaixaApi = makeTemplateApi("/admin/templates-canal-baixa");
 
 // Qual API usar pra cada padrão de continuação — é o que permite trocar de
 // padrão sem sair da tela de marcação (ver o seletor em PainelMarcacao).
@@ -146,4 +148,6 @@ export const API_DO_PADRAO = {
   flamula_baixa: templatesFlamulaBaixaApi,
   cunha_alta: templatesCunhaAltaApi,
   cunha_baixa: templatesCunhaBaixaApi,
+  canal_alta: templatesCanalAltaApi,
+  canal_baixa: templatesCanalBaixaApi,
 };

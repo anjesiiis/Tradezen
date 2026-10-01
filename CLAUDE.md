@@ -153,6 +153,8 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - `templates_topo_duplo` — templates Topo Duplo
 - `rotulagens_topo_duplo` — candidatos Topo Duplo rotulados
 - `templates_niveis` — suporte e resistência
+- `templates_bandeira_*`, `templates_flamula_*`, `templates_cunha_*` — padrões de continuação (8 pontos)
+- `templates_canal_alta` / `templates_canal_baixa` — canais (6 pontos, 2 opcionais)
 - `analises_diarias` — resultados da detecção diária
 
 ## Variáveis de ambiente
@@ -247,12 +249,20 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Marcação de Bandeira de Baixa | `admin/AdminTemplatesBandeiraBaixa.jsx` |
 | Marcação de Flâmula de Alta | `admin/AdminTemplatesFlamulaAlta.jsx` |
 | Marcação de Flâmula de Baixa | `admin/AdminTemplatesFlamulaBaixa.jsx` |
+| Marcação de Canal de Alta | `admin/AdminTemplatesCanalAlta.jsx` |
+| Marcação de Canal de Baixa | `admin/AdminTemplatesCanalBaixa.jsx` |
 | Tela de marcação compartilhada (bandeira/flâmula) | `admin/PainelMarcacao.jsx` |
 | Marcação de Topo Duplo | `admin/AdminTemplatesTopoDuplo.jsx` |
 | Marcação de Níveis (suporte/resistência) | `admin/AdminTemplatesNiveis.jsx` |
 | Gráfico de marcação (clique → ponto) | `admin/TemplateMarkerChart.jsx` |
 | Gráfico de marcação de níveis | `admin/NivelMarkerChart.jsx` |
 | Lógica dos padrões de continuação (pontos, validação, linhas) | `admin/bandeira.js` |
+| Lógica do canal (6 pontos, suporte/resistência/mediana) | `admin/canal.js` |
+| Recorte salvo no banco (candles + pontos + etiquetas) | `admin/janela.js` |
+| Zoom de leitura ao abrir um padrão pela 💡 | `admin/enquadrar.js` |
+| Lâmpadas dos templates já salvos | `admin/lampadas.js` |
+| Etiquetas de texto no gráfico | `admin/AnotacoesGrafico.jsx` |
+| Cards dos templates salvos | `admin/ListaTemplates.jsx` |
 | API calls do admin | `admin/adminApi.js` |
 | Seletor de ativo | `admin/AtivoPicker.jsx` |
 | Login admin | `admin/AdminLogin.jsx` |
@@ -279,9 +289,13 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Templates Bandeira de Baixa | `admin_templates_bandeira_baixa.py` |
 | Templates Flâmula de Alta | `admin_templates_flamula_alta.py` |
 | Templates Flâmula de Baixa | `admin_templates_flamula_baixa.py` |
+| Templates Canal de Alta | `admin_templates_canal_alta.py` |
+| Templates Canal de Baixa | `admin_templates_canal_baixa.py` |
 | Templates Topo Duplo | `admin_templates_topo_duplo.py` |
 | Templates Níveis | `admin_templates_niveis.py` |
 | Pontos de bandeira/flâmula (validação) | `bandeira_pontos.py` |
+| Pontos do canal (validação) | `canal_pontos.py` |
+| Migrations SQL do Supabase | `sql/0NN_*.sql` (rodar no SQL Editor, em ordem) |
 | Busca de dados de mercado | `data/fetcher.py` |
 | DTW (similaridade de formas) | `ml/dtw.py` |
 | Teste DTW topo duplo | `ml/testar_dtw_topo_duplo.py` |

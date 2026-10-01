@@ -6,7 +6,7 @@ import AtivoPicker from "./AtivoPicker.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
   PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha,
-  stepsDoPadrao, temFormatoPares, validarPadrao,
+  podeValidar, stepsDoPadrao, validarPadrao,
 } from "./bandeira.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
@@ -35,7 +35,9 @@ export default function PainelMarcacao({ padraoInicial }) {
   const api = API_DO_PADRAO[padrao.id];
   const STEPS = stepsDoPadrao(padrao);
   const PASSOS = STEPS.map((s) => s.key);
-  const desenharLinhas = (pontos) => linhasDoPadrao(pontos, padrao);
+  // candles entram porque as linhas do canal são esticadas até o limite do
+  // gráfico; os outros padrões ignoram esse segundo argumento
+  const desenharLinhas = (pontos, candlesDoGrafico) => linhasDoPadrao(pontos, padrao, candlesDoGrafico);
 
   const [ticker, setTicker] = useState("PETR4.SA");
   const [periodo, setPeriodo] = useState("1y");
@@ -168,7 +170,9 @@ export default function PainelMarcacao({ padraoInicial }) {
     carregarGrafico(novoTicker);
   }
 
-  const completo = PASSOS.every((k) => pontos[k]);
+  // Passos marcados como `opcional` (o 3º toque do canal) não seguram o
+  // salvamento — os outros padrões não têm nenhum, então nada muda neles.
+  const completo = STEPS.filter((s) => !s.opcional).every((s) => pontos[s.key]);
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
@@ -235,7 +239,7 @@ export default function PainelMarcacao({ padraoInicial }) {
     if (!editando) return;
     const padraoDestino = PADROES[editando.tipoEdit] || padrao;
     // Templates salvos em formatos antigos não passam pelas regras novas
-    const erros = temFormatoPares(editando.pontosEdit) ? validarPadrao(editando.pontosEdit, padraoDestino) : [];
+    const erros = podeValidar(editando.pontosEdit, padraoDestino) ? validarPadrao(editando.pontosEdit, padraoDestino) : [];
     if (erros.length) {
       mostrarToasts(erros, "erro");
       return;

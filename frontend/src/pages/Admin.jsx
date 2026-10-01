@@ -8,6 +8,8 @@ import AdminTemplatesFlamulaAlta from "../admin/AdminTemplatesFlamulaAlta.jsx";
 import AdminTemplatesFlamulaBaixa from "../admin/AdminTemplatesFlamulaBaixa.jsx";
 import AdminTemplatesCunhaAlta from "../admin/AdminTemplatesCunhaAlta.jsx";
 import AdminTemplatesCunhaBaixa from "../admin/AdminTemplatesCunhaBaixa.jsx";
+import AdminTemplatesCanalAlta from "../admin/AdminTemplatesCanalAlta.jsx";
+import AdminTemplatesCanalBaixa from "../admin/AdminTemplatesCanalBaixa.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
@@ -25,6 +27,8 @@ const TEMPLATES = {
   "/admin/templates/flamula-baixa": AdminTemplatesFlamulaBaixa,
   "/admin/templates/cunha-alta": AdminTemplatesCunhaAlta,
   "/admin/templates/cunha-baixa": AdminTemplatesCunhaBaixa,
+  "/admin/templates/canal-alta": AdminTemplatesCanalAlta,
+  "/admin/templates/canal-baixa": AdminTemplatesCanalBaixa,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

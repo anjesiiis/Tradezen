@@ -22,14 +22,16 @@ const BAIXA = Object.fromEntries(
 );
 const com = (base, mudancas) => ({ ...base, ...mudancas });
 
-describe('Padrões de continuação — os 4 templates', () => {
+describe('Padrões de continuação — os 6 templates', () => {
   it('bandeira, flâmula e cunha — de alta e de baixa', () => {
     expect(Object.keys(PADROES)).toEqual([
       'bandeira_alta', 'bandeira_baixa', 'flamula_alta', 'flamula_baixa', 'cunha_alta', 'cunha_baixa',
+      // o canal entra no mesmo registro, mas com regras próprias (canal.js)
+      'canal_alta', 'canal_baixa',
     ]);
     expect(Object.values(PADROES).map((p) => p.rotulo)).toEqual([
       'Bandeira de Alta', 'Bandeira de Baixa', 'Flâmula de Alta', 'Flâmula de Baixa',
-      'Cunha de Alta', 'Cunha de Baixa',
+      'Cunha de Alta', 'Cunha de Baixa', 'Canal de Alta', 'Canal de Baixa',
     ]);
   });
 
@@ -48,8 +50,9 @@ describe('Padrões de continuação — os 4 templates', () => {
     ]);
   });
 
-  it('os 4 usam as mesmas 8 chaves de ponto', () => {
-    for (const padrao of Object.values(PADROES)) {
+  it('os 6 de continuação usam as mesmas 8 chaves de ponto', () => {
+    // o canal fica de fora: são 6 pontos, com chaves próprias (ver canal.test.js)
+    for (const padrao of Object.values(PADROES).filter((p) => !p.canal)) {
       expect(stepsDoPadrao(padrao).map((s) => s.key)).toEqual(PASSOS_PARES);
     }
   });

@@ -20,7 +20,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-logo{font-family:var(--font-h);font-size:20px;letter-spacing:2px;color:#fff}
 .notranslate{translate:no}
 .admin-logo span{color:var(--accent)}
-.admin-header-title{color:var(--text2);font-size:13px;margin-left:12px}
+.admin-header-title{color:var(--text2);font-size:13px;margin-left:12px;white-space:nowrap}
 .admin-link-btn{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-b)}
 .admin-link-btn:hover{color:var(--text)}
 
@@ -109,8 +109,9 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-.admin-nav{display:flex;gap:4px;margin-left:20px}
-.admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none}
+.admin-nav{display:flex;gap:4px;margin-left:20px;overflow-x:auto;scrollbar-width:none}
+.admin-nav::-webkit-scrollbar{display:none}
+.admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none;white-space:nowrap}
 .admin-nav a:hover{color:var(--text)}
 .admin-nav a.active{background:var(--s2);color:var(--text)}
 
@@ -163,6 +164,8 @@ export function AdminPatternNav({ active, aoTrocar }) {
     { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
     { key: "cunha-alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
     { key: "cunha-baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
+    { key: "canal-alta", label: "Canal de Alta", href: "/admin/templates/canal-alta" },
+    { key: "canal-baixa", label: "Canal de Baixa", href: "/admin/templates/canal-baixa" },
   ];
   return (
     <nav className="admin-nav">
