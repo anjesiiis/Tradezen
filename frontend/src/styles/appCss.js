@@ -442,12 +442,54 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
+/* ── MERCADOS GLOBAIS ─────────────────────────────────────── */
+.mg{padding:18px 20px 40px;max-width:1280px;margin:0 auto}
+.mg-head h1{font-family:var(--font-h);font-size:30px;letter-spacing:.5px;margin:0 0 4px;color:var(--text)}
+.mg-head p{margin:0 0 18px;color:var(--text2);font-size:13px}
+.mg-corpo{display:flex;gap:24px;align-items:flex-start}
+.mg-lista{flex:0 0 40%;display:flex;flex-direction:column;gap:10px}
+.mg-globo{flex:1;position:relative;display:flex;justify-content:center;min-height:460px}
+
+.mg-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s,transform .15s}
+.mg-card:hover{border-color:var(--accent);transform:translateX(2px)}
+.mg-card.ativo{border-color:var(--accent)}
+.mg-cor{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.mg-card-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mg-card-info strong{font-size:15px;color:var(--text);font-weight:700}
+.mg-local{font-size:11px;color:var(--text2)}
+.mg-indice{font-size:12px;color:var(--text3);font-family:var(--font-m)}
+.mg-card-dir{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.mg-var{font-family:var(--font-m);font-weight:600;font-variant-numeric:tabular-nums}
+.mg-var.alta{color:var(--up)}
+.mg-var.baixa{color:var(--down)}
+.mg-var-vazio{color:var(--text3);font-family:var(--font-m)}
+.mg-btn-ver{background:none;border:1px solid var(--border);color:var(--text2);font:inherit;font-size:11px;padding:3px 10px;border-radius:14px;cursor:pointer}
+.mg-btn-ver:hover{border-color:var(--accent);color:var(--accent)}
+
+.globo{display:block;user-select:none}
+.globo-ponto{cursor:pointer}
+.globo-ponto:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.globo-carregando,.globo-erro{border-radius:50%;background:var(--s1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:13px;text-align:center;padding:20px}
+
+.mg-popup{position:absolute;width:250px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 10px 32px rgba(0,0,0,.5);z-index:20}
+.mg-popup strong{font-size:14px;padding-right:18px}
+.mg-popup-local{font-size:11px;color:var(--text2)}
+.mg-popup p{margin:2px 0 4px;font-size:12px;line-height:1.5;color:var(--text3)}
+.mg-popup-x{position:absolute;top:8px;right:8px;background:none;border:0;color:var(--text2);font-size:13px;cursor:pointer;line-height:1}
+.mg-popup-x:hover{color:var(--text)}
+.mg-popup-rodape{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:2px}
+.mg-popup-rotulo{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.mg-popup-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:16px;cursor:pointer}
+.mg-popup-btn:hover{filter:brightness(1.1)}
+
+
 /* ═══════════════════ TABLET — 768–1024px ═══════════════════ */
 @media (max-width:1024px) and (min-width:768px){
   .mkt3-grid{grid-template-columns:1fr 1fr!important}
 }
 
 /* ═══════════════════ MOBILE — <768px ═══════════════════ */
+
 @media (max-width:767px){
   /* Fonte única das duas alturas fixas do layout mobile. Antes o 52px do
      header estava escrito à mão em cada calc() — mudar exigia caçar todos.
@@ -683,6 +725,15 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */
   .abody{flex-direction:column}
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
+
+  /* ── MERCADOS GLOBAIS ── */
+  /* O globo é desktop: no celular ele comeria a tela inteira e o d3 nem
+     chega a ser baixado (o import é lazy). Ficam só os cards. */
+  .mg-globo{display:none}
+  .mg-corpo{flex-direction:column}
+  .mg-lista{flex:1 1 auto;width:100%}
+  .mg{padding:14px 12px 90px}
+  .mg-head h1{font-size:24px}
 
   /* ── TICKER DE RODAPÉ ── */
   /* Fita de cotacoes do rodape sai no mobile: o espaco de baixo agora e

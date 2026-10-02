@@ -17,6 +17,9 @@ import { CSS } from "../styles/appCss.js";
 // próprio e só é baixada quando o usuário abre a tela. O gráfico de
 // candles (lightweight-charts + ferramentas de desenho) é o maior deles.
 const PaginaMercadosOverview = lazy(() => import("./MercadosOverview.jsx"));
+// Mercados Globais carrega o globo (d3 + mapa do mundo) — por isso entra
+// por lazy como as outras seções, e só pra quem abre essa aba.
+const PaginaMercadosGlobais = lazy(() => import("./MercadosGlobais.jsx"));
 const PaginaCriptomoedas = lazy(() => import("./Criptomoedas.jsx"));
 const PaginaListaAtivos = lazy(() => import("./Favoritos.jsx"));
 const PaginaPrincipaisAtivosComparativo = lazy(() => import("./PrincipaisAtivos.jsx"));
@@ -302,6 +305,9 @@ function AppInner(){
           <div className="dash-main">
           {secao==="mercados" && (
             <PaginaMercadosOverview tema={tema} abrirAtivo={abrirAtivo} setSecao={setSecao}/>
+          )}
+          {secao==="globais" && (
+            <Suspense fallback={<SkeletonSecao tipo="mercados"/>}><PaginaMercadosGlobais/></Suspense>
           )}
           {secao==="cripto" && (
             <PaginaCriptomoedas tema={tema} mercado={mercado} abrirAtivo={abrirAtivo}/>

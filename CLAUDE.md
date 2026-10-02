@@ -18,6 +18,7 @@
 | Backend | Python + FastAPI | 3.11.x |
 | Banco | Supabase (PostgreSQL) | - |
 | Gráficos | TradingView Lightweight Charts | v5 |
+| Globo/mapa | D3 (d3-geo) + topojson-client | Latest |
 | Dados mercado | Yahoo Finance (B3/Forex) + Binance API (cripto) | - |
 | ML | DTW (dtaidistance) + Random Forest (scikit-learn) | - |
 | Auth | Supabase Auth (magic link por email) | - |
@@ -201,6 +202,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Favoritos | `pages/Favoritos.jsx` |
 | Criptomoedas | `pages/Criptomoedas.jsx` |
 | Mercados | `pages/MercadosOverview.jsx` |
+| Mercados Globais (lista + globo) | `pages/MercadosGlobais.jsx` |
 | Principais ativos | `pages/PrincipaisAtivos.jsx` |
 | Página 404 | `pages/NaoEncontrada.jsx` |
 
@@ -217,6 +219,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Mini gráfico de linha | `components/MiniLine.jsx` |
 | Ícone de ativo | `components/IconeAtivo.jsx` |
 | Skeleton loading | `components/Skeleton.jsx` |
+| Globo 3D interativo (D3) | `components/GlobeD3.jsx` (mapa em `public/world-110m.json`) |
 | Toggle de tema | `components/ThemeToggle.jsx` |
 
 ### Frontend — Libs (frontend/src/lib/)
@@ -228,6 +231,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Indicadores técnicos (médias, volume) | `lib/grafico/indicadores.js` |
 | Detecção de padrões no frontend | `lib/grafico/padroes.js` |
 | Dados de mercado (tickers, categorias) | `lib/mercado.js` |
+| Bolsas do mundo (coordenadas, índices) | `lib/mercadosGlobais.js` |
 | Cliente Supabase | `lib/supabaseClient.js` |
 
 ### Frontend — Auth (frontend/src/auth/)
