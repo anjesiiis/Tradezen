@@ -32,34 +32,41 @@ describe('Bloco do globo na tela inicial', () => {
   it('mostra os quatro filtros, todos ligados', async () => {
     montar();
 
-    for (const c of CATEGORIAS) {
-      expect(screen.getByRole('button', { name: c })).toHaveAttribute('aria-pressed', 'true');
+    for (const { rotulo } of CATEGORIAS) {
+      expect(screen.getByRole('button', { name: rotulo })).toHaveAttribute('aria-pressed', 'true');
     }
     await waitFor(() => expect(mercadosRecebidos).toHaveLength(MERCADOS_GLOBAIS.length));
   });
 
-  it('desligar uma categoria tira os pontos dela do globo', async () => {
+  it('desligar a categoria tira os pontos dela do globo', async () => {
     const user = userEvent.setup();
     montar();
     await waitFor(() => expect(mercadosRecebidos).toHaveLength(6));
 
-    // as seis bolsas são Índice e Ação: desligando as duas, o globo esvazia
+    // as seis bolsas são "indice": desligando esse filtro, o globo esvazia
     await user.click(screen.getByRole('button', { name: 'Índice' }));
-    expect(mercadosRecebidos).toHaveLength(6);          // ainda são "Ação"
-    await user.click(screen.getByRole('button', { name: 'Ação' }));
 
     expect(mercadosRecebidos).toHaveLength(0);
     expect(screen.getByText(/Nenhum mercado nas categorias escolhidas/)).toBeInTheDocument();
+  });
+
+  it('desligar uma categoria sem pontos não mexe no globo', async () => {
+    const user = userEvent.setup();
+    montar();
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(6));
+
+    await user.click(screen.getByRole('button', { name: 'Cripto' }));
+
+    expect(mercadosRecebidos).toHaveLength(6);
   });
 
   it('religar o filtro traz os pontos de volta', async () => {
     const user = userEvent.setup();
     montar();
     await user.click(screen.getByRole('button', { name: 'Índice' }));
-    await user.click(screen.getByRole('button', { name: 'Ação' }));
     expect(mercadosRecebidos).toHaveLength(0);
 
-    await user.click(screen.getByRole('button', { name: 'Ação' }));
+    await user.click(screen.getByRole('button', { name: 'Índice' }));
 
     expect(mercadosRecebidos).toHaveLength(6);
   });

@@ -457,10 +457,10 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .globo-bloco-titulo{font-size:13px;font-weight:700;color:var(--text)}
 .globo-bloco-sub{font-size:11px;color:var(--text2)}
 .globo-bloco-corpo{flex:1;display:flex;gap:12px;min-height:0}
-.globo-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+.globo-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:384px}
 .globo-vazio{position:absolute;max-width:200px;text-align:center;color:var(--text2);font-size:12px}
 
-.globo-filtros{flex:0 0 96px;display:flex;flex-direction:column;gap:6px;padding-top:4px}
+.globo-filtros{flex:0 0 88px;display:flex;flex-direction:column;gap:6px;padding-top:4px}
 .globo-filtro{display:flex;align-items:center;gap:7px;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 8px;font:inherit;font-size:11px;color:var(--text2);cursor:pointer;text-align:left}
 .globo-filtro:hover{border-color:var(--accent);color:var(--text)}
 .globo-filtro.ligado{color:var(--text);border-color:var(--accent)}
@@ -504,7 +504,11 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .mg-btn-ver{background:none;border:1px solid var(--border);color:var(--text2);font:inherit;font-size:11px;padding:3px 10px;border-radius:14px;cursor:pointer}
 .mg-btn-ver:hover{border-color:var(--accent);color:var(--accent)}
 
-.globo{display:block;user-select:none}
+.globo-palco{position:relative;flex-shrink:0}
+.globo{display:block;user-select:none;touch-action:none}
+/* Tooltip do hover: fora do SVG e sem pointer-events, pra não roubar o
+   cursor dos pontos nem provocar reflow a cada movimento do mouse. */
+.globo-dica{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transition:opacity .12s;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);white-space:nowrap;z-index:15;will-change:transform}
 .globo-ponto{cursor:pointer}
 .globo-ponto:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .globo-carregando,.globo-erro{border-radius:50%;background:var(--s1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:13px;text-align:center;padding:20px}

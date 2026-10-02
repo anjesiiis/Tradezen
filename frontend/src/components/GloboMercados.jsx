@@ -11,12 +11,15 @@ const GlobeD3 = lazy(() => import("./GlobeD3.jsx"));
 
 const TICKERS = MERCADOS_GLOBAIS.map((m) => m.indice);
 const MIN_GLOBO = 240;
-const MAX_GLOBO = 420;
+const MAX_GLOBO = 440;
 
 export default function GloboMercados() {
   const navigate = useNavigate();
   const [cotacoes, setCotacoes] = useState(null);
-  const [ativos, setAtivos] = useState(() => new Set(CATEGORIAS));
+  // { acao:true, moeda:true, cripto:true, indice:true } — todos ligados
+  const [filtros, setFiltros] = useState(() =>
+    Object.fromEntries(CATEGORIAS.map((c) => [c.id, true]))
+  );
   const [selecionado, setSelecionado] = useState(null);
   const [posicao, setPosicao] = useState(null);
   const [tamanho, setTamanho] = useState(320);
@@ -56,17 +59,14 @@ export default function GloboMercados() {
     return () => observador.disconnect();
   }, []);
 
-  function alternarFiltro(categoria) {
-    setAtivos((antes) => {
-      const novo = new Set(antes);
-      if (novo.has(categoria)) novo.delete(categoria);
-      else novo.add(categoria);
-      return novo;
-    });
+  function alternarFiltro(id) {
+    setFiltros((antes) => ({ ...antes, [id]: !antes[id] }));
     setSelecionado(null);
   }
 
-  const visiveis = MERCADOS_GLOBAIS.filter((m) => m.categorias.some((c) => ativos.has(c)));
+  // Só os pontos das categorias ligadas chegam ao globo — o mapa em si não
+  // é redesenhado por causa disso, só a lista de pontos muda.
+  const visiveis = MERCADOS_GLOBAIS.filter((m) => filtros[m.categoria]);
 
   return (
     <div className="card globo-bloco" onClick={() => setSelecionado(null)}>
@@ -103,20 +103,20 @@ export default function GloboMercados() {
         </div>
 
         <div className="globo-filtros" onClick={(e) => e.stopPropagation()}>
-          {CATEGORIAS.map((c) => {
-            const ligado = ativos.has(c);
-            const quantos = MERCADOS_GLOBAIS.filter((m) => m.categorias.includes(c)).length;
+          {CATEGORIAS.map(({ id, rotulo }) => {
+            const ligado = filtros[id];
+            const quantos = MERCADOS_GLOBAIS.filter((m) => m.categoria === id).length;
             return (
               <button
-                key={c}
+                key={id}
                 type="button"
                 className={`globo-filtro${ligado ? " ligado" : ""}`}
                 aria-pressed={ligado}
                 title={quantos ? `${quantos} no globo` : "Nenhum mercado nesta categoria ainda"}
-                onClick={() => alternarFiltro(c)}
+                onClick={() => alternarFiltro(id)}
               >
                 <span className="globo-filtro-caixa" aria-hidden="true">{ligado ? "✓" : ""}</span>
-                {c}
+                {rotulo}
               </button>
             );
           })}
