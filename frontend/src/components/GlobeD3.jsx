@@ -27,7 +27,8 @@ const BORDAS = "#2A5080";
 
 const GIRO_POR_QUADRO = 0.06;     // graus — bem devagar, não distrai
 const PAUSA_APOS_ARRASTO = 2000;  // ms parado depois que a mão sai
-const GRAUS_POR_PIXEL = 0.25;
+const GRAUS_POR_PIXEL = 0.25;     // mouse
+const SENSIBILIDADE_TOQUE = 0.4;  // dedo: movimento mais direto
 const RAIO_HOVER = 14;            // px até o ponto pra o tooltip aparecer
 const ALTURA_DO_ROTULO = 12;      // px acima do ponto (sobe mais se houver outro ali)
 
@@ -52,7 +53,6 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
   const zoomRef = useRef(1);
   const girandoRef = useRef(true);
   const arrastoRef = useRef(null);
-  const pincaRef = useRef(null);
   const retomarRef = useRef(null);
   const mercadosRef = useRef(mercados);
   mercadosRef.current = mercados;
@@ -136,7 +136,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
   }
 
   function pegar(evento) {
-    if (pincaRef.current) return;             // dois dedos é pinça, não arrasto
+    if (evento.pointerType === "touch") return;   // toque tem caminho próprio
     pararDeGirar();
     esconderTooltip();
     arrastoRef.current = { x: evento.clientX, y: evento.clientY, rotacao: rotacaoRef.current };
@@ -145,6 +145,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
   }
 
   function mover(evento) {
+    if (evento.pointerType === "touch") return;
     const inicio = arrastoRef.current;
     // Arrasto e hover são coisas separadas: enquanto se gira o globo, o
     // tooltip não tem por que ficar piscando atrás do cursor.
@@ -173,32 +174,86 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
     retomarDepois();
   }
 
-  // Pinça: a distância entre os dois dedos vira o fator de escala.
-  function distanciaEntreDedos(toques) {
-    return Math.hypot(toques[0].clientX - toques[1].clientX, toques[0].clientY - toques[1].clientY);
-  }
 
-  function dedosEncostaram(evento) {
-    if (evento.touches.length !== 2) return;
-    pararDeGirar();
-    arrastoRef.current = null;          // começou pinça: cancela o arrasto
-    setArrastando(false);
-    pincaRef.current = distanciaEntreDedos(evento.touches);
-  }
+  // ── Toque (celular) ────────────────────────────────────────
+  // Listeners nativos com { passive: false }: o React registra os eventos
+  // de toque como passivos, e aí o preventDefault() é ignorado — a página
+  // rolava por baixo do dedo em vez de o globo girar. Um dedo gira, dois
+  // dedos dão zoom.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !mundo) return;
 
-  function dedosMoveram(evento) {
-    if (evento.touches.length !== 2 || !pincaRef.current) return;
-    evento.preventDefault();
-    const agora = distanciaEntreDedos(evento.touches);
-    aplicarZoom(agora / pincaRef.current);
-    pincaRef.current = agora;
-  }
+    let inicioX = null;
+    let inicioY = null;
+    let rotacaoNoToque = null;
+    let distanciaEntreDedos = null;
+    const raioBase = (tamanho / 2) * FOLGA_DA_ESFERA;
 
-  function dedosSairam(evento) {
-    if (evento.touches.length >= 2) return;
-    pincaRef.current = null;
-    retomarDepois();
-  }
+    const distancia = (toques) =>
+      Math.hypot(toques[0].clientX - toques[1].clientX, toques[0].clientY - toques[1].clientY);
+
+    function comecou(evento) {
+      if (evento.touches.length === 2) {
+        evento.preventDefault();
+        pararDeGirar();
+        inicioX = null;                        // dois dedos é pinça, não arrasto
+        distanciaEntreDedos = distancia(evento.touches);
+        return;
+      }
+      if (evento.touches.length === 1) {
+        evento.preventDefault();
+        pararDeGirar();
+        esconderTooltip();
+        inicioX = evento.touches[0].clientX;
+        inicioY = evento.touches[0].clientY;
+        // guarda a rotação do começo e soma o deslocamento TOTAL a cada
+        // quadro: somar o deslocamento de cada evento acumula erro e treme
+        rotacaoNoToque = [...rotacaoRef.current];
+      }
+    }
+
+    function moveu(evento) {
+      if (evento.touches.length === 2 && distanciaEntreDedos !== null) {
+        evento.preventDefault();
+        const agora = distancia(evento.touches);
+        // afastar os dedos aproxima o globo; juntar, afasta
+        const raioAgora = raioBase * zoomRef.current + (agora - distanciaEntreDedos) * 0.5;
+        zoomRef.current = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, raioAgora / raioBase));
+        distanciaEntreDedos = agora;
+        return;
+      }
+      if (evento.touches.length === 1 && inicioX !== null) {
+        evento.preventDefault();
+        const dx = evento.touches[0].clientX - inicioX;
+        const dy = evento.touches[0].clientY - inicioY;
+        const lat = rotacaoNoToque[1] - dy * SENSIBILIDADE_TOQUE;
+        rotacaoRef.current = [
+          rotacaoNoToque[0] + dx * SENSIBILIDADE_TOQUE,
+          Math.max(-90, Math.min(90, lat)),
+        ];
+      }
+    }
+
+    function terminou() {
+      inicioX = null;
+      inicioY = null;
+      distanciaEntreDedos = null;
+      retomarDepois();
+    }
+
+    svg.addEventListener("touchstart", comecou, { passive: false });
+    svg.addEventListener("touchmove", moveu, { passive: false });
+    svg.addEventListener("touchend", terminou);
+    svg.addEventListener("touchcancel", terminou);
+    return () => {
+      svg.removeEventListener("touchstart", comecou);
+      svg.removeEventListener("touchmove", moveu);
+      svg.removeEventListener("touchend", terminou);
+      svg.removeEventListener("touchcancel", terminou);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mundo, tamanho]);
 
   // ── Tooltip ────────────────────────────────────────────────
   // div solto por cima do SVG, com pointer-events:none: dentro do SVG ele
@@ -257,9 +312,6 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         onPointerCancel={soltar}
         onPointerLeave={() => { soltar(); esconderTooltip(); }}
         onWheel={naRoda}
-        onTouchStart={dedosEncostaram}
-        onTouchMove={dedosMoveram}
-        onTouchEnd={dedosSairam}
         style={{ touchAction: "none", cursor: arrastando ? "grabbing" : "grab" }}
       >
         <circle ref={esferaRef} cx={tamanho / 2} cy={tamanho / 2} r={tamanho / 2} fill={OCEANO} stroke={BORDAS} strokeWidth="1" />

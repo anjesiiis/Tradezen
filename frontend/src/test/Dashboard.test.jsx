@@ -48,11 +48,12 @@ describe('Dashboard — Top 20 (mobile)', () => {
     expect(linha.getByText(/1\.12%/)).toBeInTheDocument();
   });
 
-  it('explica a mistura de mercados no rodapé', async () => {
+  it('a lista vem sem título e sem rodapé', async () => {
     renderApp('/mercados', { mobile: true });
     await acharLinhas();
 
-    expect(screen.getByText('Mistura entre ações, moedas, commodities e criptos')).toBeInTheDocument();
+    expect(screen.queryByText(/mais acompanhados/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Mistura entre/)).not.toBeInTheDocument();
   });
 
   it('tocar num ativo abre a página do gráfico dele', async () => {

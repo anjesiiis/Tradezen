@@ -14,8 +14,6 @@ export function TopAtivosMobile({ mercado = [], abrirAtivo }) {
 
   return (
     <section className="top20">
-      <h2 className="top20-titulo">Top 20 mais acompanhados</h2>
-
       {ativos.length === 0 ? (
         <div className="idx-skel" style={{ height: 260 }} />
       ) : (
@@ -37,8 +35,6 @@ export function TopAtivosMobile({ mercado = [], abrirAtivo }) {
           ))}
         </div>
       )}
-
-      <p className="top20-rodape">Mistura entre ações, moedas, commodities e criptos</p>
     </section>
   );
 }

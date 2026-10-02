@@ -115,15 +115,35 @@ describe('Globo 3D', () => {
     await waitFor(() => expect(raio(svg)).toBeCloseTo(RAIO_BASE * 0.7, 0));
   });
 
-  it('pinça com dois dedos também dá zoom', async () => {
+  it('afastar dois dedos aproxima o globo; juntar, afasta', async () => {
     montarGlobo();
     const svg = await screen.findByRole('img', { name: /globo/i });
     await waitFor(() => expect(raio(svg)).toBeCloseTo(RAIO_BASE, 0));
 
     const dedos = (d) => ({ touches: [{ clientX: 0, clientY: 0 }, { clientX: d, clientY: 0 }] });
-    fireEvent.touchStart(svg, dedos(100));
-    fireEvent.touchMove(svg, dedos(150));   // dedos se afastaram 1,5x
 
-    await waitFor(() => expect(raio(svg)).toBeCloseTo(RAIO_BASE * 1.5, 0));
+    // afastou 100px → raio cresce metade disso
+    fireEvent.touchStart(svg, dedos(100));
+    fireEvent.touchMove(svg, dedos(200));
+    await waitFor(() => expect(raio(svg)).toBeCloseTo(RAIO_BASE + 50, 0));
+
+    // juntou de volta → volta ao tamanho de antes
+    fireEvent.touchMove(svg, dedos(100));
+    await waitFor(() => expect(raio(svg)).toBeCloseTo(RAIO_BASE, 0));
+    fireEvent.touchEnd(svg, { touches: [] });
+  });
+
+  it('um dedo arrastando gira o globo', async () => {
+    montarGlobo();
+    const svg = await screen.findByRole('img', { name: /globo/i });
+    await waitFor(() => expect(visiveis().length).toBeGreaterThan(0));
+    const alvo = pontos()[0];
+    const antes = alvo.getAttribute('transform');
+
+    fireEvent.touchStart(svg, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchMove(svg, { touches: [{ clientX: 170, clientY: 100 }] });
+
+    await waitFor(() => expect(alvo.getAttribute('transform')).not.toBe(antes));
+    fireEvent.touchEnd(svg, { touches: [] });
   });
 });

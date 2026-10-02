@@ -235,54 +235,27 @@ function AppInner(){
   const acoes       = mercado.filter(m=>m.mercado==="B3"&&m.ticker!=="^BVSP");
   const forex       = mercado.filter(m=>m.mercado==="FOREX");
 
-  // Fileira do topo do Dashboard: Bitcoin, Petrobras, Vale, Itaú, Ouro,
-  // Dólar/Real, nessa ordem — mesmo estilo dos cards da página de
-  // Criptomoedas. Cada slot tem uma lista de substitutos da mesma categoria
-  // (cripto/B3/commodity/forex): se o ativo preferido não vier na resposta
-  // do /mercado (Yahoo derruba ticker individual em lote concorrente às
-  // vezes), o card cai pro próximo da lista em vez de ficar "Sem dados" —
-  // um substituto não usado por outro card é sempre melhor que um card
-  // vazio.
-  const DASH_TOP_CONFIG = [
-    {ticker:"BTC-USD",  nome:"Bitcoin",   simbolo:"BTC",   cor:"#F7931A", fallback:["ETH-USD","SOL-USD","BNB-USD","XRP-USD","ADA-USD","DOGE-USD","AVAX-USD"]},
-    {ticker:"PETR4.SA", nome:"Petrobras", simbolo:"PETR4", cor:"#00A650", fallback:["VALE3.SA","ITUB4.SA","BBDC4.SA","WEGE3.SA","MGLU3.SA"]},
-    {ticker:"VALE3.SA", nome:"Vale",      simbolo:"VALE3", cor:"#EAB308", fallback:["ITUB4.SA","PETR4.SA","BBDC4.SA","WEGE3.SA","MGLU3.SA"]},
-    {ticker:"ITUB4.SA", nome:"Itaú",      simbolo:"ITUB4", cor:"#EC7000", fallback:["BBDC4.SA","PETR4.SA","VALE3.SA","WEGE3.SA","MGLU3.SA"]},
-    {ticker:"GC=F",     nome:"Ouro",      simbolo:"OURO",  cor:"#F5A623", fallback:["SI=F","CL=F","BZ=F","NG=F","ZC=F","ZS=F","KC=F"]},
-    {ticker:"USDBRL=X", nome:"USD/BRL",simbolo:"USD/BRL",cor:"#9CA3AF", fallback:["EURUSD=X","EURBRL=X","GBPUSD=X"]},
-  ];
-  const dashTopUsados = new Set();
-  const dashTop = DASH_TOP_CONFIG.map(cfg=>{
-    let achado = mercado.find(m=>m.ticker===cfg.ticker && !dashTopUsados.has(m.ticker));
-    if(!achado){
-      for(const tk of cfg.fallback){
-        achado = mercado.find(m=>m.ticker===tk && !dashTopUsados.has(m.ticker));
-        if(achado) break;
-      }
-    }
-    if(achado){ dashTopUsados.add(achado.ticker); return achado; }
-    return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
-  });
-
-  // Banners da direita — antes era o "Detector de Análise Técnica"
-  // bloqueado com cadeado; por enquanto, enquanto a detecção automática
-  // de padrões não está pronta pra todo mundo ver, viram só mais 3 ativos
-  // reais e clicáveis (sem cadeado). Reusa dashTopUsados pra não repetir
-  // nenhum ticker que já apareceu na fileira do topo.
+  // "Mais Ativos" — antes era o "Detector de Análise Técnica" bloqueado
+  // com cadeado; por enquanto, enquanto a detecção automática de padrões
+  // não está pronta pra todo mundo ver, viram 3 ativos reais e clicáveis
+  // (sem cadeado). Cada slot tem substitutos da mesma categoria pra não
+  // ficar "Sem dados" quando o /mercado não traz o preferido, e o `usados`
+  // evita que dois slots caiam no mesmo ativo.
   const DASH_SIDE_CONFIG = [
     {ticker:"ETH-USD",  nome:"Ethereum", simbolo:"ETH",   cor:"#627EEA", fallback:["SOL-USD","BNB-USD","XRP-USD","ADA-USD","DOGE-USD","AVAX-USD"]},
     {ticker:"BBDC4.SA", nome:"Bradesco", simbolo:"BBDC4", cor:"#CC092F", fallback:["WEGE3.SA","MGLU3.SA","PETR4.SA","VALE3.SA","ITUB4.SA"]},
     {ticker:"SI=F",     nome:"Prata",    simbolo:"PRATA", cor:"#C0C0C0", fallback:["CL=F","BZ=F","NG=F","ZC=F","ZS=F","KC=F"]},
   ];
+  const usados = new Set();
   const dashSide = DASH_SIDE_CONFIG.map(cfg=>{
-    let achado = mercado.find(m=>m.ticker===cfg.ticker && !dashTopUsados.has(m.ticker));
+    let achado = mercado.find(m=>m.ticker===cfg.ticker && !usados.has(m.ticker));
     if(!achado){
       for(const tk of cfg.fallback){
-        achado = mercado.find(m=>m.ticker===tk && !dashTopUsados.has(m.ticker));
+        achado = mercado.find(m=>m.ticker===tk && !usados.has(m.ticker));
         if(achado) break;
       }
     }
-    if(achado){ dashTopUsados.add(achado.ticker); return achado; }
+    if(achado){ usados.add(achado.ticker); return achado; }
     return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
   });
 
@@ -346,44 +319,6 @@ function AppInner(){
               {erro}
             </div>
           )}
-
-          {/* TOPO — mesmo estilo dos cards da página de Criptomoedas.
-              `dash-so-desktop`: no celular quem mostra os ativos é a
-              ListaAtivosMobile (linhas), não estes cards. */}
-          <div className="dash-top-row dash-so-desktop">
-            {dashTop.map((a,i)=>{
-              const cfg = DASH_TOP_CONFIG[i];
-              if("semDados" in a){
-                return (
-                  <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
-                    <div className="idx-top">
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
-                      <span className="idx-name">{cfg.nome}</span>
-                    </div>
-                    <div className="idx-line">
-                      {a.semDados
-                        ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                        : <SkeletonValor/>
-                      }
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
-                  <div className="idx-top">
-                    <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
-                    <span className="idx-name">{a.nome}</span>
-                  </div>
-                  <div className="idx-line">
-                    <span className="idx-price">{fmtP(a.preco)}</span>
-                    <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
-                  </div>
-                  <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
-                </div>
-              );
-            })}
-          </div>
 
           {/* ÁREA PRINCIPAL — Estudo de Mercado (55%) + globo (45%) */}
           <div className="home-principal dash-so-desktop">
