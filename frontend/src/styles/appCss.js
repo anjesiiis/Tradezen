@@ -559,6 +559,21 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .globo-popup-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:11px;font-weight:600;padding:6px 12px;border-radius:14px;cursor:pointer}
 .globo-popup-btn:hover{filter:brightness(1.1)}
 
+/* Popup das praças de ações: as cinco mais negociadas do dia */
+.globo-popup-acoes{gap:2px}
+.globo-popup-rotulo{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin:6px 0 2px}
+.globo-popup-vazio{margin:6px 0;font-size:12px;color:var(--text3)}
+.globo-popup-nota{font-size:10px;color:var(--text3);margin-top:6px}
+.acao-linha{display:flex;align-items:center;gap:8px;width:100%;padding:6px 0;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.06);font:inherit;cursor:pointer;text-align:left}
+.acao-linha:hover,.acao-linha:active{background:rgba(255,255,255,.05);border-radius:6px;padding-left:4px;padding-right:4px}
+.acao-ticker{font-weight:600;font-size:13px;color:#F59E0B;min-width:52px;font-family:var(--font-m)}
+.acao-nome{flex:1;font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acao-variacao{font-size:13px;font-weight:600;min-width:62px;text-align:right;font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.acao-variacao.alta{color:var(--up)}
+.acao-variacao.baixa{color:var(--down)}
+/* No dedo o card precisa de corpo: mínimo 200px e texto de 13px */
+.globo-bloco.compacto .globo-popup{min-width:208px;font-size:13px}
+
 /* ── MERCADOS GLOBAIS ─────────────────────────────────────── */
 .mg{padding:18px 20px 20px;max-width:1280px;margin:0 auto;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
 .mg-head h1{font-family:var(--font-h);font-size:30px;letter-spacing:.5px;margin:0 0 4px;color:var(--text)}

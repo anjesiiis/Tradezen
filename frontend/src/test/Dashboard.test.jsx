@@ -9,11 +9,14 @@ import { TOP_20 } from '../lib/topAtivos.js';
 const esperados = TOP_20.filter((t) => MERCADO_FAKE.some((a) => a.ticker === t));
 
 async function acharLinhas() {
+  // 5s como nos testes do gráfico: a tela inicial monta bastante coisa e,
+  // com a suíte inteira rodando junto, 1s (o padrão) estourava de vez em
+  // quando — era falha de tempo, não de comportamento.
   return waitFor(() => {
     const linhas = document.querySelectorAll('.top20-linha');
     expect(linhas.length).toBe(esperados.length);
     return [...linhas];
-  });
+  }, { timeout: 5000 });
 }
 
 const simboloDa = (linha) => linha.querySelector('.top20-nome strong').textContent;

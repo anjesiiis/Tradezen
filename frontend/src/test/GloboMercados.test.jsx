@@ -13,7 +13,7 @@ vi.mock('../components/GlobeD3.jsx', () => ({
     return (
       <div data-testid="globo">
         {mercados.map((m) => (
-          <button key={m.id} onClick={() => aoSelecionar(m, { x: 50, y: 50 })}>ponto {m.sigla}</button>
+          <button key={m.id} onClick={() => aoSelecionar(m, { x: 50, y: 50 })}>ponto {m.id}</button>
         ))}
       </div>
     );
@@ -29,13 +29,11 @@ function montar() {
 }
 
 describe('Bloco do globo na tela inicial', () => {
-  it('mostra os filtros (Moeda e Índice), todos ligados', async () => {
+  it('mostra os filtros (Moeda, Índice e Ações), todos ligados', async () => {
     montar();
 
-    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Moeda', 'Índice']);
-    for (const fora of ['Cripto', 'Ação']) {
-      expect(screen.queryByRole('button', { name: fora })).not.toBeInTheDocument();
-    }
+    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Moeda', 'Índice', 'Ações']);
+    expect(screen.queryByRole('button', { name: 'Cripto' })).not.toBeInTheDocument();
     for (const { rotulo } of CATEGORIAS) {
       expect(screen.getByRole('button', { name: rotulo })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -45,9 +43,10 @@ describe('Bloco do globo na tela inicial', () => {
   it('desligar "Índice" deixa só as moedas', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
+    await user.click(screen.getByRole('button', { name: 'Ações' }));
 
     expect(mercadosRecebidos).toHaveLength(MOEDAS_GLOBAIS.length);
     expect(mercadosRecebidos.every((m) => m.categoria === 'moeda')).toBe(true);
@@ -56,9 +55,10 @@ describe('Bloco do globo na tela inicial', () => {
   it('desligar "Moeda" deixa só as bolsas', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
 
     await user.click(screen.getByRole('button', { name: 'Moeda' }));
+    await user.click(screen.getByRole('button', { name: 'Ações' }));
 
     expect(mercadosRecebidos).toHaveLength(MERCADOS_GLOBAIS.length);
     expect(mercadosRecebidos.every((m) => m.categoria === 'indice')).toBe(true);
@@ -67,10 +67,11 @@ describe('Bloco do globo na tela inicial', () => {
   it('desligar os dois esvazia o globo', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
     await user.click(screen.getByRole('button', { name: 'Moeda' }));
+    await user.click(screen.getByRole('button', { name: 'Ações' }));
 
     expect(mercadosRecebidos).toHaveLength(0);
     expect(screen.getByText('Nenhum mercado foi escolhido.')).toBeInTheDocument();
@@ -80,7 +81,7 @@ describe('Bloco do globo na tela inicial', () => {
     const user = userEvent.setup();
     montar();
     await user.click(screen.getByRole('button', { name: 'Índice' }));
-    expect(mercadosRecebidos.every((m) => m.categoria === 'moeda')).toBe(true);
+    expect(mercadosRecebidos.every((m) => m.categoria !== 'indice')).toBe(true);
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
 
@@ -92,7 +93,7 @@ describe('Bloco do globo na tela inicial', () => {
     montar();
     await waitFor(() => expect(mercadosRecebidos.length).toBeGreaterThan(0));
 
-    await user.click(screen.getByRole('button', { name: 'ponto B3' }));
+    await user.click(screen.getByRole('button', { name: 'ponto b3' }));
 
     const popup = screen.getByRole('dialog');
     expect(within(popup).getByText('B3')).toBeInTheDocument();
@@ -105,7 +106,7 @@ describe('Bloco do globo na tela inicial', () => {
     montar();
     await waitFor(() => expect(mercadosRecebidos.length).toBeGreaterThan(0));
 
-    await user.click(screen.getByRole('button', { name: 'ponto TSE' }));
+    await user.click(screen.getByRole('button', { name: 'ponto tse' }));
 
     expect(within(screen.getByRole('dialog')).getByText('—')).toBeInTheDocument();
   });
@@ -114,7 +115,7 @@ describe('Bloco do globo na tela inicial', () => {
     const user = userEvent.setup();
     montar();
     await waitFor(() => expect(mercadosRecebidos.length).toBeGreaterThan(0));
-    await user.click(screen.getByRole('button', { name: 'ponto LSE' }));
+    await user.click(screen.getByRole('button', { name: 'ponto lse' }));
 
     await user.click(screen.getByRole('button', { name: 'Fechar' }));
 
@@ -125,7 +126,7 @@ describe('Bloco do globo na tela inicial', () => {
     const user = userEvent.setup();
     montar();
     await waitFor(() => expect(mercadosRecebidos.length).toBeGreaterThan(0));
-    await user.click(screen.getByRole('button', { name: 'ponto B3' }));
+    await user.click(screen.getByRole('button', { name: 'ponto b3' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Moeda' }));

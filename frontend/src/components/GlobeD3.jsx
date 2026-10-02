@@ -29,6 +29,9 @@ const GIRO_POR_QUADRO = 0.06;     // graus — bem devagar, não distrai
 const PAUSA_APOS_ARRASTO = 2000;  // ms parado depois que a mão sai
 const GRAUS_POR_PIXEL = 0.25;     // mouse
 const SENSIBILIDADE_TOQUE = 0.4;  // dedo: movimento mais direto
+const TOLERANCIA_DO_TOQUE = 8;    // px: acima disso o dedo está arrastando
+const DURACAO_DO_TOQUE = 400;     // ms: acima disso não é toque, é demora
+const RAIO_TOQUE = 22;            // alvo maior no dedo que no mouse
 const RAIO_HOVER = 14;            // px até o ponto pra o tooltip aparecer
 const ALTURA_DO_ROTULO = 12;      // px acima do ponto (sobe mais se houver outro ali)
 
@@ -63,7 +66,7 @@ function campoDeEstrelas(tamanho, raioDoGlobo) {
   return estrelas;
 }
 
-export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tamanho = 460 }) {
+export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, aoTocarFora, tamanho = 460 }) {
   const [mundo, setMundo] = useState(null);
   const [erro, setErro] = useState(false);
   const [arrastando, setArrastando] = useState(false);
@@ -82,6 +85,12 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
   const retomarRef = useRef(null);
   const mercadosRef = useRef(mercados);
   mercadosRef.current = mercados;
+  // os handlers de toque são registrados uma vez; sem os refs eles ficariam
+  // com a versão antiga das funções
+  const aoSelecionarRef = useRef(aoSelecionar);
+  aoSelecionarRef.current = aoSelecionar;
+  const aoTocarForaRef = useRef(aoTocarFora);
+  aoTocarForaRef.current = aoTocarFora;
 
   // Mapa do mundo: topojson → GeoJSON uma vez só
   useEffect(() => {
@@ -214,6 +223,8 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
     let inicioY = null;
     let rotacaoNoToque = null;
     let distanciaEntreDedos = null;
+    let comecouEm = 0;
+    let arrastou = false;
     const raioBase = (tamanho / 2) * FOLGA_DA_ESFERA;
 
     const distancia = (toques) =>
@@ -233,6 +244,8 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         esconderTooltip();
         inicioX = evento.touches[0].clientX;
         inicioY = evento.touches[0].clientY;
+        comecouEm = Date.now();
+        arrastou = false;
         // guarda a rotação do começo e soma o deslocamento TOTAL a cada
         // quadro: somar o deslocamento de cada evento acumula erro e treme
         rotacaoNoToque = [...rotacaoRef.current];
@@ -253,6 +266,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         evento.preventDefault();
         const dx = evento.touches[0].clientX - inicioX;
         const dy = evento.touches[0].clientY - inicioY;
+        if (Math.hypot(dx, dy) > TOLERANCIA_DO_TOQUE) arrastou = true;
         const lat = rotacaoNoToque[1] - dy * SENSIBILIDADE_TOQUE;
         rotacaoRef.current = [
           rotacaoNoToque[0] + dx * SENSIBILIDADE_TOQUE,
@@ -261,7 +275,21 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
       }
     }
 
-    function terminou() {
+    function terminou(evento) {
+      // Toque curto e parado é TOQUE, não arrasto: abre o card do ponto (ou
+      // fecha o que estiver aberto, se o dedo caiu no vazio). Sem isto o
+      // celular não abria nada — o preventDefault do arrasto engole o
+      // clique sintético que o onClick dos pontos esperava.
+      const dedo = evento?.changedTouches?.[0];
+      const rapido = Date.now() - comecouEm < DURACAO_DO_TOQUE;
+      if (dedo && inicioX !== null && !arrastou && rapido) {
+        const area = svgRef.current?.getBoundingClientRect();
+        if (area) {
+          const alvo = pontoEm(dedo.clientX - area.left, dedo.clientY - area.top, RAIO_TOQUE);
+          if (alvo) aoSelecionarRef.current?.(alvo.mercado, { x: alvo.x, y: alvo.y });
+          else aoTocarForaRef.current?.();
+        }
+      }
       inicioX = null;
       inicioY = null;
       distanciaEntreDedos = null;
@@ -284,6 +312,18 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
   // ── Tooltip ────────────────────────────────────────────────
   // div solto por cima do SVG, com pointer-events:none: dentro do SVG ele
   // roubaria o cursor dos pontos e mudaria o layout a cada movimento.
+  // Qual ponto está embaixo de (x, y), em coordenada do SVG
+  function pontoEm(x, y, tolerancia = RAIO_HOVER) {
+    for (const mercado of mercadosRef.current) {
+      const no = pontosRef.current.get(mercado.id);
+      if (!no || no.style.display === "none") continue;
+      const [px, py] = (no.getAttribute("transform") || "")
+        .replace(/[^\d.,-]/g, "").split(",").map(Number);
+      if (Math.hypot(px - x, py - y) <= tolerancia) return { mercado, x: px, y: py };
+    }
+    return null;
+  }
+
   function aoPassarPorCima(evento) {
     const area = svgRef.current?.getBoundingClientRect();
     const dica = tooltipRef.current;
@@ -291,17 +331,9 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
     const x = evento.clientX - area.left;
     const y = evento.clientY - area.top;
 
-    let achado = null;
-    for (const mercado of mercadosRef.current) {
-      const no = pontosRef.current.get(mercado.id);
-      if (!no || no.style.display === "none") continue;
-      const [px, py] = (no.getAttribute("transform") || "")
-        .replace(/[^\d.,-]/g, "").split(",").map(Number);
-      if (Math.hypot(px - x, py - y) <= RAIO_HOVER) { achado = mercado; break; }
-    }
-
+    const achado = pontoEm(x, y)?.mercado || null;
     if (!achado) { esconderTooltip(); return; }
-    dica.textContent = `${achado.sigla} · ${achado.cidade}`;
+    dica.textContent = `${achado.categoria === "acao" ? achado.nome : achado.sigla} · ${achado.cidade}`;
     dica.style.transform = `translate3d(${x + 14}px, ${y - 10}px, 0)`;
     dica.style.opacity = "1";
   }
@@ -383,7 +415,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
               }}
               role="button"
               tabIndex={0}
-              aria-label={`${mercado.sigla} — ${mercado.cidade}`}
+              aria-label={`${mercado.categoria === "acao" ? mercado.nome : mercado.sigla} — ${mercado.cidade}`}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();

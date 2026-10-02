@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../lib/api.js";
 import { CATEGORIAS, PONTOS_DO_GLOBO, variacaoDoDia } from "../lib/mercadosGlobais.js";
+import { buscarTopAcoes } from "../lib/topAcoes.js";
+import { fmtP } from "../lib/mercado.js";
 
 // Bloco do globo da página inicial: o globo em si, a coluna de filtros e o
 // card que abre ao clicar num ponto. O desenho do globo fica no GlobeD3,
@@ -9,7 +11,7 @@ import { CATEGORIAS, PONTOS_DO_GLOBO, variacaoDoDia } from "../lib/mercadosGloba
 // está no celular (onde o bloco some) não baixa nada disso.
 const GlobeD3 = lazy(() => import("./GlobeD3.jsx"));
 
-const TICKERS = PONTOS_DO_GLOBO.map((m) => m.indice);
+const TICKERS = PONTOS_DO_GLOBO.map((m) => m.indice).filter(Boolean);
 const MIN_GLOBO = 240;
 const MAX_GLOBO = 440;
 const MAX_GLOBO_COMPACTO = 280;   // celular: cabe sem empurrar a lista
@@ -89,6 +91,7 @@ export default function GloboMercados({ compacto = false }) {
               selecionado={selecionado}
               tamanho={tamanho}
               aoSelecionar={(mercado, ponto) => { setSelecionado(mercado); setPosicao(ponto); }}
+              aoTocarFora={() => setSelecionado(null)}
             />
           </Suspense>
 
@@ -97,14 +100,27 @@ export default function GloboMercados({ compacto = false }) {
           )}
 
           {selecionado && posicao && (
-            <PopupMercado
-              mercado={selecionado}
-              dado={cotacoes?.[selecionado.indice]}
-              posicao={posicao}
-              area={area}
-              aoFechar={() => setSelecionado(null)}
-              aoVerIndice={() => navigate(`/ativo/${encodeURIComponent(selecionado.indice)}`)}
-            />
+            selecionado.categoria === "acao" ? (
+              <PopupAcoes
+                mercado={selecionado}
+                posicao={posicao}
+                area={area}
+                aoFechar={() => setSelecionado(null)}
+                aoAbrirAcao={(acao) => {
+                  setSelecionado(null);
+                  navigate(`/ativo/${encodeURIComponent(acao.ticker)}`);
+                }}
+              />
+            ) : (
+              <PopupMercado
+                mercado={selecionado}
+                dado={cotacoes?.[selecionado.indice]}
+                posicao={posicao}
+                area={area}
+                aoFechar={() => setSelecionado(null)}
+                aoVerIndice={() => navigate(`/ativo/${encodeURIComponent(selecionado.indice)}`)}
+              />
+            )
           )}
         </div>
 
@@ -132,15 +148,76 @@ export default function GloboMercados({ compacto = false }) {
   );
 }
 
+// Popup de uma praça de ações: as cinco mais negociadas do dia, por
+// volume de verdade (ver lib/topAcoes.js). Cada linha abre o gráfico.
+function PopupAcoes({ mercado, posicao, area, aoFechar, aoAbrirAcao }) {
+  // { estado: "buscando" | "pronto" | "erro", lista }
+  const [busca, setBusca] = useState({ estado: "buscando", lista: [] });
+
+  useEffect(() => {
+    let vivo = true;
+    buscarTopAcoes(mercado.praca)
+      .then((lista) => {
+        if (!vivo) return;
+        setBusca(lista.length ? { estado: "pronto", lista } : { estado: "erro", lista: [] });
+      })
+      .catch(() => { if (vivo) setBusca({ estado: "erro", lista: [] }); });
+    return () => { vivo = false; };
+  }, [mercado.praca]);
+
+  const acoes = busca.estado === "pronto" ? busca.lista : null;
+  const erro = busca.estado === "erro";
+
+  const { esquerda, topo } = encaixar(posicao, area, 248, 340);
+
+  return (
+    <div
+      className="globo-popup globo-popup-acoes"
+      style={{ left: esquerda, top: topo, width: 248 }}
+      role="dialog"
+      aria-label={mercado.nome}
+    >
+      <button type="button" className="globo-popup-x" onClick={aoFechar} aria-label="Fechar">✕</button>
+      <strong style={{ color: mercado.cor }}>{mercado.sigla}</strong>
+      <span className="globo-popup-local">{mercado.cidade} · {mercado.pais}</span>
+      <span className="globo-popup-rotulo">Top 5 mais negociadas</span>
+
+      {erro && <p className="globo-popup-vazio">Não foi possível carregar agora.</p>}
+      {!erro && !acoes && <p className="globo-popup-vazio">Carregando o pregão…</p>}
+
+      {acoes?.map((a) => (
+        <button key={a.ticker} type="button" className="acao-linha" onClick={() => aoAbrirAcao(a)}>
+          <span className="acao-ticker">{a.simbolo}</span>
+          <span className="acao-nome">{a.nome}</span>
+          <span className={`acao-variacao ${a.alta ? "alta" : "baixa"}`}>
+            {a.alta ? "▲" : "▼"} {Math.abs(a.variacao).toFixed(2)}%
+          </span>
+        </button>
+      ))}
+
+      {acoes?.length > 0 && (
+        <span className="globo-popup-nota">
+          Maior volume: {acoes[0].simbolo}, {acoes[0].moeda} {fmtP(acoes[0].preco)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Encaixa o card dentro da área do globo, sem sair pelas bordas.
+function encaixar(posicao, area, largura, altura) {
+  const sobraX = Math.max(0, (area.largura - Math.min(area.largura, area.altura)) / 2);
+  return {
+    esquerda: Math.max(4, Math.min(posicao.x + sobraX + 14, Math.max(4, area.largura - largura - 4))),
+    topo: Math.max(4, Math.min(posicao.y - 30, Math.max(4, area.altura - altura))),
+  };
+}
+
 // Card flutuante do ponto clicado, preso dentro da área do globo.
 function PopupMercado({ mercado, dado, posicao, area, aoFechar, aoVerIndice }) {
   const LARGURA = 226;
   const ALTURA = 188;   // o suficiente pro texto de duas linhas e o rodapé
-  // O ponto clicado está em coordenada do SVG, que é centralizado na área:
-  // sem somar essa sobra o card nasceria deslocado pra esquerda.
-  const sobraX = Math.max(0, (area.largura - Math.min(area.largura, area.altura)) / 2);
-  const esquerda = Math.max(4, Math.min(posicao.x + sobraX + 14, Math.max(4, area.largura - LARGURA - 4)));
-  const topo = Math.max(4, Math.min(posicao.y - 30, Math.max(4, area.altura - ALTURA)));
+  const { esquerda, topo } = encaixar(posicao, area, LARGURA, ALTURA);
   const alta = dado ? dado.variacao >= 0 : null;
 
   return (

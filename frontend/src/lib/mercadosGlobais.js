@@ -8,6 +8,7 @@
 export const CATEGORIAS = [
   { id: "moeda", rotulo: "Moeda" },
   { id: "indice", rotulo: "Índice" },
+  { id: "acao", rotulo: "Ações" },
 ];
 
 export const MERCADOS_GLOBAIS = [
@@ -199,12 +200,53 @@ export const MOEDAS_GLOBAIS = [
   },
 ];
 
+
+// ── AÇÕES ─────────────────────────────────────────────────────
+// Dois pontos, um por praça, em dourado — a cor separa à primeira vista
+// de moeda (verde) e índice (azul). Ficam de propósito uns décimos de
+// grau ao lado do ponto do índice da mesma cidade, pra não sumirem um
+// debaixo do outro.
+const DOURADO = "#F59E0B";
+
+export const ACOES_GLOBAIS = [
+  {
+    id: "b3_acoes",
+    codigo: "B3",
+    categoria: "acao",
+    sigla: "B3",
+    nome: "Ações da B3",
+    cidade: "São Paulo",
+    pais: "Brasil",
+    continente: "América do Sul",
+    praca: "B3",
+    cor: DOURADO,
+    lat: -23.57,
+    lng: -46.6,
+    descricao: "As ações mais negociadas do pregão brasileiro, por volume do dia.",
+  },
+  {
+    id: "nyse_acoes",
+    codigo: "NYSE",
+    categoria: "acao",
+    sigla: "NYSE",
+    nome: "Ações da NYSE",
+    cidade: "Nova York",
+    pais: "Estados Unidos",
+    continente: "América do Norte",
+    praca: "NYSE",
+    cor: DOURADO,
+    lat: 40.73,
+    lng: -74.03,
+    descricao: "As ações americanas mais negociadas do dia, por volume.",
+  },
+];
+
 /**
  * Tudo que o globo desenha. A lista de cards da tela Mercados Globais
  * continua sendo só MERCADOS_GLOBAIS (bolsas) — moeda entra no mapa, não
  * naquela lista.
  */
-export const PONTOS_DO_GLOBO = [...MERCADOS_GLOBAIS, ...MOEDAS_GLOBAIS];
+export const PONTOS_DO_GLOBO = [...MERCADOS_GLOBAIS, ...MOEDAS_GLOBAIS, ...ACOES_GLOBAIS];
 
 /** Variação do dia a partir dos candles: último fechamento contra o anterior. */
 export function variacaoDoDia(candles) {
