@@ -418,9 +418,10 @@ function AppInner(){
             </div>
 
             {/* Globo dos mercados globais — ocupa a direita do Estudo de
-                Mercado. Lazy por dentro (d3 + mapa do mundo), e some no
-                celular junto com o resto do .dash-so-desktop. */}
-            <GloboMercados/>
+                Mercado. No celular ele é escondido por CSS, então nem monta:
+                montado, buscava cotação e carregava o mapa do mundo pra
+                ninguém ver. */}
+            {!isMobile && <GloboMercados/>}
           </div>
 
           {/* Mais Ativos — saiu da coluna da direita (onde agora fica o
