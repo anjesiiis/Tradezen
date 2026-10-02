@@ -442,6 +442,44 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
+/* ── INÍCIO: ESTUDO DE MERCADO + GLOBO ────────────────────── */
+/* Proporção, não largura fixa: quando a sidebar abre, os dois blocos
+   encolhem juntos e continuam na mesma altura (align-items:stretch). */
+.home-principal{display:grid;grid-template-columns:55fr 45fr;gap:16px;align-items:stretch;width:100%;min-width:0}
+.home-principal>*{min-width:0}
+@media (max-width:1100px){.home-principal{grid-template-columns:1fr}}
+
+.home-mais{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.home-mais>span{grid-column:1/-1}
+
+.globo-bloco{padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:visible}
+.globo-bloco-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.globo-bloco-titulo{font-size:13px;font-weight:700;color:var(--text)}
+.globo-bloco-sub{font-size:11px;color:var(--text2)}
+.globo-bloco-corpo{flex:1;display:flex;gap:12px;min-height:0}
+.globo-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+.globo-vazio{position:absolute;max-width:200px;text-align:center;color:var(--text2);font-size:12px}
+
+.globo-filtros{flex:0 0 96px;display:flex;flex-direction:column;gap:6px;padding-top:4px}
+.globo-filtro{display:flex;align-items:center;gap:7px;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 8px;font:inherit;font-size:11px;color:var(--text2);cursor:pointer;text-align:left}
+.globo-filtro:hover{border-color:var(--accent);color:var(--text)}
+.globo-filtro.ligado{color:var(--text);border-color:var(--accent)}
+.globo-filtro-caixa{width:13px;height:13px;border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent);flex-shrink:0}
+.globo-filtro.ligado .globo-filtro-caixa{border-color:var(--accent)}
+
+.globo-popup{position:absolute;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:5px;box-shadow:0 10px 32px rgba(0,0,0,.5);z-index:20}
+.globo-popup strong{font-size:13px;padding-right:16px}
+.globo-popup-local{font-size:10px;color:var(--text2)}
+.globo-popup p{margin:2px 0 4px;font-size:11px;line-height:1.45;color:var(--text3)}
+.globo-popup-x{position:absolute;top:6px;right:7px;background:none;border:0;color:var(--text2);font-size:12px;cursor:pointer;line-height:1}
+.globo-popup-x:hover{color:var(--text)}
+.globo-popup-rodape{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.globo-popup-var{font-family:var(--font-m);font-size:12px;font-weight:600;color:var(--text3);font-variant-numeric:tabular-nums}
+.globo-popup-var.alta{color:var(--up)}
+.globo-popup-var.baixa{color:var(--down)}
+.globo-popup-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:11px;font-weight:600;padding:6px 12px;border-radius:14px;cursor:pointer}
+.globo-popup-btn:hover{filter:brightness(1.1)}
+
 /* ── MERCADOS GLOBAIS ─────────────────────────────────────── */
 .mg{padding:18px 20px 40px;max-width:1280px;margin:0 auto}
 .mg-head h1{font-family:var(--font-h);font-size:30px;letter-spacing:.5px;margin:0 0 4px;color:var(--text)}
@@ -725,6 +763,10 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */
   .abody{flex-direction:column}
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
+
+  /* ── INÍCIO: globo ── */
+  .globo-bloco{display:none}
+  .home-mais{grid-template-columns:1fr}
 
   /* ── MERCADOS GLOBAIS ── */
   /* O globo é desktop: no celular ele comeria a tela inteira e o d3 nem

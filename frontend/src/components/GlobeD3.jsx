@@ -158,7 +158,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
             <circle r={ativo ? 11 : 9} fill={mercado.cor} opacity="0.18" />
             <circle r={ativo ? 5.5 : 4} fill={mercado.cor} stroke="#05080F" strokeWidth="1" />
             <text y={-12} textAnchor="middle" fill={mercado.cor} fontSize="10" fontWeight="700">
-              {mercado.sigla}
+              {mercado.codigo || mercado.sigla}
             </text>
           </g>
         );

@@ -4,9 +4,18 @@
 // que a variação do dia é buscada e é pra ele que o botão "Ver índice"
 // leva, na mesma tela de gráfico do resto do app.
 
+// Filtros ao lado do globo. Hoje os seis pontos são bolsas, então valem
+// como "Índice" (o índice da praça) e "Ação" (é onde as ações são
+// negociadas). Moeda e Cripto ainda não têm ponto no mapa — cripto nem
+// tem sede física; quando definirmos o que entra, é só acrescentar a
+// categoria aqui.
+export const CATEGORIAS = ["Ação", "Moeda", "Cripto", "Índice"];
+
 export const MERCADOS_GLOBAIS = [
   {
     id: "b3",
+    codigo: "IBOV",
+    categorias: ["Índice", "Ação"],
     sigla: "B3",
     nome: "B3 — Brasil, Bolsa, Balcão",
     cidade: "São Paulo",
@@ -21,6 +30,8 @@ export const MERCADOS_GLOBAIS = [
   },
   {
     id: "nyse",
+    codigo: "SPX",
+    categorias: ["Índice", "Ação"],
     sigla: "NYSE",
     nome: "New York Stock Exchange",
     cidade: "Nova York",
@@ -35,6 +46,8 @@ export const MERCADOS_GLOBAIS = [
   },
   {
     id: "lse",
+    codigo: "FTSE",
+    categorias: ["Índice", "Ação"],
     sigla: "LSE",
     nome: "London Stock Exchange",
     cidade: "Londres",
@@ -49,6 +62,8 @@ export const MERCADOS_GLOBAIS = [
   },
   {
     id: "tse",
+    codigo: "N225",
+    categorias: ["Índice", "Ação"],
     sigla: "TSE",
     nome: "Tokyo Stock Exchange",
     cidade: "Tóquio",
@@ -63,6 +78,8 @@ export const MERCADOS_GLOBAIS = [
   },
   {
     id: "fse",
+    codigo: "DAX",
+    categorias: ["Índice", "Ação"],
     sigla: "FSE",
     nome: "Frankfurt Stock Exchange",
     cidade: "Frankfurt",
@@ -77,6 +94,8 @@ export const MERCADOS_GLOBAIS = [
   },
   {
     id: "hkex",
+    codigo: "HSI",
+    categorias: ["Índice", "Ação"],
     sigla: "HKEX",
     nome: "Hong Kong Stock Exchange",
     cidade: "Hong Kong",

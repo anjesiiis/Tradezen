@@ -20,6 +20,7 @@ const PaginaMercadosOverview = lazy(() => import("./MercadosOverview.jsx"));
 // Mercados Globais carrega o globo (d3 + mapa do mundo) — por isso entra
 // por lazy como as outras seções, e só pra quem abre essa aba.
 const PaginaMercadosGlobais = lazy(() => import("./MercadosGlobais.jsx"));
+import GloboMercados from "../components/GloboMercados.jsx";
 const PaginaCriptomoedas = lazy(() => import("./Criptomoedas.jsx"));
 const PaginaListaAtivos = lazy(() => import("./Favoritos.jsx"));
 const PaginaPrincipaisAtivosComparativo = lazy(() => import("./PrincipaisAtivos.jsx"));
@@ -39,7 +40,9 @@ function AppInner(){
   const [marketTab,setMTab]  = useState("1D");
   const [ibovChart,setIbovChart] = useState([]);
   const [erro,setErro]       = useState("");
-  const [sbCollapsed,setSbCollapsed] = useState(false);
+  // Recolhida por padrão: sobra largura pro bloco IBOV + globo. Abrir
+  // encolhe o conteúdo sozinho (a .sb é flex-item com transição).
+  const [sbCollapsed,setSbCollapsed] = useState(true);
   // Suporta /mercados?secao=favoritos (usado pelo redirecionamento de
   // /favoritos) — só lido na primeira renderização, de propósito.
   const [secao,setSecao]     = useState(()=> new URLSearchParams(location.search).get("secao") || "inicio");
@@ -367,8 +370,8 @@ function AppInner(){
             })}
           </div>
 
-          {/* ÁREA PRINCIPAL — gráfico do Ibovespa (70%) + painel lateral (30%) */}
-          <div className="crypto-main-grid dash-so-desktop">
+          {/* ÁREA PRINCIPAL — Estudo de Mercado (55%) + globo (45%) */}
+          <div className="home-principal dash-so-desktop">
             <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",rowGap:6}}>
@@ -414,46 +417,53 @@ function AppInner(){
               </div>
             </div>
 
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              {/* Mais Ativos — antes era o "Detector de Análise Técnica"
-                  bloqueado com cadeado; por enquanto, viram só mais 3 ativos
-                  reais, clicáveis, sem cadeado nenhum (ver comentário perto
-                  de DASH_SIDE_CONFIG, mais acima nesse componente). */}
-              <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Mais Ativos</span>
-              {dashSide.map((a,i)=>{
-                const cfg = DASH_SIDE_CONFIG[i];
-                if("semDados" in a){
+            {/* Globo dos mercados globais — ocupa a direita do Estudo de
+                Mercado. Lazy por dentro (d3 + mapa do mundo), e some no
+                celular junto com o resto do .dash-so-desktop. */}
+            <GloboMercados/>
+          </div>
+
+          {/* Mais Ativos — saiu da coluna da direita (onde agora fica o
+              globo) e virou uma faixa própria, em três colunas. */}
+          <div className="home-mais dash-so-desktop">
+                {/* Mais Ativos — antes era o "Detector de Análise Técnica"
+                    bloqueado com cadeado; por enquanto, viram só mais 3 ativos
+                    reais, clicáveis, sem cadeado nenhum (ver comentário perto
+                    de DASH_SIDE_CONFIG, mais acima nesse componente). */}
+                <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Mais Ativos</span>
+                {dashSide.map((a,i)=>{
+                  const cfg = DASH_SIDE_CONFIG[i];
+                  if("semDados" in a){
+                    return (
+                      <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
+                        <div className="idx-top">
+                          <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
+                          <span className="idx-name">{cfg.nome}</span>
+                        </div>
+                        <div className="idx-line">
+                          {a.semDados
+                            ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
+                            : <SkeletonValor/>
+                          }
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
-                    <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
+                    <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
                       <div className="idx-top">
-                        <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
-                        <span className="idx-name">{cfg.nome}</span>
+                        <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
+                        <span className="idx-name">{a.nome}</span>
                       </div>
                       <div className="idx-line">
-                        {a.semDados
-                          ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                          : <SkeletonValor/>
-                        }
+                        <span className="idx-price">{fmtP(a.preco)}</span>
+                        <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
                       </div>
+                      <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
                     </div>
                   );
-                }
-                return (
-                  <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
-                    <div className="idx-top">
-                      <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
-                      <span className="idx-name">{a.nome}</span>
-                    </div>
-                    <div className="idx-line">
-                      <span className="idx-price">{fmtP(a.preco)}</span>
-                      <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
-                    </div>
-                    <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
-                  </div>
-                );
-              })}
+                })}
             </div>
-          </div>
 
           {/* Ticker */}
           <div className="tbar">

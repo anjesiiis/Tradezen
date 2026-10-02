@@ -220,6 +220,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Ícone de ativo | `components/IconeAtivo.jsx` |
 | Skeleton loading | `components/Skeleton.jsx` |
 | Globo 3D interativo (D3) | `components/GlobeD3.jsx` (mapa em `public/world-110m.json`) |
+| Bloco do globo na tela inicial (filtros + popup) | `components/GloboMercados.jsx` |
 | Toggle de tema | `components/ThemeToggle.jsx` |
 
 ### Frontend — Libs (frontend/src/lib/)
