@@ -255,6 +255,8 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
 
         {mercados.map((mercado) => {
           const ativo = selecionado?.id === mercado.id;
+          // moeda é ponto menor: são cinco e não devem poluir o mapa
+          const raio = mercado.categoria === "moeda" ? 3 : 4;
           return (
             <g
               key={mercado.id}
@@ -283,8 +285,11 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
                 }
               }}
             >
-              <circle r={ativo ? 11 : 9} fill={mercado.cor} opacity="0.18" />
-              <circle r={ativo ? 5.5 : 4} fill={mercado.cor} stroke={OCEANO} strokeWidth="1" />
+              {/* alvo invisível: o ponto da moeda tem raio 3 e o globo gira
+                  enquanto se mira — clicar nele a olho nu seria sorte */}
+              <circle r="12" fill="transparent" />
+              <circle r={(ativo ? raio + 1.5 : raio) * 2.25} fill={mercado.cor} opacity="0.18" />
+              <circle r={ativo ? raio + 1.5 : raio} fill={mercado.cor} stroke={OCEANO} strokeWidth="1" />
               <text y={-12} textAnchor="middle" fill={mercado.cor} fontSize="10" fontWeight="700">
                 {mercado.codigo || mercado.sigla}
               </text>

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../lib/api.js";
-import { CATEGORIAS, MERCADOS_GLOBAIS, variacaoDoDia } from "../lib/mercadosGlobais.js";
+import { CATEGORIAS, PONTOS_DO_GLOBO, variacaoDoDia } from "../lib/mercadosGlobais.js";
 
 // Bloco do globo da página inicial: o globo em si, a coluna de filtros e o
 // card que abre ao clicar num ponto. O desenho do globo fica no GlobeD3,
@@ -9,7 +9,7 @@ import { CATEGORIAS, MERCADOS_GLOBAIS, variacaoDoDia } from "../lib/mercadosGlob
 // está no celular (onde o bloco some) não baixa nada disso.
 const GlobeD3 = lazy(() => import("./GlobeD3.jsx"));
 
-const TICKERS = MERCADOS_GLOBAIS.map((m) => m.indice);
+const TICKERS = PONTOS_DO_GLOBO.map((m) => m.indice);
 const MIN_GLOBO = 240;
 const MAX_GLOBO = 440;
 
@@ -66,7 +66,7 @@ export default function GloboMercados() {
 
   // Só os pontos das categorias ligadas chegam ao globo — o mapa em si não
   // é redesenhado por causa disso, só a lista de pontos muda.
-  const visiveis = MERCADOS_GLOBAIS.filter((m) => filtros[m.categoria]);
+  const visiveis = PONTOS_DO_GLOBO.filter((m) => filtros[m.categoria]);
 
   return (
     <div className="card globo-bloco" onClick={() => setSelecionado(null)}>
@@ -105,7 +105,7 @@ export default function GloboMercados() {
         <div className="globo-filtros" onClick={(e) => e.stopPropagation()}>
           {CATEGORIAS.map(({ id, rotulo }) => {
             const ligado = filtros[id];
-            const quantos = MERCADOS_GLOBAIS.filter((m) => m.categoria === id).length;
+            const quantos = PONTOS_DO_GLOBO.filter((m) => m.categoria === id).length;
             return (
               <button
                 key={id}

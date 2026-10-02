@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import GloboMercados from '../components/GloboMercados.jsx';
-import { CATEGORIAS, MERCADOS_GLOBAIS } from '../lib/mercadosGlobais.js';
+import { CATEGORIAS, MERCADOS_GLOBAIS, MOEDAS_GLOBAIS, PONTOS_DO_GLOBO } from '../lib/mercadosGlobais.js';
 
 // Dublê do globo: o de verdade baixa d3 + mapa do mundo, que não acrescenta
 // nada em jsdom. O que importa aqui é quem chega até ele e o que volta.
@@ -29,46 +29,70 @@ function montar() {
 }
 
 describe('Bloco do globo na tela inicial', () => {
-  it('mostra os quatro filtros, todos ligados', async () => {
+  it('mostra os filtros (Ação, Moeda e Índice), todos ligados', async () => {
     montar();
 
+    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Ação', 'Moeda', 'Índice']);
+    expect(screen.queryByRole('button', { name: 'Cripto' })).not.toBeInTheDocument();
     for (const { rotulo } of CATEGORIAS) {
       expect(screen.getByRole('button', { name: rotulo })).toHaveAttribute('aria-pressed', 'true');
     }
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(MERCADOS_GLOBAIS.length));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(PONTOS_DO_GLOBO.length));
   });
 
-  it('desligar a categoria tira os pontos dela do globo', async () => {
+  it('desligar "Índice" deixa só as moedas', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(6));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
 
-    // as seis bolsas são "indice": desligando esse filtro, o globo esvazia
     await user.click(screen.getByRole('button', { name: 'Índice' }));
+
+    expect(mercadosRecebidos).toHaveLength(MOEDAS_GLOBAIS.length);
+    expect(mercadosRecebidos.every((m) => m.categoria === 'moeda')).toBe(true);
+  });
+
+  it('desligar "Moeda" deixa só as bolsas', async () => {
+    const user = userEvent.setup();
+    montar();
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
+
+    await user.click(screen.getByRole('button', { name: 'Moeda' }));
+
+    expect(mercadosRecebidos).toHaveLength(MERCADOS_GLOBAIS.length);
+    expect(mercadosRecebidos.every((m) => m.categoria === 'indice')).toBe(true);
+  });
+
+  it('desligar os dois esvazia o globo', async () => {
+    const user = userEvent.setup();
+    montar();
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
+
+    await user.click(screen.getByRole('button', { name: 'Índice' }));
+    await user.click(screen.getByRole('button', { name: 'Moeda' }));
 
     expect(mercadosRecebidos).toHaveLength(0);
     expect(screen.getByText(/Nenhum mercado nas categorias escolhidas/)).toBeInTheDocument();
   });
 
-  it('desligar uma categoria sem pontos não mexe no globo', async () => {
+  it('desligar "Ação", que ainda não tem ponto, não mexe no globo', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(6));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
 
-    await user.click(screen.getByRole('button', { name: 'Cripto' }));
+    await user.click(screen.getByRole('button', { name: 'Ação' }));
 
-    expect(mercadosRecebidos).toHaveLength(6);
+    expect(mercadosRecebidos).toHaveLength(11);
   });
 
   it('religar o filtro traz os pontos de volta', async () => {
     const user = userEvent.setup();
     montar();
     await user.click(screen.getByRole('button', { name: 'Índice' }));
-    expect(mercadosRecebidos).toHaveLength(0);
+    expect(mercadosRecebidos.every((m) => m.categoria === 'moeda')).toBe(true);
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
 
-    expect(mercadosRecebidos).toHaveLength(6);
+    expect(mercadosRecebidos).toHaveLength(PONTOS_DO_GLOBO.length);
   });
 
   it('clicar num ponto abre o card com a variação do dia e o botão do índice', async () => {

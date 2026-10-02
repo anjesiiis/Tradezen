@@ -4,12 +4,11 @@
 // que a variação do dia é buscada e é pra ele que o botão "Ver índice"
 // leva, na mesma tela de gráfico do resto do app.
 
-// Filtros ao lado do globo. Hoje os seis pontos são bolsas e todos são
-// "indice"; moeda e cripto ficam prontos pra receber pontos depois.
+// Filtros ao lado do globo. "acao" ainda não tem ponto no mapa — fica
+// pronto pra receber.
 export const CATEGORIAS = [
   { id: "acao", rotulo: "Ação" },
   { id: "moeda", rotulo: "Moeda" },
-  { id: "cripto", rotulo: "Cripto" },
   { id: "indice", rotulo: "Índice" },
 ];
 
@@ -111,6 +110,103 @@ export const MERCADOS_GLOBAIS = [
     descricao: "Principal ponte entre o capital internacional e as empresas chinesas. O Hang Seng é o índice de referência da região.",
   },
 ];
+
+
+// ── MOEDAS ────────────────────────────────────────────────────
+// Onde fica quem emite a moeda (banco central), não a bolsa. Verde-menta
+// pra se distinguir dos índices à primeira vista, e ponto um pouco menor
+// (ver GlobeD3), já que são mais e não devem poluir o mapa.
+const VERDE_MOEDA = "#34D399";
+
+export const MOEDAS_GLOBAIS = [
+  {
+    id: "brl",
+    codigo: "BRL",
+    categoria: "moeda",
+    sigla: "BRL",
+    nome: "Real Brasileiro",
+    cidade: "Brasília",
+    pais: "Brasil",
+    continente: "América do Sul",
+    indice: "USDBRL=X",
+    nomeIndice: "USD/BRL",
+    cor: VERDE_MOEDA,
+    lat: -15.78,
+    lng: -47.93,
+    descricao: "Moeda oficial do Brasil, emitida pelo Banco Central em Brasília.",
+  },
+  {
+    id: "usd",
+    codigo: "USD",
+    categoria: "moeda",
+    sigla: "USD",
+    nome: "Dólar Americano",
+    cidade: "Washington",
+    pais: "Estados Unidos",
+    continente: "América do Norte",
+    indice: "DX-Y.NYB",
+    nomeIndice: "Índice do Dólar",
+    cor: VERDE_MOEDA,
+    lat: 38.89,
+    lng: -77.04,
+    descricao: "Principal moeda de reserva global, emitida pelo Federal Reserve em Washington.",
+  },
+  {
+    id: "eur",
+    codigo: "EUR",
+    categoria: "moeda",
+    sigla: "EUR",
+    nome: "Euro",
+    cidade: "Frankfurt",
+    pais: "Zona do Euro",
+    continente: "Europa",
+    indice: "EURUSD=X",
+    nomeIndice: "EUR/USD",
+    cor: VERDE_MOEDA,
+    lat: 50.11,
+    lng: 8.68,
+    descricao: "Moeda oficial da Zona do Euro, gerida pelo Banco Central Europeu em Frankfurt.",
+  },
+  {
+    id: "gbp",
+    codigo: "GBP",
+    categoria: "moeda",
+    sigla: "GBP",
+    nome: "Libra Esterlina",
+    cidade: "Londres",
+    pais: "Reino Unido",
+    continente: "Europa",
+    indice: "GBPUSD=X",
+    nomeIndice: "GBP/USD",
+    cor: VERDE_MOEDA,
+    lat: 51.514,
+    lng: -0.089,
+    descricao: "Moeda do Reino Unido, uma das mais antigas em circulação no mundo.",
+  },
+  {
+    id: "cny",
+    codigo: "CNY",
+    categoria: "moeda",
+    sigla: "CNY",
+    nome: "Yuan Chinês",
+    cidade: "Xangai",
+    pais: "China",
+    continente: "Ásia",
+    indice: "CNY=X",
+    nomeIndice: "USD/CNY",
+    cor: VERDE_MOEDA,
+    lat: 31.23,
+    lng: 121.47,
+    descricao: "Moeda oficial da China, emitida pelo Banco Popular da China. Hub financeiro em Xangai.",
+  },
+];
+
+/**
+ * Tudo que o globo desenha. A lista de cards da tela Mercados Globais
+ * continua sendo só MERCADOS_GLOBAIS (bolsas) — moeda entra no mapa, não
+ * naquela lista.
+ */
+export const PONTOS_DO_GLOBO = [...MERCADOS_GLOBAIS, ...MOEDAS_GLOBAIS];
 
 /** Variação do dia a partir dos candles: último fechamento contra o anterior. */
 export function variacaoDoDia(candles) {
