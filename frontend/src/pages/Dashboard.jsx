@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { AssetCard, SkeletonCard } from "../components/AssetCard.jsx";
-import { ListaAtivosMobile } from "../components/AssetList.jsx";
+import { TopAtivosMobile } from "../components/TopAtivosMobile.jsx";
 import Header from "../components/Header.jsx";
 import { IconeAtivo } from "../components/IconeAtivo.jsx";
 import { MiniLine } from "../components/MiniLine.jsx";
@@ -187,6 +187,9 @@ function AppInner(){
   // preço nunca fica mais que ~5min desatualizado na tela.
   useEffect(()=>{
     const buscar = () => {
+      // Aba escondida não precisa de preço novo: a cada volta o efeito
+      // busca uma vez, então quem reabre a aba vê dado atual mesmo assim.
+      if(document.visibilityState === "hidden") return;
       fetch(`${API}/mercado`)
         .then(r=>r.json())
         .then(d=>setMercado(d.dados||[]))
@@ -194,7 +197,11 @@ function AppInner(){
     };
     buscar();
     const id = setInterval(buscar, 60000);
-    return () => clearInterval(id);
+    document.addEventListener("visibilitychange", buscar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", buscar);
+    };
   },[]);
 
   // Busca gráfico do IBOV de acordo com o timeframe (1D/1S/1M)
@@ -325,7 +332,15 @@ function AppInner(){
           )}
           {secao==="inicio" && (
           <div className="home">
-          {isMobile && <ListaAtivosMobile mercado={mercado} abrirAtivo={abrirAtivo}/>}
+          {/* CELULAR — globo compacto e os 20 mais acompanhados. O layout
+              de desktop (cards + Estudo de Mercado + globo) fica escondido
+              por .dash-so-desktop. */}
+          {isMobile && (
+            <>
+              <GloboMercados compacto/>
+              <TopAtivosMobile mercado={mercado} abrirAtivo={abrirAtivo}/>
+            </>
+          )}
           {erro&&(
             <div style={{padding:"10px 16px",color:"var(--down)",fontSize:11,fontFamily:"var(--font-m)",background:"rgba(255,69,96,.06)",borderRadius:8,border:"1px solid rgba(255,69,96,.2)"}}>
               {erro}

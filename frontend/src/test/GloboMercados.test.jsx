@@ -29,11 +29,13 @@ function montar() {
 }
 
 describe('Bloco do globo na tela inicial', () => {
-  it('mostra os filtros (Ação, Moeda e Índice), todos ligados', async () => {
+  it('mostra os filtros (Moeda e Índice), todos ligados', async () => {
     montar();
 
-    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Ação', 'Moeda', 'Índice']);
-    expect(screen.queryByRole('button', { name: 'Cripto' })).not.toBeInTheDocument();
+    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Moeda', 'Índice']);
+    for (const fora of ['Cripto', 'Ação']) {
+      expect(screen.queryByRole('button', { name: fora })).not.toBeInTheDocument();
+    }
     for (const { rotulo } of CATEGORIAS) {
       expect(screen.getByRole('button', { name: rotulo })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -71,17 +73,7 @@ describe('Bloco do globo na tela inicial', () => {
     await user.click(screen.getByRole('button', { name: 'Moeda' }));
 
     expect(mercadosRecebidos).toHaveLength(0);
-    expect(screen.getByText(/Nenhum mercado nas categorias escolhidas/)).toBeInTheDocument();
-  });
-
-  it('desligar "Ação", que ainda não tem ponto, não mexe no globo', async () => {
-    const user = userEvent.setup();
-    montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(11));
-
-    await user.click(screen.getByRole('button', { name: 'Ação' }));
-
-    expect(mercadosRecebidos).toHaveLength(11);
+    expect(screen.getByText('Nenhum mercado foi escolhido.')).toBeInTheDocument();
   });
 
   it('religar o filtro traz os pontos de volta', async () => {

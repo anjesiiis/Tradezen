@@ -4,10 +4,8 @@
 // que a variação do dia é buscada e é pra ele que o botão "Ver índice"
 // leva, na mesma tela de gráfico do resto do app.
 
-// Filtros ao lado do globo. "acao" ainda não tem ponto no mapa — fica
-// pronto pra receber.
+// Filtros ao lado do globo.
 export const CATEGORIAS = [
-  { id: "acao", rotulo: "Ação" },
   { id: "moeda", rotulo: "Moeda" },
   { id: "indice", rotulo: "Índice" },
 ];

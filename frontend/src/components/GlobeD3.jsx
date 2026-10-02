@@ -29,6 +29,7 @@ const GIRO_POR_QUADRO = 0.06;     // graus — bem devagar, não distrai
 const PAUSA_APOS_ARRASTO = 2000;  // ms parado depois que a mão sai
 const GRAUS_POR_PIXEL = 0.25;
 const RAIO_HOVER = 14;            // px até o ponto pra o tooltip aparecer
+const ALTURA_DO_ROTULO = 12;      // px acima do ponto (sobe mais se houver outro ali)
 
 // Zoom: 1 é o tamanho de abertura, já 20% maior que o do primeiro desenho
 const ZOOM_MIN = 0.7;
@@ -87,6 +88,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
       malhaRef.current?.setAttribute("d", caminho(malha) || "");
 
       const centro = [-rotacaoRef.current[0], -rotacaoRef.current[1]];
+      const postos = [];   // rótulos já colocados, pra não escreverem um sobre o outro
       for (const mercado of mercadosRef.current) {
         const no = pontosRef.current.get(mercado.id);
         if (!no) continue;
@@ -95,6 +97,17 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         if (!xy) { no.style.display = "none"; continue; }
         no.style.display = "";
         no.setAttribute("transform", `translate(${xy[0]}, ${xy[1]})`);
+
+        // Brasília e São Paulo (ou Londres e Frankfurt) caem quase no mesmo
+        // ponto: sem isso os rótulos ficam escritos um por cima do outro.
+        const texto = no.querySelector("text");
+        if (!texto) continue;
+        let altura = ALTURA_DO_ROTULO;
+        while (postos.some((p) => Math.abs(p.x - xy[0]) < 26 && Math.abs(p.y - (xy[1] - altura)) < 11)) {
+          altura += 11;
+        }
+        texto.setAttribute("y", String(-altura));
+        postos.push({ x: xy[0], y: xy[1] - altura });
       }
     }
 
@@ -290,7 +303,7 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
               <circle r="12" fill="transparent" />
               <circle r={(ativo ? raio + 1.5 : raio) * 2.25} fill={mercado.cor} opacity="0.18" />
               <circle r={ativo ? raio + 1.5 : raio} fill={mercado.cor} stroke={OCEANO} strokeWidth="1" />
-              <text y={-12} textAnchor="middle" fill={mercado.cor} fontSize="10" fontWeight="700">
+              <text y={-ALTURA_DO_ROTULO} textAnchor="middle" fill={mercado.cor} fontSize="10" fontWeight="700">
                 {mercado.codigo || mercado.sigla}
               </text>
             </g>

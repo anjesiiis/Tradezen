@@ -442,6 +442,31 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
+/* ── CELULAR: LISTA DE CRIPTO E TOP 20 ────────────────────── */
+.cripto-lista,.top20-lista{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.cripto-linha,.top20-linha{display:flex;align-items:center;gap:10px;background:var(--card);border:0;padding:11px 12px;font:inherit;text-align:left;cursor:pointer;width:100%}
+.cripto-linha:active,.top20-linha:active{background:var(--s2)}
+.cripto-linha-nome,.top20-nome{display:flex;flex-direction:column;min-width:0;flex:1}
+.cripto-linha-nome strong,.top20-nome strong{font-size:13px;color:var(--text);font-weight:700}
+.cripto-linha-nome span,.top20-nome span{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cripto-linha-valor,.top20-valor{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
+.cripto-linha-valor strong,.top20-valor strong{font-size:13px;font-family:var(--font-m);color:var(--text);font-variant-numeric:tabular-nums}
+.cripto-linha-valor span,.top20-valor span{font-size:11px;font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.cripto-linha-valor .up,.top20-valor .up{color:var(--up)}
+.cripto-linha-valor .down,.top20-valor .down{color:var(--down)}
+.cripto-sem-icone{width:26px;height:26px;border-radius:50%;background:var(--border);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+
+.top20{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.top20-titulo{font-size:15px;font-weight:700;color:var(--text);margin:0}
+.top20-rodape{font-size:11px;color:var(--text3);margin:2px 0 0;text-align:center}
+
+/* Globo no celular: largura toda, 280px de altura, filtros em linha */
+.globo-bloco.compacto{padding:12px}
+.globo-bloco.compacto .globo-bloco-corpo{flex-direction:column;gap:8px}
+.globo-bloco.compacto .globo-area{min-height:280px;height:280px}
+.globo-bloco.compacto .globo-filtros{flex:0 0 auto;flex-direction:row;justify-content:center;gap:8px;padding-top:0}
+.globo-bloco.compacto .globo-filtro{padding:5px 12px}
+
 /* ── INÍCIO: ESTUDO DE MERCADO + GLOBO ────────────────────── */
 /* Proporção, não largura fixa: quando a sidebar abre, os dois blocos
    encolhem juntos e continuam na mesma altura (align-items:stretch). */
@@ -769,7 +794,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
 
   /* ── INÍCIO: globo ── */
-  .globo-bloco{display:none}
+  /* No celular aparece só a versão compacta (a do desktop fica dentro do
+     .dash-so-desktop, que já está escondido) */
+  .globo-bloco:not(.compacto){display:none}
   .home-mais{grid-template-columns:1fr}
 
   /* ── MERCADOS GLOBAIS ── */

@@ -333,10 +333,25 @@ def buscar_resumo_mercado():
             if dados is not None:
                 mapa[id(ativo)] = dados
 
-        # Devolve na mesma ordem da MERCADO_PRINCIPAL (UI mais previsível)
-        for ativo in MERCADO_PRINCIPAL:
-            if mapa[id(ativo)] is not None:
-                resultado.append(mapa[id(ativo)])
+    # Segunda chance pros que falharam. Sem isso, um tropeço do Yahoo ou da
+    # Binance em uma das threads some com o ativo da tela até a próxima
+    # rodada de aquecimento — era por isso que o Bitcoin (e mais uns nove)
+    # desapareciam do /mercado e o card do topo ficava vazio. Aqui a
+    # tentativa é em sequência e só com os que faltaram: são poucos, e sem
+    # concorrência o provedor costuma responder.
+    faltando = [a for a in MERCADO_PRINCIPAL if mapa[id(a)] is None]
+    for ativo in faltando:
+        dados = _processar_resumo_ativo(ativo)
+        if dados is not None:
+            mapa[id(ativo)] = dados
+    if faltando:
+        ainda_sem = sum(1 for a in faltando if mapa[id(a)] is None)
+        print(f"[Resumo] {len(faltando)} falharam na 1ª rodada, {ainda_sem} continuaram sem dados")
+
+    # Devolve na mesma ordem da MERCADO_PRINCIPAL (UI mais previsível)
+    for ativo in MERCADO_PRINCIPAL:
+        if mapa[id(ativo)] is not None:
+            resultado.append(mapa[id(ativo)])
 
     return resultado
 

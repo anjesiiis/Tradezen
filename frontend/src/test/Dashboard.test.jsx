@@ -2,41 +2,57 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './helpers.jsx';
 import { MERCADO_FAKE } from './dadosFake.js';
+import { TOP_20 } from '../lib/topAtivos.js';
+
+// No celular a tela inicial mostra o globo e os "Top 20 mais
+// acompanhados" — a lista de todos os ativos saiu dali.
+const esperados = TOP_20.filter((t) => MERCADO_FAKE.some((a) => a.ticker === t));
 
 async function acharLinhas() {
   return waitFor(() => {
-    const linhas = document.querySelectorAll('.mlista-item');
-    expect(linhas.length).toBe(MERCADO_FAKE.length);
+    const linhas = document.querySelectorAll('.top20-linha');
+    expect(linhas.length).toBe(esperados.length);
     return [...linhas];
   });
 }
 
-describe('Dashboard — lista de ativos (mobile)', () => {
-  it('busca /mercado na API e lista todos os ativos', async () => {
+const simboloDa = (linha) => linha.querySelector('.top20-nome strong').textContent;
+
+describe('Dashboard — Top 20 (mobile)', () => {
+  it('busca /mercado na API e lista os ativos da curadoria', async () => {
     renderApp('/mercados', { mobile: true });
     const linhas = await acharLinhas();
 
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/mercado$/));
-    const simbolos = linhas.map((l) => l.querySelector('.mlista-tk').textContent);
-    expect(simbolos).toEqual(expect.arrayContaining(MERCADO_FAKE.map((a) => a.simbolo)));
+    const simbolos = linhas.map(simboloDa);
+    const simbolosEsperados = esperados.map((t) => MERCADO_FAKE.find((a) => a.ticker === t).simbolo);
+    expect(simbolos).toEqual(simbolosEsperados);
   });
 
-  it('agrupa os ativos em seções na ordem certa', async () => {
-    renderApp('/mercados', { mobile: true });
-    await acharLinhas();
-
-    const secoes = [...document.querySelectorAll('.mlista-secao')].map((s) => s.textContent);
-    expect(secoes).toEqual(['Índices', 'Ações', 'Cripto', 'Moedas', 'Commodities']);
-  });
-
-  it('cada linha mostra símbolo, nome e variação', async () => {
+  it('segue a ordem da curadoria, não a que a API devolveu', async () => {
     renderApp('/mercados', { mobile: true });
     const linhas = await acharLinhas();
 
-    const petr = linhas.find((l) => l.querySelector('.mlista-tk').textContent === 'PETR4');
+    // a API devolve o IBOV primeiro; na curadoria ele vem lá pelo fim
+    expect(MERCADO_FAKE[0].simbolo).toBe('IBOV');
+    expect(simboloDa(linhas[0])).toBe('PETR4');
+  });
+
+  it('cada linha mostra símbolo, nome, preço e variação', async () => {
+    renderApp('/mercados', { mobile: true });
+    const linhas = await acharLinhas();
+
+    const petr = linhas.find((l) => simboloDa(l) === 'PETR4');
     const linha = within(petr);
     expect(linha.getByText('Petrobras')).toBeInTheDocument();
     expect(linha.getByText(/1\.12%/)).toBeInTheDocument();
+  });
+
+  it('explica a mistura de mercados no rodapé', async () => {
+    renderApp('/mercados', { mobile: true });
+    await acharLinhas();
+
+    expect(screen.getByText('Mistura entre ações, moedas, commodities e criptos')).toBeInTheDocument();
   });
 
   it('tocar num ativo abre a página do gráfico dele', async () => {
@@ -44,7 +60,7 @@ describe('Dashboard — lista de ativos (mobile)', () => {
     renderApp('/mercados', { mobile: true });
     const linhas = await acharLinhas();
 
-    const petr = linhas.find((l) => l.querySelector('.mlista-tk').textContent === 'PETR4');
+    const petr = linhas.find((l) => simboloDa(l) === 'PETR4');
     await user.click(petr);
 
     await waitFor(() => expect(window.location.pathname).toBe('/ativo/PETR4.SA'));

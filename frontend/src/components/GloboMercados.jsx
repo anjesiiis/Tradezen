@@ -12,8 +12,9 @@ const GlobeD3 = lazy(() => import("./GlobeD3.jsx"));
 const TICKERS = PONTOS_DO_GLOBO.map((m) => m.indice);
 const MIN_GLOBO = 240;
 const MAX_GLOBO = 440;
+const MAX_GLOBO_COMPACTO = 280;   // celular: cabe sem empurrar a lista
 
-export default function GloboMercados() {
+export default function GloboMercados({ compacto = false }) {
   const navigate = useNavigate();
   const [cotacoes, setCotacoes] = useState(null);
   // { acao:true, moeda:true, cripto:true, indice:true } — todos ligados
@@ -50,14 +51,19 @@ export default function GloboMercados() {
   useEffect(() => {
     const area = areaRef.current;
     if (!area || typeof ResizeObserver === "undefined") return;
+    // No compacto a altura é fixa e o próprio SVG a ocupa inteira — medir
+    // a altura aqui daria um laço (globo cresce → área cresce → globo
+    // cresce). Por isso o compacto se guia só pela largura.
+    const teto = compacto ? MAX_GLOBO_COMPACTO : MAX_GLOBO;
     const observador = new ResizeObserver(([entrada]) => {
       const { width, height } = entrada.contentRect;
-      setArea({ largura: width, altura: height || width });
-      setTamanho(Math.max(MIN_GLOBO, Math.min(MAX_GLOBO, Math.min(width, height || width))));
+      const base = compacto ? width : Math.min(width, height || width);
+      setArea({ largura: width, altura: compacto ? Math.min(width, teto) : (height || width) });
+      setTamanho(Math.max(MIN_GLOBO, Math.min(teto, base)));
     });
     observador.observe(area);
     return () => observador.disconnect();
-  }, []);
+  }, [compacto]);
 
   function alternarFiltro(id) {
     setFiltros((antes) => ({ ...antes, [id]: !antes[id] }));
@@ -69,10 +75,10 @@ export default function GloboMercados() {
   const visiveis = PONTOS_DO_GLOBO.filter((m) => filtros[m.categoria]);
 
   return (
-    <div className="card globo-bloco" onClick={() => setSelecionado(null)}>
+    <div className={`card globo-bloco${compacto ? " compacto" : ""}`} onClick={() => setSelecionado(null)}>
       <div className="globo-bloco-head">
         <span className="globo-bloco-titulo">Mercados Globais</span>
-        <span className="globo-bloco-sub">Clique num ponto para ver a bolsa</span>
+        {!compacto && <span className="globo-bloco-sub">Clique num ponto para ver a bolsa</span>}
       </div>
 
       <div className="globo-bloco-corpo">
@@ -87,7 +93,7 @@ export default function GloboMercados() {
           </Suspense>
 
           {visiveis.length === 0 && (
-            <p className="globo-vazio">Nenhum mercado nas categorias escolhidas.</p>
+            <p className="globo-vazio">Nenhum mercado foi escolhido.</p>
           )}
 
           {selecionado && posicao && (
