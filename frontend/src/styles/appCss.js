@@ -474,8 +474,14 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .home-principal>*{min-width:0}
 @media (max-width:1100px){.home-principal{grid-template-columns:1fr}}
 
-.home-mais{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
-.home-mais>span{grid-column:1/-1}
+.mais-ativos{display:flex;flex-direction:column;gap:10px;margin-top:16px;min-width:0}
+.mais-ativos-titulo{font-size:13px;font-weight:700;color:var(--text)}
+/* Rola de lado: a roda do mouse é tratada no componente (listener nativo,
+   senão o preventDefault não vale e a página rolaria junto). */
+.mais-ativos-faixa{display:flex;flex-direction:row;flex-wrap:nowrap;gap:16px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
+.mais-ativos-faixa::-webkit-scrollbar{height:6px}
+.mais-ativos-faixa::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+.mais-ativos-card{flex:0 0 260px;min-width:220px;scroll-snap-align:start}
 
 .globo-bloco{padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:visible}
 .globo-bloco-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -506,14 +512,17 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .globo-popup-btn:hover{filter:brightness(1.1)}
 
 /* ── MERCADOS GLOBAIS ─────────────────────────────────────── */
-.mg{padding:18px 20px 40px;max-width:1280px;margin:0 auto}
+.mg{padding:18px 20px 20px;max-width:1280px;margin:0 auto;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
 .mg-head h1{font-family:var(--font-h);font-size:30px;letter-spacing:.5px;margin:0 0 4px;color:var(--text)}
-.mg-head p{margin:0 0 18px;color:var(--text2);font-size:13px}
-.mg-corpo{display:flex;gap:24px;align-items:flex-start}
-.mg-lista{flex:0 0 40%;display:flex;flex-direction:column;gap:10px}
-.mg-globo{flex:1;position:relative;display:flex;justify-content:center;min-height:460px}
+.mg-head{flex:0 0 auto}
+.mg-head p{margin:0 0 14px;color:var(--text2);font-size:13px}
+/* Cabeçalho fixo em cima e, embaixo, duas colunas que dividem o que
+   sobra. A lista rola por dentro se não couber — a página não cresce. */
+.mg-corpo{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:24px;overflow:hidden}
+.mg-lista{display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0;padding-right:4px;scrollbar-width:thin}
+.mg-globo{position:relative;display:flex;align-items:center;justify-content:center;min-height:0;min-width:0}
 
-.mg-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s,transform .15s}
+.mg-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;flex:0 0 auto;cursor:pointer;transition:border-color .15s,transform .15s}
 .mg-card:hover{border-color:var(--accent);transform:translateX(2px)}
 .mg-card.ativo{border-color:var(--accent)}
 .mg-cor{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
@@ -531,6 +540,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 .globo-palco{position:relative;flex-shrink:0}
 .globo{display:block;user-select:none;touch-action:none}
+.globo-malha{stroke:rgba(100,140,200,.18);stroke-width:.4}
+:root[data-theme="light"] .globo-malha{stroke:rgba(30,80,160,.12)}
 /* Tooltip do hover: fora do SVG e sem pointer-events, pra não roubar o
    cursor dos pontos nem provocar reflow a cada movimento do mouse. */
 .globo-dica{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transition:opacity .12s;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);white-space:nowrap;z-index:15;will-change:transform}

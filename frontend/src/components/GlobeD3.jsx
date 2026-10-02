@@ -315,7 +315,8 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         style={{ touchAction: "none", cursor: arrastando ? "grabbing" : "grab" }}
       >
         <circle ref={esferaRef} cx={tamanho / 2} cy={tamanho / 2} r={tamanho / 2} fill={OCEANO} stroke={BORDAS} strokeWidth="1" />
-        <path ref={malhaRef} fill="none" stroke={BORDAS} strokeWidth="0.3" opacity="0.35" />
+        {/* malha de latitude/longitude — cor no CSS, que muda com o tema */}
+        <path ref={malhaRef} className="globo-malha" fill="none" />
         <path ref={paisesRef} fill={PAISES} stroke={BORDAS} strokeWidth="0.5" />
 
         {mercados.map((mercado) => {

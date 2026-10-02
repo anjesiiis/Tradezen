@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { AssetCard, SkeletonCard } from "../components/AssetCard.jsx";
+import { MaisAtivos } from "../components/MaisAtivos.jsx";
 import { TopAtivosMobile } from "../components/TopAtivosMobile.jsx";
 import Header from "../components/Header.jsx";
 import { IconeAtivo } from "../components/IconeAtivo.jsx";
@@ -235,30 +236,6 @@ function AppInner(){
   const acoes       = mercado.filter(m=>m.mercado==="B3"&&m.ticker!=="^BVSP");
   const forex       = mercado.filter(m=>m.mercado==="FOREX");
 
-  // "Mais Ativos" — antes era o "Detector de Análise Técnica" bloqueado
-  // com cadeado; por enquanto, enquanto a detecção automática de padrões
-  // não está pronta pra todo mundo ver, viram 3 ativos reais e clicáveis
-  // (sem cadeado). Cada slot tem substitutos da mesma categoria pra não
-  // ficar "Sem dados" quando o /mercado não traz o preferido, e o `usados`
-  // evita que dois slots caiam no mesmo ativo.
-  const DASH_SIDE_CONFIG = [
-    {ticker:"ETH-USD",  nome:"Ethereum", simbolo:"ETH",   cor:"#627EEA", fallback:["SOL-USD","BNB-USD","XRP-USD","ADA-USD","DOGE-USD","AVAX-USD"]},
-    {ticker:"BBDC4.SA", nome:"Bradesco", simbolo:"BBDC4", cor:"#CC092F", fallback:["WEGE3.SA","MGLU3.SA","PETR4.SA","VALE3.SA","ITUB4.SA"]},
-    {ticker:"SI=F",     nome:"Prata",    simbolo:"PRATA", cor:"#C0C0C0", fallback:["CL=F","BZ=F","NG=F","ZC=F","ZS=F","KC=F"]},
-  ];
-  const usados = new Set();
-  const dashSide = DASH_SIDE_CONFIG.map(cfg=>{
-    let achado = mercado.find(m=>m.ticker===cfg.ticker && !usados.has(m.ticker));
-    if(!achado){
-      for(const tk of cfg.fallback){
-        achado = mercado.find(m=>m.ticker===tk && !usados.has(m.ticker));
-        if(achado) break;
-      }
-    }
-    if(achado){ usados.add(achado.ticker); return achado; }
-    return { ticker:cfg.ticker, nome:cfg.nome, simbolo:cfg.simbolo, semDados: mercado.length>0 };
-  });
-
   // Série pro gráfico da home — usa dados reais se já carregou, senão fallback do resumo
   const ibovSerie = ibovChart.length > 0
     ? ibovChart
@@ -374,47 +351,7 @@ function AppInner(){
             {!isMobile && <GloboMercados/>}
           </div>
 
-          {/* Mais Ativos — saiu da coluna da direita (onde agora fica o
-              globo) e virou uma faixa própria, em três colunas. */}
-          <div className="home-mais dash-so-desktop">
-                {/* Mais Ativos — antes era o "Detector de Análise Técnica"
-                    bloqueado com cadeado; por enquanto, viram só mais 3 ativos
-                    reais, clicáveis, sem cadeado nenhum (ver comentário perto
-                    de DASH_SIDE_CONFIG, mais acima nesse componente). */}
-                <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Mais Ativos</span>
-                {dashSide.map((a,i)=>{
-                  const cfg = DASH_SIDE_CONFIG[i];
-                  if("semDados" in a){
-                    return (
-                      <div key={cfg.ticker} className="crypto-top-card" style={{cursor:"default",opacity:.55}}>
-                        <div className="idx-top">
-                          <div style={{width:32,height:32,borderRadius:"50%",background:"var(--border)",color:"var(--text3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{cfg.simbolo[0]}</div>
-                          <span className="idx-name">{cfg.nome}</span>
-                        </div>
-                        <div className="idx-line">
-                          {a.semDados
-                            ? <span style={{fontSize:11,color:"var(--text3)"}}>Sem dados</span>
-                            : <SkeletonValor/>
-                          }
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={a.ticker} className="crypto-top-card" onClick={()=>abrirAtivo(a)}>
-                      <div className="idx-top">
-                        <IconeAtivo ticker={a.ticker} simbolo={a.simbolo} corPadrao={cfg.cor}/>
-                        <span className="idx-name">{a.nome}</span>
-                      </div>
-                      <div className="idx-line">
-                        <span className="idx-price">{fmtP(a.preco)}</span>
-                        <span className={`idx-chg ${a.alta?"up":"down"}`}>{a.alta?"▲":"▼"} {Math.abs(a.variacao_pct||0).toFixed(2)}%</span>
-                      </div>
-                      <div className="crypto-top-spark"><MiniLine data={a.serie||[]} color={a.alta?"#00D68F":"#FF4560"}/></div>
-                    </div>
-                  );
-                })}
-            </div>
+          <MaisAtivos mercado={mercado} abrirAtivo={abrirAtivo}/>
 
           {/* Ticker */}
           <div className="tbar">
