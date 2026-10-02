@@ -33,9 +33,35 @@ const RAIO_HOVER = 14;            // px até o ponto pra o tooltip aparecer
 const ALTURA_DO_ROTULO = 12;      // px acima do ponto (sobe mais se houver outro ali)
 
 // Zoom: 1 é o tamanho de abertura, já 20% maior que o do primeiro desenho
+// Campo de estrelas: fica parado atrás do globo, dá fundo ao espaço vazio
+const ESTRELAS = 140;
+// Sorteio determinístico: o céu é o mesmo em todo render e em toda sessão
+// (com Math.random, cada re-render mudaria a posição das estrelas).
+const sorteio = (semente) => { const x = Math.sin(semente + 1) * 10000; return x - Math.floor(x); };
+
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.5;
 const FOLGA_DA_ESFERA = 0.92;     // sobra pra o globo não encostar na borda
+
+function campoDeEstrelas(tamanho, raioDoGlobo) {
+  const centro = tamanho / 2;
+  const perto = raioDoGlobo + 8;
+  const longe = centro * 1.42;            // canto do quadro
+  const estrelas = [];
+  for (let i = 0; i < ESTRELAS; i++) {
+    const angulo = sorteio(i * 2.7) * Math.PI * 2;
+    const distancia = perto + sorteio(i * 6.1) * (longe - perto);
+    const x = centro + Math.cos(angulo) * distancia;
+    const y = centro + Math.sin(angulo) * distancia;
+    if (x < 0 || x > tamanho || y < 0 || y > tamanho) continue;
+    estrelas.push({
+      x, y,
+      r: sorteio(i * 11.3) * 1.1 + 0.3,
+      opacidade: (sorteio(i * 4.9) * 0.35 + 0.08).toFixed(2),
+    });
+  }
+  return estrelas;
+}
 
 export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tamanho = 460 }) {
   const [mundo, setMundo] = useState(null);
@@ -285,6 +311,8 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
     if (dica) dica.style.opacity = "0";
   }
 
+  const estrelas = campoDeEstrelas(tamanho, (tamanho / 2) * FOLGA_DA_ESFERA);
+
   if (erro) {
     return (
       <div className="globo-erro" style={{ width: tamanho, height: tamanho }}>
@@ -314,7 +342,21 @@ export default function GlobeD3({ mercados = [], selecionado, aoSelecionar, tama
         onWheel={naRoda}
         style={{ touchAction: "none", cursor: arrastando ? "grabbing" : "grab" }}
       >
-        <circle ref={esferaRef} cx={tamanho / 2} cy={tamanho / 2} r={tamanho / 2} fill={OCEANO} stroke={BORDAS} strokeWidth="1" />
+        <defs>
+          {/* luz vinda de cima à esquerda, pra a esfera não parecer um disco */}
+          <radialGradient id="globo-halo" cx="38%" cy="38%" r="60%">
+            <stop offset="0%" stopColor="#112240" />
+            <stop offset="100%" stopColor="#040c18" />
+          </radialGradient>
+        </defs>
+
+        <g className="globo-estrelas" pointerEvents="none">
+          {estrelas.map((e, i) => (
+            <circle key={i} cx={e.x} cy={e.y} r={e.r} fill={`rgba(190, 215, 255, ${e.opacidade})`} />
+          ))}
+        </g>
+
+        <circle ref={esferaRef} className="globo-esfera" cx={tamanho / 2} cy={tamanho / 2} r={tamanho / 2} fill="url(#globo-halo)" stroke={BORDAS} strokeWidth="1" />
         {/* malha de latitude/longitude — cor no CSS, que muda com o tema */}
         <path ref={malhaRef} className="globo-malha" fill="none" />
         <path ref={paisesRef} fill={PAISES} stroke={BORDAS} strokeWidth="0.5" />

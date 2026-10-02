@@ -31,7 +31,9 @@ const visiveis = () => pontos().filter((n) => n.style.display !== 'none');
 // Raio de abertura: metade do tamanho padrão (460) menos a folga de 8%
 // que mantém o globo longe da borda.
 const RAIO_BASE = (460 / 2) * 0.92;
-const raio = (svg) => Number(svg.querySelector('circle').getAttribute('r'));
+// .globo-esfera e não o primeiro <circle>: os primeiros agora são as
+// estrelas do fundo
+const raio = (svg) => Number(svg.querySelector('.globo-esfera').getAttribute('r'));
 
 describe('Globo 3D', () => {
   it('busca o mapa do mundo e desenha o globo', async () => {

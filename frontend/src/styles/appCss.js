@@ -442,6 +442,54 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
+/* ── TEXTURAS DE FUNDO ────────────────────────────────────── */
+/* Só visual: nada aqui recebe clique (pointer-events:none) nem entra na
+   frente do conteúdo (o ::before fica em z-index 0 e o conteúdo real sobe
+   com position:relative onde precisa).
+   Os seletores são as classes de verdade do projeto, e não [class*=card]:
+   esse curinga pegaria .sb-item do menu, .mnav-item da barra de baixo,
+   .search-item da busca e os toasts — tudo que é lista, não cartão. */
+.card,.crypto-top-card,.mg-card,.admin-card-item,.mais-ativos-card,.plan-card{position:relative;isolation:isolate}
+.card::before,.crypto-top-card::before,.mg-card::before,.admin-card-item::before,.mais-ativos-card::before,.plan-card::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;opacity:.028;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size:192px 192px;
+}
+
+/* Dot grid nos painéis grandes (os que têm muito espaço vazio) */
+.home-principal>.card,.crypto-main-grid>.card,.globo-bloco,.mg-globo{
+  background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:24px 24px;background-position:0 0;
+}
+
+/* Brilho nos cantos dos containers que ficam mais vazios */
+.globo-area,.mg-globo,.mc-chart{
+  background-image:
+    radial-gradient(ellipse at 15% 85%,rgba(0,100,220,.06) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 15%,rgba(0,180,140,.04) 0%,transparent 50%);
+}
+
+/* No tema claro tudo pela metade: no fundo branco a mesma intensidade
+   viraria sujeira. (Aqui o tema é por data-theme, não por
+   prefers-color-scheme — é assim que o resto do app funciona.) */
+:root[data-theme="light"] .card::before,
+:root[data-theme="light"] .crypto-top-card::before,
+:root[data-theme="light"] .mg-card::before,
+:root[data-theme="light"] .admin-card-item::before,
+:root[data-theme="light"] .mais-ativos-card::before,
+:root[data-theme="light"] .plan-card::before{opacity:.014}
+:root[data-theme="light"] .home-principal>.card,
+:root[data-theme="light"] .crypto-main-grid>.card,
+:root[data-theme="light"] .globo-bloco,
+:root[data-theme="light"] .mg-globo{background-image:radial-gradient(circle,rgba(20,40,80,.05) 1px,transparent 1px)}
+:root[data-theme="light"] .globo-area,
+:root[data-theme="light"] .mg-globo,
+:root[data-theme="light"] .mc-chart{
+  background-image:
+    radial-gradient(ellipse at 15% 85%,rgba(0,100,220,.03) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 15%,rgba(0,180,140,.02) 0%,transparent 50%);
+}
+
 /* ── CELULAR: LISTA DE CRIPTO E TOP 20 ────────────────────── */
 .cripto-lista,.top20-lista{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .cripto-linha,.top20-linha{display:flex;align-items:center;gap:10px;background:var(--card);border:0;padding:11px 12px;font:inherit;text-align:left;cursor:pointer;width:100%}
