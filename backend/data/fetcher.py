@@ -6,83 +6,20 @@ v1.1 — Paralelismo com ThreadPoolExecutor + cache interno
 """
 
 import yfinance as yf
+
+from ativos import DO_RESUMO, periodo_valido, por_ticker
 import requests
 import pandas as pd
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-MERCADO_PRINCIPAL = [
-    {"ticker": "^BVSP",    "nome": "Ibovespa",     "simbolo": "IBOV",     "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BTC-USD",  "nome": "Bitcoin",      "simbolo": "BTC",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "ETH-USD",  "nome": "Ethereum",     "simbolo": "ETH",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "SOL-USD",  "nome": "Solana",       "simbolo": "SOL",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "BNB-USD",  "nome": "Binance Coin", "simbolo": "BNB",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "XRP-USD",  "nome": "Ripple",       "simbolo": "XRP",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "ADA-USD",  "nome": "Cardano",      "simbolo": "ADA",      "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "DOGE-USD", "nome": "Dogecoin",     "simbolo": "DOGE",     "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "AVAX-USD", "nome": "Avalanche",    "simbolo": "AVAX",     "mercado": "CRIPTO",    "moeda": "USD"},
-    {"ticker": "PETR4.SA", "nome": "Petrobras",    "simbolo": "PETR4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "VALE3.SA", "nome": "Vale",         "simbolo": "VALE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ITUB4.SA", "nome": "Itaú",         "simbolo": "ITUB4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BBDC4.SA", "nome": "Bradesco",     "simbolo": "BBDC4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "WEGE3.SA", "nome": "WEG",          "simbolo": "WEGE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "MGLU3.SA", "nome": "Magalu",       "simbolo": "MGLU3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BRKM5.SA", "nome": "Braskem",      "simbolo": "BRKM5",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ITSA4.SA", "nome": "Itaúsa",       "simbolo": "ITSA4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BPAC11.SA","nome": "BTG Pactual",  "simbolo": "BPAC11",   "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "KLBN11.SA","nome": "Klabin",       "simbolo": "KLBN11",   "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "MBRF3.SA", "nome": "MBRF",         "simbolo": "MBRF3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "CYRE3.SA", "nome": "Cyrela",       "simbolo": "CYRE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "MRVE3.SA", "nome": "MRV",          "simbolo": "MRVE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "SBSP3.SA", "nome": "Sabesp",       "simbolo": "SBSP3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "CPLE3.SA", "nome": "Copel",        "simbolo": "CPLE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "TAEE11.SA","nome": "Taesa",        "simbolo": "TAEE11",   "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ENGI11.SA","nome": "Energisa",     "simbolo": "ENGI11",   "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "CPFE3.SA", "nome": "CPFL Energia", "simbolo": "CPFE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ENEV3.SA", "nome": "Eneva",        "simbolo": "ENEV3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "TOTS3.SA", "nome": "Totvs",        "simbolo": "TOTS3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "YDUQ3.SA", "nome": "Yduqs",        "simbolo": "YDUQ3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "COGN3.SA", "nome": "Cogna",        "simbolo": "COGN3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BEEF3.SA", "nome": "Minerva",      "simbolo": "BEEF3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "SMTO3.SA", "nome": "São Martinho", "simbolo": "SMTO3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "SLCE3.SA", "nome": "SLC Agrícola", "simbolo": "SLCE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "VBBR3.SA", "nome": "Vibra Energia","simbolo": "VBBR3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BRAV3.SA", "nome": "Brava Energia","simbolo": "BRAV3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "DXCO3.SA", "nome": "Dexco",        "simbolo": "DXCO3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "BRAP4.SA", "nome": "Bradespar",    "simbolo": "BRAP4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "MULT3.SA", "nome": "Multiplan",    "simbolo": "MULT3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ALPA4.SA", "nome": "Alpargatas",   "simbolo": "ALPA4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "IRBR3.SA", "nome": "IRB Brasil",   "simbolo": "IRBR3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "ECOR3.SA", "nome": "EcoRodovias",  "simbolo": "ECOR3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "GOAU4.SA", "nome": "Gerdau Met.",  "simbolo": "GOAU4",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "HYPE3.SA", "nome": "Hypera",       "simbolo": "HYPE3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "AZZA3.SA", "nome": "Azzas 2154",   "simbolo": "AZZA3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "RDOR3.SA", "nome": "Rede D'Or",    "simbolo": "RDOR3",    "mercado": "B3",        "moeda": "BRL"},
-    {"ticker": "USDBRL=X", "nome": "USD/BRL",      "simbolo": "USD/BRL",  "mercado": "FOREX",     "moeda": "BRL"},
-    {"ticker": "EURUSD=X", "nome": "Euro/Dólar",   "simbolo": "EUR/USD",  "mercado": "FOREX",     "moeda": "USD"},
-    {"ticker": "EURBRL=X", "nome": "Euro/Real",    "simbolo": "EUR/BRL",  "mercado": "FOREX",     "moeda": "BRL"},
-    {"ticker": "GBPUSD=X", "nome": "Libra/Dólar",  "simbolo": "GBP/USD",  "mercado": "FOREX",     "moeda": "USD"},
-    {"ticker": "USDJPY=X", "nome": "Dólar/Iene",   "simbolo": "USD/JPY",  "mercado": "FOREX",     "moeda": "JPY"},
-    {"ticker": "USDCNY=X", "nome": "Dólar/Yuan",   "simbolo": "USD/CNY",  "mercado": "FOREX",     "moeda": "CNY"},
-    {"ticker": "AUDUSD=X", "nome": "Dólar Australiano/Dólar", "simbolo": "AUD/USD", "mercado": "FOREX", "moeda": "USD"},
-    {"ticker": "USDCAD=X", "nome": "Dólar/Dólar Canadense",   "simbolo": "USD/CAD", "mercado": "FOREX", "moeda": "CAD"},
-    {"ticker": "USDCHF=X", "nome": "Dólar/Franco Suíço",      "simbolo": "USD/CHF", "mercado": "FOREX", "moeda": "CHF"},
-    {"ticker": "USDMXN=X", "nome": "Dólar/Peso Mexicano",     "simbolo": "USD/MXN", "mercado": "FOREX", "moeda": "MXN"},
-    {"ticker": "USDINR=X", "nome": "Dólar/Rupia Indiana",     "simbolo": "USD/INR", "mercado": "FOREX", "moeda": "INR"},
-    {"ticker": "USDKRW=X", "nome": "Dólar/Won Sul-Coreano",   "simbolo": "USD/KRW", "mercado": "FOREX", "moeda": "KRW"},
-    {"ticker": "USDSGD=X", "nome": "Dólar/Dólar de Cingapura","simbolo": "USD/SGD", "mercado": "FOREX", "moeda": "SGD"},
-    {"ticker": "USDHKD=X", "nome": "Dólar/Dólar de Hong Kong","simbolo": "USD/HKD", "mercado": "FOREX", "moeda": "HKD"},
-    {"ticker": "USDZAR=X", "nome": "Dólar/Rand Sul-Africano", "simbolo": "USD/ZAR", "mercado": "FOREX", "moeda": "ZAR"},
-    {"ticker": "GC=F",     "nome": "Ouro",         "simbolo": "OURO",     "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "SI=F",     "nome": "Prata",        "simbolo": "PRATA",    "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "CL=F",     "nome": "Petróleo WTI", "simbolo": "PETRÓLEO", "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "BZ=F",     "nome": "Petróleo Brent","simbolo": "BRENT",   "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "NG=F",     "nome": "Gás Natural",  "simbolo": "GÁS",      "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "ZC=F",     "nome": "Milho",        "simbolo": "MILHO",    "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "ZS=F",     "nome": "Soja",         "simbolo": "SOJA",     "mercado": "COMMODITY", "moeda": "USD"},
-    {"ticker": "KC=F",     "nome": "Café",         "simbolo": "CAFÉ",     "mercado": "COMMODITY", "moeda": "USD"},
-]
+# Os ativos vêm todos do catálogo central (backend/ativos.py). Aqui fica
+# só o subconjunto do resumo da home: é a lista que o aquecimento busca
+# inteira, em paralelo, a cada ciclo — com os quase 300 do catálogo isso
+# viraria centenas de requisições ao Yahoo por ciclo, e ele já derruba
+# algumas quando são 69.
+MERCADO_PRINCIPAL = DO_RESUMO
 
 BINANCE_URL = "https://api.binance.com/api/v3"
 BINANCE_SYMBOLS = {
@@ -243,7 +180,9 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
             return candles
         # Fallback pro Yahoo se Binance falhar
 
-    candles = _buscar_yahoo(ticker, periodo, intervalo)
+    # Pedir mais histórico do que o provedor dá de graça volta VAZIO (não
+    # dá erro): 60m com 5y, por exemplo. O corte é aqui, num lugar só.
+    candles = _buscar_yahoo(ticker, periodo_valido(intervalo, periodo), intervalo)
     if candles:
         _cache_set(chave, candles)
     return candles
@@ -251,12 +190,14 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
 
 def buscar_ativo_info(ticker):
     """Pega info básica (nome, mercado, moeda). Sem ida à internet quando possível."""
-    for m in MERCADO_PRINCIPAL:
-        if m["ticker"].upper() == ticker.upper():
-            return {
-                "nome": m["nome"], "simbolo": m["simbolo"],
-                "mercado": m["mercado"], "moeda": m["moeda"],
-            }
+    # O catálogo inteiro (282 ativos), não só os do resumo: assim o nome de
+    # um ativo cadastrado nunca depende de uma consulta ao Yahoo.
+    do_catalogo = por_ticker(ticker)
+    if do_catalogo:
+        return {
+            "nome": do_catalogo["nome"], "simbolo": do_catalogo["simbolo"],
+            "mercado": do_catalogo["mercado"], "moeda": do_catalogo["moeda"],
+        }
 
     # Cache pra info de ativos fora da lista principal (evita yf.Ticker.info que é caro)
     chave = f"info:{ticker.upper()}"

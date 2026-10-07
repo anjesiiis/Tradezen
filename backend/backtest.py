@@ -21,6 +21,7 @@ from typing import List, Dict
 
 import yfinance as yf
 
+from ativos import ATIVOS, PERIODO_PADRAO, periodo_valido, por_mercado
 from patterns.classicos import detectar_padroes_classicos
 
 
@@ -138,15 +139,27 @@ def backtest_ativo(ticker: str, periodo: str = "2y", intervalo: str = "1d",
 # ──────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(description="Backtest de OCO — TradeZen")
-    parser.add_argument("tickers", nargs="+", help="ex: PETR4.SA VALE3.SA BTC-USD")
+    # Sem ticker nenhum, roda o catálogo inteiro (backend/ativos.py) — é o
+    # que faz um ativo novo entrar na varredura só por ter sido cadastrado.
+    parser.add_argument("tickers", nargs="*", help="ex: PETR4.SA VALE3.SA BTC-USD (vazio = catálogo inteiro)")
+    parser.add_argument("--mercado", default=None, help="limita a um mercado do catálogo: B3, CRIPTO, NYSE...")
     parser.add_argument("--tf",      default="1d",  help="timeframe: 1d, 60m, 1wk (default: 1d)")
-    parser.add_argument("--periodo", default="2y",  help="ex: 2y, 5y, 1y (default: 2y)")
+    parser.add_argument("--periodo", default=None,  help="ex: 2y, 5y (default: o do catálogo pro timeframe)")
     parser.add_argument("--janela",  type=int, default=5, help="sensibilidade dos pivôs (default: 5)")
     args = parser.parse_args()
 
+    if not args.tickers:
+        do_catalogo = por_mercado(args.mercado) if args.mercado else ATIVOS
+        args.tickers = [a["ticker"] for a in do_catalogo]
+        if not args.tickers:
+            parser.error(f"nenhum ativo no mercado '{args.mercado}' (ver backend/ativos.py)")
+
+    # Período: o do catálogo pro timeframe, já cortado no que o provedor dá
+    args.periodo = periodo_valido(args.tf, args.periodo or PERIODO_PADRAO.get(args.tf, "2y"))
+
     print("=" * 60)
     print("  BACKTEST OCO — TradeZen")
-    print(f"  tf={args.tf}  ·  período={args.periodo}  ·  janela={args.janela}")
+    print(f"  {len(args.tickers)} ativo(s)  ·  tf={args.tf}  ·  período={args.periodo}  ·  janela={args.janela}")
     print("=" * 60)
 
     resultados = []

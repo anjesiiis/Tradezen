@@ -41,6 +41,7 @@ import uvicorn
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from ativos import ATIVOS
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
 from config import FRONTEND_URL
 from rate_limit import limiter
@@ -202,150 +203,10 @@ threading.Thread(target=_loop_aquecimento, daemon=True).start()
 
 
 # ── LISTA COMPLETA DE ATIVOS DISPONÍVEIS ──────────────────────
-ATIVOS_DISPONIVEIS = [
-    # ── ÍNDICES ───────────────────────────────────────────────
-    {"ticker": "^BVSP",     "nome": "Ibovespa",             "mercado": "INDICE", "simbolo": "IBOV"},
-    {"ticker": "^GSPC",     "nome": "S&P 500",              "mercado": "INDICE", "simbolo": "SPX"},
-    {"ticker": "^IXIC",     "nome": "Nasdaq Composite",     "mercado": "INDICE", "simbolo": "NASDAQ"},
-    {"ticker": "^DJI",      "nome": "Dow Jones",            "mercado": "INDICE", "simbolo": "DJI"},
-
-    # ── AÇÕES B3 (IBOV principais) ─────────────────────────────
-    {"ticker": "PETR4.SA",  "nome": "Petrobras PN",          "mercado": "B3", "simbolo": "PETR4"},
-    {"ticker": "PETR3.SA",  "nome": "Petrobras ON",          "mercado": "B3", "simbolo": "PETR3"},
-    {"ticker": "VALE3.SA",  "nome": "Vale ON",               "mercado": "B3", "simbolo": "VALE3"},
-    {"ticker": "ITUB4.SA",  "nome": "Itaú Unibanco PN",      "mercado": "B3", "simbolo": "ITUB4"},
-    {"ticker": "ITUB3.SA",  "nome": "Itaú Unibanco ON",      "mercado": "B3", "simbolo": "ITUB3"},
-    {"ticker": "BBDC4.SA",  "nome": "Bradesco PN",           "mercado": "B3", "simbolo": "BBDC4"},
-    {"ticker": "BBDC3.SA",  "nome": "Bradesco ON",           "mercado": "B3", "simbolo": "BBDC3"},
-    {"ticker": "BBAS3.SA",  "nome": "Banco do Brasil ON",    "mercado": "B3", "simbolo": "BBAS3"},
-    {"ticker": "SANB11.SA", "nome": "Santander Brasil UNT",  "mercado": "B3", "simbolo": "SANB11"},
-    {"ticker": "ABEV3.SA",  "nome": "Ambev ON",              "mercado": "B3", "simbolo": "ABEV3"},
-    {"ticker": "B3SA3.SA",  "nome": "B3 ON",                 "mercado": "B3", "simbolo": "B3SA3"},
-    {"ticker": "WEGE3.SA",  "nome": "WEG ON",                "mercado": "B3", "simbolo": "WEGE3"},
-    {"ticker": "MGLU3.SA",  "nome": "Magazine Luiza ON",     "mercado": "B3", "simbolo": "MGLU3"},
-    {"ticker": "LREN3.SA",  "nome": "Lojas Renner ON",       "mercado": "B3", "simbolo": "LREN3"},
-    {"ticker": "SUZB3.SA",  "nome": "Suzano ON",             "mercado": "B3", "simbolo": "SUZB3"},
-    {"ticker": "GGBR4.SA",  "nome": "Gerdau PN",             "mercado": "B3", "simbolo": "GGBR4"},
-    {"ticker": "CSNA3.SA",  "nome": "CSN ON",                "mercado": "B3", "simbolo": "CSNA3"},
-    {"ticker": "USIM5.SA",  "nome": "Usiminas PNA",          "mercado": "B3", "simbolo": "USIM5"},
-    {"ticker": "JBSS3.SA",  "nome": "JBS ON",                "mercado": "B3", "simbolo": "JBSS3"},
-    {"ticker": "BRFS3.SA",  "nome": "BRF ON",                "mercado": "B3", "simbolo": "BRFS3"},
-    {"ticker": "RAIL3.SA",  "nome": "Rumo ON",               "mercado": "B3", "simbolo": "RAIL3"},
-    {"ticker": "RENT3.SA",  "nome": "Localiza ON",           "mercado": "B3", "simbolo": "RENT3"},
-    {"ticker": "EQTL3.SA",  "nome": "Equatorial ON",         "mercado": "B3", "simbolo": "EQTL3"},
-    {"ticker": "ELET3.SA",  "nome": "Eletrobras ON",         "mercado": "B3", "simbolo": "ELET3"},
-    {"ticker": "ELET6.SA",  "nome": "Eletrobras PNB",        "mercado": "B3", "simbolo": "ELET6"},
-    {"ticker": "CMIG4.SA",  "nome": "Cemig PN",              "mercado": "B3", "simbolo": "CMIG4"},
-    {"ticker": "VIVT3.SA",  "nome": "Telefônica Brasil ON",  "mercado": "B3", "simbolo": "VIVT3"},
-    {"ticker": "TIMS3.SA",  "nome": "TIM ON",                "mercado": "B3", "simbolo": "TIMS3"},
-    {"ticker": "RADL3.SA",  "nome": "Raia Drogasil ON",      "mercado": "B3", "simbolo": "RADL3"},
-    {"ticker": "HAPV3.SA",  "nome": "Hapvida ON",            "mercado": "B3", "simbolo": "HAPV3"},
-    {"ticker": "EMBR3.SA",  "nome": "Embraer ON",            "mercado": "B3", "simbolo": "EMBR3"},
-    {"ticker": "CIEL3.SA",  "nome": "Cielo ON",              "mercado": "B3", "simbolo": "CIEL3"},
-    {"ticker": "AZUL4.SA",  "nome": "Azul PN",               "mercado": "B3", "simbolo": "AZUL4"},
-    {"ticker": "GOLL4.SA",  "nome": "Gol PN",                "mercado": "B3", "simbolo": "GOLL4"},
-    {"ticker": "PRIO3.SA",  "nome": "PetroRio ON",           "mercado": "B3", "simbolo": "PRIO3"},
-    {"ticker": "CSAN3.SA",  "nome": "Cosan ON",              "mercado": "B3", "simbolo": "CSAN3"},
-    {"ticker": "UGPA3.SA",  "nome": "Ultrapar ON",           "mercado": "B3", "simbolo": "UGPA3"},
-    {"ticker": "NTCO3.SA",  "nome": "Natura ON",             "mercado": "B3", "simbolo": "NTCO3"},
-    {"ticker": "ASAI3.SA",  "nome": "Assaí ON",              "mercado": "B3", "simbolo": "ASAI3"},
-    {"ticker": "PCAR3.SA",  "nome": "Pão de Açúcar ON",      "mercado": "B3", "simbolo": "PCAR3"},
-    {"ticker": "BRKM5.SA",  "nome": "Braskem PNA",           "mercado": "B3", "simbolo": "BRKM5"},
-    {"ticker": "ITSA4.SA",  "nome": "Itaúsa PN",             "mercado": "B3", "simbolo": "ITSA4"},
-    {"ticker": "BPAC11.SA", "nome": "BTG Pactual UNT",       "mercado": "B3", "simbolo": "BPAC11"},
-    {"ticker": "KLBN11.SA", "nome": "Klabin UNT",            "mercado": "B3", "simbolo": "KLBN11"},
-    {"ticker": "MBRF3.SA",  "nome": "MBRF (Marfrig+BRF) ON", "mercado": "B3", "simbolo": "MBRF3"},
-    {"ticker": "CYRE3.SA",  "nome": "Cyrela ON",             "mercado": "B3", "simbolo": "CYRE3"},
-    {"ticker": "MRVE3.SA",  "nome": "MRV Engenharia ON",     "mercado": "B3", "simbolo": "MRVE3"},
-    {"ticker": "SBSP3.SA",  "nome": "Sabesp ON",             "mercado": "B3", "simbolo": "SBSP3"},
-    {"ticker": "CPLE3.SA",  "nome": "Copel ON",              "mercado": "B3", "simbolo": "CPLE3"},
-    {"ticker": "TAEE11.SA", "nome": "Taesa UNT",             "mercado": "B3", "simbolo": "TAEE11"},
-    {"ticker": "ENGI11.SA", "nome": "Energisa UNT",          "mercado": "B3", "simbolo": "ENGI11"},
-    {"ticker": "CPFE3.SA",  "nome": "CPFL Energia ON",       "mercado": "B3", "simbolo": "CPFE3"},
-    {"ticker": "ENEV3.SA",  "nome": "Eneva ON",              "mercado": "B3", "simbolo": "ENEV3"},
-    {"ticker": "TOTS3.SA",  "nome": "Totvs ON",              "mercado": "B3", "simbolo": "TOTS3"},
-    {"ticker": "YDUQ3.SA",  "nome": "Yduqs ON",              "mercado": "B3", "simbolo": "YDUQ3"},
-    {"ticker": "COGN3.SA",  "nome": "Cogna ON",              "mercado": "B3", "simbolo": "COGN3"},
-    {"ticker": "BEEF3.SA",  "nome": "Minerva ON",            "mercado": "B3", "simbolo": "BEEF3"},
-    {"ticker": "SMTO3.SA",  "nome": "São Martinho ON",       "mercado": "B3", "simbolo": "SMTO3"},
-    {"ticker": "SLCE3.SA",  "nome": "SLC Agrícola ON",       "mercado": "B3", "simbolo": "SLCE3"},
-    {"ticker": "VBBR3.SA",  "nome": "Vibra Energia ON",      "mercado": "B3", "simbolo": "VBBR3"},
-    {"ticker": "BRAV3.SA",  "nome": "Brava Energia ON",      "mercado": "B3", "simbolo": "BRAV3"},
-    {"ticker": "DXCO3.SA",  "nome": "Dexco ON",              "mercado": "B3", "simbolo": "DXCO3"},
-    {"ticker": "BRAP4.SA",  "nome": "Bradespar PN",          "mercado": "B3", "simbolo": "BRAP4"},
-    {"ticker": "MULT3.SA",  "nome": "Multiplan ON",          "mercado": "B3", "simbolo": "MULT3"},
-    {"ticker": "ALPA4.SA",  "nome": "Alpargatas PN",         "mercado": "B3", "simbolo": "ALPA4"},
-    {"ticker": "IRBR3.SA",  "nome": "IRB Brasil ON",         "mercado": "B3", "simbolo": "IRBR3"},
-    {"ticker": "ECOR3.SA",  "nome": "EcoRodovias ON",        "mercado": "B3", "simbolo": "ECOR3"},
-    {"ticker": "GOAU4.SA",  "nome": "Gerdau Metalúrgica PN", "mercado": "B3", "simbolo": "GOAU4"},
-    {"ticker": "HYPE3.SA",  "nome": "Hypera ON",             "mercado": "B3", "simbolo": "HYPE3"},
-    {"ticker": "AZZA3.SA",  "nome": "Azzas 2154 ON",         "mercado": "B3", "simbolo": "AZZA3"},
-    {"ticker": "RDOR3.SA",  "nome": "Rede D'Or ON",          "mercado": "B3", "simbolo": "RDOR3"},
-
-    # ── CRIPTOMOEDAS ──────────────────────────────────────────
-    {"ticker": "BTC-USD",   "nome": "Bitcoin",          "mercado": "CRIPTO", "simbolo": "BTC"},
-    {"ticker": "ETH-USD",   "nome": "Ethereum",         "mercado": "CRIPTO", "simbolo": "ETH"},
-    {"ticker": "SOL-USD",   "nome": "Solana",           "mercado": "CRIPTO", "simbolo": "SOL"},
-    {"ticker": "BNB-USD",   "nome": "Binance Coin",     "mercado": "CRIPTO", "simbolo": "BNB"},
-    {"ticker": "XRP-USD",   "nome": "Ripple",           "mercado": "CRIPTO", "simbolo": "XRP"},
-    {"ticker": "ADA-USD",   "nome": "Cardano",          "mercado": "CRIPTO", "simbolo": "ADA"},
-    {"ticker": "DOGE-USD",  "nome": "Dogecoin",         "mercado": "CRIPTO", "simbolo": "DOGE"},
-    {"ticker": "AVAX-USD",  "nome": "Avalanche",        "mercado": "CRIPTO", "simbolo": "AVAX"},
-    {"ticker": "DOT-USD",   "nome": "Polkadot",         "mercado": "CRIPTO", "simbolo": "DOT"},
-    {"ticker": "MATIC-USD", "nome": "Polygon",          "mercado": "CRIPTO", "simbolo": "MATIC"},
-    {"ticker": "LINK-USD",  "nome": "Chainlink",        "mercado": "CRIPTO", "simbolo": "LINK"},
-    {"ticker": "UNI-USD",   "nome": "Uniswap",          "mercado": "CRIPTO", "simbolo": "UNI"},
-    {"ticker": "ATOM-USD",  "nome": "Cosmos",           "mercado": "CRIPTO", "simbolo": "ATOM"},
-    {"ticker": "LTC-USD",   "nome": "Litecoin",         "mercado": "CRIPTO", "simbolo": "LTC"},
-    {"ticker": "BCH-USD",   "nome": "Bitcoin Cash",     "mercado": "CRIPTO", "simbolo": "BCH"},
-
-    # ── COMMODITIES ───────────────────────────────────────────
-    {"ticker": "GC=F",      "nome": "Ouro (futuro)",          "mercado": "COMMODITY", "simbolo": "OURO"},
-    {"ticker": "SI=F",      "nome": "Prata (futuro)",         "mercado": "COMMODITY", "simbolo": "PRATA"},
-    {"ticker": "HG=F",      "nome": "Cobre (futuro)",         "mercado": "COMMODITY", "simbolo": "COBRE"},
-    {"ticker": "PL=F",      "nome": "Platina (futuro)",       "mercado": "COMMODITY", "simbolo": "PLATINA"},
-    {"ticker": "CL=F",      "nome": "Petróleo WTI",           "mercado": "COMMODITY", "simbolo": "WTI"},
-    {"ticker": "BZ=F",      "nome": "Petróleo Brent",         "mercado": "COMMODITY", "simbolo": "BRENT"},
-    {"ticker": "NG=F",      "nome": "Gás Natural",            "mercado": "COMMODITY", "simbolo": "GAS"},
-    {"ticker": "ZC=F",      "nome": "Milho",                  "mercado": "COMMODITY", "simbolo": "MILHO"},
-    {"ticker": "ZS=F",      "nome": "Soja",                   "mercado": "COMMODITY", "simbolo": "SOJA"},
-    {"ticker": "KC=F",      "nome": "Café",                   "mercado": "COMMODITY", "simbolo": "CAFE"},
-    {"ticker": "SB=F",      "nome": "Açúcar",                 "mercado": "COMMODITY", "simbolo": "ACUCAR"},
-    {"ticker": "CT=F",      "nome": "Algodão",                "mercado": "COMMODITY", "simbolo": "ALGODAO"},
-
-    # ── FOREX ─────────────────────────────────────────────────
-    {"ticker": "USDBRL=X",  "nome": "USD/BRL",           "mercado": "FOREX", "simbolo": "USD/BRL"},
-    {"ticker": "EURBRL=X",  "nome": "Euro / Real",       "mercado": "FOREX", "simbolo": "EUR/BRL"},
-    {"ticker": "GBPBRL=X",  "nome": "Libra / Real",      "mercado": "FOREX", "simbolo": "GBP/BRL"},
-    {"ticker": "EURUSD=X",  "nome": "Euro / Dólar",      "mercado": "FOREX", "simbolo": "EUR/USD"},
-    {"ticker": "GBPUSD=X",  "nome": "Libra / Dólar",     "mercado": "FOREX", "simbolo": "GBP/USD"},
-    {"ticker": "USDJPY=X",  "nome": "Dólar / Iene",      "mercado": "FOREX", "simbolo": "USD/JPY"},
-    {"ticker": "USDCNY=X",  "nome": "Dólar / Yuan",      "mercado": "FOREX", "simbolo": "USD/CNY"},
-    {"ticker": "GBPJPY=X",  "nome": "Libra / Iene",           "mercado": "FOREX", "simbolo": "GBP/JPY"},
-    {"ticker": "EURJPY=X",  "nome": "Euro / Iene",            "mercado": "FOREX", "simbolo": "EUR/JPY"},
-    {"ticker": "EURGBP=X",  "nome": "Euro / Libra",           "mercado": "FOREX", "simbolo": "EUR/GBP"},
-    {"ticker": "AUDUSD=X",  "nome": "Dólar Australiano / Dólar", "mercado": "FOREX", "simbolo": "AUD/USD"},
-    {"ticker": "NZDUSD=X",  "nome": "Dólar Neozelandês / Dólar", "mercado": "FOREX", "simbolo": "NZD/USD"},
-    {"ticker": "USDCAD=X",  "nome": "Dólar / Dólar Canadense", "mercado": "FOREX", "simbolo": "USD/CAD"},
-    {"ticker": "USDCHF=X",  "nome": "Dólar / Franco Suíço",   "mercado": "FOREX", "simbolo": "USD/CHF"},
-    {"ticker": "AUDJPY=X",  "nome": "Dólar Australiano / Iene", "mercado": "FOREX", "simbolo": "AUD/JPY"},
-    {"ticker": "CHFJPY=X",  "nome": "Franco Suíço / Iene",    "mercado": "FOREX", "simbolo": "CHF/JPY"},
-    {"ticker": "USDMXN=X",  "nome": "Dólar / Peso Mexicano",  "mercado": "FOREX", "simbolo": "USD/MXN"},
-    {"ticker": "USDINR=X",  "nome": "Dólar / Rupia Indiana",  "mercado": "FOREX", "simbolo": "USD/INR"},
-    {"ticker": "USDKRW=X",  "nome": "Dólar / Won Sul-Coreano","mercado": "FOREX", "simbolo": "USD/KRW"},
-    {"ticker": "USDSGD=X",  "nome": "Dólar / Dólar de Cingapura", "mercado": "FOREX", "simbolo": "USD/SGD"},
-    {"ticker": "USDHKD=X",  "nome": "Dólar / Dólar de Hong Kong", "mercado": "FOREX", "simbolo": "USD/HKD"},
-    {"ticker": "USDZAR=X",  "nome": "Dólar / Rand Sul-Africano",  "mercado": "FOREX", "simbolo": "USD/ZAR"},
-
-    # ── AÇÕES INTERNACIONAIS (big techs/blue chips) ──────────
-    {"ticker": "AAPL",      "nome": "Apple",              "mercado": "NASDAQ", "simbolo": "AAPL"},
-    {"ticker": "MSFT",      "nome": "Microsoft",          "mercado": "NASDAQ", "simbolo": "MSFT"},
-    {"ticker": "NVDA",      "nome": "Nvidia",             "mercado": "NASDAQ", "simbolo": "NVDA"},
-    {"ticker": "GOOGL",     "nome": "Alphabet (Google)",  "mercado": "NASDAQ", "simbolo": "GOOGL"},
-    {"ticker": "AMZN",      "nome": "Amazon",             "mercado": "NASDAQ", "simbolo": "AMZN"},
-    {"ticker": "META",      "nome": "Meta Platforms",     "mercado": "NASDAQ", "simbolo": "META"},
-    {"ticker": "TSLA",      "nome": "Tesla",              "mercado": "NASDAQ", "simbolo": "TSLA"},
-]
+# Vem do catálogo central (backend/ativos.py): é o que a busca do site, o
+# filtro por mercado e a detecção de padrões enxergam. Pra acrescentar um
+# ativo, basta uma linha lá.
+ATIVOS_DISPONIVEIS = ATIVOS
 
 
 # ── ROTAS ─────────────────────────────────────────────────────

@@ -156,6 +156,12 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - `templates_niveis` — suporte e resistência
 - `templates_bandeira_*`, `templates_flamula_*`, `templates_cunha_*` — padrões de continuação (8 pontos)
 - `templates_canal_alta` / `templates_canal_baixa` — canais (6 pontos, 2 opcionais)
+
+### Ativos monitorados
+- Catálogo único em `backend/ativos.py` (282 ativos: B3, NYSE, NASDAQ, cripto, forex, commodities, índices)
+- Acrescentar ativo = acrescentar uma linha lá; busca, resumo da home e backtest leem desse arquivo
+- `resumo: True` marca os que entram na fileira de cotações da home (subconjunto, pra não disparar centenas de requisições por ciclo)
+- Histórico: diário e semanal aceitam até `max`; 60 minutos o Yahoo só dá 60 dias (ver `periodo_valido`)
 - `analises_diarias` — resultados da detecção diária
 
 ## Variáveis de ambiente
@@ -287,6 +293,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Pedido sobre... | Arquivo |
 |---|---|
 | App principal FastAPI (rotas) | `main.py` |
+| **Catálogo de ativos (ÚNICA lista) + limites de período** | `ativos.py` |
 | Config (env vars, Supabase URL) | `config.py` |
 | Cliente Supabase | `supabase_client.py` |
 | Auth admin | `admin_auth.py` |
