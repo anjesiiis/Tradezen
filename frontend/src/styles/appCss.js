@@ -442,77 +442,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
-/* ── DETECTORES ───────────────────────────────────────────── */
-/* Tela de desktop: abaixo de 1024px some e fica só o aviso (ver o bloco
-   do mobile, mais abaixo). */
-.det-so-desktop{display:none}
-.det{display:grid;grid-template-columns:250px 1fr 280px;gap:16px;padding:18px 20px 40px;align-items:start;max-width:1600px;margin:0 auto}
-.det-col{display:flex;flex-direction:column;gap:10px;min-width:0}
-.det-titulo{font-family:var(--font-h);font-size:20px;letter-spacing:.5px;color:var(--text);margin:0}
-.det-sub{font-size:11px;color:var(--text2);margin:0 0 4px}
-
-.det-lista{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.det-ativo{display:flex;align-items:center;gap:9px;background:var(--card);border:0;padding:9px 10px;font:inherit;text-align:left;cursor:pointer;width:100%}
-.det-ativo:hover:not(:disabled){background:var(--s2)}
-.det-ativo.ligado{background:var(--s2);box-shadow:inset 3px 0 0 var(--accent)}
-.det-ativo:disabled{opacity:.45;cursor:not-allowed}
-.det-ativo-nome{display:flex;flex-direction:column;min-width:0;flex:1}
-.det-ativo-nome strong{font-size:12px;color:var(--text);font-family:var(--font-m)}
-.det-ativo-nome span{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.det-ativo-var{font-size:11px;font-family:var(--font-m);font-variant-numeric:tabular-nums}
-.det-ativo-var.alta,.det-card-preco .alta,.det-mini .alta{color:var(--up)}
-.det-ativo-var.baixa,.det-card-preco .baixa,.det-mini .baixa{color:var(--down)}
-
-.det-btn-todos{background:none;border:1px dashed var(--border);border-radius:var(--r);color:var(--text2);font:inherit;font-size:12px;padding:9px;cursor:pointer}
-.det-btn-todos:hover{border-color:var(--accent);color:var(--text)}
-.det-btn-todos.travado{cursor:not-allowed;opacity:.6}
-
-.det-centro{gap:14px}
-.det-vazio{color:var(--text2);font-size:13px;text-align:center;padding:48px 16px;border:1px dashed var(--border);border-radius:var(--r)}
-.det-cards{display:flex;flex-direction:column;gap:12px}
-.det-card{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.det-card header{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
-.det-card-nome{display:flex;flex-direction:column}
-.det-card-nome strong{font-size:13px;color:var(--text);font-family:var(--font-m)}
-.det-card-nome span{font-size:11px;color:var(--text2)}
-.det-card-preco{display:flex;flex-direction:column;align-items:flex-end;font-size:13px;font-family:var(--font-m);color:var(--text);font-variant-numeric:tabular-nums}
-.det-card-preco span{font-size:11px}
-.det-badge{margin-left:auto;flex-shrink:0;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);border:1px solid var(--border);border-radius:999px;padding:3px 9px;white-space:nowrap}
-.det-card-x{background:none;border:0;color:var(--text3);font-size:12px;cursor:pointer;padding:2px 4px}
-.det-card-x:hover{color:var(--text)}
-.det-card-linha{position:relative;height:72px;flex-shrink:0}
-
-.det-miniaturas{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
-.det-mini{flex:0 0 92px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:3px;font:inherit;cursor:pointer}
-.det-mini:hover{border-color:var(--accent)}
-.det-mini.ligado{border-color:var(--accent);background:var(--s2)}
-.det-mini strong{font-size:11px;color:var(--text);font-family:var(--font-m)}
-.det-mini span{font-size:10px;font-family:var(--font-m)}
-
-.det-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.det-exercicio{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 10px;min-height:76px;display:flex;align-items:center;justify-content:center;text-align:center;font:inherit;cursor:pointer}
-.det-exercicio:hover{border-color:var(--accent)}
-.det-exercicio-nome{font-size:12px;color:var(--text);line-height:1.35}
-.det-exercicio.travado{cursor:not-allowed}
-.det-exercicio.travado .det-exercicio-nome{opacity:.35}
-.det-exercicio.travado::after{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(6,8,15,.55)}
-.det-cadeado{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;z-index:1}
-
-/* ── Exercício ── */
-.det-exercicio-tela{display:flex;flex-direction:column;gap:12px;padding:18px 20px 40px;max-width:1100px;margin:0 auto}
-.det-exercicio-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.det-exercicio-topo h1{font-family:var(--font-h);font-size:24px;letter-spacing:.5px;color:var(--text);margin:0}
-.det-exercicio-ativo{font-size:11px;color:var(--text2);font-family:var(--font-m)}
-.det-btn-voltar{background:none;border:0;color:var(--accent);font:inherit;font-size:12px;cursor:pointer;padding:0}
-.det-exercicio-instrucao{margin:0;font-size:13px;color:var(--text2)}
-.det-exercicio-grafico{padding:12px;height:460px;position:relative}
-.det-exercicio-acoes{display:flex;justify-content:flex-end}
-.det-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:13px;font-weight:600;padding:9px 22px;border-radius:18px;cursor:pointer}
-.det-btn:hover{filter:brightness(1.1)}
-
-.nav-detectores{background:none;border:1px solid var(--accent);color:var(--accent);font:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:16px;cursor:pointer;margin-left:14px;white-space:nowrap}
-.nav-detectores:hover{background:var(--accent);color:#fff}
-
 /* ── TEXTURAS DE FUNDO ────────────────────────────────────── */
 /* Só visual: nada aqui recebe clique (pointer-events:none) nem entra na
    frente do conteúdo (o ::before fica em z-index 0 e o conteúdo real sobe
@@ -694,14 +623,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .mg-popup-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:16px;cursor:pointer}
 .mg-popup-btn:hover{filter:brightness(1.1)}
 
-
-/* Detectores é tela de desktop: abaixo de 1024px vira um aviso, e o
-   botão do header some. O resto do app não muda. */
-@media (max-width:1023px){
-  .det,.det-exercicio-tela{display:none}
-  .nav-detectores{display:none}
-  .det-so-desktop{display:block;margin:28px 16px;padding:22px 18px;border:1px dashed var(--border);border-radius:var(--r);color:var(--text2);font-size:13px;text-align:center}
-}
 
 /* ═══════════════════ TABLET — 768–1024px ═══════════════════ */
 @media (max-width:1024px) and (min-width:768px){

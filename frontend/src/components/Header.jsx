@@ -67,15 +67,6 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
         <button className="nav-ic search-close-btn" title="Fechar busca" onClick={()=>setBuscaMobileAberta(false)}>✕</button>
       </div>
 
-      {/* Detectores — tela de desktop; o CSS esconde o botão no celular */}
-      <button
-        className="nav-detectores"
-        title="Detectores de análise técnica"
-        onClick={()=>navigate("/detectores")}
-      >
-        Detectores
-      </button>
-
       <div style={{flex:1}}/>
 
       <button className="nav-ic search-toggle-btn" title="Buscar" onClick={()=>setBuscaMobileAberta(true)}>

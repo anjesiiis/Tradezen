@@ -25,7 +25,6 @@ import GloboMercados from "../components/GloboMercados.jsx";
 const PaginaCriptomoedas = lazy(() => import("./Criptomoedas.jsx"));
 const PaginaListaAtivos = lazy(() => import("./Favoritos.jsx"));
 const PaginaPrincipaisAtivosComparativo = lazy(() => import("./PrincipaisAtivos.jsx"));
-const PaginaDetectores = lazy(() => import("./Detectores.jsx"));
 const ChartPane = lazy(() => import("./Grafico.jsx"));
 const Pagina404 = lazy(() => import("./NaoEncontrada.jsx"));
 const HomeLineChart = lazy(() => import("../components/HomeLineChart.jsx"));
@@ -169,7 +168,6 @@ function AppInner(){
   const path = location.pathname;
   const isAnalysis = path.startsWith("/ativo/");
   const isLista = path.startsWith("/lista/");
-  const isDetectores = path.startsWith("/detectores");
   const listaTipo = isLista ? path.split("/lista/")[1] : null;
   const tickerUrl = isAnalysis ? decodeURIComponent(path.split("/ativo/")[1]) : null;
 
@@ -496,17 +494,7 @@ function AppInner(){
         </div>
       )}
 
-      {/* ── DETECTORES (rota própria, só desktop) ── */}
-      {isDetectores&&(
-        <div className="dash">
-          <Sidebar secao={secao} setSecao={setSecao} collapsed={sbCollapsed} setCollapsed={setSbCollapsed}/>
-          <div className="dash-main">
-            <PaginaDetectores mercado={mercado} tema={tema}/>
-          </div>
-        </div>
-      )}
-
-      {path!=="/" && path!=="/mercados" && path!=="/principais-ativos" && !isDetectores && !isAnalysis && !isLista && (
+      {path!=="/" && path!=="/mercados" && path!=="/principais-ativos" && !isAnalysis && !isLista && (
         <Pagina404/>
       )}
 
