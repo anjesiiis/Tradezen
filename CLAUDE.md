@@ -205,6 +205,8 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Mercados Globais (lista + globo) | `pages/MercadosGlobais.jsx` |
 | Principais ativos | `pages/PrincipaisAtivos.jsx` |
 | Página 404 | `pages/NaoEncontrada.jsx` |
+| Detectores (3 colunas, só desktop) | `pages/Detectores.jsx` |
+| Exercício de um padrão | `pages/Exercicio.jsx` |
 
 ### Frontend — Componentes (frontend/src/components/)
 | Pedido sobre... | Arquivo |
@@ -233,6 +235,8 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Detecção de padrões no frontend | `lib/grafico/padroes.js` |
 | Dados de mercado (tickers, categorias) | `lib/mercado.js` |
 | Bolsas do mundo (coordenadas, índices) | `lib/mercadosGlobais.js` |
+| Ativos e exercícios dos Detectores | `lib/detectores.js` |
+| Top 5 mais negociadas por praça | `lib/topAcoes.js` |
 | Cliente Supabase | `lib/supabaseClient.js` |
 
 ### Frontend — Auth (frontend/src/auth/)
