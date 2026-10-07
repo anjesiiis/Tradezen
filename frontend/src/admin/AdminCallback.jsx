@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SkeletonPagina } from "../components/Skeleton.jsx";
 import AdminShell from "./theme.jsx";
+import { supabase } from "../lib/supabaseClient.js";
 import { setAdminToken } from "./adminApi";
 
 // `hashInicial` / `queryInicial`: hash e query da URL capturados no
@@ -37,7 +38,21 @@ export default function AdminCallback({ hashInicial, queryInicial }) {
     }
 
     setAdminToken(accessToken);
-    window.location.replace("/admin/templates/topo-duplo");
+
+    // Gravar a SESSÃO (não só o token) antes de sair da página. O
+    // access_token do magic link vale 1 hora e não se renova sozinho;
+    // quem renova é a sessão, que precisa do refresh_token. Antes a gente
+    // saía daqui com window.location.replace imediato, e a gravação que o
+    // próprio client faz ao ler a URL podia nem terminar — passada a hora,
+    // trocar de padrão no painel caía na tela de email.
+    const refreshToken = ler("refresh_token");
+    const irPraTemplates = () => window.location.replace("/admin/templates/topo-duplo");
+
+    if (!refreshToken) { irPraTemplates(); return; }
+    supabase.auth
+      .setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .catch(() => {})            // sem sessão ainda dá pra entrar: o token vale 1h
+      .finally(irPraTemplates);
   }, [hashInicial, queryInicial]);
 
   if (!erro) return <SkeletonPagina />;

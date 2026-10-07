@@ -80,6 +80,42 @@ describe('Sessão do admin', () => {
     expect(await screen.findByText('painel')).toBeInTheDocument();
   });
 
+  it('abrir uma tela dispara várias chamadas: o token expirado é renovado uma vez e nenhuma se perde', async () => {
+    localStorage.setItem('admin_token', 'token-velho');
+    sessaoCom('token-novo');
+
+    // é o que acontece ao trocar de padrão: a lista do padrão + as
+    // lâmpadas das 9 tabelas saem juntas, e todas pegam o token vencido
+    global.fetch = vi.fn(async (_url, opcoes) =>
+      opcoes.headers.Authorization === 'Bearer token-velho'
+        ? { status: 401, ok: false, json: async () => ({ detail: 'expirado' }) }
+        : { status: 200, ok: true, json: async () => ({ status: 'ok', templates: [] }) }
+    );
+
+    const resultados = await Promise.all(
+      Array.from({ length: 10 }, () => adminApi.templatesOcoApi.list())
+    );
+
+    expect(resultados.every((r) => Array.isArray(r))).toBe(true);
+    expect(localStorage.getItem('admin_token')).toBe('token-novo');
+    // 10 tentativas com o token velho + 10 repetições com o novo
+    expect(global.fetch).toHaveBeenCalledTimes(20);
+  });
+
+  it('uma falha pontual não derruba a sessão: o token guardado continua lá', async () => {
+    localStorage.setItem('admin_token', 'token-bom');
+    sessaoCom('token-bom');
+    let primeira = true;
+    global.fetch = vi.fn(async () => {
+      if (primeira) { primeira = false; return { status: 401, ok: false, json: async () => ({}) }; }
+      return { status: 200, ok: true, json: async () => ({ status: 'ok', templates: [] }) };
+    });
+
+    await adminApi.templatesOcoApi.list();
+
+    expect(localStorage.getItem('admin_token')).toBe('token-bom');
+  });
+
   it('a navegação entre padrões é client-side (não recarrega a página)', () => {
     render(<MemoryRouter><AdminPatternNav active="bandeira-alta" /></MemoryRouter>);
 

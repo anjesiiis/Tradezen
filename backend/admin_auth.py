@@ -1,3 +1,6 @@
+import hashlib
+import threading
+import time
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -67,12 +70,59 @@ def solicitar_magic_link(request: Request, payload: MagicLinkRequest):
     return {"status": "ok", "mensagem": "Link de acesso enviado para o email."}
 
 
+# ── CACHE DE TOKENS JÁ VALIDADOS ──────────────────────────────
+# Abrir uma tela do admin dispara ~10 chamadas de uma vez (a lista do
+# padrão aberto + as lâmpadas, que consultam as 9 tabelas de template).
+# Sem cache, cada uma dessas chamadas fazia uma ida e volta ao Supabase
+# só pra perguntar de quem é o token — dez idas por tela. Bastava UMA
+# falhar (timeout, rate limit do Supabase, rede ruim) pra virar 401, e o
+# 401 derrubava a sessão inteira: era isso que mandava o admin de volta
+# pra tela de email no meio da navegação entre padrões.
+#
+# Guardamos só o hash do token (nunca o token em si) e o email. TTL curto:
+# 5 minutos é tempo de sobra pra cobrir uma navegação e curto o bastante
+# pra um acesso revogado não durar na memória do processo.
+_TTL_TOKEN = 300
+_tokens_validos: dict = {}
+_lock_tokens = threading.Lock()
+
+
+def _chave(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _do_cache(token: str) -> Optional[str]:
+    with _lock_tokens:
+        guardado = _tokens_validos.get(_chave(token))
+    if not guardado:
+        return None
+    quando, email = guardado
+    if time.time() - quando > _TTL_TOKEN:
+        return None
+    return email
+
+
+def _guardar(token: str, email: str) -> None:
+    with _lock_tokens:
+        # limpeza simples: joga fora o que já venceu antes de crescer
+        agora = time.time()
+        if len(_tokens_validos) > 50:
+            for k, (quando, _) in list(_tokens_validos.items()):
+                if agora - quando > _TTL_TOKEN:
+                    _tokens_validos.pop(k, None)
+        _tokens_validos[_chave(token)] = (agora, email)
+
+
 def require_admin(authorization: str = Header(None)) -> str:
     """Valida o token Supabase (Bearer) e garante que o email está em ADMIN_EMAILS."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Token de autenticação ausente.")
 
     token = authorization.split(" ", 1)[1].strip()
+
+    em_cache = _do_cache(token)
+    if em_cache:
+        return em_cache
 
     try:
         resposta = supabase.auth.get_user(token)
@@ -83,7 +133,9 @@ def require_admin(authorization: str = Header(None)) -> str:
     if not user or not user.email:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
 
-    if user.email.strip().lower() not in ADMIN_EMAILS:
+    email = user.email.strip().lower()
+    if email not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
+    _guardar(token, user.email)
     return user.email

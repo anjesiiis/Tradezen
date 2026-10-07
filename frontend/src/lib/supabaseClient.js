@@ -22,7 +22,19 @@ if (!url || !anonKey) {
 // de login/cadastro leem isso e avisam o que realmente falta.
 export const supabaseConfigurado = Boolean(url && anonKey);
 
+// Instância ÚNICA do app inteiro: todo mundo importa daqui. Duas
+// instâncias brigariam pelo mesmo storage e uma apagaria a sessão da
+// outra. As opções abaixo são o padrão da biblioteca — estão escritas
+// porque a sessão do admin depende delas (sem persistSession, trocar de
+// padrão no painel pedia email de novo).
 export const supabase = createClient(
   url || "https://placeholder.supabase.co",
-  anonKey || "placeholder-anon-key"
+  anonKey || "placeholder-anon-key",
+  {
+    auth: {
+      persistSession: true,      // guarda no localStorage
+      autoRefreshToken: true,    // renova sozinho antes de expirar
+      detectSessionInUrl: true,  // lê o token do magic link na URL
+    },
+  }
 );
