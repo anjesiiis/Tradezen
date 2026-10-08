@@ -28,6 +28,7 @@ export default function TemplateMarkerChart({
   faixaInicial,            // { from, to } em índice de candle: abre o gráfico já nesse zoom
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   padraoMarcado,           // { id, ancora, acima } — emoji do padrão em cima da marcação
+  enquadrarPontos,         // true: abre já enquadrado nos pontos (modo visualizar)
   initialPontos, onChange, readOnly = false,
 }) {
   const containerRef = useRef();
@@ -386,6 +387,17 @@ export default function TemplateMarkerChart({
     });
   }
 
+  // Modo visualizar: abre já enquadrado no padrão, com contexto em volta.
+  // Sem isso, um padrão de 2023 abria com o gráfico inteiro na tela e era
+  // preciso procurá-lo.
+  useEffect(() => {
+    if (!enquadrarPontos || !candles?.length || !chartRef.current) return;
+    const indices = Object.values(initialPontos || {}).map((pt) => pt?.i).filter((i) => candles[i]);
+    const alvo = faixaDeLeitura(indices, candles.length);
+    if (alvo) chartRef.current.timeScale().setVisibleLogicalRange(alvo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enquadrarPontos, candles]);
+
   // Ao abrir um padrão salvo pela 💡, o gráfico vai pra uma distância
   // confortável de leitura — e não pro zoom em que o padrão foi marcado,
   // que costuma ser coladíssimo (a marcação exige precisão, a leitura não).
@@ -551,7 +563,7 @@ export default function TemplateMarkerChart({
   }
 
   return (
-    <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden" }}>
+    <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden", position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {steps.map((s) => {
@@ -592,6 +604,12 @@ export default function TemplateMarkerChart({
           </div>
         )}
       </div>
+
+      {padraoMarcado?.modo && (
+        <span className={`modo-badge ${padraoMarcado.modo === "visualizar" ? "vendo" : "editando"}`}>
+          {padraoMarcado.modo === "visualizar" ? "👁 Visualizando" : "✏️ Editando"}
+        </span>
+      )}
 
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
         {readOnly

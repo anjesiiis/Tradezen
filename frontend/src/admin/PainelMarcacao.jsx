@@ -5,6 +5,7 @@ import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import { comContextoLargo } from "./contextoTemplate.js";
+import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
   PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, normalizarPares,
@@ -80,6 +81,15 @@ export default function PainelMarcacao({ padraoInicial }) {
   // padrão, e é isso que devolve o zoom e a posição de antes. Guardada
   // também fora do componente, pra valer entre telas diferentes.
   const faixaRef = useRef(estadoDoGrafico().faixa);
+
+  // Chegou por link com ?modo=visualizar&id=12: abre aquele template já
+  // no modo pedido, em vez de cair na tela de marcação vazia.
+  useEffect(() => {
+    const pedido = lerModoDaUrl(window.location.search);
+    if (!pedido) return;
+    abrirTemplate({ id: pedido.id }, pedido.modo === "visualizar");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     carregarTemplates();
@@ -252,6 +262,7 @@ export default function PainelMarcacao({ padraoInicial }) {
     setMensagem(null);
     try {
       const completoDoBanco = comContextoLargo(await api.get(template.id));
+      escreverModoNaUrl(readOnly ? "visualizar" : "editar", template.id);
       setEditando({
         ...completoDoBanco,
         pontosEdit: completoDoBanco.pontos,
@@ -293,6 +304,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         await mudarDePadrao(padraoDestino, campos);
       }
       setEditando(null);
+      escreverModoNaUrl(null);
       carregarTemplates();
     } catch (err) {
       setMensagem({ tipo: "erro", texto: err?.mensagemAmigavel || "Erro ao atualizar o template." });
@@ -376,7 +388,7 @@ export default function PainelMarcacao({ padraoInicial }) {
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
+              <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
             </div>
 
             <TemplateMarkerChart
@@ -392,6 +404,13 @@ export default function PainelMarcacao({ padraoInicial }) {
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               anotacoes={editando.anotacoesEdit}
               aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
+              padraoMarcado={{
+                id: padraoEmEdicao.id,
+                ancora: "p2_topo_mastro1",
+                acima: padraoEmEdicao.alta,
+                modo: editando.readOnly ? "visualizar" : "editar",
+              }}
+              enquadrarPontos={editando.readOnly}
               readOnly={editando.readOnly}
             />
 
@@ -435,6 +454,19 @@ export default function PainelMarcacao({ padraoInicial }) {
                 />
               </Campo>
             </div>
+
+            {editando.readOnly && (
+              <button
+                type="button"
+                className="admin-btn editar-este"
+                onClick={() => {
+                  escreverModoNaUrl("editar", editando.id);
+                  setEditando((prev) => ({ ...prev, readOnly: false }));
+                }}
+              >
+                Editar este padrão
+              </button>
+            )}
 
             {!editando.readOnly && (
               <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>

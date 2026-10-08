@@ -141,12 +141,16 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
    com o que foi marcado à mão */
 .lampada.automatica{font-size:11px;opacity:.5;cursor:default}
 .lampada.automatica:hover{opacity:.8}
+.modo-badge{position:absolute;top:10px;left:12px;z-index:12;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--border);background:var(--s1);pointer-events:none}
+.modo-badge.vendo{color:var(--accent);border-color:var(--accent)}
+.modo-badge.editando{color:var(--gold);border-color:var(--gold)}
+.editar-este{align-self:flex-start}
 .deteccao-aviso{margin:0;font-size:11px;color:var(--text2)}
 .emoji-marcacao{position:absolute;transform:translate(-50%,-50%);font-size:16px;pointer-events:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
 
 /* ── FILTRO DE PADRÕES (sidebar do gráfico de marcação) ── */
 .marcacao-area{display:flex;gap:12px;align-items:stretch;min-width:0}
-.marcacao-grafico{flex:1;min-width:0}
+.marcacao-grafico{flex:1;min-width:0;position:relative}
 .filtro-padroes{flex:0 0 200px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;align-self:stretch;min-height:0}
 .filtro-padroes-titulo{background:none;border:0;padding:0 2px;font:inherit;font-size:13px;font-weight:700;color:var(--text);text-align:left;display:flex;align-items:center;gap:7px;cursor:default}
 .filtro-padroes-contador{background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px}

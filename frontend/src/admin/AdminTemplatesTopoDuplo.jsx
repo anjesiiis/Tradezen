@@ -8,6 +8,7 @@ import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import { comContextoLargo } from "./contextoTemplate.js";
+import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
@@ -59,6 +60,15 @@ export default function AdminTemplatesTopoDuplo() {
     return acc;
   }, {});
   const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
+
+  // Chegou por link com ?modo=visualizar&id=12: abre aquele template já
+  // no modo pedido, em vez de cair na tela de marcação vazia.
+  useEffect(() => {
+    const pedido = lerModoDaUrl(window.location.search);
+    if (!pedido) return;
+    abrirTemplate({ id: pedido.id }, pedido.modo === "visualizar");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     carregarTemplates();
@@ -163,6 +173,7 @@ export default function AdminTemplatesTopoDuplo() {
     setMensagem(null);
     try {
       const completo = comContextoLargo(await templatesTopoDuploApi.get(template.id));
+      escreverModoNaUrl(readOnly ? "visualizar" : "editar", template.id);
       setEditando({
         ...completo,
         pontosEdit: completo.pontos,
@@ -195,6 +206,7 @@ export default function AdminTemplatesTopoDuplo() {
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);
+      escreverModoNaUrl(null);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao atualizar o template." });
@@ -240,11 +252,14 @@ export default function AdminTemplatesTopoDuplo() {
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
+              <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
             </div>
 
             <TemplateMarkerChart
               key={`${editando.id}-${editando.readOnly}`}
+              padraoMarcado={{ id: "topo_duplo", ancora: "topo1", acima: true,
+                modo: editando.readOnly ? "visualizar" : "editar" }}
+              enquadrarPontos={editando.readOnly}
               candles={editando.candles}
               steps={STEPS}
               initialPontos={editando.pontos}
@@ -274,6 +289,19 @@ export default function AdminTemplatesTopoDuplo() {
                 />
               </Campo>
             </div>
+
+            {editando.readOnly && (
+              <button
+                type="button"
+                className="admin-btn editar-este"
+                onClick={() => {
+                  escreverModoNaUrl("editar", editando.id);
+                  setEditando((prev) => ({ ...prev, readOnly: false }));
+                }}
+              >
+                Editar este padrão
+              </button>
+            )}
 
             {!editando.readOnly && (
               <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>

@@ -8,6 +8,7 @@ import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import { comContextoLargo } from "./contextoTemplate.js";
+import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import { detectarPadroes, fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
 import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
@@ -87,6 +88,15 @@ export default function AdminTemplates() {
       .catch(() => { if (vivo) setDeteccao({ estado: "pronto", lista: [] }); });
     return () => { vivo = false; };
   }, [ticker, periodo, intervalo, candlesContexto]);
+
+  // Chegou por link com ?modo=visualizar&id=12: abre aquele template já
+  // no modo pedido, em vez de cair na tela de marcação vazia.
+  useEffect(() => {
+    const pedido = lerModoDaUrl(window.location.search);
+    if (!pedido) return;
+    abrirTemplate({ id: pedido.id }, pedido.modo === "visualizar");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     carregarTemplates();
@@ -191,6 +201,7 @@ export default function AdminTemplates() {
     setMensagem(null);
     try {
       const completo = comContextoLargo(await templatesOcoApi.get(template.id));
+      escreverModoNaUrl(readOnly ? "visualizar" : "editar", template.id);
       setEditando({
         ...completo,
         pontosEdit: completo.pontos,
@@ -223,6 +234,7 @@ export default function AdminTemplates() {
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);
+      escreverModoNaUrl(null);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao atualizar o template." });
@@ -268,11 +280,14 @@ export default function AdminTemplates() {
           <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
+              <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
             </div>
 
             <TemplateMarkerChart
               key={`${editando.id}-${editando.readOnly}`}
+              padraoMarcado={{ id: "oco", ancora: "topo_cabeca", acima: true,
+                modo: editando.readOnly ? "visualizar" : "editar" }}
+              enquadrarPontos={editando.readOnly}
               candles={editando.candles}
               steps={STEPS}
               linePairs={LINE_PAIRS}
@@ -303,6 +318,19 @@ export default function AdminTemplates() {
                 />
               </Campo>
             </div>
+
+            {editando.readOnly && (
+              <button
+                type="button"
+                className="admin-btn editar-este"
+                onClick={() => {
+                  escreverModoNaUrl("editar", editando.id);
+                  setEditando((prev) => ({ ...prev, readOnly: false }));
+                }}
+              >
+                Editar este padrão
+              </button>
+            )}
 
             {!editando.readOnly && (
               <button onClick={salvarEdicao} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
