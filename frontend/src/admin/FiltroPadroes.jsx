@@ -3,8 +3,9 @@ import { ICONE_GENERICO, iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { PADROES_DO_FILTRO, guardarFiltro } from "../lib/filtroPadroes.js";
 
 // Sidebar do gráfico de marcação: escolhe quais padrões já salvos ficam
-// visíveis. Começa tudo desmarcado — a tela abre limpa, e o analista liga
-// só o que quer conferir antes de marcar.
+// visíveis no gráfico e lista os que existem neste ativo. Começa com tudo
+// que já existe ligado — abrir um ativo mostra na hora o que foi marcado
+// nele; o analista desliga o que atrapalhar.
 //
 // A escolha fica no localStorage: quem usa isso passa horas marcando, e
 // refazer a seleção a cada recarga seria trabalho repetido à toa.
@@ -14,8 +15,32 @@ import { PADROES_DO_FILTRO, guardarFiltro } from "../lib/filtroPadroes.js";
  * @param {(ids: string[]) => void} aoMudar
  * @param {Record<string, number>} contagem — quantos salvos há por padrão
  *        neste ativo (opcional, só pra informar)
+ * @param {Array} salvos — marcadores dos templates deste ativo (lampadas.js):
+ *        viram a lista "Marcados neste ativo", cada item abrindo em modo ver
+ * @param {number|null} destacado — id do template salvo agora, pra piscar
  */
-export default function FiltroPadroes({ ligados, aoMudar, contagem = {} }) {
+// UTC: o candle é do dia inteiro; o fuso local jogaria a data um dia atrás
+function formatarData(data) {
+  if (!data) return "—";
+  const d = new Date(data);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
+function rotuloDoResultado(resultado) {
+  const r = (resultado || "").toLowerCase();
+  if (r.startsWith("suc")) return "Sucesso";
+  if (r.startsWith("fal")) return "Falha";
+  return "Indefinido";
+}
+
+function classeDoResultado(resultado) {
+  const r = (resultado || "").toLowerCase();
+  if (r.startsWith("suc")) return "sucesso";
+  if (r.startsWith("fal")) return "falha";
+  return "indefinido";
+}
+
+export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos = [], destacado = null }) {
   const [abertoNoCelular, setAberto] = useState(false);
 
   useEffect(() => { guardarFiltro(ligados); }, [ligados]);
@@ -69,6 +94,34 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {} }) {
         <button type="button" className="filtro-padroes-limpar" onClick={() => aoMudar([])}>
           Desmarcar todos
         </button>
+      )}
+
+      {salvos.length > 0 && (
+        <>
+          <span className="filtro-secao">Marcados neste ativo</span>
+          <div className="filtro-salvos">
+            {/* mais recente primeiro: o que acabou de ser salvo fica no topo */}
+            {[...salvos]
+              .sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
+              .map((m) => (
+                <a
+                  key={m.id}
+                  className={`filtro-salvo${destacado === m.templateId ? " novo" : ""}`}
+                  href={m.rota ? `${m.rota}?modo=visualizar&id=${m.templateId}` : undefined}
+                  title={`Ver ${m.rotulo} de ${formatarData(m.data)}`}
+                >
+                  <span className="filtro-salvo-icone" aria-hidden="true">{m.icone}</span>
+                  <span className="filtro-salvo-texto">
+                    <strong>{m.rotulo}</strong>
+                    <span>{formatarData(m.data)}</span>
+                  </span>
+                  <span className={`filtro-salvo-resultado ${classeDoResultado(m.resultado)}`}>
+                    {rotuloDoResultado(m.resultado)}
+                  </span>
+                </a>
+              ))}
+          </div>
+        </>
       )}
     </aside>
   );

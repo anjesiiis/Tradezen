@@ -98,3 +98,66 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(aoMudar).toHaveBeenCalledWith([]);
   });
 });
+
+// A lista existe pra o analista ver, sem sair da tela, o que já marcou
+// naquele ativo — e pra o que acabou de salvar aparecer na hora.
+describe('Lista dos padrões marcados no ativo', () => {
+  const salvos = [
+    { id: 'oco-1', templateId: 7, icone: '🔴', rotulo: 'OCO', data: '2026-02-04', resultado: 'sucesso', rota: '/admin/templates' },
+    { id: 'ba-2', templateId: 9, icone: '🟢', rotulo: 'Bandeira de Alta', data: '2026-03-10', resultado: 'falha', rota: '/admin/templates/bandeira-alta' },
+    { id: 'td-3', templateId: 11, icone: '🔴', rotulo: 'Topo Duplo', data: '2026-01-02', resultado: null, rota: '/admin/templates/topo-duplo' },
+  ];
+
+  beforeEach(() => localStorage.clear());
+
+  it('sem nada marcado, a seção não aparece', () => {
+    montar({ salvos: [] });
+
+    expect(screen.queryByText('Marcados neste ativo')).not.toBeInTheDocument();
+  });
+
+  it('lista emoji, nome e data de cada padrão, do mais recente pro mais antigo', () => {
+    montar({ salvos });
+
+    expect(screen.getByText('Marcados neste ativo')).toBeInTheDocument();
+    const itens = document.querySelectorAll('.filtro-salvo');
+    expect([...itens].map((i) => i.querySelector('strong').textContent))
+      .toEqual(['Bandeira de Alta', 'OCO', 'Topo Duplo']);
+    expect(within(itens[1]).getByText('04/02/2026')).toBeInTheDocument();
+    expect(within(itens[1]).getByText('🔴')).toBeInTheDocument();
+  });
+
+  it('traduz o resultado em Sucesso, Falha ou Indefinido', () => {
+    montar({ salvos });
+
+    const itens = [...document.querySelectorAll('.filtro-salvo')];
+    const resultado = (nome) => itens.find((i) => i.querySelector('strong').textContent === nome)
+      .querySelector('.filtro-salvo-resultado');
+    expect(resultado('OCO')).toHaveTextContent('Sucesso');
+    expect(resultado('Bandeira de Alta')).toHaveTextContent('Falha');
+    // sem resultado preenchido ainda: não inventa nem deixa em branco
+    expect(resultado('Topo Duplo')).toHaveTextContent('Indefinido');
+  });
+
+  it('clicar num item abre aquele padrão em modo visualizar', () => {
+    montar({ salvos });
+
+    const oco = [...document.querySelectorAll('.filtro-salvo')]
+      .find((i) => i.querySelector('strong').textContent === 'OCO');
+    expect(oco).toHaveAttribute('href', '/admin/templates?modo=visualizar&id=7');
+  });
+
+  it('o que acabou de ser salvo fica destacado', () => {
+    montar({ salvos, destacado: 9 });
+
+    const destacado = document.querySelectorAll('.filtro-salvo.novo');
+    expect(destacado).toHaveLength(1);
+    expect(destacado[0].querySelector('strong')).toHaveTextContent('Bandeira de Alta');
+  });
+
+  it('data inválida não quebra a lista', () => {
+    montar({ salvos: [{ id: 'x', templateId: 1, icone: '🔴', rotulo: 'OCO', data: 'sei lá', rota: '/admin/templates' }] });
+
+    expect(within(document.querySelector('.filtro-salvo')).getByText('—')).toBeInTheDocument();
+  });
+});

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
-import AdminShell, { AdminPatternNav } from "./theme.jsx";
+import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import { useToasts } from "./toastsAdmin.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
 import { useLampadas } from "./lampadas.js";
@@ -77,6 +78,8 @@ export default function AdminTemplatesNiveis() {
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const { avisos, mostrarToasts, fecharAviso } = useToasts();
+  const [salvoAgora, setSalvoAgora] = useState(null);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
   const lampadas = useLampadas(ticker, templates);
@@ -87,6 +90,7 @@ export default function AdminTemplatesNiveis() {
   const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
   const [editando, setEditando] = useState(null);
   const [marcacaoKey, setMarcacaoKey] = useState(0);
+  const [limpezas, setLimpezas] = useState(0);
 
   useEffect(() => {
     carregarTemplates();
@@ -139,7 +143,7 @@ export default function AdminTemplatesNiveis() {
     setMensagem(null);
     try {
       const { candles, toquesAjustados } = janelaDoPadrao(candlesContexto, toquesAtivos);
-      await templatesNiveisApi.create({
+      const salvo = await templatesNiveisApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         tipo,
@@ -149,12 +153,13 @@ export default function AdminTemplatesNiveis() {
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
       });
-      const tipoLabel = tipo === "resistencia" ? "Resistência" : "Suporte";
-      setMensagem({ tipo: "ok", texto: `${tipoLabel} salvo com sucesso. Gráfico continua aberto — marque o próximo nível.` });
+      mostrarToasts(["Padrão salvo ✓"], "ok", 2500);
+      setSalvoAgora(salvo?.id ?? null);
       setToquesPorGrupo((prev) => ({ ...prev, [tipo]: [] }));
       setResultado("");
       setObservacao("");
-      setMarcacaoKey((k) => k + 1);
+      // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
+      setLimpezas((n) => n + 1);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -334,6 +339,7 @@ export default function AdminTemplatesNiveis() {
                   cores={CORES_NIVEL}
                   toquesIniciais={toquesPorGrupo}
                   grupoAtivo={tipo}
+                  limparEm={limpezas}
                   onChange={setToquesPorGrupo}
                 />
                   </div>
@@ -341,6 +347,8 @@ export default function AdminTemplatesNiveis() {
                     ligados={padroesVisiveis}
                     aoMudar={setPadroesVisiveis}
                     contagem={contagemPorPadrao}
+                    salvos={lampadas}
+                    destacado={salvoAgora}
                   />
                 </div>
 
@@ -379,6 +387,7 @@ export default function AdminTemplatesNiveis() {
           aoExcluir={remover}
         />
       </main>
+      <AdminToast avisos={avisos} onFechar={fecharAviso} />
     </AdminShell>
   );
 }

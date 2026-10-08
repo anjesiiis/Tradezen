@@ -38,6 +38,7 @@ export default function NivelMarkerChart({
   faixaInicial,            // { from, to } em índice de candle
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   marcadoresExtras = [],   // padrões já salvos deste ativo: viram emoji no gráfico
+  limparEm = 0,            // muda de valor = apaga os toques do grupo ativo sem recriar o gráfico
   aoClicarMarcador,
 }) {
   // o gráfico é criado uma vez só; sem o ref, o handler ficaria com a
@@ -231,6 +232,16 @@ export default function NivelMarkerChart({
     const chave = grupoAtivoRef.current;
     setToquesPorGrupo((prev) => ({ ...prev, [chave]: [] }));
   }
+
+  // Depois de salvar, a tela zera os toques pra marcar o próximo nível.
+  // Trocar a `key` do componente faria isso recriando o gráfico inteiro —
+  // o ativo, o período e o trecho na tela precisam continuar como estão.
+  const limpezaRef = useRef(limparEm);
+  useEffect(() => {
+    if (limparEm === limpezaRef.current) return;
+    limpezaRef.current = limparEm;
+    limpar();
+  }, [limparEm]);
 
   const grupoAtual = dual ? grupoAtivo : GRUPO_UNICO;
   const toquesAtuais = toquesPorGrupo[grupoAtual] || [];

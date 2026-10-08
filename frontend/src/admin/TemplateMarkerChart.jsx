@@ -29,6 +29,7 @@ export default function TemplateMarkerChart({
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   padraoMarcado,           // { id, ancora, acima } — emoji do padrão em cima da marcação
   enquadrarPontos,         // true: abre já enquadrado nos pontos (modo visualizar)
+  limparEm = 0,            // muda de valor = apaga os pontos marcados sem recriar o gráfico
   initialPontos, onChange, readOnly = false,
 }) {
   const containerRef = useRef();
@@ -541,6 +542,18 @@ export default function TemplateMarkerChart({
     setPontos({});
     setActiveStep(steps[0].key);
   }
+
+  // Depois de salvar, a tela pede os pontos de volta ao zero pra marcar o
+  // próximo padrão. Não dá pra fazer isso trocando a `key` do componente:
+  // isso recriaria o gráfico e jogaria fora o ativo, o período e o trecho
+  // que está na tela — justamente o que precisa continuar igual.
+  const limpezaRef = useRef(limparEm);
+  useEffect(() => {
+    if (limparEm === limpezaRef.current) return;
+    limpezaRef.current = limparEm;
+    limpar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [limparEm]);
 
   const completo = steps.every((s) => pontos[s.key]);
 

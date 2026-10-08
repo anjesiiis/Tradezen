@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
-import AdminShell, { AdminPatternNav } from "./theme.jsx";
+import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { STEPS_TOPO_DUPLO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import { useToasts } from "./toastsAdmin.js";
 import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
@@ -45,6 +46,10 @@ export default function AdminTemplatesTopoDuplo() {
   // Etiquetas de texto escritas em cima do gráfico — salvas junto
   const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
+  const { avisos, mostrarToasts, fecharAviso } = useToasts();
+  // id do template recém-salvo: o sidebar o destaca por uns segundos
+  const [salvoAgora, setSalvoAgora] = useState(null);
+  const [limpezas, setLimpezas] = useState(0);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
   // 💡 dos templates já salvos deste ativo (de qualquer padrão) e o
@@ -142,7 +147,7 @@ export default function AdminTemplatesTopoDuplo() {
     setMensagem(null);
     try {
       const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontos, anotacoes);
-      await templatesTopoDuploApi.create({
+      const salvo = await templatesTopoDuploApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         candles,
@@ -152,12 +157,17 @@ export default function AdminTemplatesTopoDuplo() {
         observacao: observacao.trim() || null,
         anotacoes: anotacoesAjustadas,
       });
-      setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
-      setCandlesContexto(null);
+      // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
+      // Antes ele era apagado aqui (setCandlesContexto(null)) e era preciso
+      // carregar tudo de novo pra marcar o próximo padrão do mesmo ativo.
+      mostrarToasts(["Padrão salvo ✓"], "ok", 2500);
       setPontos({});
       setResultado("");
       setObservacao("");
       setAnotacoes([]);
+      setSalvoAgora(salvo?.id ?? null);
+      // Zera os pontos no gráfico sem recriá-lo (ativo, período e zoom ficam).
+      setLimpezas((n) => n + 1);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -352,6 +362,7 @@ export default function AdminTemplatesTopoDuplo() {
                     aoClicarLampada={abrirDesenhoSalvo}
                     anotacoes={anotacoes}
                     aoMudarAnotacoes={setAnotacoes}
+                    limparEm={limpezas}
                     onChange={setPontos}
                   />
                   </div>
@@ -359,6 +370,8 @@ export default function AdminTemplatesTopoDuplo() {
                     ligados={padroesVisiveis}
                     aoMudar={setPadroesVisiveis}
                     contagem={contagemPorPadrao}
+                    salvos={lampadas}
+                    destacado={salvoAgora}
                   />
                 </div>
 
@@ -406,6 +419,7 @@ export default function AdminTemplatesTopoDuplo() {
           aoExcluir={remover}
         />
       </main>
+      <AdminToast avisos={avisos} onFechar={fecharAviso} />
     </AdminShell>
   );
 }

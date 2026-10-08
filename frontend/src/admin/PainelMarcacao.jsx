@@ -4,6 +4,7 @@ import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import { useToasts } from "./toastsAdmin.js";
 import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
@@ -60,10 +61,13 @@ export default function PainelMarcacao({ padraoInicial }) {
   // Etiquetas de texto escritas em cima do gráfico — salvas junto
   const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
+  // id do template recém-salvo: o sidebar o destaca por uns segundos
+  const [salvoAgora, setSalvoAgora] = useState(null);
+  const [limpezas, setLimpezas] = useState(0);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [editando, setEditando] = useState(null);
-  const [avisos, setAvisos] = useState([]);
+  const { avisos, mostrarToasts, fecharAviso } = useToasts();
   // Quais padrões já marcados ficam visíveis no gráfico (sidebar)
   const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
 
@@ -158,15 +162,6 @@ export default function PainelMarcacao({ padraoInicial }) {
 
   // Cada mensagem vira um toast próprio, some sozinho em 8s. Vermelho
   // (erro) impede salvar; amarelo (aviso) é só um "confira isso".
-  function mostrarToasts(mensagens, tipo = "erro") {
-    const novos = mensagens.map((texto, i) => ({ id: `${Date.now()}-${tipo}-${i}`, texto, tipo }));
-    setAvisos((prev) => [...prev, ...novos]);
-    novos.forEach((a) => setTimeout(() => fecharAviso(a.id), 8000));
-  }
-
-  function fecharAviso(id) {
-    setAvisos((prev) => prev.filter((a) => a.id !== id));
-  }
 
   async function carregarTemplates() {
     try {
@@ -230,7 +225,7 @@ export default function PainelMarcacao({ padraoInicial }) {
       // Data do primeiro ponto: guardada em coluna própria pra a lista e os
       // marcadores do gráfico não precisarem abrir os candles de cada template.
       const candleP1 = candlesContexto[pontosEmOrdem[PASSOS[0]]?.i];
-      await api.create({
+      const salvo = await api.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
         candles,
@@ -241,12 +236,17 @@ export default function PainelMarcacao({ padraoInicial }) {
         observacao: observacao.trim() || null,
         anotacoes: anotacoesAjustadas,
       });
-      setMensagem({ tipo: "ok", texto: "Template salvo com sucesso." });
-      setCandlesContexto(null);
+      // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
+      // Antes ele era apagado aqui (setCandlesContexto(null)) e era preciso
+      // carregar tudo de novo pra marcar o próximo padrão do mesmo ativo.
+      mostrarToasts(["Padrão salvo ✓"], "ok", 2500);
       setPontos({});
       setResultado("");
       setObservacao("");
       setAnotacoes([]);
+      setSalvoAgora(salvo?.id ?? null);
+      // Zera os pontos no gráfico sem recriá-lo (ativo, período e zoom ficam).
+      setLimpezas((n) => n + 1);
       carregarTemplates();
     } catch {
       setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
@@ -531,6 +531,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                     aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                     anotacoes={anotacoes}
                     aoMudarAnotacoes={setAnotacoes}
+                    limparEm={limpezas}
                     onChange={setPontos}
                   />
                   </div>
@@ -538,6 +539,8 @@ export default function PainelMarcacao({ padraoInicial }) {
                     ligados={padroesVisiveis}
                     aoMudar={setPadroesVisiveis}
                     contagem={contagemPorPadrao}
+                    salvos={marcadoresSalvos}
+                    destacado={salvoAgora}
                   />
                 </div>
 

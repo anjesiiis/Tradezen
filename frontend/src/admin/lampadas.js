@@ -24,6 +24,15 @@ const ROTULOS = {
   niveis: "Suporte/Resistência",
 };
 
+// Onde cada padrão é marcado — é pra lá que o item do sidebar leva, com
+// ?modo=visualizar&id=N
+export const ROTA_DO_TIPO = {
+  ...Object.fromEntries(Object.values(PADROES).map((p) => [p.id, p.rota])),
+  oco: "/admin/templates",
+  topo_duplo: "/admin/templates/topo-duplo",
+  niveis: "/admin/templates/niveis",
+};
+
 export function rotuloDoTipo(tipo) {
   return ROTULOS[tipo] || tipo;
 }
@@ -57,6 +66,10 @@ export function useLampadas(ticker, gatilho) {
               // de baixa/neutro em cima do candle, de alta embaixo
               acima: ficaAcima(tipo),
               time: Math.floor(new Date(t.data_p1).getTime() / 1000),
+              // o que o sidebar mostra e pra onde ele leva
+              data: t.data_p1,
+              resultado: t.resultado || null,
+              rota: ROTA_DO_TIPO[tipo] || null,
             }));
         } catch {
           return []; // um padrão sem tabela ainda não pode derrubar o resto
