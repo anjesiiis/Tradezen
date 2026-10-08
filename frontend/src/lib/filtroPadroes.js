@@ -29,15 +29,19 @@ export const PADROES_DO_FILTRO = [
 
 const DISPONIVEIS = PADROES_DO_FILTRO.filter((p) => !p.emBreve).map((p) => p.id);
 
-/** Começa vazio: a tela abre limpa e o analista liga o que quer conferir. */
+/**
+ * Começa com TUDO ligado: abrir um ativo tem que mostrar na hora o que já
+ * foi marcado nele, de qualquer padrão — é o aviso de "não marque isso de
+ * novo". Quem quiser limpar a tela desmarca, e a escolha fica salva.
+ */
 export function lerFiltroSalvo() {
   try {
     const salvo = JSON.parse(localStorage.getItem(CHAVE));
-    if (!Array.isArray(salvo)) return [];
+    if (!Array.isArray(salvo)) return [...DISPONIVEIS];
     // ignora id que não existe mais (padrão renomeado, lixo de outra versão)
     return salvo.filter((id) => DISPONIVEIS.includes(id));
   } catch {
-    return [];      // localStorage bloqueado ou com conteúdo inválido
+    return [...DISPONIVEIS];   // localStorage bloqueado ou com conteúdo inválido
   }
 }
 

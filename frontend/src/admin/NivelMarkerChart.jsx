@@ -37,9 +37,13 @@ export default function NivelMarkerChart({
   grupoAtivo,
   faixaInicial,            // { from, to } em índice de candle
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
+  marcadoresExtras = [],   // padrões já salvos deste ativo: viram emoji no gráfico
+  aoClicarMarcador,
 }) {
   // o gráfico é criado uma vez só; sem o ref, o handler ficaria com a
   // versão antiga da função
+  const [versaoGrafico, setVersaoGrafico] = useState(0);
+  void versaoGrafico;   // só força o recálculo das posições dos emojis
   const aoMudarFaixaRef = useRef(aoMudarFaixa);
   useEffect(() => { aoMudarFaixaRef.current = aoMudarFaixa; }, [aoMudarFaixa]);
   const containerRef = useRef();
@@ -111,6 +115,8 @@ export default function NivelMarkerChart({
     });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((faixa) => {
+      // redesenha os emojis dos padrões salvos junto com o gráfico
+      setVersaoGrafico((v) => v + 1);
       if (faixa && Number.isFinite(faixa.from)) aoMudarFaixaRef.current?.(faixa);
     });
     chartRef.current = chart;
@@ -232,8 +238,32 @@ export default function NivelMarkerChart({
   const precosAtuais = toquesAtuais.map((t) => t.preco);
   const faixaAtual = completo ? { min: Math.min(...precosAtuais), max: Math.max(...precosAtuais) } : null;
 
+  // Onde desenhar o emoji de um padrão já salvo: em cima da máxima do
+  // candle do primeiro ponto dele.
+  function posicaoDoMarcador(extra) {
+    const lista = candles;
+    const chart = chartRef.current;
+    const serie = seriesRef.current;
+    if (!lista?.length || !chart || !serie || !Number.isFinite(extra?.time)) return null;
+    let melhor = 0;
+    for (let i = 1; i < lista.length; i++) {
+      if (Math.abs(toChartTime(lista[i]) - extra.time) < Math.abs(toChartTime(lista[melhor]) - extra.time)) melhor = i;
+    }
+    const candle = lista[melhor];
+    const x = chart.timeScale().timeToCoordinate(toChartTime(candle));
+    const y = serie.priceToCoordinate(extra.acima === false ? candle.minima : candle.maxima);
+    if (x == null || y == null) return null;
+    return { x, y: y + (extra.acima === false ? 26 : -26), time: toChartTime(candle) };
+  }
+
+  function marcadoresVisiveis() {
+    return marcadoresExtras
+      .map((extra) => ({ extra, pos: posicaoDoMarcador(extra) }))
+      .filter(({ pos }) => pos);
+  }
+
   return (
-    <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden" }}>
+    <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden", position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
         <span style={{ fontSize: 12, color: "#8FA3C7" }}>
           {dual ? (
@@ -273,7 +303,28 @@ export default function NivelMarkerChart({
               : "Clique no gráfico em cada ponto onde o preço tocou/repicou nesse nível."}
       </p>
 
-      <div ref={containerRef} style={{ padding: "8px" }} />
+      <div style={{ position: "relative" }}>
+        <div ref={containerRef} style={{ padding: "8px" }} />
+
+        {/* Emojis dos padrões já marcados neste ativo — qualquer padrão,
+            não só nível. É o aviso de "aqui já tem algo marcado". */}
+        <div className="lampadas">
+          {/* A posição de cada emoji depende da escala do gráfico AGORA, que
+              só o objeto do chart sabe — por isso é lida no render. O
+              componente re-renderiza a cada rolagem/zoom (versaoGrafico),
+              então as posições nunca ficam velhas. */}
+          {/* eslint-disable-next-line react-hooks/refs */}
+          {marcadoresVisiveis().map(({ extra, pos }) => (
+            <button
+              key={extra.id ?? extra.time}
+              className="lampada"
+              style={{ left: pos.x, top: pos.y }}
+              title={extra.dica || extra.rotulo || "Padrão marcado"}
+              onClick={() => aoClicarMarcador?.(extra)}
+            >{extra.icone || "💡"}</button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -670,7 +670,7 @@ export default function TemplateMarkerChart({
               key={extra.id ?? extra.time}
               className={`lampada${extra.automatico ? " automatica" : ""}`}
               disabled={extra.automatico}
-              style={{ left: pos.x, top: pos.y }}
+              style={{ left: pos.x, top: pos.y + (extra.acima === false ? 30 : 0) }}
               title={extra.automatico
                 ? extra.dica
                 : `${extra.dica || extra.rotulo || "Padrão marcado"} · clique para ver o desenho`}

@@ -23,10 +23,16 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(screen.getByText('Suporte/Resistência')).toBeInTheDocument();
   });
 
-  it('começa tudo desmarcado', () => {
-    montar();
+  it('sem escolha salva, começa com todos os padrões que existem ligados', () => {
+    // abrir um ativo tem que mostrar na hora o que já foi marcado nele
+    const ligados = lerFiltroSalvo();
+    montar({ ligados });
 
-    expect(caixas().every((c) => !c.checked)).toBe(true);
+    const disponiveis = PADROES_DO_FILTRO.filter((p) => !p.emBreve);
+    expect(ligados).toHaveLength(disponiveis.length);
+    expect(caixas().filter((c) => c.checked)).toHaveLength(disponiveis.length);
+    // os "em breve" seguem desmarcados e travados
+    expect(caixas().filter((c) => c.disabled).every((c) => !c.checked)).toBe(true);
   });
 
   it('marcar um padrão avisa quem desenha o gráfico', async () => {
@@ -68,17 +74,17 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(lerFiltroSalvo()).toEqual(['oco', 'niveis']);
   });
 
-  it('ignora o que foi salvo e não existe mais', () => {
+  it('uma escolha salva é respeitada, ignorando o que não existe mais', () => {
     localStorage.setItem('tradezen_filtro_padroes', JSON.stringify(['oco', 'padrao_que_sumiu', 'fundo_duplo']));
 
     // fundo_duplo é "em breve": não pode voltar ligado
     expect(lerFiltroSalvo()).toEqual(['oco']);
   });
 
-  it('localStorage com lixo não quebra a tela', () => {
+  it('localStorage com lixo cai no padrão (tudo ligado), sem quebrar', () => {
     localStorage.setItem('tradezen_filtro_padroes', 'isso não é json');
 
-    expect(lerFiltroSalvo()).toEqual([]);
+    expect(lerFiltroSalvo()).toHaveLength(PADROES_DO_FILTRO.filter((p) => !p.emBreve).length);
   });
 
   it('o botão de limpar só aparece com algo marcado', async () => {

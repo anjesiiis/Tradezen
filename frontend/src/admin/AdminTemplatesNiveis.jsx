@@ -4,6 +4,9 @@ import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import FiltroPadroes from "./FiltroPadroes.jsx";
+import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
+import { useLampadas } from "./lampadas.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
@@ -62,6 +65,8 @@ export default function AdminTemplatesNiveis() {
   const [periodo, setPeriodo] = useState(() => estadoDoGrafico().periodo);
   const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
   const [tipo, setTipo] = useState("suporte");
+  // Padrões já marcados neste ativo (de qualquer tipo) — viram emoji
+  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
   const [candlesContexto, setCandlesContexto] = useState(() =>
     candlesGuardados(estadoDoGrafico().ticker, estadoDoGrafico().periodo, estadoDoGrafico().intervalo)
   );
@@ -74,6 +79,12 @@ export default function AdminTemplatesNiveis() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [templates, setTemplates] = useState([]);
+  const lampadas = useLampadas(ticker, templates);
+  const contagemPorPadrao = lampadas.reduce((acc, m) => {
+    acc[m.tipo] = (acc[m.tipo] || 0) + 1;
+    return acc;
+  }, {});
+  const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
   const [editando, setEditando] = useState(null);
   const [marcacaoKey, setMarcacaoKey] = useState(0);
 
@@ -311,7 +322,10 @@ export default function AdminTemplatesNiveis() {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
+                <div className="marcacao-area">
+                  <div className="marcacao-grafico">
                 <NivelMarkerChart
+                  marcadoresExtras={marcadoresVisiveis}
                   faixaInicial={faixaRef.current}
                   aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                   key={marcacaoKey}
@@ -322,6 +336,13 @@ export default function AdminTemplatesNiveis() {
                   grupoAtivo={tipo}
                   onChange={setToquesPorGrupo}
                 />
+                  </div>
+                  <FiltroPadroes
+                    ligados={padroesVisiveis}
+                    aoMudar={setPadroesVisiveis}
+                    contagem={contagemPorPadrao}
+                  />
+                </div>
 
                 <div className="admin-grid2">
                   <Campo label="Resultado">
