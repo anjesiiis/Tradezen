@@ -69,6 +69,7 @@ def _formatar_oco(row: Dict[str, Any]) -> Dict[str, Any]:
     neck1, neck2 = pontos_ts.get("neck1"), pontos_ts.get("neck2")
     neckline = round((neck1["preco"] + neck2["preco"]) / 2, 4) if neck1 and neck2 else None
     return {
+        "marcado_em": row.get("criado_em"),
         "tipo": "OCO",
         "nome": "Ombro-Cabeça-Ombro",
         "resultado": _resultado_normalizado(row.get("resultado")),
@@ -85,6 +86,7 @@ def _formatar_topo_duplo(row: Dict[str, Any]) -> Dict[str, Any]:
     pontos = row.get("pontos") or {}
     pontos_ts = {k: _ponto_ts(janela, v) for k, v in pontos.items()}
     return {
+        "marcado_em": row.get("criado_em"),
         "tipo": "topo_duplo",
         "nome": "Topo Duplo",
         "resultado": _resultado_normalizado(row.get("resultado")),
@@ -101,13 +103,23 @@ def _formatar_bandeira(row: Dict[str, Any], tipo: str) -> Dict[str, Any]:
     pontos_ts = {k: _ponto_ts(janela, v) for k, v in pontos.items()}
     nome = "Bandeira de Alta" if tipo == "bandeira_alta" else "Bandeira de Baixa"
     return {
+        "marcado_em": row.get("criado_em"),
         "tipo": tipo,
         "nome": nome,
         "resultado": _resultado_normalizado(row.get("resultado")),
         "confiabilidade": 100,
         "explicacao": row.get("observacao") or f"{nome} confirmada manualmente por um analista.",
         "pontos": pontos_ts,
-        "lampada": pontos_ts.get("mastro_fim"),
+        # "mastro_fim" era o formato de 6 pontos; o de hoje são 8 em 4 pares
+        # (p1_inicio_mastro1...). Sem este fallback, bandeira/flâmula/cunha
+        # marcadas no formato novo vinham sem lâmpada — e o gráfico do site
+        # descarta padrão sem lâmpada, então elas simplesmente não
+        # apareciam lá.
+        "lampada": (
+            pontos_ts.get("mastro_fim")
+            or pontos_ts.get("p2_topo_mastro1")
+            or pontos_ts.get("p1_inicio_mastro1")
+        ),
     }
 
 
@@ -126,6 +138,7 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     tipo = row.get("tipo")
     nome = "Resistência" if tipo == "resistencia" else "Suporte"
     return {
+        "marcado_em": row.get("criado_em"),
         "tipo": tipo,
         "nome": nome,
         "resultado": _resultado_normalizado(row.get("resultado")),

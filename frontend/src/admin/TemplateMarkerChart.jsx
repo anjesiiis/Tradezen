@@ -628,11 +628,11 @@ export default function TemplateMarkerChart({
               key={extra.id ?? extra.time}
               className="lampada"
               style={{ left: pos.x, top: pos.y }}
-              title={`${extra.rotulo || "Padrão marcado"} — clique para ver o desenho`}
+              title={`${extra.dica || extra.rotulo || "Padrão marcado"} · clique para ver o desenho`}
               /* Sem salto seco aqui: quem enquadra é a animação de cima,
                  quando o desenho do padrão chega. */
               onClick={() => aoClicarLampada?.(extra)}
-            >💡</button>
+            >{extra.icone || "💡"}</button>
           );
         })}
       </div>

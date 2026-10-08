@@ -5,6 +5,7 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 import { FERRAMENTA_INFO, _anchorFechar, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharFibonacci, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
+import { descricaoDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
 export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico}){
@@ -24,6 +25,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const oscilRef     = useRef({}); // { [id]: {paneIndex, series:[...]} } — RSI/Estocástico/ATR/OBV
   const markersRef   = useRef(null);
   const canvasRef    = useRef(null);
+  // onde cada ícone de padrão já marcado foi desenhado, pra saber
+  // quando o mouse está em cima de um deles
+  const iconesRef    = useRef([]);
+  const [dicaPadrao, setDicaPadrao] = useState(null);   // { x, y, texto }
   const redrawRef    = useRef(null);
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
@@ -614,6 +619,15 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     };
 
     const onMouseMove = (e) => {
+      // Passou perto de um ícone de padrão já marcado? Mostra o que é e
+      // de quando é.
+      {
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const emCima = iconesRef.current.find((ic) => Math.hypot(ic.x - mx, ic.y - my) <= 13);
+        setDicaPadrao(emCima ? { x: emCima.x, y: emCima.y, texto: emCima.texto } : null);
+      }
+
       if(ferramentaAtivaRef.current){
         // Ferramenta armada e já tem pelo menos 1 ponto colocado — mostra o
         // desenho "se formando" seguindo o mouse até o clique que confirma
@@ -922,6 +936,33 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true);
       }
 
+      // ── Ícone de "já tem padrão marcado aqui" ──────────────
+      // Um por padrão salvo, no ponto em que ele começa. É o aviso visual
+      // pra não rotular duas vezes o mesmo trecho.
+      iconesRef.current = [];
+      ctx.save();
+      ctx.font = "15px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // Sem filtrar por activeTools de propósito: as ferramentas de padrão
+      // começam todas desligadas, e o ícone não é o desenho do padrão — é o
+      // aviso de que ali JÁ existe um marcado. Se dependesse da ferramenta
+      // ligada, só apareceria pra quem já sabia que tinha algo ali.
+      for(const p of padroes){
+        const idx = p.lampada?.i ?? p.pontos?.cabeca?.i;
+        const preco = p.lampada?.preco ?? p.pontos?.cabeca?.preco;
+        if(idx == null || preco == null) continue;
+        const x = toX(idx), y = toY(preco);
+        if(x == null || y == null) continue;
+        const topo = y - 22;
+        ctx.fillText(iconeDoPadrao(p.tipo), x, topo);
+        iconesRef.current.push({
+          x, y: topo,
+          texto: descricaoDoPadrao(p.tipo, p.marcado_em, p.nome),
+        });
+      }
+      ctx.restore();
+
       // Emite posição da lâmpada do padrão selecionado pro pai
       // SÓ se o tipo do padrão ainda estiver ativo nas tools — senão limpa
       const tipoSelAtivo = selPat && activeTools.has(normalizarTipo(selPat.tipo));
@@ -950,6 +991,17 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0}}>
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}/>
+
+      {/* Dica do ícone de padrão já marcado — div solto, sem pointer-events,
+          pra não roubar o cursor do gráfico */}
+      {dicaPadrao && (
+        <div
+          className="padrao-dica"
+          style={{position:"absolute",left:dicaPadrao.x,top:dicaPadrao.y - 14,transform:"translate(-50%,-100%)",zIndex:11,pointerEvents:"none"}}
+        >
+          {dicaPadrao.texto}
+        </div>
+      )}
       {activeTools.has("fibo") && !fibo?.b && (
         <div style={{
           position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",

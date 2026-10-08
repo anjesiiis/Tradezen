@@ -442,6 +442,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cadastro-toast-x{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;width:28px;height:28px;border-radius:6px}
 .cadastro-toast-x:hover{background:var(--card);color:var(--text)}
 
+.padrao-dica{background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;color:var(--text);white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+
 /* ── TEXTURAS DE FUNDO ────────────────────────────────────── */
 /* Só visual: nada aqui recebe clique (pointer-events:none) nem entra na
    frente do conteúdo (o ::before fica em z-index 0 e o conteúdo real sobe

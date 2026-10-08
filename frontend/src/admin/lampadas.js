@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { API_DO_PADRAO, templatesNiveisApi, templatesOcoApi, templatesTopoDuploApi } from "./adminApi";
 import { PADROES, configDoTemplate } from "./bandeira.js";
 import { LINE_PAIRS_OCO, LINE_PAIRS_TOPO_DUPLO, STEPS_OCO, STEPS_TOPO_DUPLO } from "./padroesClassicos.js";
+import { descricaoDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // 💡 dos templates JÁ SALVOS de um ativo, em qualquer tela de marcação.
 // Cada lâmpada é clicável e abre o desenho daquele padrão — sem rótulo de
@@ -49,6 +50,10 @@ export function useLampadas(ticker, gatilho) {
               templateId: t.id,
               tipo,
               rotulo: rotuloDoTipo(tipo),
+              // ícone próprio por padrão: dá pra ver de relance o que já
+              // foi marcado naquele trecho e não rotular duas vezes
+              icone: iconeDoPadrao(tipo),
+              dica: descricaoDoPadrao(tipo, t.criado_em, rotuloDoTipo(tipo)),
               time: Math.floor(new Date(t.data_p1).getTime() / 1000),
             }));
         } catch {
