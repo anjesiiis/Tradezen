@@ -136,6 +136,38 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .admin-nav{margin-left:0;flex-wrap:wrap;width:100%;margin-top:8px}
   .admin-btn,.admin-btn-ghost,.admin-picker-btn,.admin-input,.admin-select{min-height:44px}
 }
+
+/* ── FILTRO DE PADRÕES (sidebar do gráfico de marcação) ── */
+.marcacao-area{display:flex;gap:12px;align-items:stretch;min-width:0}
+.marcacao-grafico{flex:1;min-width:0}
+.filtro-padroes{flex:0 0 200px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;align-self:stretch;min-height:0}
+.filtro-padroes-titulo{background:none;border:0;padding:0 2px;font:inherit;font-size:13px;font-weight:700;color:var(--text);text-align:left;display:flex;align-items:center;gap:7px;cursor:default}
+.filtro-padroes-contador{background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px}
+.filtro-padroes-lista{display:flex;flex-direction:column;gap:1px;overflow-y:auto;scrollbar-width:thin;min-height:0}
+.filtro-padrao{display:flex;align-items:center;gap:7px;padding:4px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2)}
+.filtro-padrao:hover{background:var(--s2);color:var(--text)}
+.filtro-padrao input{accent-color:var(--accent);cursor:pointer;margin:0;flex-shrink:0}
+.filtro-padrao-icone{font-size:13px;line-height:1;flex-shrink:0}
+.filtro-padrao-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filtro-quantos{font-size:10px;font-family:var(--font-m);color:var(--text3);background:var(--s2);border-radius:999px;padding:1px 6px;flex-shrink:0}
+.filtro-padrao.em-breve{cursor:not-allowed;opacity:.55}
+.filtro-padrao.em-breve:hover{background:none;color:var(--text2)}
+.filtro-padrao.em-breve input{cursor:not-allowed}
+.filtro-tag{font-size:10px;color:var(--text3);flex-shrink:0}
+.filtro-padroes-limpar{background:none;border:0;color:var(--accent);font:inherit;font-size:11px;cursor:pointer;padding:2px;text-align:left}
+.filtro-padroes-limpar:hover{text-decoration:underline}
+
+@media (max-width:900px){
+  /* No celular o sidebar vira uma faixa acima do gráfico, recolhida: a
+     lista inteira em pé comeria a tela. */
+  .marcacao-area{flex-direction:column-reverse}
+  .filtro-padroes{flex:1 1 auto;max-height:none}
+  .filtro-padroes-titulo{cursor:pointer}
+  .filtro-padroes-titulo::after{content:"▾";margin-left:auto;font-size:11px}
+  .filtro-padroes:not(.aberto) .filtro-padroes-lista,
+  .filtro-padroes:not(.aberto) .filtro-padroes-limpar{display:none}
+  .filtro-padroes.aberto .filtro-padroes-lista{max-height:260px}
+}
 `;
 
 export default function AdminShell({ children }) {

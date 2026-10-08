@@ -12,6 +12,8 @@ import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
+import FiltroPadroes from "./FiltroPadroes.jsx";
+import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -60,8 +62,17 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [templates, setTemplates] = useState([]);
   const [editando, setEditando] = useState(null);
   const [avisos, setAvisos] = useState([]);
+  // Quais padrões já marcados ficam visíveis no gráfico (sidebar)
+  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
+
   // 💡 dos templates já salvos DESTE ativo (todos os padrões)
   const marcadoresSalvos = useLampadas(ticker, templates);
+  // quantos de cada padrão existem neste ativo — o sidebar mostra ao lado
+  const contagemPorPadrao = marcadoresSalvos.reduce((acc, m) => {
+    acc[m.tipo] = (acc[m.tipo] || 0) + 1;
+    return acc;
+  }, {});
+  const marcadoresVisiveis = marcadoresSalvos.filter((m) => padroesVisiveis.includes(m.tipo));
   // Desenho do template aberto por uma 💡 — sem rótulos, como o usuário verá
   const [desenhoSalvo, setDesenhoSalvo] = useState(null);
   // Última faixa visível do gráfico: o gráfico é remontado ao trocar de
@@ -459,22 +470,33 @@ export default function PainelMarcacao({ padraoInicial }) {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
-                <TemplateMarkerChart
-                  key={padrao.id}
-                  candles={candlesContexto}
-                  steps={STEPS}
-                  linhas={desenharLinhas}
-                  pares={paresDeLinha(padrao)}
-                  marcadoresExtras={marcadoresSalvos}
-                  desenhoSalvo={desenhoSalvo}
-                  aoClicarLampada={abrirDesenhoSalvo}
-                  initialPontos={pontos}
-                  faixaInicial={faixaRef.current}
-                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
-                  anotacoes={anotacoes}
-                  aoMudarAnotacoes={setAnotacoes}
-                  onChange={setPontos}
-                />
+                {/* Gráfico + sidebar de padrões: o filtro decide quais
+                    marcadores de padrão já salvo aparecem */}
+                <div className="marcacao-area">
+                  <div className="marcacao-grafico">
+                  <TemplateMarkerChart
+                    key={padrao.id}
+                    candles={candlesContexto}
+                    steps={STEPS}
+                    linhas={desenharLinhas}
+                    pares={paresDeLinha(padrao)}
+                    marcadoresExtras={marcadoresVisiveis}
+                    desenhoSalvo={desenhoSalvo}
+                    aoClicarLampada={abrirDesenhoSalvo}
+                    initialPontos={pontos}
+                    faixaInicial={faixaRef.current}
+                    aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
+                    anotacoes={anotacoes}
+                    aoMudarAnotacoes={setAnotacoes}
+                    onChange={setPontos}
+                  />
+                  </div>
+                  <FiltroPadroes
+                    ligados={padroesVisiveis}
+                    aoMudar={setPadroesVisiveis}
+                    contagem={contagemPorPadrao}
+                  />
+                </div>
 
                 {desenhoSalvo && (
                   <div className="admin-msg admin-msg-ok" style={{ display: "flex", alignItems: "center", gap: 12 }}>

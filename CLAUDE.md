@@ -273,7 +273,8 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Gráfico que sobrevive à troca de padrão (ativo, candles, zoom) | `admin/estadoGrafico.js` |
 | Recorte salvo no banco (candles + pontos + etiquetas) | `admin/janela.js` |
 | Zoom de leitura ao abrir um padrão pela 💡 | `admin/enquadrar.js` |
-| Lâmpadas dos templates já salvos | `admin/lampadas.js` |
+| Marcadores dos padrões já salvos (ícone por padrão) | `admin/lampadas.js` + `lib/iconesPadroes.js` |
+| Sidebar que filtra quais padrões aparecem no gráfico | `admin/FiltroPadroes.jsx` + `lib/filtroPadroes.js` |
 | Etiquetas de texto no gráfico | `admin/AnotacoesGrafico.jsx` |
 | Cards dos templates salvos | `admin/ListaTemplates.jsx` |
 | API calls do admin | `admin/adminApi.js` |

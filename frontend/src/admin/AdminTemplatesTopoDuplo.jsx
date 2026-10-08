@@ -8,6 +8,8 @@ import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
+import FiltroPadroes from "./FiltroPadroes.jsx";
+import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
@@ -48,7 +50,14 @@ export default function AdminTemplatesTopoDuplo() {
   const [desenhoSalvo, setDesenhoSalvo] = useState(null);
   const [editando, setEditando] = useState(null);
 
+  // Quais padrões já marcados ficam visíveis no gráfico (sidebar)
+  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
   const lampadas = useLampadas(ticker, templates);
+  const contagemPorPadrao = lampadas.reduce((acc, m) => {
+    acc[m.tipo] = (acc[m.tipo] || 0) + 1;
+    return acc;
+  }, {});
+  const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
 
   useEffect(() => {
     carregarTemplates();
@@ -294,18 +303,29 @@ export default function AdminTemplatesTopoDuplo() {
             {carregando && !candlesContexto && <SkeletonGraficoLinha style={{ height: 420 }} />}
             {candlesContexto && (
               <>
-                <TemplateMarkerChart
-                  faixaInicial={faixaRef.current}
-                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
-                  candles={candlesContexto}
-                  steps={STEPS}
-                  marcadoresExtras={lampadas}
-                  desenhoSalvo={desenhoSalvo}
-                  aoClicarLampada={abrirDesenhoSalvo}
-                  anotacoes={anotacoes}
-                  aoMudarAnotacoes={setAnotacoes}
-                  onChange={setPontos}
-                />
+                {/* Gráfico + sidebar de padrões: o filtro decide quais
+                    marcadores de padrão já salvo aparecem */}
+                <div className="marcacao-area">
+                  <div className="marcacao-grafico">
+                  <TemplateMarkerChart
+                    faixaInicial={faixaRef.current}
+                    aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
+                    candles={candlesContexto}
+                    steps={STEPS}
+                    marcadoresExtras={marcadoresVisiveis}
+                    desenhoSalvo={desenhoSalvo}
+                    aoClicarLampada={abrirDesenhoSalvo}
+                    anotacoes={anotacoes}
+                    aoMudarAnotacoes={setAnotacoes}
+                    onChange={setPontos}
+                  />
+                  </div>
+                  <FiltroPadroes
+                    ligados={padroesVisiveis}
+                    aoMudar={setPadroesVisiveis}
+                    contagem={contagemPorPadrao}
+                  />
+                </div>
 
                 {desenhoSalvo && (
                   <div className="admin-msg admin-msg-ok" style={{ display: "flex", alignItems: "center", gap: 12 }}>
