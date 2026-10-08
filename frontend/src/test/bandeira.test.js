@@ -1,7 +1,7 @@
 import {
   AZUL, PADROES, PASSOS_PARES, VERDE, VERMELHO,
   avisosDoPadrao, configDoTemplate, linhasDoPadrao, medidasDoPadrao,
-  siglaDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
+  normalizarPares, siglaDoPadrao, stepsDoPadrao, temFormatoPares, validarPadrao,
 } from '../admin/bandeira.js';
 
 // Marcação típica de bandeira de alta: mastro sobe (10→20), a consolidação
@@ -21,6 +21,70 @@ const BAIXA = Object.fromEntries(
   Object.entries(ALTA).map(([k, p]) => [k, { i: p.i, preco: 40 - p.preco }])
 );
 const com = (base, mudancas) => ({ ...base, ...mudancas });
+
+describe('Ordem dos cliques numa linha', () => {
+  // Uma linha é a mesma, clicada da esquerda pra direita ou ao contrário.
+  // Antes disso, marcar a ponta direita primeiro dava
+  // "Fim Topo Bandeira precisa vir depois de Início Topo Bandeira" numa
+  // marcação visualmente correta — e valia pros seis padrões, não só pra
+  // bandeira de baixa.
+  const BASE = {
+    p1_inicio_mastro1: { i: 10, preco: 50 }, p2_topo_mastro1: { i: 20, preco: 40 },
+    p3_inicio_fundo: { i: 22, preco: 41 }, p4_fim_fundo: { i: 30, preco: 43 },
+    p5_inicio_topo: { i: 22, preco: 44 }, p6_fim_topo: { i: 30, preco: 46 },
+    p7_inicio_mastro2: { i: 31, preco: 43 }, p8_topo_mastro2: { i: 40, preco: 33 },
+  };
+
+  it('clicar a ponta direita primeiro não é mais erro', () => {
+    const invertido = { ...BASE, p5_inicio_topo: { i: 30, preco: 46 }, p6_fim_topo: { i: 22, preco: 44 } };
+
+    expect(validarPadrao(invertido, PADROES.bandeira_baixa)).toEqual([]);
+
+    // e o mesmo vale na alta, com um mastro que sobe
+    const naAlta = {
+      ...invertido,
+      p2_topo_mastro1: { i: 20, preco: 60 },
+      p7_inicio_mastro2: { i: 31, preco: 43 },
+      p8_topo_mastro2: { i: 40, preco: 70 },
+    };
+    expect(validarPadrao(naAlta, PADROES.bandeira_alta)).toEqual([]);
+  });
+
+  it('o par sai endireitado: o início é sempre o ponto mais à esquerda', () => {
+    const invertido = { ...BASE, p5_inicio_topo: { i: 30, preco: 46 }, p6_fim_topo: { i: 22, preco: 44 } };
+
+    const ok = normalizarPares(invertido, PADROES.bandeira_baixa);
+
+    expect(ok.p5_inicio_topo.i).toBe(22);
+    expect(ok.p6_fim_topo.i).toBe(30);
+    // os outros pares não se mexem
+    expect(ok.p1_inicio_mastro1).toEqual(BASE.p1_inicio_mastro1);
+  });
+
+  it('as duas pontas no mesmo candle continuam bloqueando, e o aviso explica', () => {
+    const erros = validarPadrao({ ...BASE, p6_fim_topo: { i: 22, preco: 46 } }, PADROES.bandeira_baixa);
+
+    expect(erros).toHaveLength(1);
+    expect(erros[0]).toContain('mesmo candle');
+    expect(erros[0]).toContain('dois candles diferentes');
+  });
+
+  it('a direção do mastro continua valendo em cada sentido', () => {
+    // na baixa, mastro 2 tem que cair
+    expect(validarPadrao({ ...BASE, p8_topo_mastro2: { i: 40, preco: 99 } }, PADROES.bandeira_baixa).join(' '))
+      .toContain('o mastro é uma queda');
+    // e na alta, subir
+    const alta = { ...BASE, p2_topo_mastro1: { i: 20, preco: 60 }, p8_topo_mastro2: { i: 40, preco: 60 } };
+    expect(validarPadrao({ ...alta, p8_topo_mastro2: { i: 40, preco: 5 } }, PADROES.bandeira_alta).join(' '))
+      .toContain('o mastro é uma subida');
+  });
+
+  it('normalizar não mexe no canal, que não tem pares', () => {
+    const canal = { p1_fundo1: { i: 5, preco: 1 }, p2_topo1: { i: 3, preco: 2 } };
+
+    expect(normalizarPares(canal, PADROES.canal_alta)).toEqual(canal);
+  });
+});
 
 describe('Padrões de continuação — os 6 templates', () => {
   it('bandeira, flâmula e cunha — de alta e de baixa', () => {
@@ -121,8 +185,10 @@ describe('Validações que bloqueiam', () => {
   });
 
   it.each([
-    ['mastro 1 invertido no tempo', { p2_topo_mastro1: { i: 0, preco: 20 } }, /Mastro 1: "Topo Mastro 1" precisa vir depois/],
-    ['consolidação invertida no tempo', { p4_fim_fundo: { i: 6, preco: 16 } }, /Fundo da Bandeira: "Fim Fundo Bandeira" precisa vir depois/],
+    // ordem trocada deixou de ser erro (normalizarPares endireita); o que
+    // bloqueia é as duas pontas caírem no mesmo candle
+    ['mastro 1 com as duas pontas no mesmo candle', { p2_topo_mastro1: { i: 0, preco: 20 } }, /Mastro 1: .* mesmo candle/],
+    ['consolidação com as duas pontas no mesmo candle', { p4_fim_fundo: { i: 7, preco: 16 } }, /Fundo da Bandeira: .* mesmo candle/],
     ['mastro 1 que não sobe', { p2_topo_mastro1: { i: 5, preco: 9 } }, /"Topo Mastro 1" precisa estar acima de "Início Mastro 1"/],
     ['mastro 2 que não sobe', { p8_topo_mastro2: { i: 22, preco: 15 } }, /"Topo Mastro 2" precisa estar acima de "Início Mastro 2"/],
   ])('recusa %s', (_, mudanca, mensagem) => {

@@ -119,17 +119,44 @@ export function linhasDoPadrao(pontos, padrao, candles) {
 // ── Validações que BLOQUEIAM o salvamento ─────────────────────
 // Só o que tornaria a marcação impossível de ler: os 8 pontos, a ordem
 // dentro de cada par e a direção dos dois mastros. Nada entre pares.
+/**
+ * Deixa cada par em ordem: a ponta que está mais à esquerda no gráfico
+ * vira o "início" e a outra, o "fim".
+ *
+ * Uma linha não se importa com a ordem dos cliques — marcar a ponta
+ * direita primeiro desenha a mesma linha. Antes disso aqui, porém, a
+ * validação reclamava ("Fim Topo Bandeira precisa vir depois de Início
+ * Topo Bandeira") de uma marcação que estava visualmente correta. Agora a
+ * ordem dos cliques deixou de importar; o que importa é as duas pontas
+ * estarem em candles diferentes.
+ */
+export function normalizarPares(pontos, padrao) {
+  if (!pontos || ehCanal(padrao)) return pontos;
+  const ajustado = { ...pontos };
+  for (const par of paresDoPadrao(padrao)) {
+    const de = ajustado[par.de];
+    const ate = ajustado[par.ate];
+    if (de && ate && ate.i < de.i) {
+      ajustado[par.de] = ate;
+      ajustado[par.ate] = de;
+    }
+  }
+  return ajustado;
+}
+
 export function validarPadrao(pontos, padrao) {
   if (ehCanal(padrao)) return validarCanal(pontos, padrao);
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
 
-  const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
+  const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, normalizarPares(pontos, padrao)[k]]));
   const pares = paresDoPadrao(padrao);
   const erros = [];
 
   for (const par of pares) {
-    if (p[par.ate].i <= p[par.de].i) {
-      erros.push(`${par.rotulo}: "${par.rotuloAte}" precisa vir depois de "${par.rotuloDe}" no tempo.`);
+    // Só o empate bloqueia: duas pontas no mesmo candle não formam linha.
+    // Ordem trocada não é erro — normalizarPares já endireitou.
+    if (p[par.ate].i === p[par.de].i) {
+      erros.push(`${par.rotulo}: "${par.rotuloDe}" e "${par.rotuloAte}" estão no mesmo candle — a linha precisa de dois candles diferentes.`);
     }
   }
 

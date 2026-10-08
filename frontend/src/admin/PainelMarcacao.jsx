@@ -5,8 +5,8 @@ import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
-  PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, paresDeLinha,
-  podeValidar, stepsDoPadrao, validarPadrao,
+  PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, normalizarPares,
+  paresDeLinha, podeValidar, stepsDoPadrao, validarPadrao,
 } from "./bandeira.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
@@ -198,21 +198,24 @@ export default function PainelMarcacao({ padraoInicial }) {
 
   async function salvarNovo() {
     if (!completo || !candlesContexto) return;
-    const erros = validarPadrao(pontos, padrao);
+    // Clicar a ponta direita de uma linha antes da esquerda desenha a mesma
+    // linha — o que vai pro banco é sempre com o "início" à esquerda.
+    const pontosEmOrdem = normalizarPares(pontos, padrao);
+    const erros = validarPadrao(pontosEmOrdem, padrao);
     if (erros.length) {
       mostrarToasts(erros, "erro");
       return;
     }
     // Avisos não impedem o salvamento — só chamam atenção pra marcação
-    mostrarToasts(avisosDoPadrao(pontos, padrao), "aviso");
+    mostrarToasts(avisosDoPadrao(pontosEmOrdem, padrao), "aviso");
 
     setSalvando(true);
     setMensagem(null);
     try {
-      const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontos, anotacoes);
+      const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(candlesContexto, pontosEmOrdem, anotacoes);
       // Data do primeiro ponto: guardada em coluna própria pra a lista e os
       // marcadores do gráfico não precisarem abrir os candles de cada template.
-      const candleP1 = candlesContexto[pontos[PASSOS[0]]?.i];
+      const candleP1 = candlesContexto[pontosEmOrdem[PASSOS[0]]?.i];
       await api.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
@@ -260,18 +263,19 @@ export default function PainelMarcacao({ padraoInicial }) {
   async function salvarEdicao() {
     if (!editando) return;
     const padraoDestino = PADROES[editando.tipoEdit] || padrao;
+    const pontosEmOrdem = normalizarPares(editando.pontosEdit, padraoDestino);
     // Templates salvos em formatos antigos não passam pelas regras novas
-    const erros = podeValidar(editando.pontosEdit, padraoDestino) ? validarPadrao(editando.pontosEdit, padraoDestino) : [];
+    const erros = podeValidar(pontosEmOrdem, padraoDestino) ? validarPadrao(pontosEmOrdem, padraoDestino) : [];
     if (erros.length) {
       mostrarToasts(erros, "erro");
       return;
     }
-    mostrarToasts(avisosDoPadrao(editando.pontosEdit, padraoDestino), "aviso");
+    mostrarToasts(avisosDoPadrao(pontosEmOrdem, padraoDestino), "aviso");
     setSalvando(true);
     setMensagem(null);
 
     const campos = {
-      pontos: editando.pontosEdit,
+      pontos: pontosEmOrdem,
       resultado: editando.resultado?.trim() || null,
       observacao: editando.observacao?.trim() || null,
       anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),

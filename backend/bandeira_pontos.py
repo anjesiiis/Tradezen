@@ -98,10 +98,18 @@ def validar_pares(pontos: PontosBandeira, alta: bool = True) -> List[str]:
     rot = ROTULOS_PARES
     erros: List[str] = []
 
-    # 1) cada par é cronológico
+    # 1) cada par precisa de dois candles DIFERENTES
+    #
+    # A ordem dos cliques não importa: marcar a ponta direita da linha antes
+    # da esquerda desenha a mesma linha, e o front já endireita o par antes
+    # de mandar (normalizarPares, em admin/bandeira.js). O que não dá é as
+    # duas pontas no mesmo candle — aí não há linha.
     for rotulo, de, ate in PARES_ALTA:
-        if p[ate].i <= p[de].i:
-            erros.append(f'{rotulo}: "{rot[ate]}" precisa vir depois de "{rot[de]}" no tempo.')
+        if p[ate].i == p[de].i:
+            erros.append(
+                f'{rotulo}: "{rot[de]}" e "{rot[ate]}" estão no mesmo candle — '
+                f'a linha precisa de dois candles diferentes.'
+            )
 
     # 2) os dois mastros vão na direção do padrão
     ponta = "Topo" if alta else "Fundo"
