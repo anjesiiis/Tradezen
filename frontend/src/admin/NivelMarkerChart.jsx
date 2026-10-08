@@ -35,7 +35,13 @@ export default function NivelMarkerChart({
   cores,
   toquesIniciais,
   grupoAtivo,
+  faixaInicial,            // { from, to } em índice de candle
+  aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
 }) {
+  // o gráfico é criado uma vez só; sem o ref, o handler ficaria com a
+  // versão antiga da função
+  const aoMudarFaixaRef = useRef(aoMudarFaixa);
+  useEffect(() => { aoMudarFaixaRef.current = aoMudarFaixa; }, [aoMudarFaixa]);
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -104,6 +110,9 @@ export default function NivelMarkerChart({
       });
     });
 
+    chart.timeScale().subscribeVisibleLogicalRangeChange((faixa) => {
+      if (faixa && Number.isFinite(faixa.from)) aoMudarFaixaRef.current?.(faixa);
+    });
     chartRef.current = chart;
     seriesRef.current = series;
     markersApiRef.current = createSeriesMarkers(series, []);
@@ -148,7 +157,13 @@ export default function NivelMarkerChart({
 
     timeToIndexRef.current = new Map(candles.map((c, i) => [toChartTime(c), i]));
 
-    chartRef.current?.timeScale().fitContent();
+    // Trocar de padrão não pode fazer perder o lugar: com uma faixa vinda
+    // de fora (a de antes da troca), o gráfico abre nela em vez de voltar
+    // pro gráfico inteiro.
+    const escala = chartRef.current?.timeScale();
+    if (faixaInicial && Number.isFinite(faixaInicial.from)) escala?.setVisibleLogicalRange(faixaInicial);
+    else escala?.fitContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candles]);
 
   useEffect(() => {

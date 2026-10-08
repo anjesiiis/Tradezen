@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
+import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
@@ -55,11 +56,17 @@ function TipoToggle({ value, onChange }) {
 }
 
 export default function AdminTemplatesNiveis() {
-  const [ticker, setTicker] = useState("PETR4.SA");
-  const [periodo, setPeriodo] = useState("1y");
-  const [intervalo, setIntervalo] = useState("1d");
+  // Ativo, período e intervalo vêm do que a tela anterior deixou: trocar
+  // de padrão não pode recomeçar do PETR4 (ver estadoGrafico.js).
+  const [ticker, setTicker] = useState(() => estadoDoGrafico().ticker);
+  const [periodo, setPeriodo] = useState(() => estadoDoGrafico().periodo);
+  const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
   const [tipo, setTipo] = useState("suporte");
-  const [candlesContexto, setCandlesContexto] = useState(null);
+  const [candlesContexto, setCandlesContexto] = useState(() =>
+    candlesGuardados(estadoDoGrafico().ticker, estadoDoGrafico().periodo, estadoDoGrafico().intervalo)
+  );
+  // Faixa visível (zoom e posição) — guardada e devolvida na volta
+  const faixaRef = useRef(estadoDoGrafico().faixa);
   const [carregando, setCarregando] = useState(false);
   const [toquesPorGrupo, setToquesPorGrupo] = useState({ suporte: [], resistencia: [] });
   const [resultado, setResultado] = useState("");
@@ -90,11 +97,15 @@ export default function AdminTemplatesNiveis() {
     try {
       const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
+      // gráfico novo: guarda pra próxima tela e zera a posição antiga
+      faixaRef.current = null;
+      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
       setToquesPorGrupo({ suporte: [], resistencia: [] });
       setMarcacaoKey((k) => k + 1);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
+      esquecerCandles();
     } finally {
       setCarregando(false);
     }
@@ -296,6 +307,8 @@ export default function AdminTemplatesNiveis() {
             {candlesContexto && (
               <>
                 <NivelMarkerChart
+                  faixaInicial={faixaRef.current}
+                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                   key={marcacaoKey}
                   candles={candlesContexto}
                   dual

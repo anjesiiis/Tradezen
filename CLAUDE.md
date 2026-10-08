@@ -270,6 +270,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Gráfico de marcação de níveis | `admin/NivelMarkerChart.jsx` |
 | Lógica dos padrões de continuação (pontos, validação, linhas) | `admin/bandeira.js` |
 | Lógica do canal (6 pontos, suporte/resistência/mediana) | `admin/canal.js` |
+| Gráfico que sobrevive à troca de padrão (ativo, candles, zoom) | `admin/estadoGrafico.js` |
 | Recorte salvo no banco (candles + pontos + etiquetas) | `admin/janela.js` |
 | Zoom de leitura ao abrir um padrão pela 💡 | `admin/enquadrar.js` |
 | Lâmpadas dos templates já salvos | `admin/lampadas.js` |

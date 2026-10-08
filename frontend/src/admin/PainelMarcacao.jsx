@@ -11,6 +11,7 @@ import {
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
+import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -39,10 +40,15 @@ export default function PainelMarcacao({ padraoInicial }) {
   // gráfico; os outros padrões ignoram esse segundo argumento
   const desenharLinhas = (pontos, candlesDoGrafico) => linhasDoPadrao(pontos, padrao, candlesDoGrafico);
 
-  const [ticker, setTicker] = useState("PETR4.SA");
-  const [periodo, setPeriodo] = useState("1y");
-  const [intervalo, setIntervalo] = useState("1d");
-  const [candlesContexto, setCandlesContexto] = useState(null);
+  // Ativo, período, intervalo e candles vêm do que a tela anterior
+  // deixou: trocar de padrão não pode recomeçar do PETR4 nem obrigar a
+  // procurar de novo o trecho que se estava olhando (ver estadoGrafico.js).
+  const [ticker, setTicker] = useState(() => estadoDoGrafico().ticker);
+  const [periodo, setPeriodo] = useState(() => estadoDoGrafico().periodo);
+  const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
+  const [candlesContexto, setCandlesContexto] = useState(() =>
+    candlesGuardados(estadoDoGrafico().ticker, estadoDoGrafico().periodo, estadoDoGrafico().intervalo)
+  );
   const [carregando, setCarregando] = useState(false);
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
@@ -59,8 +65,9 @@ export default function PainelMarcacao({ padraoInicial }) {
   // Desenho do template aberto por uma 💡 — sem rótulos, como o usuário verá
   const [desenhoSalvo, setDesenhoSalvo] = useState(null);
   // Última faixa visível do gráfico: o gráfico é remontado ao trocar de
-  // padrão, e é isso que devolve o zoom e a posição de antes.
-  const faixaRef = useRef(null);
+  // padrão, e é isso que devolve o zoom e a posição de antes. Guardada
+  // também fora do componente, pra valer entre telas diferentes.
+  const faixaRef = useRef(estadoDoGrafico().faixa);
 
   useEffect(() => {
     carregarTemplates();
@@ -157,9 +164,13 @@ export default function PainelMarcacao({ padraoInicial }) {
       setCandlesContexto(data.candles);
       setPontos({});
       setAnotacoes([]);
+      // gráfico novo: guarda pra próxima tela e zera a posição antiga
+      faixaRef.current = null;
+      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
+      esquecerCandles();
     } finally {
       setCarregando(false);
     }
@@ -459,7 +470,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                   aoClicarLampada={abrirDesenhoSalvo}
                   initialPontos={pontos}
                   faixaInicial={faixaRef.current}
-                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; }}
+                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                   anotacoes={anotacoes}
                   aoMudarAnotacoes={setAnotacoes}
                   onChange={setPontos}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
@@ -7,6 +7,7 @@ import { STEPS_TOPO_DUPLO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import { fetchAtivoCandles, templatesTopoDuploApi, clearAdminToken } from "./adminApi";
+import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
 const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
@@ -23,10 +24,16 @@ function Campo({ label, children }) {
 }
 
 export default function AdminTemplatesTopoDuplo() {
-  const [ticker, setTicker] = useState("PETR4.SA");
-  const [periodo, setPeriodo] = useState("1y");
-  const [intervalo, setIntervalo] = useState("1d");
-  const [candlesContexto, setCandlesContexto] = useState(null);
+  // Ativo, período e intervalo vêm do que a tela anterior deixou: trocar
+  // de padrão não pode recomeçar do PETR4 (ver estadoGrafico.js).
+  const [ticker, setTicker] = useState(() => estadoDoGrafico().ticker);
+  const [periodo, setPeriodo] = useState(() => estadoDoGrafico().periodo);
+  const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
+  const [candlesContexto, setCandlesContexto] = useState(() =>
+    candlesGuardados(estadoDoGrafico().ticker, estadoDoGrafico().periodo, estadoDoGrafico().intervalo)
+  );
+  // Faixa visível (zoom e posição) — guardada e devolvida na volta
+  const faixaRef = useRef(estadoDoGrafico().faixa);
   const [carregando, setCarregando] = useState(false);
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
@@ -85,11 +92,15 @@ export default function AdminTemplatesTopoDuplo() {
     try {
       const data = await fetchAtivoCandles(alvo, periodo, intervalo);
       setCandlesContexto(data.candles);
+      // gráfico novo: guarda pra próxima tela e zera a posição antiga
+      faixaRef.current = null;
+      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
       setPontos({});
       setAnotacoes([]);
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
+      esquecerCandles();
     } finally {
       setCarregando(false);
     }
@@ -284,6 +295,8 @@ export default function AdminTemplatesTopoDuplo() {
             {candlesContexto && (
               <>
                 <TemplateMarkerChart
+                  faixaInicial={faixaRef.current}
+                  aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                   candles={candlesContexto}
                   steps={STEPS}
                   marcadoresExtras={lampadas}
