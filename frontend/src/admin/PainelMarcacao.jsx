@@ -3,6 +3,8 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
+import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import { comContextoLargo } from "./contextoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
   PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, normalizarPares,
@@ -20,7 +22,6 @@ import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
 // então o que muda vem por prop: `padrao` (rótulos, cores, direção, forma)
 // e `api` (endpoint/tabela daquele padrão). Sem isso seriam 4 arquivos
 // quase idênticos, que é onde um conserto entra em três e esquece o quarto.
-const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 function Campo({ label, children }) {
   return (
@@ -165,19 +166,22 @@ export default function PainelMarcacao({ padraoInicial }) {
     }
   }
 
-  async function carregarGrafico(tickerParam) {
+  async function carregarGrafico(tickerParam, periodoParam) {
     const alvo = (tickerParam ?? ticker).trim();
+    // `periodoParam`: o botão de período chama já com o valor novo, antes
+    // do estado atualizar
+    const janela = periodoParam ?? periodo;
     if (!alvo) return;
     setCarregando(true);
     setMensagem(null);
     try {
-      const data = await fetchAtivoCandles(alvo, periodo, intervalo);
+      const data = await fetchAtivoCandles(alvo, janela, intervalo);
       setCandlesContexto(data.candles);
       setPontos({});
       setAnotacoes([]);
       // gráfico novo: guarda pra próxima tela e zera a posição antiga
       faixaRef.current = null;
-      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
+      guardarGrafico({ ticker: alvo, periodo: janela, intervalo, candles: data.candles, faixa: null });
     } catch {
       setMensagem({ tipo: "erro", texto: `Não foi possível carregar candles para '${alvo}'.` });
       setCandlesContexto(null);
@@ -247,7 +251,7 @@ export default function PainelMarcacao({ padraoInicial }) {
   async function abrirTemplate(template, readOnly) {
     setMensagem(null);
     try {
-      const completoDoBanco = await api.get(template.id);
+      const completoDoBanco = comContextoLargo(await api.get(template.id));
       setEditando({
         ...completoDoBanco,
         pontosEdit: completoDoBanco.pontos,
@@ -457,9 +461,11 @@ export default function PainelMarcacao({ padraoInicial }) {
                 <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
               <Campo label="Período">
-                <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">
-                  {PERIODOS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <BotoesPeriodo
+                  valor={periodo}
+                  desabilitado={carregando}
+                  aoEscolher={(novo) => { setPeriodo(novo); carregarGrafico(undefined, novo); }}
+                />
               </Campo>
               <Campo label="Intervalo">
                 <select value={intervalo} onChange={(e) => setIntervalo(e.target.value)} className="admin-select">
@@ -480,6 +486,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                   <div className="marcacao-grafico">
                   <TemplateMarkerChart
                     key={padrao.id}
+                    padraoMarcado={{ id: padrao.id, ancora: padrao.alta ? "p2_topo_mastro1" : "p2_topo_mastro1", acima: padrao.alta }}
                     candles={candlesContexto}
                     steps={STEPS}
                     linhas={desenharLinhas}

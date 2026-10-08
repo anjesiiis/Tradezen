@@ -151,3 +151,19 @@ export const API_DO_PADRAO = {
   canal_alta: templatesCanalAltaApi,
   canal_baixa: templatesCanalBaixaApi,
 };
+
+/**
+ * Detecção automática no histórico do ativo.
+ *
+ * Hoje o backend só detecta OCO — é o único detector automático que
+ * existe (patterns/classicos.py). A resposta traz `cobertos` dizendo
+ * quais padrões foram realmente procurados, pra a tela não dizer "nenhum
+ * encontrado" quando a verdade é "ninguém procurou".
+ */
+export async function detectarPadroes(ticker, periodo = "5y", intervalo = "1d") {
+  const r = await fetch(
+    `${API}/detectar/${encodeURIComponent(ticker)}?periodo=${periodo}&intervalo=${intervalo}`
+  );
+  if (!r.ok) throw new Error(`Erro ${r.status}`);
+  return r.json();
+}

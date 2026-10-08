@@ -19,18 +19,18 @@ describe('Etiquetas salvas junto com o template', () => {
       const { candles: recorte, pontosAjustados, anotacoesAjustadas } =
         janelaDoPadrao(contexto, pontos, [etiqueta('volume seca', 45)]);
 
-      // janela = 25..65 (15 de folga dos dois lados)
-      expect(recorte).toHaveLength(41);
-      expect(pontosAjustados.a.i).toBe(15);
-      expect(anotacoesAjustadas[0].ancora.i).toBe(20);
+      // janela = 0..90 (40 de folga dos dois lados, cortada no início)
+      expect(recorte).toHaveLength(91);
+      expect(pontosAjustados.a.i).toBe(40);
+      expect(anotacoesAjustadas[0].ancora.i).toBe(45);
       // e o candle apontado continua sendo o mesmo
-      expect(recorte[20].timestamp).toBe(contexto[45].timestamp);
+      expect(recorte[45].timestamp).toBe(contexto[45].timestamp);
     });
 
     it('descarta etiqueta vazia e etiqueta fora da janela', () => {
       const { anotacoesAjustadas } = janelaDoPadrao(contexto, pontos, [
         etiqueta('   ', 45),
-        etiqueta('longe demais', 90),
+        etiqueta('longe demais', 99),   // fora da janela 0..90
         etiqueta('  fica  ', 45),
       ]);
 

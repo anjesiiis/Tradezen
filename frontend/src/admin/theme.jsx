@@ -137,6 +137,13 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .admin-btn,.admin-btn-ghost,.admin-picker-btn,.admin-input,.admin-select{min-height:44px}
 }
 
+/* Marcador de detecção automática: menor e apagado, pra não se confundir
+   com o que foi marcado à mão */
+.lampada.automatica{font-size:11px;opacity:.5;cursor:default}
+.lampada.automatica:hover{opacity:.8}
+.deteccao-aviso{margin:0;font-size:11px;color:var(--text2)}
+.emoji-marcacao{position:absolute;transform:translate(-50%,-50%);font-size:16px;pointer-events:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+
 /* ── FILTRO DE PADRÕES (sidebar do gráfico de marcação) ── */
 .marcacao-area{display:flex;gap:12px;align-items:stretch;min-width:0}
 .marcacao-grafico{flex:1;min-width:0}

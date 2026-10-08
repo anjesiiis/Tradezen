@@ -3,11 +3,11 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
+import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 
-const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
@@ -89,17 +89,20 @@ export default function AdminTemplatesNiveis() {
     }
   }
 
-  async function carregarGrafico(tickerParam) {
+  async function carregarGrafico(tickerParam, periodoParam) {
     const alvo = (tickerParam ?? ticker).trim();
+    // `periodoParam`: o botão de período chama já com o valor novo, antes
+    // do estado atualizar
+    const janela = periodoParam ?? periodo;
     if (!alvo) return;
     setCarregando(true);
     setMensagem(null);
     try {
-      const data = await fetchAtivoCandles(alvo, periodo, intervalo);
+      const data = await fetchAtivoCandles(alvo, janela, intervalo);
       setCandlesContexto(data.candles);
       // gráfico novo: guarda pra próxima tela e zera a posição antiga
       faixaRef.current = null;
-      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
+      guardarGrafico({ ticker: alvo, periodo: janela, intervalo, candles: data.candles, faixa: null });
       setToquesPorGrupo({ suporte: [], resistencia: [] });
       setMarcacaoKey((k) => k + 1);
     } catch {
@@ -286,9 +289,11 @@ export default function AdminTemplatesNiveis() {
                 <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
               <Campo label="Período">
-                <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">
-                  {PERIODOS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <BotoesPeriodo
+                  valor={periodo}
+                  desabilitado={carregando}
+                  aoEscolher={(novo) => { setPeriodo(novo); carregarGrafico(undefined, novo); }}
+                />
               </Campo>
               <Campo label="Intervalo">
                 <select value={intervalo} onChange={(e) => setIntervalo(e.target.value)} className="admin-select">

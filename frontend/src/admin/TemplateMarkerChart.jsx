@@ -3,6 +3,7 @@ import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, creat
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
 import { faixaDeLeitura } from "./enquadrar.js";
+import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 const DURACAO_ZOOM = 500;   // ms da animação do zoom ao abrir um padrão salvo
 
@@ -26,6 +27,7 @@ export default function TemplateMarkerChart({
   aoMudarAnotacoes,
   faixaInicial,            // { from, to } em índice de candle: abre o gráfico já nesse zoom
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
+  padraoMarcado,           // { id, ancora, acima } — emoji do padrão em cima da marcação
   initialPontos, onChange, readOnly = false,
 }) {
   const containerRef = useRef();
@@ -619,6 +621,28 @@ export default function TemplateMarkerChart({
         }}
       />
 
+      {/* Emoji do padrão que está sendo marcado agora, ancorado no ponto
+          principal dele — acima quando o padrão é de topo, abaixo quando é
+          de fundo. Serve de conferência: o símbolo que vai ficar no
+          gráfico depois de salvar é esse. */}
+      {(() => {
+        const ancora = padraoMarcado?.ancora && pontos[padraoMarcado.ancora];
+        if (!ancora) return null;
+        const pos = ancoraParaPixel(ancora);
+        if (!pos) return null;
+        return (
+          <div className="lampadas">
+            <span
+              className="emoji-marcacao"
+              style={{ left: pos.x, top: pos.y + (padraoMarcado.acima ? -34 : 24) }}
+              title={`Assim este padrão vai aparecer no gráfico`}
+            >
+              {iconeDoPadrao(padraoMarcado.id)}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* 💡 dos templates já salvos: elemento próprio por cima do gráfico,
           sem bolinha nenhuma embaixo. Clicar abre o desenho daquele padrão. */}
       <div className="lampadas">
@@ -626,9 +650,12 @@ export default function TemplateMarkerChart({
           return (
             <button
               key={extra.id ?? extra.time}
-              className="lampada"
+              className={`lampada${extra.automatico ? " automatica" : ""}`}
+              disabled={extra.automatico}
               style={{ left: pos.x, top: pos.y }}
-              title={`${extra.dica || extra.rotulo || "Padrão marcado"} · clique para ver o desenho`}
+              title={extra.automatico
+                ? extra.dica
+                : `${extra.dica || extra.rotulo || "Padrão marcado"} · clique para ver o desenho`}
               /* Sem salto seco aqui: quem enquadra é a animação de cima,
                  quando o desenho do padrão chega. */
               onClick={() => aoClicarLampada?.(extra)}

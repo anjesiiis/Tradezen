@@ -6,13 +6,15 @@ import ListaTemplates from "./ListaTemplates.jsx";
 import { LINE_PAIRS_OCO as LINE_PAIRS, STEPS_OCO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
-import { fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
+import BotoesPeriodo from "./BotoesPeriodo.jsx";
+import { comContextoLargo } from "./contextoTemplate.js";
+import { detectarPadroes, fetchAtivoCandles, templatesOcoApi, clearAdminToken } from "./adminApi";
+import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 
-const PERIODOS = ["3mo", "6mo", "1y", "2y", "5y", "10y", "max"];
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PASSOS = STEPS.map((s) => s.key);
 
@@ -59,6 +61,33 @@ export default function AdminTemplates() {
   }, {});
   const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
 
+  // ── Detecção automática no histórico do ativo ──────────────
+  // Só OCO: é o único padrão que o detector automático cobre hoje. Serve
+  // pra calibrar o olho — ver outros exemplos reais no mesmo ativo antes
+  // de marcar o seu. Roda quando o ativo/gráfico muda, não a cada render.
+  // { estado: "parado" | "procurando" | "pronto", lista }
+  const [deteccao, setDeteccao] = useState({ estado: "parado", lista: [] });
+  const detectados = deteccao.lista;
+
+  useEffect(() => {
+    if (!candlesContexto?.length) return;
+    let vivo = true;
+    detectarPadroes(ticker, periodo, intervalo)
+      .then((r) => {
+        if (!vivo) return;
+        setDeteccao({ estado: "pronto", lista: (r.padroes || []).map((p, n) => ({
+          id: `auto-${n}`,
+          tipo: "oco",
+          automatico: true,
+          icone: iconeDoPadrao("oco"),
+          dica: `OCO encontrado pelo detector · confiança ${p.confiabilidade ?? "?"}%`,
+          time: Math.floor((p.pontos?.cabeca?.timestamp ?? p.intervalo_candles?.inicio_timestamp ?? 0) / 1000),
+        })).filter((m) => m.time > 0) });
+      })
+      .catch(() => { if (vivo) setDeteccao({ estado: "pronto", lista: [] }); });
+    return () => { vivo = false; };
+  }, [ticker, periodo, intervalo, candlesContexto]);
+
   useEffect(() => {
     carregarTemplates();
   }, []);
@@ -93,17 +122,20 @@ export default function AdminTemplates() {
     }
   }
 
-  async function carregarGrafico(tickerParam) {
+  async function carregarGrafico(tickerParam, periodoParam) {
     const alvo = (tickerParam ?? ticker).trim();
+    // `periodoParam`: o botão de período chama já com o valor novo, antes
+    // do estado atualizar
+    const janela = periodoParam ?? periodo;
     if (!alvo) return;
     setCarregando(true);
     setMensagem(null);
     try {
-      const data = await fetchAtivoCandles(alvo, periodo, intervalo);
+      const data = await fetchAtivoCandles(alvo, janela, intervalo);
       setCandlesContexto(data.candles);
       // gráfico novo: guarda pra próxima tela e zera a posição antiga
       faixaRef.current = null;
-      guardarGrafico({ ticker: alvo, periodo, intervalo, candles: data.candles, faixa: null });
+      guardarGrafico({ ticker: alvo, periodo: janela, intervalo, candles: data.candles, faixa: null });
       setPontos({});
       setAnotacoes([]);
     } catch {
@@ -158,7 +190,7 @@ export default function AdminTemplates() {
   async function abrirTemplate(template, readOnly) {
     setMensagem(null);
     try {
-      const completo = await templatesOcoApi.get(template.id);
+      const completo = comContextoLargo(await templatesOcoApi.get(template.id));
       setEditando({
         ...completo,
         pontosEdit: completo.pontos,
@@ -287,9 +319,11 @@ export default function AdminTemplates() {
                 <div style={{ width: 260 }}><AtivoPicker value={ticker} onChange={selecionarTicker} /></div>
               </Campo>
               <Campo label="Período">
-                <select value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="admin-select">
-                  {PERIODOS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <BotoesPeriodo
+                  valor={periodo}
+                  desabilitado={carregando}
+                  aoEscolher={(novo) => { setPeriodo(novo); carregarGrafico(undefined, novo); }}
+                />
               </Campo>
               <Campo label="Intervalo">
                 <select value={intervalo} onChange={(e) => setIntervalo(e.target.value)} className="admin-select">
@@ -309,12 +343,13 @@ export default function AdminTemplates() {
                 <div className="marcacao-area">
                   <div className="marcacao-grafico">
                   <TemplateMarkerChart
+                    padraoMarcado={{ id: "oco", ancora: "topo_cabeca", acima: true }}
                     faixaInicial={faixaRef.current}
                     aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                     candles={candlesContexto}
                     steps={STEPS}
                     linePairs={LINE_PAIRS}
-                    marcadoresExtras={marcadoresVisiveis}
+                    marcadoresExtras={[...marcadoresVisiveis, ...detectados]}
                     desenhoSalvo={desenhoSalvo}
                     aoClicarLampada={abrirDesenhoSalvo}
                     anotacoes={anotacoes}
@@ -328,6 +363,16 @@ export default function AdminTemplates() {
                     contagem={contagemPorPadrao}
                   />
                 </div>
+
+                {candlesContexto && (
+                  <p className="deteccao-aviso">
+                    {deteccao.estado === "pronto"
+                      ? detectados.length > 0
+                        ? `${detectados.length} OCO encontrado(s) pelo detector neste histórico — aparecem apagados, pra comparar.`
+                        : "O detector não encontrou nenhum OCO neste histórico."
+                      : "Procurando OCOs já formados neste ativo…"}
+                  </p>
+                )}
 
                 {desenhoSalvo && (
                   <div className="admin-msg admin-msg-ok" style={{ display: "flex", alignItems: "center", gap: 12 }}>

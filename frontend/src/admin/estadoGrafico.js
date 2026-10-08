@@ -17,7 +17,7 @@
 
 let estado = {
   ticker: "PETR4.SA",
-  periodo: "1y",
+  periodo: "3mo",   // 3M é o padrão da tela (botões de período)
   intervalo: "1d",
   candles: null,
   faixa: null,       // { from, to } em índice de candle

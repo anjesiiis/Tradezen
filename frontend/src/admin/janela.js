@@ -6,7 +6,11 @@
 // padrões de continuação): uma correção aqui vale pra todas. A de níveis
 // tem a sua, porque lá se marcam toques, não pontos nomeados.
 
-const PADDING = 15;
+// Folga de contexto nos dois lados do padrão, em candles. Eram 15, e com
+// isso um topo duplo (que ocupa poucos candles) reabria espremido, quase
+// encostando na borda. 40 dá o antes e o depois que fazem o padrão ser
+// lido como padrão.
+const PADDING = 40;
 
 export function janelaDoPadrao(candlesContexto, pontos, anotacoes = []) {
   const indices = Object.values(pontos).map((p) => p.i);

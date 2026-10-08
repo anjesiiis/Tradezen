@@ -43,6 +43,7 @@ from slowapi.errors import RateLimitExceeded
 
 from ativos import ATIVOS
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
+from patterns.classicos import detectar_padroes_classicos
 from config import FRONTEND_URL
 from rate_limit import limiter
 from admin_auth import router as admin_auth_router, require_admin
@@ -296,6 +297,57 @@ def dados_ativo(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/detectar/{ticker}")
+@limiter.limit("30/minute")
+def detectar_padroes(
+    request: Request,
+    ticker: str,
+    periodo: PeriodoAtivo = Query("5y"),
+    intervalo: IntervaloAtivo = Query("1d"),
+    janela: int = Query(5, ge=2, le=20, description="sensibilidade dos pivôs"),
+):
+    """Roda o detector automático no histórico do ativo.
+
+    HOJE SÓ DETECTA OCO. O detector automático (patterns/classicos.py) é o
+    único que existe; topo duplo, bandeira, flâmula, cunha e canal ainda
+    dependem do modelo que está sendo treinado com os templates marcados à
+    mão. A rota devolve `cobertos` justamente pra a tela saber o que pode
+    prometer — em vez de dizer "nenhum padrão encontrado" quando a verdade
+    é "ninguém procurou".
+    """
+    chave_cache = f"detectar:{ticker}:{periodo}:{intervalo}:{janela}"
+    em_cache = cache_get(chave_cache, TTL_MEDIO)
+    if em_cache is not None:
+        return {**em_cache, "cache": True}
+
+    candles = buscar_candles(ticker, periodo, intervalo)
+    if not candles:
+        raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
+
+    achados = detectar_padroes_classicos(candles, janela=janela)
+    # o índice do candle não serve pra outra janela de tempo; o timestamp sim
+    for p in achados:
+        intervalo_c = p.get("intervalo_candles") or {}
+        for chave in ("inicio", "fim"):
+            i = intervalo_c.get(chave)
+            if isinstance(i, int) and 0 <= i < len(candles):
+                intervalo_c[f"{chave}_timestamp"] = candles[i]["timestamp"]
+        for nome, ponto in (p.get("pontos") or {}).items():
+            i = ponto.get("i") if isinstance(ponto, dict) else None
+            if isinstance(i, int) and 0 <= i < len(candles):
+                ponto["timestamp"] = candles[i]["timestamp"]
+
+    resposta = {
+        "status": "ok",
+        "ticker": ticker.upper(),
+        "total_candles": len(candles),
+        "cobertos": ["oco"],
+        "padroes": achados,
+    }
+    cache_set(chave_cache, resposta)
+    return resposta
 
 
 @app.get("/ativos")
