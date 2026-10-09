@@ -31,6 +31,7 @@ export default function TemplateMarkerChart({
   faixaInicial,            // { from, to } em índice de candle: abre o gráfico já nesse zoom
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   padraoMarcado,           // { id, ancora, acima } — emoji do padrão em cima da marcação
+  instrucao,               // uma linha de ajuda do padrão, acima do gráfico
   enquadrarPontos,         // true: abre já enquadrado nos pontos (modo visualizar)
   limparEm = 0,            // muda de valor = apaga os pontos marcados sem recriar o gráfico
   initialPontos, onChange, readOnly = false,
@@ -608,6 +609,7 @@ export default function TemplateMarkerChart({
                 key={s.key}
                 onClick={() => !readOnly && setActiveStep(s.key)}
                 disabled={readOnly}
+                title={s.dica || s.label}
                 className={`admin-chip${ativo ? " active" : ""}${marcado ? " filled" : ""}`}
                 style={marcado ? { boxShadow: `inset 3px 0 0 ${s.color}` } : undefined}
               >
@@ -643,6 +645,10 @@ export default function TemplateMarkerChart({
         <span className={`modo-badge ${padraoMarcado.modo === "visualizar" ? "vendo" : "editando"}`}>
           {padraoMarcado.modo === "visualizar" ? "👁 Visualizando" : "✏️ Editando"}
         </span>
+      )}
+
+      {instrucao && !readOnly && (
+        <p className="marcacao-instrucao">{instrucao}</p>
       )}
 
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
@@ -686,8 +692,16 @@ export default function TemplateMarkerChart({
           }))
           .filter(({ cantos }) => cantos.every(Boolean));
         if (!poligonos.length) return null;
+        // Largura da área de desenho (sem o eixo de preços): sem esse
+        // recorte o preenchimento vazava do gráfico e pintava por cima do
+        // eixo e do que estivesse ao lado — o "rastro" ao arrastar.
+        const larguraUtil = chartRef.current?.timeScale().width();
         return (
-          <svg className="area-padrao" aria-hidden="true">
+          <svg
+            className="area-padrao"
+            aria-hidden="true"
+            style={larguraUtil ? { width: larguraUtil } : undefined}
+          >
             {poligonos.map(({ area, cantos }) => (
               <polygon
                 key={area.id}

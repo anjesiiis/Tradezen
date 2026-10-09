@@ -19,9 +19,18 @@ describe('Canal de alta e de baixa', () => {
   describe('pontos', () => {
     it('são 4, marcados primeiro uma linha e depois a outra', () => {
       expect(stepsDoCanal(ALTA).map((s) => s.key)).toEqual(['p1', 'p2', 'p3', 'p4']);
-      expect(stepsDoCanal(ALTA).map((s) => s.label)).toEqual(['Fundo Esq.', 'Fundo Dir.', 'Topo Esq.', 'Topo Dir.']);
+      // o número do ponto vai no rótulo: "Fundo Esq." sozinho não diz que
+      // os dois primeiros cliques são a linha de baixo
+      expect(stepsDoCanal(ALTA).map((s) => s.label))
+        .toEqual(['P1 · Fundo Esq.', 'P2 · Fundo Dir.', 'P3 · Topo Esq.', 'P4 · Topo Dir.']);
+      expect(stepsDoCanal(ALTA).map((s) => s.dica)).toEqual([
+        'P1 — Fundo Esq. (início da linha inferior)', 'P2 — Fundo Dir. (fim da linha inferior)',
+        'P3 — Topo Esq. (início da linha superior)', 'P4 — Topo Dir. (fim da linha superior)',
+      ]);
       // no canal de baixa o papel das linhas troca: marca-se o topo antes
-      expect(stepsDoCanal(BAIXA).map((s) => s.label)).toEqual(['Topo Esq.', 'Topo Dir.', 'Fundo Esq.', 'Fundo Dir.']);
+      expect(stepsDoCanal(BAIXA).map((s) => s.label))
+        .toEqual(['P1 · Topo Esq.', 'P2 · Topo Dir.', 'P3 · Fundo Esq.', 'P4 · Fundo Dir.']);
+      expect(stepsDoCanal(BAIXA)[0].dica).toContain('linha superior');
       expect(rotulosDoCanal(BAIXA)[0]).toBe('Topo Esq.');
     });
 
@@ -39,7 +48,7 @@ describe('Canal de alta e de baixa', () => {
 
     it('a tela de marcação usa esses mesmos pontos', () => {
       expect(stepsDoPadrao(PADROES.canal_alta).map((s) => s.label))
-        .toEqual(['Fundo Esq.', 'Fundo Dir.', 'Topo Esq.', 'Topo Dir.']);
+        .toEqual(['P1 · Fundo Esq.', 'P2 · Fundo Dir.', 'P3 · Topo Esq.', 'P4 · Topo Dir.']);
     });
   });
 
@@ -122,6 +131,13 @@ describe('Canal de alta e de baixa', () => {
     it('trocar topo com fundo é barrado: as retas se cruzam', () => {
       const trocado = { p1: pt(5, 50), p2: pt(60, 63), p3: pt(10, 45), p4: pt(64, 58) };
       expect(validarCanal(trocado, ALTA).join()).toMatch(/topo e fundo se cruzam/);
+    });
+
+    it('canal que estreita passa: a conferência é só onde as duas foram marcadas', () => {
+      // a linha de baixo é mais inclinada que a de cima e a ultrapassaria
+      // lá na frente — num trecho que ninguém marcou
+      const estreitando = { p1: pt(10, 100), p2: pt(100, 160), p3: pt(5, 110), p4: pt(50, 130) };
+      expect(validarCanal(estreitando, ALTA)).toEqual([]);
     });
 
     it('retas que se encostam no meio do canal também são barradas', () => {

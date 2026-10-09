@@ -45,6 +45,16 @@ export function temFormatoCanal(pontos) {
 const ROTULOS_ALTA = ["Fundo Esq.", "Fundo Dir.", "Topo Esq.", "Topo Dir."];
 const ROTULOS_BAIXA = ["Topo Esq.", "Topo Dir.", "Fundo Esq.", "Fundo Dir."];
 
+// Qual linha cada ponto fecha — vai na dica do botão, porque "Fundo Esq."
+// sozinho não diz que os dois primeiros cliques são a linha de baixo.
+const DICAS = ["início da linha inferior", "fim da linha inferior",
+               "início da linha superior", "fim da linha superior"];
+const DICAS_BAIXA = ["início da linha superior", "fim da linha superior",
+                     "início da linha inferior", "fim da linha inferior"];
+
+export const INSTRUCAO_CANAL =
+  "Marque primeiro os 2 pontos da linha INFERIOR, depois os 2 da linha SUPERIOR.";
+
 export function rotulosDoCanal(padrao) {
   return padrao?.alta === false ? ROTULOS_BAIXA : ROTULOS_ALTA;
 }
@@ -52,9 +62,11 @@ export function rotulosDoCanal(padrao) {
 export function stepsDoCanal(padrao) {
   const rotulos = rotulosDoCanal(padrao);
   const alta = padrao?.alta !== false;
+  const dicas = alta ? DICAS : DICAS_BAIXA;
   return PASSOS_CANAL.map((key, n) => ({
     key,
-    label: rotulos[n],
+    label: `P${n + 1} · ${rotulos[n]}`,
+    dica: `P${n + 1} — ${rotulos[n]} (${dicas[n]})`,
     short: `P${n + 1}`,
     // a cor seque o papel da linha: suporte verde, resistência vermelha
     color: (n < 2) === alta ? VERDE : VERMELHO,
@@ -164,10 +176,19 @@ export function validarCanal(pontos, padrao) {
   // 2. Inversão: a reta de cima precisa ficar de um lado só da de baixo.
   // É a ÚNICA coisa que impede de salvar além dos pontos faltando — se as
   // duas se cruzam, topo e fundo estão trocados e o desenho não é um canal.
-  const { de, ate } = extremos(pontos);
+  //
+  // A conferência vale só no TRECHO ONDE AS DUAS FORAM MARCADAS. Antes ela
+  // esticava as duas retas até o extremo dos quatro pontos, e aí num canal
+  // que estreita (a linha de baixo mais inclinada que a de cima) a de baixo
+  // ultrapassava a de cima lá fora, num pedaço que ninguém marcou — e a
+  // marcação, correta, era recusada.
+  const de = Math.max(Math.min(p1.i, p2.i), Math.min(p3.i, p4.i));
+  const ate = Math.min(Math.max(p1.i, p2.i), Math.max(p3.i, p4.i));
   const linha1 = (x) => precoNaReta(p1, p2, x);
   const linha2 = (x) => precoNaReta(p3, p4, x);
-  const cruzam = [de, ate].some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
+  // sem trecho em comum, compara onde cada uma começa e termina
+  const ondeConferir = de <= ate ? [de, ate] : [Math.min(p1.i, p2.i, p3.i, p4.i), Math.max(p1.i, p2.i, p3.i, p4.i)];
+  const cruzam = ondeConferir.some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
   if (cruzam) {
     const ladoCerto = alta ? "acima" : "abaixo";
     erros.push(`A linha de "${r3}" a "${r4}" precisa ficar ${ladoCerto} da linha de "${r1}" a "${r2}" — do jeito que está, topo e fundo se cruzam.`);

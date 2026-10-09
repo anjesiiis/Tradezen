@@ -73,7 +73,12 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
    gráfico embaixo (a bolinha amarela saía junto e poluía o candle). */
 .lampadas{position:absolute;inset:8px;pointer-events:none;z-index:6}
 /* Área preenchida do padrão: por cima do canvas, sem roubar o clique */
-.area-padrao{position:absolute;inset:8px;pointer-events:none;z-index:5;overflow:visible}
+/* Ajuda do padrão, acima do gráfico — a ordem de marcação do canal não
+   é óbvia só pelos nomes dos pontos. */
+.marcacao-instrucao{margin:0;padding:8px 14px;font-size:12px;color:var(--text);background:rgba(61,126,255,.10);border-bottom:1px solid var(--border)}
+
+/* overflow hidden: o preenchimento não pode pintar fora do gráfico */
+.area-padrao{position:absolute;left:8px;top:8px;bottom:8px;pointer-events:none;z-index:5;overflow:hidden}
 .lampada{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:none;border:none;padding:2px;cursor:pointer;font-size:15px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));transition:transform .12s}
 .lampada:hover{transform:translate(-50%,-100%) scale(1.25)}
 /* Anotações de texto por cima do gráfico (só durante a sessão) */
