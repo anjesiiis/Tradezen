@@ -45,13 +45,16 @@ export default function PainelMarcacao({ padraoInicial }) {
   const api = API_DO_PADRAO[padrao.id];
   const STEPS = stepsDoPadrao(padrao);
   const PASSOS = STEPS.map((s) => s.key);
-  // candles entram porque as linhas do canal são esticadas até o limite do
-  // gráfico; os outros padrões ignoram esse segundo argumento
-  const desenharLinhas = (pontos, candlesDoGrafico) => linhasDoPadrao(pontos, padrao, candlesDoGrafico);
-  // Onde o emoji do padrão fica ancorado. Nos padrões de 4 pares é sempre
-  // o topo do primeiro mastro; nos de reversão e consolidação, o ponto
-  // mais característico de cada um (a cabeça do OCO invertido, etc).
-  const ancoraDoEmoji = (p) => (ehExtra(p) ? ancoraExtra(p) : "p2_topo_mastro1");
+  const desenharLinhas = (pontos) => linhasDoPadrao(pontos, padrao);
+  // Onde o emoji do padrão fica ancorado. Nos padrões de 4 pares é o topo
+  // do primeiro mastro; nos de reversão e consolidação, o ponto mais
+  // característico de cada um (a cabeça do OCO invertido, etc); nos
+  // demais, o primeiro ponto marcado — sem isso o canal ficava sem emoji,
+  // porque a chave do mastro não existe lá.
+  const ancoraDoEmoji = (p) => {
+    if (ehExtra(p)) return ancoraExtra(p);
+    return p.canal ? stepsDoPadrao(p)[0].key : "p2_topo_mastro1";
+  };
 
   // Ativo, período, intervalo e candles vêm do que a tela anterior
   // deixou: trocar de padrão não pode recomeçar do PETR4 nem obrigar a
@@ -266,8 +269,10 @@ export default function PainelMarcacao({ padraoInicial }) {
       // Zera os pontos no gráfico sem recriá-lo (ativo, período e zoom ficam).
       setLimpezas((n) => n + 1);
       carregarTemplates();
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
+    } catch (erro) {
+      // O recado do backend vale muito mais que "erro ao salvar": é lá que
+      // aparece a regra que barrou, ou a tabela que ainda não existe.
+      setMensagem({ tipo: "erro", texto: erro?.message || "Erro ao salvar o template." });
     } finally {
       setSalvando(false);
     }

@@ -52,6 +52,28 @@ def _serializar(pontos: PontosExtras) -> Dict[str, Any]:
     return {k: v.model_dump() for k, v in pontos.items()}
 
 
+def _executar(consulta, tabela: str):
+    """Roda a consulta dizendo o que fazer quando a tabela não existe.
+
+    Sem isso, marcar um padrão novo antes de rodar a migration devolvia um
+    500 sem explicação, e na tela aparecia só "Erro ao salvar o template".
+    """
+    try:
+        return consulta.execute()
+    except Exception as erro:  # a lib do Supabase tem exceção própria
+        texto = str(erro)
+        if "Could not find the table" in texto or "does not exist" in texto:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"A tabela {tabela} ainda não existe no Supabase. "
+                    "Rode backend/sql/014_padroes_reversao_e_consolidacao.sql "
+                    "no SQL Editor e tente de novo."
+                ),
+            ) from erro
+        raise
+
+
 def criar_router(tipo: str) -> APIRouter:
     espec = PADROES_EXTRAS[tipo]
     tabela = espec["tabela"]
@@ -64,13 +86,13 @@ def criar_router(tipo: str) -> APIRouter:
     @router.get("")
     @limiter.limit("30/minute")
     def listar_templates(request: Request):
-        resp = supabase.table(tabela).select(_COLUNAS_LISTA).order("criado_em", desc=True).execute()
+        resp = _executar(supabase.table(tabela).select(_COLUNAS_LISTA).order("criado_em", desc=True), tabela)
         return {"status": "ok", "templates": resp.data, "total": len(resp.data)}
 
     @router.get("/{template_id}")
     @limiter.limit("30/minute")
     def obter_template(request: Request, template_id: int):
-        resp = supabase.table(tabela).select("*").eq("id", template_id).limit(1).execute()
+        resp = _executar(supabase.table(tabela).select("*").eq("id", template_id).limit(1), tabela)
         if not resp.data:
             raise HTTPException(status_code=404, detail="Template não encontrado.")
         return {"status": "ok", "template": resp.data[0]}
@@ -81,7 +103,7 @@ def criar_router(tipo: str) -> APIRouter:
         garantir_valido(tipo, payload.pontos)
         body = payload.model_dump()
         body["pontos"] = _serializar(payload.pontos)
-        resp = supabase.table(tabela).insert(body).execute()
+        resp = _executar(supabase.table(tabela).insert(body), tabela)
         return {"status": "ok", "template": resp.data[0]}
 
     @router.put("/{template_id}")
@@ -95,7 +117,7 @@ def criar_router(tipo: str) -> APIRouter:
         if not body:
             raise HTTPException(status_code=400, detail="Nada para atualizar.")
 
-        resp = supabase.table(tabela).update(body).eq("id", template_id).execute()
+        resp = _executar(supabase.table(tabela).update(body).eq("id", template_id), tabela)
         if not resp.data:
             raise HTTPException(status_code=404, detail="Template não encontrado.")
         return {"status": "ok", "template": resp.data[0]}
@@ -103,7 +125,7 @@ def criar_router(tipo: str) -> APIRouter:
     @router.delete("/{template_id}")
     @limiter.limit("30/minute")
     def remover_template(request: Request, template_id: int):
-        resp = supabase.table(tabela).delete().eq("id", template_id).execute()
+        resp = _executar(supabase.table(tabela).delete().eq("id", template_id), tabela)
         if not resp.data:
             raise HTTPException(status_code=404, detail="Template não encontrado.")
         return {"status": "ok"}

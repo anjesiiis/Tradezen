@@ -11,8 +11,8 @@
 // compare um par com outro bloqueia o salvamento; no máximo vira aviso.
 
 import {
-  PADROES_CANAL, avisosDoCanal, configDoCanal, ehCanal, linhasDoCanal,
-  stepsDoCanal, temFormatoCanal, validarCanal,
+  PADROES_CANAL, areasDoCanal, avisosDoCanal, configDoCanal, ehCanal,
+  linhasDoCanal, stepsDoCanal, temFormatoCanal, validarCanal,
 } from "./canal.js";
 import {
   PADROES_EXTRAS, areasExtras, avisosExtras, ehExtra, linhasExtras,
@@ -95,7 +95,7 @@ export function paresDoPadrao(padrao) {
 
 export function stepsDoPadrao(padrao) {
   if (ehExtra(padrao)) return stepsExtras(padrao);
-  if (ehCanal(padrao)) return stepsDoCanal();
+  if (ehCanal(padrao)) return stepsDoCanal(padrao);
   return paresDoPadrao(padrao).flatMap((par, iPar) => [
     { key: par.de,  label: par.rotuloDe,  short: `P${iPar * 2 + 1}`, color: par.cor, par: par.id },
     { key: par.ate, label: par.rotuloAte, short: `P${iPar * 2 + 2}`, color: par.cor, par: par.id },
@@ -108,10 +108,10 @@ export function temFormatoPares(pontos) {
 
 // Uma linha por par COMPLETO — aparece assim que os 2 cliques daquele par
 // acontecem, sem depender dos outros pares.
-export function linhasDoPadrao(pontos, padrao, candles) {
+export function linhasDoPadrao(pontos, padrao) {
   if (!pontos) return [];
   if (ehExtra(padrao)) return linhasExtras(pontos, padrao);
-  if (ehCanal(padrao)) return linhasDoCanal(pontos, candles);
+  if (ehCanal(padrao)) return linhasDoCanal(pontos);
   return paresDoPadrao(padrao)
     .filter((par) => pontos[par.de] && pontos[par.ate])
     .map((par) => ({
@@ -256,7 +256,9 @@ export function padroesCompativeis(padrao) {
 
 /** Polígono preenchido do padrão (triângulos e retângulo). */
 export function areasDoPadrao(pontos, padrao) {
-  return ehExtra(padrao) ? areasExtras(pontos, padrao) : [];
+  if (ehExtra(padrao)) return areasExtras(pontos, padrao);
+  if (ehCanal(padrao)) return areasDoCanal(pontos, padrao);
+  return [];
 }
 
 export function medidasDoPadrao(pontos) {
@@ -347,7 +349,7 @@ export function configDoTemplate(pontos, padrao) {
       pares: [],
     };
   }
-  if (ehCanal(padrao) || temFormatoCanal(pontos)) return configDoCanal();
+  if (ehCanal(padrao) || temFormatoCanal(pontos)) return configDoCanal(ehCanal(padrao) ? padrao : null);
   if (temFormatoPares(pontos)) {
     return {
       steps: stepsDoPadrao(padrao),

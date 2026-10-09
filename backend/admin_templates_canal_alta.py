@@ -16,8 +16,8 @@ router = APIRouter(
 
 
 # Os pontos e as regras de validação vivem em canal_pontos.py
-# (compartilhado com o canal da outra direção). P5 e P6 são opcionais:
-# dois toques de cada lado já definem as duas linhas.
+# (compartilhado com o canal da outra direção): 4 pontos, duas retas
+# paralelas. A mediana do meio é calculada, não marcada.
 
 
 class TemplateCreate(BaseModel):

@@ -171,8 +171,10 @@ export default function AdminTemplatesNiveis() {
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
       setLimpezas((n) => n + 1);
       carregarTemplates();
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Erro ao salvar o template." });
+    } catch (erro) {
+      // O recado do backend vale muito mais que "erro ao salvar": é lá que
+      // aparece a regra que barrou, ou a tabela que ainda não existe.
+      setMensagem({ tipo: "erro", texto: erro?.message || "Erro ao salvar o template." });
     } finally {
       setSalvando(false);
     }

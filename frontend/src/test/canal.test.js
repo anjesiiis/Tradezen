@@ -1,177 +1,156 @@
 import {
-  PADROES_CANAL, avisosDoCanal, linhasDoCanal, medidasDoCanal,
-  precoNaPolilinha, stepsDoCanal, temFormatoCanal, validarCanal,
+  PADROES_CANAL, areasDoCanal, avisosDoCanal, linhasDoCanal, medidasDoCanal,
+  precoNaReta, rotulosDoCanal, stepsDoCanal, temFormatoCanal, validarCanal,
 } from '../admin/canal.js';
-import { PADROES, paresDeLinha, stepsDoPadrao, validarPadrao } from '../admin/bandeira.js';
+import { PADROES, areasDoPadrao, stepsDoPadrao, validarPadrao } from '../admin/bandeira.js';
 
 const ALTA = PADROES_CANAL.canal_alta;
 const BAIXA = PADROES_CANAL.canal_baixa;
+const pt = (i, preco) => ({ i, preco });
 
-// Canal de alta bem comportado: fundos e topos subindo 0,3 por candle,
-// com as duas linhas paralelas.
-const CANAL_ALTA = {
-  p1_fundo1: { i: 10, preco: 30 }, p2_topo1: { i: 14, preco: 34 },
-  p3_fundo2: { i: 20, preco: 33 }, p4_topo2: { i: 24, preco: 37 },
-};
-const canalComTerceiroToque = () => ({
-  ...CANAL_ALTA,
-  p5_fundo3: { i: 30, preco: 36 }, p6_topo3: { i: 34, preco: 40 },
-});
-
-const linha = (pontos, id) => linhasDoCanal(pontos, Array.from({ length: 60 })).find((l) => l.id === id);
+// Canal de alta bem marcado: duas retas paralelas subindo.
+//   suporte     p1(2, 100) → p2(20, 120)
+//   resistência p3(6, 112) → p4(24, 132)
+const CANAL_ALTA = { p1: pt(2, 100), p2: pt(20, 120), p3: pt(6, 112), p4: pt(24, 132) };
+// o mesmo desenho espelhado, descendo
+const CANAL_BAIXA = { p1: pt(2, 132), p2: pt(20, 112), p3: pt(6, 120), p4: pt(24, 100) };
 
 describe('Canal de alta e de baixa', () => {
   describe('pontos', () => {
-    it('são 6: fundo e topo alternados, os dois últimos opcionais', () => {
-      const steps = stepsDoCanal();
-
-      expect(steps.map((s) => s.key)).toEqual([
-        'p1_fundo1', 'p2_topo1', 'p3_fundo2', 'p4_topo2', 'p5_fundo3', 'p6_topo3',
-      ]);
-      expect(steps.filter((s) => s.opcional).map((s) => s.key)).toEqual(['p5_fundo3', 'p6_topo3']);
+    it('são 4, marcados primeiro uma linha e depois a outra', () => {
+      expect(stepsDoCanal(ALTA).map((s) => s.key)).toEqual(['p1', 'p2', 'p3', 'p4']);
+      expect(stepsDoCanal(ALTA).map((s) => s.label)).toEqual(['Fundo Esq.', 'Fundo Dir.', 'Topo Esq.', 'Topo Dir.']);
+      // no canal de baixa o papel das linhas troca: marca-se o topo antes
+      expect(stepsDoCanal(BAIXA).map((s) => s.label)).toEqual(['Topo Esq.', 'Topo Dir.', 'Fundo Esq.', 'Fundo Dir.']);
+      expect(rotulosDoCanal(BAIXA)[0]).toBe('Topo Esq.');
     });
 
-    it('quatro pontos já formam um canal', () => {
+    it('a cor segue o papel da linha: suporte verde, resistência vermelha', () => {
+      expect(stepsDoCanal(ALTA).map((s) => s.color)).toEqual(['#26a69a', '#26a69a', '#ef5350', '#ef5350']);
+      // de baixa: a primeira linha marcada é a resistência
+      expect(stepsDoCanal(BAIXA).map((s) => s.color)).toEqual(['#ef5350', '#ef5350', '#26a69a', '#26a69a']);
+    });
+
+    it('só é canal com os quatro pontos', () => {
       expect(temFormatoCanal(CANAL_ALTA)).toBe(true);
-      expect(temFormatoCanal({ p1_fundo1: CANAL_ALTA.p1_fundo1 })).toBe(false);
+      expect(temFormatoCanal({ p1: pt(1, 10), p2: pt(5, 12), p3: pt(2, 14) })).toBe(false);
+      expect(temFormatoCanal(null)).toBe(false);
+    });
+
+    it('a tela de marcação usa esses mesmos pontos', () => {
+      expect(stepsDoPadrao(PADROES.canal_alta).map((s) => s.label))
+        .toEqual(['Fundo Esq.', 'Fundo Dir.', 'Topo Esq.', 'Topo Dir.']);
     });
   });
 
   describe('desenho', () => {
-    it('traça suporte, resistência e mediana', () => {
-      expect(linhasDoCanal(CANAL_ALTA, Array.from({ length: 60 })).map((l) => l.id))
-        .toEqual(['suporte', 'resistencia', 'mediana']);
+    it('traça as duas linhas e a mediana', () => {
+      expect(linhasDoCanal(CANAL_ALTA).map((l) => l.id)).toEqual(['p1', 'p3', 'mediana']);
     });
 
-    it('a mediana fica exatamente no meio das duas linhas e é tracejada', () => {
-      const mediana = linha(CANAL_ALTA, 'mediana');
-      const suporte = linha(CANAL_ALTA, 'suporte');
-      const resistencia = linha(CANAL_ALTA, 'resistencia');
+    it('as duas linhas são esticadas até as pontas do canal', () => {
+      const [suporte, resistencia] = linhasDoCanal(CANAL_ALTA);
+      // o canal vai do candle 2 (p1) ao 24 (p4): as duas linhas cobrem tudo
+      expect(suporte.dados.map((d) => d.i)).toEqual([2, 24]);
+      expect(resistencia.dados.map((d) => d.i)).toEqual([2, 24]);
+      // e passam pelos pontos marcados
+      expect(precoNaReta(CANAL_ALTA.p1, CANAL_ALTA.p2, 20)).toBeCloseTo(120);
+      expect(suporte.dados[0].preco).toBeCloseTo(100);
+    });
 
+    it('a mediana fica no meio exato das duas e é tracejada', () => {
+      const mediana = linhasDoCanal(CANAL_ALTA).find((l) => l.id === 'mediana');
       expect(mediana.tracejada).toBe(true);
-      for (const ponto of mediana.dados) {
-        const meio = (precoNaPolilinha(suporte.dados, ponto.i) + precoNaPolilinha(resistencia.dados, ponto.i)) / 2;
-        expect(ponto.preco).toBeCloseTo(meio, 6);
-      }
+      // em x=2: suporte 100, resistência 107,6 → meio 103,8
+      expect(mediana.dados[0].preco).toBeCloseTo((100 + 107.5555) / 2, 2);
+      expect(mediana.dados[1].preco).toBeCloseTo((124.444 + 132) / 2, 2);
     });
 
-    it('as linhas passam pelos toques e são estendidas dos dois lados', () => {
-      const suporte = linha(CANAL_ALTA, 'suporte');
-
-      // começa antes do primeiro toque (i=10) e termina depois do último (i=24)
-      expect(suporte.dados[0].i).toBeLessThan(10);
-      expect(suporte.dados[suporte.dados.length - 1].i).toBeGreaterThan(24);
-      // e no candle do toque vale o preço marcado
-      expect(precoNaPolilinha(suporte.dados, 20)).toBeCloseTo(33);
+    it('com uma linha só marcada, ela já aparece — sem mediana', () => {
+      const parcial = linhasDoCanal({ p1: pt(2, 100), p2: pt(20, 120) });
+      expect(parcial.map((l) => l.id)).toEqual(['p1']);
+      expect(parcial[0].dados.map((d) => d.i)).toEqual([2, 20]);
     });
 
-    it('a linha de suporte passa pelos três toques quando o P5 existe', () => {
-      const suporte = linha(canalComTerceiroToque(), 'suporte');
-
-      expect(precoNaPolilinha(suporte.dados, 10)).toBeCloseTo(30);
-      expect(precoNaPolilinha(suporte.dados, 20)).toBeCloseTo(33);
-      expect(precoNaPolilinha(suporte.dados, 30)).toBeCloseTo(36);
-    });
-
-    it('não desenha nada com um lado só marcado', () => {
-      expect(linhasDoCanal({ p1_fundo1: { i: 10, preco: 30 } }, [])).toEqual([]);
-    });
-
-    it('não estoura o limite dos candles ao estender', () => {
-      const suporte = linha(CANAL_ALTA, 'suporte');
-      const curto = linhasDoCanal(CANAL_ALTA, Array.from({ length: 26 })).find((l) => l.id === 'suporte');
-
-      expect(suporte.dados[suporte.dados.length - 1].i).toBe(27);
-      expect(curto.dados[curto.dados.length - 1].i).toBe(25);
+    it('a área entre as linhas é verde na alta e vermelha na baixa', () => {
+      const [area] = areasDoCanal(CANAL_ALTA, ALTA);
+      expect(area.cor).toBe('#26a69a');
+      expect(area.opacidade).toBe(0.10);
+      // fecha pela linha de cima e volta pela de baixo
+      expect(area.pontos.map((c) => c.i)).toEqual([2, 24, 24, 2]);
+      expect(areasDoCanal(CANAL_BAIXA, BAIXA)[0].cor).toBe('#ef5350');
+      // sem os 4 pontos não há área
+      expect(areasDoCanal({ p1: pt(1, 10) }, ALTA)).toEqual([]);
+      // e a tela pega a área pelo caminho de sempre
+      expect(areasDoPadrao(CANAL_ALTA, PADROES.canal_alta)).toHaveLength(1);
     });
   });
 
   describe('validações que bloqueiam', () => {
-    it('canal de alta correto passa', () => {
+    it('canal de alta e de baixa bem marcados passam', () => {
       expect(validarCanal(CANAL_ALTA, ALTA)).toEqual([]);
-      expect(validarCanal(canalComTerceiroToque(), ALTA)).toEqual([]);
+      expect(validarCanal(CANAL_BAIXA, BAIXA)).toEqual([]);
+      expect(validarPadrao(CANAL_ALTA, PADROES.canal_alta)).toEqual([]);
     });
 
-    it('exige os quatro primeiros pontos', () => {
-      expect(validarCanal({ p1_fundo1: { i: 1, preco: 1 } }, ALTA))
-        .toEqual(['Marque pelo menos os 4 primeiros pontos: dois fundos e dois topos.']);
+    it('exige os quatro pontos', () => {
+      expect(validarCanal({ p1: pt(1, 10), p2: pt(5, 12) }, ALTA))
+        .toEqual(['Marque os 4 pontos do canal antes de salvar.']);
     });
 
-    it('no canal de alta o segundo fundo precisa ser mais alto', () => {
-      const erros = validarCanal({ ...CANAL_ALTA, p3_fundo2: { i: 20, preco: 29 } }, ALTA);
-
-      expect(erros.join(' ')).toContain('"Fundo 2" precisa estar acima de "Fundo 1"');
+    it('canal de alta: as duas linhas precisam subir', () => {
+      expect(validarCanal({ ...CANAL_ALTA, p2: pt(20, 90) }, ALTA).join()).toMatch(/"Fundo Dir." precisa estar acima/);
+      expect(validarCanal({ ...CANAL_ALTA, p4: pt(24, 105) }, ALTA).join()).toMatch(/"Topo Dir." precisa estar acima/);
     });
 
-    it('no canal de baixa é o contrário', () => {
-      expect(validarCanal(CANAL_ALTA, BAIXA).join(' ')).toContain('os fundos descem');
-
-      const canalBaixa = {
-        p1_fundo1: { i: 10, preco: 33 }, p2_topo1: { i: 14, preco: 37 },
-        p3_fundo2: { i: 20, preco: 30 }, p4_topo2: { i: 24, preco: 34 },
-      };
-      expect(validarCanal(canalBaixa, BAIXA)).toEqual([]);
+    it('a segunda linha fica do outro lado do canal', () => {
+      // topo esquerdo abaixo do fundo esquerdo não é canal
+      expect(validarCanal({ ...CANAL_ALTA, p3: pt(6, 95) }, ALTA).join()).toMatch(/"Topo Esq." precisa estar acima de "Fundo Esq."/);
     });
 
-    it('cobra a ordem no tempo dentro de cada linha', () => {
-      const erros = validarCanal({ ...CANAL_ALTA, p3_fundo2: { i: 5, preco: 33 } }, ALTA);
-
-      expect(erros.join(' ')).toContain('precisa vir depois de "Fundo 1" no tempo');
+    it('cada ponto da segunda linha vem depois do seu par na primeira', () => {
+      expect(validarCanal({ ...CANAL_ALTA, p3: pt(1, 112) }, ALTA))
+        .toContain('"Topo Esq." precisa vir depois de "Fundo Esq." no tempo.');
+      expect(validarCanal({ ...CANAL_ALTA, p4: pt(19, 132) }, ALTA))
+        .toContain('"Topo Dir." precisa vir depois de "Fundo Dir." no tempo.');
     });
 
-    it('recusa resistência abaixo do suporte', () => {
-      const invertido = {
-        p1_fundo1: { i: 10, preco: 40 }, p2_topo1: { i: 14, preco: 34 },
-        p3_fundo2: { i: 20, preco: 41 }, p4_topo2: { i: 24, preco: 36 },
-      };
+    it('as duas pontas de uma linha não podem cair no mesmo candle', () => {
+      expect(validarCanal({ ...CANAL_ALTA, p2: pt(2, 120) }, ALTA).join()).toMatch(/mesmo candle/);
+    });
 
-      expect(validarCanal(invertido, ALTA).join(' '))
-        .toContain('resistência (topos) precisa ficar acima da linha de suporte');
+    it('canal de baixa: a mesma lógica, invertida', () => {
+      expect(validarCanal({ ...CANAL_BAIXA, p2: pt(20, 140) }, BAIXA).join()).toMatch(/precisa estar abaixo/);
+      expect(validarCanal(CANAL_ALTA, BAIXA).length).toBeGreaterThan(0);
     });
   });
 
   describe('avisos que não bloqueiam', () => {
-    it('paralelo e com três toques não gera aviso', () => {
-      expect(avisosDoCanal(canalComTerceiroToque())).toEqual([]);
+    it('canal paralelo não gera aviso', () => {
+      expect(avisosDoCanal(CANAL_ALTA, ALTA)).toEqual([]);
     });
 
-    it('avisa quando as linhas convergem (é cunha, não canal)', () => {
-      const convergindo = { ...CANAL_ALTA, p4_topo2: { i: 24, preco: 34.5 } };
-
-      expect(avisosDoCanal(convergindo).join(' ')).toContain('convergindo');
+    it('linhas que convergem avisam que aquilo é cunha ou triângulo', () => {
+      // abertura cai de 12 pra 2: as bordas estão se fechando
+      const fechando = { ...CANAL_ALTA, p4: pt(24, 122) };
+      expect(avisosDoCanal(fechando, ALTA).join()).toMatch(/não estão paralelas/);
+      // mas salvar continua possível
+      expect(validarCanal(fechando, ALTA)).toEqual([]);
     });
 
-    it('lembra do terceiro toque quando só há dois de cada lado', () => {
-      expect(avisosDoCanal(CANAL_ALTA).join(' ')).toContain('terceiro toque');
-    });
-  });
-
-  describe('medidas para o ML', () => {
-    it('largura do canal e inclinação das duas linhas', () => {
-      const medidas = medidasDoCanal(canalComTerceiroToque());
-
-      expect(medidas.inclinacao_suporte).toBeCloseTo(0.3);
-      expect(medidas.inclinacao_resistencia).toBeCloseTo(0.3);
-      expect(medidas.largura_canal).toBeGreaterThan(0);
+    it('linhas em sentidos opostos avisam', () => {
+      const oposto = { p1: pt(2, 100), p2: pt(20, 120), p3: pt(6, 140), p4: pt(24, 130) };
+      expect(avisosDoCanal(oposto, ALTA).join()).toMatch(/lados opostos/);
     });
   });
 
-  describe('integração com o resto do admin', () => {
-    it('os dois canais entram no seletor de padrões', () => {
-      expect(PADROES.canal_alta.rotulo).toBe('Canal de Alta');
-      expect(PADROES.canal_baixa.rotulo).toBe('Canal de Baixa');
+  it('medidas do ML: abertura nas duas pontas e inclinação de cada linha', () => {
+    expect(medidasDoCanal(CANAL_ALTA)).toEqual({
+      abertura_inicio: 12,
+      abertura_fim: 12,
+      inclinacao_suporte: 20 / 18,
+      inclinacao_resistencia: 20 / 18,
     });
-
-    it('as telas pedem os passos e a validação do canal', () => {
-      expect(stepsDoPadrao(PADROES.canal_alta)).toHaveLength(6);
-      expect(validarPadrao(CANAL_ALTA, PADROES.canal_alta)).toEqual([]);
-      // linhas do canal são conta, não par de pontos arrastável
-      expect(paresDeLinha(PADROES.canal_alta)).toEqual([]);
-    });
-
-    it('não mexeu nos padrões de continuação', () => {
-      expect(stepsDoPadrao(PADROES.bandeira_alta)).toHaveLength(8);
-      expect(paresDeLinha(PADROES.bandeira_alta)).toHaveLength(4);
-    });
+    expect(medidasDoCanal({ p1: pt(1, 10) })).toBeNull();
   });
 });
