@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ICONE_GENERICO, iconeDoPadrao } from "../lib/iconesPadroes.js";
+import { ICONE_GENERICO, classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { PADROES_DO_FILTRO, guardarFiltro } from "../lib/filtroPadroes.js";
 
 // Sidebar do gráfico de marcação: escolhe quais padrões já salvos ficam
@@ -78,7 +78,7 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos 
                 disabled={p.emBreve}
                 onChange={() => alternar(p.id)}
               />
-              <span className="filtro-padrao-icone" aria-hidden="true">
+              <span className={`filtro-padrao-icone ${classeDoPadrao(p.id)}`} aria-hidden="true">
                 {p.emBreve ? ICONE_GENERICO : iconeDoPadrao(p.id)}
               </span>
               <span className="filtro-padrao-nome">{p.nome}</span>
@@ -110,7 +110,7 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos 
                   href={m.rota ? `${m.rota}?modo=visualizar&id=${m.templateId}` : undefined}
                   title={`Ver ${m.rotulo} de ${formatarData(m.data)}`}
                 >
-                  <span className="filtro-salvo-icone" aria-hidden="true">{m.icone}</span>
+                  <span className={`filtro-salvo-icone ${m.classe || classeDoPadrao(m.tipo)}`} aria-hidden="true">{m.icone}</span>
                   <span className="filtro-salvo-texto">
                     <strong>{m.rotulo}</strong>
                     <span>{formatarData(m.data)}</span>

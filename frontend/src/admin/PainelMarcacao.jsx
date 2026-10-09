@@ -13,7 +13,7 @@ import {
   paresDeLinha, podeValidar, stepsDoPadrao, validarPadrao,
 } from "./bandeira.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
-import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
+import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
@@ -79,6 +79,10 @@ export default function PainelMarcacao({ padraoInicial }) {
     return acc;
   }, {});
   const marcadoresVisiveis = marcadoresSalvos.filter((m) => padroesVisiveis.includes(m.tipo));
+  // Os padrões ligados no sidebar aparecem DESENHADOS no gráfico, não só
+  // com o emoji: enquanto se marca o próximo, dá pra ver o que já existe
+  // ali do lado e seguir a lógica de confirmação.
+  const desenhosVisiveis = useDesenhosSalvos(marcadoresVisiveis, candlesContexto);
   // Desenho do template aberto por uma 💡 — sem rótulos, como o usuário verá
   const [desenhoSalvo, setDesenhoSalvo] = useState(null);
   // Última faixa visível do gráfico: o gráfico é remontado ao trocar de
@@ -524,6 +528,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                     linhas={desenharLinhas}
                     pares={paresDeLinha(padrao)}
                     marcadoresExtras={marcadoresVisiveis}
+                    desenhosExtras={desenhosVisiveis}
                     desenhoSalvo={desenhoSalvo}
                     aoClicarLampada={abrirDesenhoSalvo}
                     initialPontos={pontos}

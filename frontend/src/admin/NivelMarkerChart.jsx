@@ -328,7 +328,7 @@ export default function NivelMarkerChart({
           {marcadoresVisiveis().map(({ extra, pos }) => (
             <button
               key={extra.id ?? extra.time}
-              className="lampada"
+              className={`lampada ${extra.classe || "cor-neutro"}`}
               style={{ left: pos.x, top: pos.y }}
               title={extra.dica || extra.rotulo || "Padrão marcado"}
               onClick={() => aoClicarMarcador?.(extra)}

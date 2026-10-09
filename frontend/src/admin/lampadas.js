@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_DO_PADRAO, templatesNiveisApi, templatesOcoApi, templatesTopoDuploApi } from "./adminApi";
 import { PADROES, configDoTemplate } from "./bandeira.js";
 import { LINE_PAIRS_OCO, LINE_PAIRS_TOPO_DUPLO, STEPS_OCO, STEPS_TOPO_DUPLO } from "./padroesClassicos.js";
-import { descricaoDoPadrao, ficaAcima, iconeDoPadrao } from "../lib/iconesPadroes.js";
+import { classeDoPadrao, descricaoDoPadrao, ficaAcima, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // 💡 dos templates JÁ SALVOS de um ativo, em qualquer tela de marcação.
 // Cada lâmpada é clicável e abre o desenho daquele padrão — sem rótulo de
@@ -62,6 +62,8 @@ export function useLampadas(ticker, gatilho) {
               // ícone próprio por padrão: dá pra ver de relance o que já
               // foi marcado naquele trecho e não rotular duas vezes
               icone: iconeDoPadrao(tipo),
+              // cor da direção (verde alta / vermelho baixa) e espelhamento
+              classe: classeDoPadrao(tipo),
               dica: descricaoDoPadrao(tipo, t.data_p1, rotuloDoTipo(tipo), t.resultado),
               // de baixa/neutro em cima do candle, de alta embaixo
               acima: ficaAcima(tipo),
@@ -84,6 +86,51 @@ export function useLampadas(ticker, gatilho) {
   }, [ticker, gatilho]);
 
   return lampadas;
+}
+
+/**
+ * Desenho de TODOS os padrões visíveis do ativo, pra eles aparecerem no
+ * gráfico enquanto se marca o próximo — não só o emoji, as linhas.
+ *
+ * Quem decide o que é visível é o sidebar (o filtro de padrões), então
+ * desligar um padrão lá apaga o desenho dele na hora. Cada template é
+ * buscado uma vez só e fica no cache: a lista do ticker tem poucos itens,
+ * e trocar o zoom não pode disparar busca nenhuma.
+ */
+export function useDesenhosSalvos(marcadores, candlesAtuais) {
+  const [desenhos, setDesenhos] = useState([]);
+  const cacheRef = useRef(new Map());
+  // string com os ids visíveis: o array chega novo a cada render, e usá-lo
+  // direto como dependência buscaria tudo de novo sem parar
+  const chaves = marcadores.map((m) => m.id).sort().join("|");
+
+  useEffect(() => {
+    let cancelado = false;
+    const nada = !marcadores.length || !candlesAtuais?.length;
+
+    (nada ? Promise.resolve([]) : Promise.all(marcadores.map(async (m) => {
+      try {
+        if (!cacheRef.current.has(m.id)) {
+          cacheRef.current.set(m.id, await APIS_DE_TEMPLATE[m.tipo].get(m.templateId));
+        }
+        return montarDesenhoSalvo({
+          chave: m.id,
+          rotulo: m.rotulo,
+          tipo: m.tipo,
+          salvo: cacheRef.current.get(m.id),
+          candlesAtuais,
+        });
+      } catch {
+        return null; // um padrão que não carregou não pode sumir com os outros
+      }
+    }))).then((lista) => {
+      if (!cancelado) setDesenhos(lista.filter(Boolean));
+    });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaves, candlesAtuais]);
+
+  return desenhos;
 }
 
 /**

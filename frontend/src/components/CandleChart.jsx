@@ -5,7 +5,7 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 import { FERRAMENTA_INFO, _anchorFechar, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharFibonacci, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
-import { descricaoDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
+import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
 export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico}){
@@ -955,7 +955,22 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         const x = toX(idx), y = toY(preco);
         if(x == null || y == null) continue;
         const topo = y - 22;
-        ctx.fillText(iconeDoPadrao(p.tipo), x, topo);
+        // A direção do padrão é a cor do brilho em volta do emoji (verde
+        // alta, vermelho baixa) — o glifo em si não aceita cor. No canvas
+        // isso é o shadow; no admin é o drop-shadow das classes cor-*.
+        ctx.shadowColor = corDoPadrao(p.tipo);
+        ctx.shadowBlur = 8;
+        if(ehInvertido(p.tipo)){
+          // OCO Invertido: mesmo ⛰️ de cabeça pra baixo
+          ctx.save();
+          ctx.translate(x, topo);
+          ctx.scale(1, -1);
+          ctx.fillText(iconeDoPadrao(p.tipo), 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillText(iconeDoPadrao(p.tipo), x, topo);
+        }
+        ctx.shadowBlur = 0;
         iconesRef.current.push({
           x, y: topo,
           texto: descricaoDoPadrao(p.tipo, p.marcado_em, p.nome),

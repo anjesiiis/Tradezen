@@ -180,6 +180,23 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .filtro-salvo-resultado.sucesso{color:var(--up);border-color:var(--up)}
 .filtro-salvo-resultado.falha{color:var(--down);border-color:var(--down)}
 .filtro-salvo-resultado.indefinido{color:var(--text3)}
+
+/* ── Cor e forma dos ícones de padrão ──────────────────────────────
+   Emoji não aceita color: é glifo da fonte. A direção do padrão vira um
+   brilho em volta — verde alta, vermelho baixa, amarelo "rompe pros dois
+   lados". A cunha usa o mesmo 🚩 da flâmula, e ganha a borda pontilhada
+   pra dar pra separar as duas de relance. O OCO Invertido é o mesmo ⛰️
+   espelhado na vertical. */
+.cor-alta{filter:drop-shadow(0 0 4px rgba(38,166,154,.95)) drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.cor-baixa{filter:drop-shadow(0 0 4px rgba(239,83,80,.95)) drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.cor-neutro{filter:drop-shadow(0 0 4px rgba(240,185,11,.9)) drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.lampada.cunha,.filtro-padrao-icone.cunha,.filtro-salvo-icone.cunha,.emoji-marcacao.cunha{border-bottom:1.5px dotted currentColor;border-radius:0}
+.filtro-padrao-icone.invertido,.filtro-salvo-icone.invertido{display:inline-block;transform:scaleY(-1)}
+.lampada.invertido{transform:translate(-50%,-100%) scaleY(-1)}
+.lampada.invertido:hover{transform:translate(-50%,-100%) scaleY(-1) scale(1.25)}
+.emoji-marcacao.invertido{transform:translate(-50%,-50%) scaleY(-1)}
+.admin-picker-faixa{font-size:9px;font-family:var(--font-m);color:var(--text3);margin-left:6px;letter-spacing:0}
+.admin-picker-num{font-size:9px;font-family:var(--font-m);color:var(--text3);min-width:30px;flex-shrink:0}
 .filtro-padroes-limpar{background:none;border:0;color:var(--accent);font:inherit;font-size:11px;cursor:pointer;padding:2px;text-align:left}
 .filtro-padroes-limpar:hover{text-decoration:underline}
 
@@ -191,22 +208,10 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .filtro-padroes-titulo{cursor:pointer}
   .filtro-padroes-titulo::after{content:"▾";margin-left:auto;font-size:11px}
   .filtro-padroes:not(.aberto) .filtro-padroes-lista,
-  .filtro-padroes:not(.aberto) .filtro-secao{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-top:4px}
-.filtro-salvos{display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-width:thin;max-height:190px}
-.filtro-salvo{display:flex;align-items:center;gap:7px;padding:5px 4px;border-radius:6px;text-decoration:none;color:var(--text2);font-size:11px;transition:background .2s}
-.filtro-salvo:hover{background:var(--s2);color:var(--text)}
-/* fundo iluminado por 2s no que acabou de ser salvo */
-.filtro-salvo.novo{animation:salvoAgora 2s ease-out}
-@keyframes salvoAgora{from{background:rgba(61,126,255,.35)}to{background:transparent}}
-.filtro-salvo-icone{font-size:13px;flex-shrink:0}
-.filtro-salvo-texto{display:flex;flex-direction:column;min-width:0;flex:1}
-.filtro-salvo-texto strong{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.filtro-salvo-texto span{font-size:10px;color:var(--text3);font-family:var(--font-m)}
-.filtro-salvo-resultado{font-size:9px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;padding:1px 6px;border-radius:999px;border:1px solid var(--border)}
-.filtro-salvo-resultado.sucesso{color:var(--up);border-color:var(--up)}
-.filtro-salvo-resultado.falha{color:var(--down);border-color:var(--down)}
-.filtro-salvo-resultado.indefinido{color:var(--text3)}
-.filtro-padroes-limpar{display:none}
+  .filtro-padroes:not(.aberto) .filtro-salvos,
+  .filtro-padroes:not(.aberto) .filtro-secao,
+  .filtro-padroes:not(.aberto) .filtro-padroes-limpar{display:none}
+  .filtro-padroes.aberto .filtro-salvos{max-height:160px}
   .filtro-padroes.aberto .filtro-padroes-lista{max-height:260px}
 }
 `;

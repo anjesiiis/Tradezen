@@ -54,7 +54,7 @@ class TemplateUpdate(BaseModel):
 # "Não foi possível carregar os templates". A tela de listagem só mostra
 # ticker/timeframe/resultado/data; os candles vêm no GET /{id}, na hora de
 # abrir um template.
-_COLUNAS_LISTA = "id,ticker,timeframe,tipo,resultado,observacao,criado_em"
+_COLUNAS_LISTA = "id,ticker,timeframe,tipo,resultado,observacao,criado_em,data_p1"
 
 
 @router.get("")

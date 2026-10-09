@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchAtivos } from "./adminApi";
+import { mercadosEmOrdem, numerarAtivos } from "../lib/ordemAtivos.js";
 
 const MKTC = { "B3": "#009C3B", "CRIPTO": "#F7931A", "FOREX": "#3D7EFF", "NASDAQ": "#9B6DFF", "NYSE": "#E8B84B", "COMMODITY": "#F5A623", "INDICE": "#8B949E" };
-const MERCADOS_ORDEM = ["INDICE", "B3", "CRIPTO", "FOREX", "NASDAQ", "NYSE", "COMMODITY"];
+
 
 // Seletor de ticker agrupado por mercado — substitui o campo de texto livre.
 // Só clica: sem digitar, sem decorar ticker.
+//
+// Cada ativo tem um número (#1, #2, ...) na ordem de marcação: ações
+// brasileiras, cripto e depois o resto (lib/ordemAtivos.js). É o que serve
+// pra lembrar em qual ativo a marcação parou — o número aparece no item da
+// lista, no título do mercado (a faixa dele) e no botão do ativo escolhido.
 export default function AtivoPicker({ value, onChange }) {
   const [ativos, setAtivos] = useState([]);
   const [open, setOpen] = useState(false);
@@ -21,29 +27,38 @@ export default function AtivoPicker({ value, onChange }) {
     return () => document.removeEventListener("mousedown", click);
   }, []);
 
-  const grupos = MERCADOS_ORDEM
-    .map((m) => ({ mercado: m, ativos: ativos.filter((a) => a.mercado === m) }))
+  const numerados = numerarAtivos(ativos);
+  const grupos = mercadosEmOrdem(ativos)
+    .map((m) => ({ mercado: m, ativos: numerados.filter((a) => a.mercado === m) }))
     .filter((g) => g.ativos.length > 0);
 
-  const selecionado = ativos.find((a) => a.ticker === value);
+  const selecionado = numerados.find((a) => a.ticker === value);
 
   return (
     <div className="admin-picker" ref={boxRef}>
       <button type="button" className="admin-picker-btn" onClick={() => setOpen((o) => !o)}>
-        {selecionado ? `${selecionado.simbolo} — ${selecionado.nome}` : (value || <span className="ph">Selecionar ativo</span>)}
+        {selecionado
+          ? `#${selecionado.numero} · ${selecionado.simbolo} — ${selecionado.nome}`
+          : (value || <span className="ph">Selecionar ativo</span>)}
         <span style={{ color: "var(--text3)" }}>▾</span>
       </button>
       {open && grupos.length > 0 && (
         <div className="admin-picker-dd">
           {grupos.map((g) => (
             <div key={g.mercado}>
-              <div className="admin-picker-group" style={{ color: MKTC[g.mercado] || "#5A7299" }}>{g.mercado}</div>
+              <div className="admin-picker-group" style={{ color: MKTC[g.mercado] || "#5A7299" }}>
+                {g.mercado}
+                <span className="admin-picker-faixa">
+                  #{g.ativos[0].numero}–{g.ativos[g.ativos.length - 1].numero}
+                </span>
+              </div>
               {g.ativos.map((a) => (
                 <div
                   key={a.ticker}
                   className="admin-picker-item"
                   onClick={() => { onChange(a.ticker); setOpen(false); }}
                 >
+                  <span className="admin-picker-num">#{a.numero}</span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontWeight: 600, color: "var(--text)", fontSize: 12 }}>{a.simbolo}</span>
                     <span style={{ fontSize: 10, color: "var(--text2)" }}>{a.nome}</span>

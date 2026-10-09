@@ -41,3 +41,25 @@ export function anotacoesParaSalvar(lista) {
     .filter((a) => a.texto?.trim())
     .map((a) => ({ texto: a.texto.trim(), ancora: a.ancora, largura: a.largura, altura: a.altura }));
 }
+
+/**
+ * Data do primeiro ponto do padrão, pra coluna `data_p1`.
+ *
+ * É ela que faz o emoji aparecer no gráfico e o item no sidebar: sem
+ * `data_p1` o template existe no banco mas é invisível em toda tela de
+ * marcação (useLampadas descarta quem não tem data). Topo Duplo, OCO e
+ * Níveis não gravavam esse campo — por isso 23 topos duplos, 1 OCO e 14
+ * níveis já marcados nunca apareciam no gráfico.
+ *
+ * `pontos` aceita os dois formatos do projeto: objeto de pontos nomeados
+ * ({ topo1: {i, preco} }) e a lista de toques dos níveis.
+ */
+export function dataDoPrimeiroPonto(candlesContexto, pontos) {
+  const lista = Array.isArray(pontos)
+    ? pontos
+    : Array.isArray(pontos?.toques) ? pontos.toques : Object.values(pontos || {});
+  const indices = lista.map((p) => p?.i).filter((i) => Number.isInteger(i));
+  if (!indices.length) return null;
+  const candle = candlesContexto?.[Math.min(...indices)];
+  return candle ? new Date(candle.timestamp).toISOString() : null;
+}

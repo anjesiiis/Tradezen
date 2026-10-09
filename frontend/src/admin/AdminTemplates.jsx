@@ -4,7 +4,7 @@ import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { LINE_PAIRS_OCO as LINE_PAIRS, STEPS_OCO as STEPS } from "./padroesClassicos.js";
-import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useLampadas } from "./lampadas.js";
+import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import { useToasts } from "./toastsAdmin.js";
@@ -15,7 +15,7 @@ import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
-import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
+import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PASSOS = STEPS.map((s) => s.key);
@@ -66,6 +66,10 @@ export default function AdminTemplates() {
     return acc;
   }, {});
   const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
+  // Os padrões ligados no sidebar aparecem DESENHADOS no gráfico, não só
+  // com o emoji: enquanto se marca o próximo, dá pra ver o que já existe
+  // ali do lado e seguir a lógica de confirmação.
+  const desenhosVisiveis = useDesenhosSalvos(marcadoresVisiveis, candlesContexto);
 
   // ── Detecção automática no histórico do ativo ──────────────
   // Só OCO: é o único padrão que o detector automático cobre hoje. Serve
@@ -181,6 +185,8 @@ export default function AdminTemplates() {
         candles,
         candles_contexto: candlesContexto,
         pontos: pontosAjustados,
+        // Sem data_p1 o template fica invisível no gráfico (ver janela.js)
+        data_p1: dataDoPrimeiroPonto(candlesContexto, pontos),
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
         anotacoes: anotacoesAjustadas,
@@ -388,6 +394,7 @@ export default function AdminTemplates() {
                     steps={STEPS}
                     linePairs={LINE_PAIRS}
                     marcadoresExtras={[...marcadoresVisiveis, ...detectados]}
+                    desenhosExtras={desenhosVisiveis}
                     desenhoSalvo={desenhoSalvo}
                     aoClicarLampada={abrirDesenhoSalvo}
                     anotacoes={anotacoes}

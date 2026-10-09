@@ -3,7 +3,7 @@ import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, creat
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
 import { faixaDeLeitura } from "./enquadrar.js";
-import { iconeDoPadrao } from "../lib/iconesPadroes.js";
+import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 const DURACAO_ZOOM = 500;   // ms da animação do zoom ao abrir um padrão salvo
 
@@ -22,6 +22,7 @@ export default function TemplateMarkerChart({
   candles, steps, linePairs = [], linhas, pares,
   marcadoresExtras = [],   // templates já salvos deste ativo: viram 💡 clicáveis
   desenhoSalvo,            // { linhas, pontos, anotacoes } do template aberto pela 💡
+  desenhosExtras = [],     // desenhos dos padrões já salvos que o sidebar deixa visíveis
   aoClicarLampada,
   anotacoes,               // etiquetas de texto do template (vão pro banco)
   aoMudarAnotacoes,
@@ -484,19 +485,28 @@ export default function TemplateMarkerChart({
       text: s.short,
     }));
 
-    // O desenho do template aberto pela 💡 entra sem rótulo nenhum: é como
-    // o padrão vai aparecer pro usuário, sem P1/P2/M1 em cima.
-    for (const ponto of desenhoSalvo?.pontos || []) {
-      const candle = candles[ponto.i];
-      if (!candle) continue;
-      marcadores.push({
-        time: toChartTime(candle),
-        position: "atPriceMiddle",
-        price: ponto.preco,
-        color: ponto.cor || "#FFD700",
-        shape: "circle",
-        text: "",
-      });
+    // Os padrões já salvos entram sem rótulo nenhum: é como eles vão
+    // aparecer pro usuário, sem P1/P2/M1 em cima. São os visíveis no
+    // sidebar, mais o que foi aberto pela 💡.
+    // o aberto pela 💡 ganha do mesmo padrão vindo do sidebar, pra não
+    // desenhar duas vezes em cima
+    const desenhos = [
+      ...desenhosExtras.filter((d) => d.chave !== desenhoSalvo?.chave),
+      ...(desenhoSalvo ? [desenhoSalvo] : []),
+    ];
+    for (const desenho of desenhos) {
+      for (const ponto of desenho.pontos || []) {
+        const candle = candles[ponto.i];
+        if (!candle) continue;
+        marcadores.push({
+          time: toChartTime(candle),
+          position: "atPriceMiddle",
+          price: ponto.preco,
+          color: ponto.cor || "#FFD700",
+          shape: "circle",
+          text: "",
+        });
+      }
     }
     marcadores.sort((a, b) => a.time - b.time);
     markersApiRef.current.setMarkers(marcadores);
@@ -511,7 +521,7 @@ export default function TemplateMarkerChart({
             dados: [{ i: pontos[a].i, preco: pontos[a].preco }, { i: pontos[b].i, preco: pontos[b].preco }],
           }));
 
-    const todasAsLinhas = [...defs, ...(desenhoSalvo?.linhas || [])];
+    const todasAsLinhas = [...defs, ...desenhos.flatMap((d) => d.linhas || [])];
     todasAsLinhas.forEach((def, idx) => {
       const serie = serieDeLinha(idx);
       if (!serie) return;
@@ -536,7 +546,7 @@ export default function TemplateMarkerChart({
     const quadro = requestAnimationFrame(atualizarPosicoesSeMudaram);
     return () => cancelAnimationFrame(quadro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pontos, candles, desenhoSalvo]);
+  }, [pontos, candles, desenhoSalvo, desenhosExtras]);
 
   function limpar() {
     setPontos({});
@@ -664,7 +674,7 @@ export default function TemplateMarkerChart({
         return (
           <div className="lampadas">
             <span
-              className="emoji-marcacao"
+              className={`emoji-marcacao ${classeDoPadrao(padraoMarcado.id)}`}
               style={{ left: pos.x, top: pos.y + (padraoMarcado.acima ? -34 : 24) }}
               title={`Assim este padrão vai aparecer no gráfico`}
             >
@@ -681,7 +691,7 @@ export default function TemplateMarkerChart({
           return (
             <button
               key={extra.id ?? extra.time}
-              className={`lampada${extra.automatico ? " automatica" : ""}`}
+              className={`lampada ${extra.classe || "cor-neutro"}${extra.automatico ? " automatica" : ""}`}
               disabled={extra.automatico}
               style={{ left: pos.x, top: pos.y + (extra.acima === false ? 30 : 0) }}
               title={extra.automatico

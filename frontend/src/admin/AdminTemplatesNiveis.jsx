@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { dataDoPrimeiroPonto } from "./janela.js";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
@@ -150,6 +151,8 @@ export default function AdminTemplatesNiveis() {
         candles,
         candles_contexto: candlesContexto,
         pontos: { toques: toquesAjustados },
+        // Sem data_p1 o nível fica invisível no gráfico (ver janela.js)
+        data_p1: dataDoPrimeiroPonto(candlesContexto, toquesAtivos),
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
       });
