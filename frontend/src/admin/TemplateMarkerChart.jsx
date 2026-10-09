@@ -3,6 +3,7 @@ import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, creat
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
 import { faixaDeLeitura } from "./enquadrar.js";
+import { candleDaData } from "./periodoDoPadrao.js";
 import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 const DURACAO_ZOOM = 500;   // ms da animação do zoom ao abrir um padrão salvo
@@ -446,12 +447,13 @@ export default function TemplateMarkerChart({
     const lista = candlesRef.current;
     const chart = chartRef.current;
     const series = seriesRef.current;
-    if (!lista?.length || !chart || !series || !Number.isFinite(extra?.time)) return null;
+    if (!lista?.length || !chart || !series) return null;
 
-    let melhor = 0;
-    for (let i = 1; i < lista.length; i++) {
-      if (Math.abs(toChartTime(lista[i]) - extra.time) < Math.abs(toChartTime(lista[melhor]) - extra.time)) melhor = i;
-    }
+    // Fora do período carregado, o emoji não é desenhado: antes ele caía
+    // no candle mais próximo, que pra um padrão antigo é o primeiro da
+    // tela — e todos acabavam empilhados na borda esquerda.
+    const melhor = candleDaData(lista, extra?.time);
+    if (melhor === null) return null;
     const time = toChartTime(lista[melhor]);
     const x = chart.timeScale().timeToCoordinate(time);
     const y = series.priceToCoordinate(lista[melhor].maxima);

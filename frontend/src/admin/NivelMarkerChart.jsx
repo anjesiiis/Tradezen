@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { candleDaData } from "./periodoDoPadrao.js";
 import { createChart, ColorType, CandlestickSeries, BaselineSeries, createSeriesMarkers } from "lightweight-charts";
 
 function toChartTime(candle) {
@@ -255,11 +256,11 @@ export default function NivelMarkerChart({
     const lista = candles;
     const chart = chartRef.current;
     const serie = seriesRef.current;
-    if (!lista?.length || !chart || !serie || !Number.isFinite(extra?.time)) return null;
-    let melhor = 0;
-    for (let i = 1; i < lista.length; i++) {
-      if (Math.abs(toChartTime(lista[i]) - extra.time) < Math.abs(toChartTime(lista[melhor]) - extra.time)) melhor = i;
-    }
+    if (!lista?.length || !chart || !serie) return null;
+    // Fora do período carregado não desenha (ver candleDaData): senão os
+    // padrões antigos se empilham todos na borda esquerda.
+    const melhor = candleDaData(lista, extra?.time);
+    if (melhor === null) return null;
     const candle = lista[melhor];
     const x = chart.timeScale().timeToCoordinate(toChartTime(candle));
     const y = serie.priceToCoordinate(extra.acima === false ? candle.minima : candle.maxima);

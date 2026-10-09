@@ -15,9 +15,11 @@
 // client-side, então o módulo continua carregado entre uma tela e outra,
 // e nenhuma tela precisa saber da existência das outras.
 
+import { PERIODO_PADRAO } from "../lib/periodosGrafico.js";
+
 let estado = {
   ticker: "PETR4.SA",
-  periodo: "3mo",   // 3M é o padrão da tela (botões de período)
+  periodo: PERIODO_PADRAO,   // 1A (ver periodosGrafico.js)
   intervalo: "1d",
   candles: null,
   faixa: null,       // { from, to } em índice de candle

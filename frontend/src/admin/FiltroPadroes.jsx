@@ -18,6 +18,8 @@ import { PADROES_DO_FILTRO, guardarFiltro } from "../lib/filtroPadroes.js";
  * @param {Array} salvos — marcadores dos templates deste ativo (lampadas.js):
  *        viram a lista "Marcados neste ativo", cada item abrindo em modo ver
  * @param {number|null} destacado — id do template salvo agora, pra piscar
+ * @param {Set<string>} foraDaFaixa — ids que não cabem no período carregado:
+ *        ficam na lista, apagados, porque no gráfico eles não aparecem
  */
 // UTC: o candle é do dia inteiro; o fuso local jogaria a data um dia atrás
 function formatarData(data) {
@@ -40,7 +42,7 @@ function classeDoResultado(resultado) {
   return "indefinido";
 }
 
-export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos = [], destacado = null }) {
+export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos = [], destacado = null, foraDaFaixa = new Set() }) {
   const [abertoNoCelular, setAberto] = useState(false);
 
   useEffect(() => { guardarFiltro(ligados); }, [ligados]);
@@ -106,9 +108,11 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos 
               .map((m) => (
                 <a
                   key={m.id}
-                  className={`filtro-salvo${destacado === m.templateId ? " novo" : ""}`}
+                  className={`filtro-salvo${destacado === m.templateId ? " novo" : ""}${foraDaFaixa.has(m.id) ? " fora" : ""}`}
                   href={m.rota ? `${m.rota}?modo=visualizar&id=${m.templateId}` : undefined}
-                  title={`Ver ${m.rotulo} de ${formatarData(m.data)}`}
+                  title={foraDaFaixa.has(m.id)
+                    ? `${m.rotulo} de ${formatarData(m.data)} — fora do período carregado; aumente o período pra ver no gráfico`
+                    : `Ver ${m.rotulo} de ${formatarData(m.data)}`}
                 >
                   <span className={`filtro-salvo-icone ${m.classe || classeDoPadrao(m.tipo)}`} aria-hidden="true">{m.icone}</span>
                   <span className="filtro-salvo-texto">

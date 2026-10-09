@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { API_DO_PADRAO, templatesNiveisApi, templatesOcoApi, templatesTopoDuploApi } from "./adminApi";
 import { PADROES, configDoTemplate } from "./bandeira.js";
+import { candleDaData } from "./periodoDoPadrao.js";
 import { LINE_PAIRS_OCO, LINE_PAIRS_TOPO_DUPLO, STEPS_OCO, STEPS_TOPO_DUPLO } from "./padroesClassicos.js";
 import { classeDoPadrao, descricaoDoPadrao, ficaAcima, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
@@ -144,7 +145,10 @@ export function converterParaGraficoAtual(salvo, candlesAtuais) {
   const pontos = {};
   for (const [chave, ponto] of Object.entries(salvo.pontos)) {
     const i = mapear(ponto.i);
-    if (i != null) pontos[chave] = { i, preco: ponto.preco };
+    // Um ponto fora do período carregado deformaria o desenho (a linha
+    // iria parar na borda); melhor não desenhar esse padrão.
+    if (i == null) return null;
+    pontos[chave] = { i, preco: ponto.preco };
   }
   return Object.keys(pontos).length ? pontos : null;
 }
@@ -152,15 +156,12 @@ export function converterParaGraficoAtual(salvo, candlesAtuais) {
 // O índice `i` guardado no template é dentro dos candles DELE. Aqui vira o
 // índice do candle mais próximo no gráfico que está na tela.
 function criarMapeador(salvo, candlesAtuais) {
-  const tempos = candlesAtuais.map((c) => c.timestamp);
   return (indiceSalvo) => {
     const candle = salvo.candles[indiceSalvo];
     if (!candle) return null;
-    let melhor = 0;
-    for (let i = 1; i < tempos.length; i++) {
-      if (Math.abs(tempos[i] - candle.timestamp) < Math.abs(tempos[melhor] - candle.timestamp)) melhor = i;
-    }
-    return melhor;
+    // null quando o ponto está fora do período carregado: sem isso ele
+    // virava o candle 0 e o desenho inteiro ia parar na borda esquerda.
+    return candleDaData(candlesAtuais, candle.timestamp / 1000);
   };
 }
 

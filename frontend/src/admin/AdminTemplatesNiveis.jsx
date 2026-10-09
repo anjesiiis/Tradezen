@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { dentroDoPeriodo } from "./periodoDoPadrao.js";
 import { dataDoPrimeiroPonto } from "./janela.js";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
@@ -89,6 +90,12 @@ export default function AdminTemplatesNiveis() {
     return acc;
   }, {});
   const marcadoresVisiveis = lampadas.filter((m) => padroesVisiveis.includes(m.tipo));
+  // Padrão de uma data que não está no período carregado não aparece no
+  // gráfico (ver periodoDoPadrao.js): no sidebar ele fica apagado, com a
+  // dica de aumentar o período, em vez de sumir sem explicação.
+  const foraDaFaixa = new Set(
+    lampadas.filter((m) => !dentroDoPeriodo(candlesContexto || [], m.time)).map((m) => m.id)
+  );
   const [editando, setEditando] = useState(null);
   const [marcacaoKey, setMarcacaoKey] = useState(0);
   const [limpezas, setLimpezas] = useState(0);
@@ -352,6 +359,7 @@ export default function AdminTemplatesNiveis() {
                     contagem={contagemPorPadrao}
                     salvos={lampadas}
                     destacado={salvoAgora}
+                    foraDaFaixa={foraDaFaixa}
                   />
                 </div>
 

@@ -3,6 +3,11 @@
 // 5A fica junto dos quatro pedidos porque marcar template é caçar padrão
 // no histórico: 3 meses de diário são ~65 candles, pouco pra achar o que
 // marcar.
+// Período com que toda tela de marcação abre. 1A porque os padrões já
+// marcados ficam espalhados pelo histórico: com 3 meses na tela, quase
+// todos caíam fora da faixa carregada e não apareciam.
+export const PERIODO_PADRAO = "1y";
+
 export const PERIODOS_RAPIDOS = [
   { rotulo: "1M", valor: "1mo" },
   { rotulo: "3M", valor: "3mo" },

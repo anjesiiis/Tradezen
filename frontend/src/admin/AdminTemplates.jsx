@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { dentroDoPeriodo } from "./periodoDoPadrao.js";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
@@ -70,6 +71,12 @@ export default function AdminTemplates() {
   // com o emoji: enquanto se marca o próximo, dá pra ver o que já existe
   // ali do lado e seguir a lógica de confirmação.
   const desenhosVisiveis = useDesenhosSalvos(marcadoresVisiveis, candlesContexto);
+  // Padrão de uma data que não está no período carregado não aparece no
+  // gráfico (ver periodoDoPadrao.js): no sidebar ele fica apagado, com a
+  // dica de aumentar o período, em vez de sumir sem explicação.
+  const foraDaFaixa = new Set(
+    lampadas.filter((m) => !dentroDoPeriodo(candlesContexto || [], m.time)).map((m) => m.id)
+  );
 
   // ── Detecção automática no histórico do ativo ──────────────
   // Só OCO: é o único padrão que o detector automático cobre hoje. Serve
@@ -409,6 +416,7 @@ export default function AdminTemplates() {
                     contagem={contagemPorPadrao}
                     salvos={lampadas}
                     destacado={salvoAgora}
+                    foraDaFaixa={foraDaFaixa}
                   />
                 </div>
 

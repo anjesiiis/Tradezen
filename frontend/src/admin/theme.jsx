@@ -169,6 +169,9 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .filtro-salvos{display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-width:thin;max-height:190px}
 .filtro-salvo{display:flex;align-items:center;gap:7px;padding:5px 4px;border-radius:6px;text-decoration:none;color:var(--text2);font-size:11px;transition:background .2s}
 .filtro-salvo:hover{background:var(--s2);color:var(--text)}
+/* fora do período carregado: continua clicável, mas não está no gráfico */
+.filtro-salvo.fora{opacity:.45}
+.filtro-salvo.fora .filtro-salvo-texto span::after{content:" · fora do período"}
 /* fundo iluminado por 2s no que acabou de ser salvo */
 .filtro-salvo.novo{animation:salvoAgora 2s ease-out}
 @keyframes salvoAgora{from{background:rgba(61,126,255,.35)}to{background:transparent}}
