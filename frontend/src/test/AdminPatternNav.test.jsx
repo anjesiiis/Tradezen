@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { AdminPatternNav, GRUPOS_DE_PADRAO, grupoDoPadrao } from '../admin/theme.jsx';
+import { AdminPatternNav } from '../admin/theme.jsx';
+import { GRUPOS_DE_PADRAO, grupoDoPadrao } from '../admin/gruposDePadrao.js';
 
 // 19 padrões não cabem em aba — nem numa linha, nem em duas. O menu
 // lateral agrupa por família e abre só o grupo do padrão atual.
