@@ -76,14 +76,25 @@ def _bordas_trocadas(p: Dict[str, Ponto]) -> List[str]:
     return []
 
 
-def _triangulo(p: Dict[str, Ponto]) -> List[str]:
-    """Os três triângulos: 3 vértices (abertura em cima, embaixo, e o bico).
+# Os três triângulos têm 3 pontos: a borda inclinada (P1→P2) e a
+# horizontal (P3, só o preço). O vértice é calculado, não marcado. No
+# simétrico, P1 e P2 são as duas bordas e P3 é o próprio vértice.
 
-    Qual lado é horizontal — ascendente, descendente ou simétrico — quem
-    diz é a tela em que o analista salvou; o desenho é o mesmo nos três.
-    """
-    if p["p1"].preco <= p["p2"].preco:
-        return ["P1 está abaixo de P2 — na abertura do triângulo, P1 é o ponto de cima."]
+
+def _triangulo_ascendente(p: Dict[str, Ponto]) -> List[str]:
+    if p["p2"].preco <= p["p1"].preco:
+        return ['"Fundo Dir." precisa estar acima de "Fundo Esq." — no triângulo ascendente o suporte sobe.']
+    return []
+
+
+def _triangulo_descendente(p: Dict[str, Ponto]) -> List[str]:
+    if p["p2"].preco >= p["p1"].preco:
+        return ['"Topo Dir." precisa estar abaixo de "Topo Esq." — no triângulo descendente a resistência cai.']
+    return []
+
+
+def _triangulo_simetrico(p: Dict[str, Ponto]) -> List[str]:
+    # o simétrico é o caso livre: sem regra rígida de preço
     return []
 
 
@@ -113,15 +124,15 @@ PADROES_EXTRAS: Dict[str, Dict[str, Any]] = {
     },
     "triangulo_ascendente": {
         "rota": "triangulo-ascendente", "tabela": "templates_triangulo_ascendente",
-        "pontos": _TRIANGULO, "validar": _triangulo,
+        "pontos": _TRIANGULO, "validar": _triangulo_ascendente,
     },
     "triangulo_descendente": {
         "rota": "triangulo-descendente", "tabela": "templates_triangulo_descendente",
-        "pontos": _TRIANGULO, "validar": _triangulo,
+        "pontos": _TRIANGULO, "validar": _triangulo_descendente,
     },
     "triangulo_simetrico": {
         "rota": "triangulo-simetrico", "tabela": "templates_triangulo_simetrico",
-        "pontos": _TRIANGULO, "validar": _triangulo,
+        "pontos": _TRIANGULO, "validar": _triangulo_simetrico,
     },
     "retangulo": {
         "rota": "retangulo", "tabela": "templates_retangulo",

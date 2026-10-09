@@ -108,9 +108,9 @@ export function temFormatoPares(pontos) {
 
 // Uma linha por par COMPLETO — aparece assim que os 2 cliques daquele par
 // acontecem, sem depender dos outros pares.
-export function linhasDoPadrao(pontos, padrao) {
+export function linhasDoPadrao(pontos, padrao, candles) {
   if (!pontos) return [];
-  if (ehExtra(padrao)) return linhasExtras(pontos, padrao);
+  if (ehExtra(padrao)) return linhasExtras(pontos, padrao, candles);
   if (ehCanal(padrao)) return linhasDoCanal(pontos, padrao);
   return paresDoPadrao(padrao)
     .filter((par) => pontos[par.de] && pontos[par.ate])
@@ -269,8 +269,8 @@ export function padroesCompativeis(padrao) {
 }
 
 /** Polígono preenchido do padrão (triângulos e retângulo). */
-export function areasDoPadrao(pontos, padrao) {
-  if (ehExtra(padrao)) return areasExtras(pontos, padrao);
+export function areasDoPadrao(pontos, padrao, candles) {
+  if (ehExtra(padrao)) return areasExtras(pontos, padrao, candles);
   if (ehCanal(padrao)) return areasDoCanal(pontos, padrao);
   return [];
 }
@@ -357,8 +357,8 @@ export function configDoTemplate(pontos, padrao) {
   if (ehExtra(padrao) && temFormatoExtra(pontos, padrao)) {
     return {
       steps: stepsExtras(padrao),
-      linhas: (p) => linhasExtras(p, padrao),
-      areas: (p) => areasExtras(p, padrao),
+      linhas: (p, candles) => linhasExtras(p, padrao, candles),
+      areas: (p, candles) => areasExtras(p, padrao, candles),
       linePairs: [],
       pares: [],
     };

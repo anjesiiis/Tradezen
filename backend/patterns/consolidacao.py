@@ -91,7 +91,100 @@ def _padrao(candles, tipo, nome, direcao, res, sup, chaves, explicacao, atrs) ->
 
     toques = len(res) + len(sup)
     pontos = (
-        _vertices_do_triangulo(res, sup) if chaves is None
+        _pontos_do_triangulo(tipo, res, sup) if chaves is None
+        else dict(zip(chaves, [ponto(res_esq), ponto(res_dir), ponto(sup_esq), ponto(sup_dir)]))
+    )
+    return {
+        "tipo": tipo,
+        "nome": nome,
+        "direcao": "alta" if para_cima else "baixa",
+        "confiabilidade": score(58, min(20, (toques - 4) * 5), min(12, altura / max(entrada, 1e-9) * 100)),
+        "resultado": veredicto(candles, confirmacao["i"], alvo, stop, para_cima=para_cima),
+        "pontos": pontos,
+        "toques": toques,
+        "confirmacao": confirmacao,
+        "lampada": {"i": inicio, "preco": round(nivel_cima * 1.02, 4)},
+        "operacao": {"entrada": round(entrada, 4), "alvo": round(alvo, 4), "stop": round(stop, 4)},
+        "explicacao": explicacao,
+        "intervalo_candles": {"inicio": inicio, "fim": confirmacao["i"]},
+    }
+
+
+_BORDAS = ["res_esq", "res_dir", "sup_esq", "sup_dir"]
+
+
+def _pontos_do_triangulo(tipo: str, res: List[Dict], sup: List[Dict]) -> Dict[str, Dict]:
+    """Os 3 pontos que a marcação manual usa, por tipo de triângulo.
+
+    O detector enxerga duas retas de toques; a tela marca o triângulo com
+    a borda inclinada (2 pontos) e a horizontal (1 ponto). No simétrico,
+    as duas bordas e o vértice — que aqui é calculado no encontro delas.
+    """
+    if tipo == "triangulo_ascendente":
+        # o suporte sobe (sup) e a resistência é a horizontal (res)
+        return {"p1": ponto(sup[0]), "p2": ponto(sup[-1]), "p3": ponto(res[0])}
+    if tipo == "triangulo_descendente":
+        return {"p1": ponto(res[0]), "p2": ponto(res[-1]), "p3": ponto(sup[0])}
+
+    # simétrico: as duas pontas de cada borda e o vértice onde se cruzam
+    m_res, m_sup = inclinacao(res[0], res[-1]), inclinacao(sup[0], sup[-1])
+    fim = max(res[-1]["i"], sup[-1]["i"])
+    x = fim
+    if m_res != m_sup:
+        encontro = (sup[0]["preco"] - res[0]["preco"] + m_res * res[0]["i"] - m_sup * sup[0]["i"]) / (m_res - m_sup)
+        # só vale se o encontro estiver à frente e perto: senão é
+        # extrapolação, e o vértice cairia fora do gráfico
+        if fim < encontro <= fim + (fim - min(res[0]["i"], sup[0]["i"])):
+            x = encontro
+    preco = (res[0]["preco"] + m_res * (x - res[0]["i"]) + sup[0]["preco"] + m_sup * (x - sup[0]["i"])) / 2
+    return {
+        "p1": ponto(res[0]),
+        "p2": ponto(sup[0]),
+        "p3": {"i": int(round(x)), "preco": round(preco, 4)},
+    }
+
+
+def _padrao(candles, tipo, nome, direcao, res, sup, chaves, explicacao, atrs) -> Optional[Dict]:
+    """Monta o padrão a partir das duas bordas, se houver confirmação.
+
+    `chaves` None = triângulo, que a marcação manual guarda como 3
+    vértices; com as 4 chaves = retângulo.
+    """
+    res_esq, res_dir = res[0], res[-1]
+    sup_esq, sup_dir = sup[0], sup[-1]
+    inicio = min(res_esq["i"], sup_esq["i"])
+    fim = max(res_dir["i"], sup_dir["i"])
+
+    altura = nivel_medio([res_esq["preco"], res_dir["preco"]]) - nivel_medio([sup_esq["preco"], sup_dir["preco"]])
+    if altura <= 0:
+        return None
+
+    # Rompimento: pro lado que o padrão sugere. No simétrico e no retângulo
+    # ele pode sair pros dois lados — vale o primeiro que acontecer.
+    nivel_cima = max(res_esq["preco"], res_dir["preco"])
+    nivel_baixo = min(sup_esq["preco"], sup_dir["preco"])
+    if direcao == "alta":
+        confirmacao, para_cima = rompimento_apos(candles, fim, nivel_cima, True), True
+    elif direcao == "baixa":
+        confirmacao, para_cima = rompimento_apos(candles, fim, nivel_baixo, False), False
+    else:
+        acima = rompimento_apos(candles, fim, nivel_cima, True)
+        abaixo = rompimento_apos(candles, fim, nivel_baixo, False)
+        if acima and abaixo:
+            para_cima = acima["i"] <= abaixo["i"]
+            confirmacao = acima if para_cima else abaixo
+        else:
+            confirmacao, para_cima = (acima, True) if acima else (abaixo, False)
+    if not confirmacao:
+        return None
+
+    entrada = nivel_cima if para_cima else nivel_baixo
+    alvo = entrada + altura if para_cima else entrada - altura
+    stop = nivel_baixo if para_cima else nivel_cima
+
+    toques = len(res) + len(sup)
+    pontos = (
+        _pontos_do_triangulo(tipo, res, sup) if chaves is None
         else dict(zip(chaves, [ponto(res_esq), ponto(res_dir), ponto(sup_esq), ponto(sup_dir)]))
     )
     return {

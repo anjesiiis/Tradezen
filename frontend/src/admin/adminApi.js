@@ -100,11 +100,29 @@ export async function fetchAtivos() {
 // Fábrica de CRUD genérico — cada padrão instancia a sua, apontando pro
 // próprio endpoint. Não compartilha dado nenhum entre padrões, só o
 // código de "fazer um GET/POST/PUT/DELETE".
+// A tabela de um padrão pode não existir ainda (migration não rodada).
+// Isso não é erro de quem está usando a tela: a lista daquele padrão vem
+// vazia, fica o aviso no console, e o resto da página segue de pé. Sem
+// isso, um padrão sem tabela derrubava a tela inteira com "Não foi
+// possível carregar os templates".
+function tabelaAindaNaoExiste(erro) {
+  const texto = String(erro?.message || "");
+  return erro?.status === 503 || /tabela .* ainda não existe|Could not find the table/i.test(texto);
+}
+
 function makeTemplateApi(basePath) {
   return {
     async list() {
-      const data = await adminFetch(basePath);
-      return data.templates;
+      try {
+        const data = await adminFetch(basePath);
+        return data.templates;
+      } catch (erro) {
+        if (tabelaAindaNaoExiste(erro)) {
+          console.warn(`[admin] ${basePath}: tabela ainda não existe no Supabase — lista vazia. Rode a migration em backend/sql.`);
+          return [];
+        }
+        throw erro;
+      }
     },
     // A listagem vem sem os candles de propósito (ver _COLUNAS_LISTA no
     // backend — devolver tudo estourava o servidor). Quem precisa do

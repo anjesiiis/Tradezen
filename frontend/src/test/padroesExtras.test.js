@@ -13,12 +13,12 @@ const VALIDOS = {
   oco_invertido: { ombro_esq: pt(2, 100), cabeca: pt(6, 90), ombro_dir: pt(10, 102), pescoco: pt(12, 110) },
   topo_triplo: { topo1: pt(2, 100), vale1: pt(4, 90), topo2: pt(6, 101), vale2: pt(8, 91), topo3: pt(10, 99) },
   fundo_triplo: { fundo1: pt(2, 100), pico1: pt(4, 110), fundo2: pt(6, 101), pico2: pt(8, 111), fundo3: pt(10, 99) },
-  // os três triângulos têm os MESMOS 3 vértices: abertura em cima (P1),
-  // abertura embaixo (P2) e o bico (P3). Qual lado é horizontal é a tela
-  // que diz, não a marcação.
-  triangulo_ascendente: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 99) },
-  triangulo_descendente: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 81) },
-  triangulo_simetrico: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 90) },
+  // Cada triângulo tem 3 pontos: a borda inclinada (P1→P2) e a
+  // horizontal (P3, só o preço). O vértice é calculado. No simétrico,
+  // P1/P2 são as duas bordas e P3 é o próprio vértice.
+  triangulo_ascendente: { p1: pt(10, 80), p2: pt(40, 95), p3: pt(15, 100) },
+  triangulo_descendente: { p1: pt(10, 100), p2: pt(40, 88), p3: pt(15, 80) },
+  triangulo_simetrico: { p1: pt(10, 100), p2: pt(10, 80), p3: pt(45, 90) },
   retangulo: { res_esq: pt(2, 100), res_dir: pt(12, 101), sup_esq: pt(4, 90), sup_dir: pt(10, 90.5) },
 };
 
@@ -89,12 +89,13 @@ describe('Os 8 padrões de reversão e consolidação', () => {
         .toEqual(['O suporte está acima da resistência — as duas bordas estão trocadas.']);
     });
 
-    it('triângulo com a abertura de cabeça pra baixo', () => {
-      const trocado = { p1: pt(2, 80), p2: pt(2, 100), p3: pt(30, 90) };
-      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
-        expect(validarExtra(trocado, P[id]), id)
-          .toEqual(['P1 está abaixo de P2 — na abertura do triângulo, P1 é o ponto de cima.']);
-      }
+    it('triângulo com a borda inclinada no sentido errado', () => {
+      expect(validarExtra({ ...VALIDOS.triangulo_ascendente, p2: pt(40, 70) }, P.triangulo_ascendente).join())
+        .toMatch(/"Fundo Dir\." precisa estar acima de "Fundo Esq\."/);
+      expect(validarExtra({ ...VALIDOS.triangulo_descendente, p2: pt(40, 110) }, P.triangulo_descendente).join())
+        .toMatch(/"Topo Dir\." precisa estar abaixo de "Topo Esq\."/);
+      // o simétrico é o caso livre: não tem regra rígida de preço
+      expect(validarExtra({ p1: pt(10, 80), p2: pt(10, 100), p3: pt(45, 90) }, P.triangulo_simetrico)).toEqual([]);
     });
   });
 
@@ -119,14 +120,10 @@ describe('Os 8 padrões de reversão e consolidação', () => {
       salvaComAviso('retangulo', { ...VALIDOS.retangulo, res_dir: pt(12, 130) }, /resistências estão a mais de 3%/);
     });
 
-    it('o triângulo aceita qualquer desenho: o tipo é o da tela', () => {
-      // o mesmo desenho salvo como os três — nenhum reclama de qual lado
-      // deveria estar horizontal
-      const desenho = { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 95) };
-      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
-        expect(validarExtra(desenho, P[id]), id).toEqual([]);
-        expect(avisosExtras(desenho, P[id]), id).toEqual([]);
-      }
+    it('horizontal do lado errado dos pontos vira aviso', () => {
+      salvaComAviso('triangulo_ascendente', { ...VALIDOS.triangulo_ascendente, p3: pt(15, 70) }, /resistência está abaixo dos fundos/);
+      salvaComAviso('triangulo_descendente', { ...VALIDOS.triangulo_descendente, p3: pt(15, 120) }, /suporte está acima dos topos/);
+      salvaComAviso('triangulo_simetrico', { p1: pt(10, 80), p2: pt(10, 100), p3: pt(45, 90) }, /"Topo Esq\." está abaixo de "Fundo Esq\."/);
     });
   });
 
@@ -150,8 +147,10 @@ describe('Os 8 padrões de reversão e consolidação', () => {
 
   it('área preenchida só nos triângulos e no retângulo', () => {
     const area = areasExtras(VALIDOS.triangulo_ascendente, P.triangulo_ascendente)[0];
-    // o triângulo fecha nos três vértices: cima → bico → baixo
-    expect(area.pontos.map((p) => [p.i, p.preco])).toEqual([[2, 100], [30, 99], [2, 80]]);
+    // fecha no vértice CALCULADO: o suporte 80→95 (de 10 a 40) encosta
+    // nos 100 da resistência no candle 50. O quadrilátero degenera num
+    // triângulo porque os dois últimos cantos coincidem no vértice.
+    expect(area.pontos.map((p) => [p.i, p.preco])).toEqual([[10, 80], [50, 100], [50, 100], [10, 100]]);
     expect(area.opacidade).toBe(0.15);
     expect(areasExtras(VALIDOS.retangulo, P.retangulo)[0].borda).toBe(true);
     expect(areasExtras(VALIDOS.fundo_duplo, P.fundo_duplo)).toEqual([]);
@@ -160,16 +159,44 @@ describe('Os 8 padrões de reversão e consolidação', () => {
     expect(areasExtras({ res_esq: pt(1, 100) }, P.retangulo)).toEqual([]);
   });
 
-  it('os três triângulos são 3 cliques, sem nome de ponto', () => {
+  it('cada triângulo tem 3 pontos, com o nome do seu papel', () => {
     for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
       expect(passosExtras(P[id]), id).toEqual(['p1', 'p2', 'p3']);
-      expect(stepsExtras(P[id]).map((s) => s.label), id).toEqual(['P1', 'P2', 'P3']);
     }
-    // as duas linhas saem da abertura e se encontram no bico
-    expect(linhasExtras(VALIDOS.triangulo_simetrico, P.triangulo_simetrico).map((l) => l.id))
-      .toEqual(['p1-p3', 'p2-p3']);
+    expect(stepsExtras(P.triangulo_ascendente).map((s) => s.label))
+      .toEqual(['P1 · Fundo Esq.', 'P2 · Fundo Dir.', 'P3 · Resistência']);
+    expect(stepsExtras(P.triangulo_descendente).map((s) => s.label))
+      .toEqual(['P1 · Topo Esq.', 'P2 · Topo Dir.', 'P3 · Suporte']);
+    expect(stepsExtras(P.triangulo_simetrico).map((s) => s.label))
+      .toEqual(['P1 · Topo Esq.', 'P2 · Fundo Esq.', 'P3 · Vértice']);
     // o retângulo continua com as 4 bordas nomeadas
     expect(passosExtras(P.retangulo)).toEqual(['res_esq', 'res_dir', 'sup_esq', 'sup_dir']);
+  });
+
+  it('a horizontal vai até o vértice calculado, não até onde se clicou', () => {
+    const linhas = linhasExtras(VALIDOS.triangulo_ascendente, P.triangulo_ascendente);
+    expect(linhas.map((l) => l.id)).toEqual(['inclinada', 'horizontal']);
+    // as duas terminam no mesmo ponto: o vértice
+    const [inclinada, horizontal] = linhas;
+    expect(inclinada.dados[1]).toEqual(horizontal.dados[1]);
+    expect(horizontal.dados[1].i).toBe(50);
+    // e a horizontal é horizontal mesmo
+    expect(horizontal.dados[0].preco).toBe(horizontal.dados[1].preco);
+  });
+
+  it('vértice além do último candle é cortado no fim do gráfico', () => {
+    // sem isso o desenho sumia: não existe pixel pra um candle que não
+    // existe, e a linha e a área eram descartadas inteiras
+    const candles = Array.from({ length: 30 }, (_, i) => ({ timestamp: i }));
+    const linhas = linhasExtras(VALIDOS.triangulo_ascendente, P.triangulo_ascendente, candles);
+    expect(linhas.every((l) => l.dados.every((d) => d.i <= 29))).toBe(true);
+    expect(areasExtras(VALIDOS.triangulo_ascendente, P.triangulo_ascendente, candles)[0]
+      .pontos.every((c) => c.i <= 29)).toBe(true);
+  });
+
+  it('no simétrico as duas bordas vão pro vértice marcado', () => {
+    expect(linhasExtras(VALIDOS.triangulo_simetrico, P.triangulo_simetrico).map((l) => l.id))
+      .toEqual(['superior', 'inferior']);
   });
 
   it('o emoji fica no ponto mais característico do padrão', () => {

@@ -33,28 +33,95 @@ function parecidos(a, b, tolerancia) {
 
 const pct = (t) => `${Math.round(t * 100)}%`;
 
-// ── Os três triângulos: 3 vértices, sem nome ──────────────────
+// ── Os três triângulos: 3 pontos cada ─────────────────────────
 //
-// Triângulo é triângulo: dois pontos na abertura (o de cima e o de
-// baixo, à esquerda) e o bico onde as duas linhas se encontram. Qual
-// lado é horizontal — ascendente, descendente ou simétrico — é a tela
-// que diz, e o analista escolhe; o desenho é o mesmo nos três.
+// Um triângulo tem uma borda inclinada e uma horizontal (ou duas
+// inclinadas, no simétrico). A inclinada precisa de 2 pontos; a
+// horizontal, de 1 — o preço dela. O vértice onde as duas se encontram é
+// CALCULADO, não marcado.
 //
-// Eram 4 pontos com nome (Resistência Esquerda, Suporte Direito...), o
-// que obrigava a marcar duas retas separadas e a acertar qual delas era
-// horizontal.
-const TRES_VERTICES = [
-  ["p1", "P1", VERMELHO],   // abertura, em cima
-  ["p2", "P2", VERDE],      // abertura, embaixo
-  ["p3", "P3", AZUL],       // o bico
-];
-const LINHAS_TRIANGULO = [["p1", "p3"], ["p2", "p3"]];
-const AREA_TRIANGULO = { chaves: ["p1", "p3", "p2"], cor: AZUL, opacidade: 0.15 };
+//   Ascendente    P1/P2 o suporte que sobe    + P3 a resistência
+//   Descendente   P1/P2 a resistência que cai + P3 o suporte
+//   Simétrico     P1 o topo, P2 o fundo       + P3 o vértice
+//
+// Eram 4 pontos com as duas bordas marcadas ponta a ponta, o que pedia
+// quatro cliques pra dizer o que três dizem.
 
-function inversaoTriangulo(p) {
-  return p.p1.preco <= p.p2.preco
-    ? "P1 está abaixo de P2 — na abertura do triângulo, P1 é o ponto de cima."
-    : null;
+/** Onde a reta P1→P2 cruza o preço da horizontal. */
+function vertice(p1, p2, precoHorizontal) {
+  const inclinacao = p2.i === p1.i ? 0 : (p2.preco - p1.preco) / (p2.i - p1.i);
+  if (!inclinacao) return null;
+  const x = p1.i + (precoHorizontal - p1.preco) / inclinacao;
+  // só vale pra frente da marcação: atrás não é vértice, é cruzamento
+  // que já aconteceu
+  return x > Math.max(p1.i, p2.i) ? x : null;
+}
+
+/** Desenho de ascendente e descendente: a inclinada e a horizontal.
+ *
+ * `ultimoCandle` limita o vértice ao fim do gráfico: quando a horizontal
+ * está longe, as duas bordas só se encontrariam fora dos candles — e aí
+ * nem a linha nem a área apareciam, porque não existe pixel pra um
+ * candle que não existe.
+ */
+function desenhoComHorizontal(pontos, ultimoCandle) {
+  const { p1, p2, p3 } = pontos;
+  const linhas = [];
+  if (p1 && p2) {
+    linhas.push({
+      id: "inclinada", cor: AZUL, largura: 2, tracejada: false,
+      dados: [{ i: p1.i, preco: p1.preco }, { i: p2.i, preco: p2.preco }],
+    });
+  }
+  if (!p1 || !p2 || !p3) return { linhas, area: null };
+
+  // A horizontal vai do começo do padrão até o vértice (ou até o fim do
+  // que foi marcado, quando as duas não se encontram à frente).
+  const bruto = vertice(p1, p2, p3.preco);
+  const de = Math.min(p1.i, p2.i, p3.i);
+  const limite = Number.isFinite(ultimoCandle) ? ultimoCandle : Infinity;
+  const x = bruto == null ? null : Math.min(bruto, limite);
+  const ate = x ?? Math.min(Math.max(p1.i, p2.i, p3.i), limite);
+  linhas.push({
+    id: "horizontal", cor: AZUL, largura: 2, tracejada: false,
+    dados: [{ i: de, preco: p3.preco }, { i: ate, preco: p3.preco }],
+  });
+  // a inclinada acompanha: vai do começo até o vértice (ou até onde o
+  // gráfico termina, se o vértice ficou além dele)
+  if (x != null) {
+    const inclinacao = (p2.preco - p1.preco) / (p2.i - p1.i);
+    linhas[0].dados = [
+      { i: de, preco: p1.preco + inclinacao * (de - p1.i) },
+      { i: ate, preco: p1.preco + inclinacao * (ate - p1.i) },
+    ];
+  }
+  const inicioDaInclinada = linhas[0].dados[0];
+  const fimDaInclinada = linhas[0].dados[linhas[0].dados.length - 1];
+  return {
+    linhas,
+    area: {
+      cor: AZUL, opacidade: 0.15,
+      pontos: [
+        { i: de, preco: inicioDaInclinada.preco },
+        { i: ate, preco: fimDaInclinada.preco },
+        { i: ate, preco: p3.preco },
+        { i: de, preco: p3.preco },
+      ],
+    },
+  };
+}
+
+/** Desenho do simétrico: as duas bordas indo pro vértice marcado. */
+function desenhoSimetrico(pontos) {
+  const { p1, p2, p3 } = pontos;
+  const linhas = [];
+  if (p1 && p3) linhas.push({ id: "superior", cor: AZUL, largura: 2, tracejada: false, dados: [{ i: p1.i, preco: p1.preco }, { i: p3.i, preco: p3.preco }] });
+  if (p2 && p3) linhas.push({ id: "inferior", cor: AZUL, largura: 2, tracejada: false, dados: [{ i: p2.i, preco: p2.preco }, { i: p3.i, preco: p3.preco }] });
+  if (!p1 || !p2 || !p3) return { linhas, area: null };
+  return {
+    linhas,
+    area: { cor: AZUL, opacidade: 0.15, pontos: [{ i: p1.i, preco: p1.preco }, { i: p3.i, preco: p3.preco }, { i: p2.i, preco: p2.preco }] },
+  };
 }
 
 // ── Os oito padrões ───────────────────────────────────────────
@@ -174,23 +241,44 @@ const ESPEC = {
 
   triangulo_ascendente: {
     rotulo: "Triângulo Ascendente", nav: "triangulo-ascendente", alta: true, sigla: "TAS",
-    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
-    inversao: inversaoTriangulo,
-    conferir: () => [],
+    passos: [
+      ["p1", "P1 · Fundo Esq.", VERDE, "Fundo Esq. — suporte esquerdo, o mais baixo"],
+      ["p2", "P2 · Fundo Dir.", VERDE, "Fundo Dir. — suporte direito, acima do esquerdo"],
+      ["p3", "P3 · Resistência", VERMELHO, "Resistência — a linha horizontal de cima"],
+    ],
+    desenho: desenhoComHorizontal,
+    inversao: (p) => (p.p2.preco <= p.p1.preco
+      ? '"Fundo Dir." precisa estar acima de "Fundo Esq." — no triângulo ascendente o suporte sobe.' : null),
+    conferir: (p) => (p.p3.preco > Math.max(p.p1.preco, p.p2.preco) ? []
+      : ['Confira: a resistência está abaixo dos fundos marcados.']),
   },
 
   triangulo_descendente: {
     rotulo: "Triângulo Descendente", nav: "triangulo-descendente", alta: false, sigla: "TDE",
-    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
-    inversao: inversaoTriangulo,
-    conferir: () => [],
+    passos: [
+      ["p1", "P1 · Topo Esq.", VERMELHO, "Topo Esq. — resistência esquerda, a mais alta"],
+      ["p2", "P2 · Topo Dir.", VERMELHO, "Topo Dir. — resistência direita, abaixo da esquerda"],
+      ["p3", "P3 · Suporte", VERDE, "Suporte — a linha horizontal de baixo"],
+    ],
+    desenho: desenhoComHorizontal,
+    inversao: (p) => (p.p2.preco >= p.p1.preco
+      ? '"Topo Dir." precisa estar abaixo de "Topo Esq." — no triângulo descendente a resistência cai.' : null),
+    conferir: (p) => (p.p3.preco < Math.min(p.p1.preco, p.p2.preco) ? []
+      : ['Confira: o suporte está acima dos topos marcados.']),
   },
 
   triangulo_simetrico: {
     rotulo: "Triângulo Simétrico", nav: "triangulo-simetrico", alta: null, sigla: "TSI",
-    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
-    inversao: inversaoTriangulo,
-    conferir: () => [],
+    passos: [
+      ["p1", "P1 · Topo Esq.", VERMELHO, "Topo Esq. — começo da borda de cima"],
+      ["p2", "P2 · Fundo Esq.", VERDE, "Fundo Esq. — começo da borda de baixo"],
+      ["p3", "P3 · Vértice", AZUL, "Vértice — onde as duas bordas se encontram"],
+    ],
+    desenho: desenhoSimetrico,
+    // sem regra de preço: o simétrico é o caso livre dos três
+    inversao: () => null,
+    conferir: (p) => (p.p1.preco > p.p2.preco ? []
+      : ['Confira: "Topo Esq." está abaixo de "Fundo Esq.".']),
   },
 
   retangulo: {
@@ -241,8 +329,8 @@ export function siglaExtra(id) {
 }
 
 export function stepsExtras(padrao) {
-  return espec(padrao).passos.map(([key, label, color], i) => ({
-    key, label, color, short: `P${i + 1}`,
+  return espec(padrao).passos.map(([key, label, color, dica], i) => ({
+    key, label, color, dica, short: `P${i + 1}`,
   }));
 }
 
@@ -262,9 +350,11 @@ export function ancoraExtra(padrao) {
 }
 
 /** Linhas do desenho: as bordas do padrão e o nível calculado. */
-export function linhasExtras(pontos, padrao) {
+export function linhasExtras(pontos, padrao, candles) {
   if (!pontos) return [];
   const e = espec(padrao);
+  // padrão com geometria calculada (os triângulos, cujo vértice é conta)
+  if (e.desenho) return e.desenho(pontos, candles ? candles.length - 1 : undefined).linhas;
   const linhas = e.linhas
     .filter(([a, b]) => pontos[a] && pontos[b])
     .map(([a, b]) => ({
@@ -292,9 +382,14 @@ export function linhasExtras(pontos, padrao) {
 }
 
 /** Polígono preenchido (triângulos e retângulo), ou [] pros outros. */
-export function areasExtras(pontos, padrao) {
+export function areasExtras(pontos, padrao, candles) {
   const e = espec(padrao);
-  if (!e?.area || !pontos) return [];
+  if (!e || !pontos) return [];
+  if (e.desenho) {
+    const area = e.desenho(pontos, candles ? candles.length - 1 : undefined).area;
+    return area ? [{ id: `area-${padrao.id}`, borda: false, ...area }] : [];
+  }
+  if (!e.area) return [];
   const cantos = e.area.chaves.map((k) => pontos[k]);
   if (cantos.some((p) => !p)) return [];
   return [{
@@ -334,7 +429,7 @@ export function avisosExtras(pontos, padrao) {
   // marcação. Num triângulo as duas bordas se alternam no tempo (o
   // suporte esquerdo costuma vir antes da resistência direita) — comparar
   // passo a passo acusava erro numa marcação perfeitamente normal.
-  for (const [a, b] of e.linhas) {
+  for (const [a, b] of e.linhas || []) {
     if (pontos[b].i < pontos[a].i) {
       avisos.push(`Confira a ordem: "${nome(b)}" está antes de "${nome(a)}" no gráfico.`);
     }

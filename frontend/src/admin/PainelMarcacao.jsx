@@ -46,7 +46,7 @@ export default function PainelMarcacao({ padraoInicial }) {
   const api = API_DO_PADRAO[padrao.id];
   const STEPS = stepsDoPadrao(padrao);
   const PASSOS = STEPS.map((s) => s.key);
-  const desenharLinhas = (pontos) => linhasDoPadrao(pontos, padrao);
+  const desenharLinhas = (pontos, candlesDoGrafico) => linhasDoPadrao(pontos, padrao, candlesDoGrafico);
   // Onde o emoji do padrão fica ancorado. Nos padrões de 4 pares é o topo
   // do primeiro mastro; nos de reversão e consolidação, o ponto mais
   // característico de cada um (a cabeça do OCO invertido, etc); nos
@@ -440,7 +440,7 @@ export default function PainelMarcacao({ padraoInicial }) {
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               anotacoes={editando.anotacoesEdit}
               aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
-              areas={areasDoPadrao(editando.pontosEdit || editando.pontos, padraoEmEdicao)}
+              areas={areasDoPadrao(editando.pontosEdit || editando.pontos, padraoEmEdicao, editando.candles)}
               padraoMarcado={{
                 id: padraoEmEdicao.id,
                 ancora: ancoraDoEmoji(padraoEmEdicao),
@@ -558,7 +558,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                     padraoMarcado={{ id: padrao.id, ancora: ancoraDoEmoji(padrao), acima: ficaAcima(padrao.id) }}
                     instrucao={padrao.canal ? INSTRUCAO_CANAL : null}
                     areas={[
-                      ...areasDoPadrao(pontos, padrao),
+                      ...areasDoPadrao(pontos, padrao, candlesContexto),
                       // o aberto pela 💡 ganha do mesmo padrão vindo do
                       // sidebar: os dois têm o mesmo id de área, e duas
                       // áreas iguais davam "two children with the same key"
