@@ -17,9 +17,20 @@ const ALTA = {
   p7_inicio_mastro2: { i: 13, preco: 16 },
   p8_topo_mastro2:   { i: 22, preco: 28 },
 };
-const BAIXA = Object.fromEntries(
-  Object.entries(ALTA).map(([k, p]) => [k, { i: p.i, preco: 40 - p.preco }])
-);
+// Espelhar os preços (40 - preco) deixava o TOPO da bandeira abaixo do
+// FUNDO dela — que é marcação trocada, não bandeira de baixa. Os nomes
+// das bordas não mudam com a direção: "fundo" é sempre a borda de baixo.
+// Aqui os mastros caem e a consolidação fica em pé.
+const BAIXA = {
+  p1_inicio_mastro1: { i: 0, preco: 30 },
+  p2_topo_mastro1:   { i: 5, preco: 20 },
+  p3_inicio_fundo:   { i: 7, preco: 21 },
+  p4_fim_fundo:      { i: 13, preco: 22 },
+  p5_inicio_topo:    { i: 8, preco: 23.5 },
+  p6_fim_topo:       { i: 14, preco: 24.5 },
+  p7_inicio_mastro2: { i: 13, preco: 24 },
+  p8_topo_mastro2:   { i: 22, preco: 12 },
+};
 const com = (base, mudancas) => ({ ...base, ...mudancas });
 
 describe('Ordem dos cliques numa linha', () => {
@@ -69,14 +80,12 @@ describe('Ordem dos cliques numa linha', () => {
     expect(erros[0]).toContain('dois candles diferentes');
   });
 
-  it('a direção do mastro continua valendo em cada sentido', () => {
-    // na baixa, mastro 2 tem que cair
-    expect(validarPadrao({ ...BASE, p8_topo_mastro2: { i: 40, preco: 99 } }, PADROES.bandeira_baixa).join(' '))
-      .toContain('o mastro é uma queda');
-    // e na alta, subir
-    const alta = { ...BASE, p2_topo_mastro1: { i: 20, preco: 60 }, p8_topo_mastro2: { i: 40, preco: 60 } };
-    expect(validarPadrao({ ...alta, p8_topo_mastro2: { i: 40, preco: 5 } }, PADROES.bandeira_alta).join(' '))
-      .toContain('o mastro é uma subida');
+  it('mastro contra a direção do padrão vira aviso, e salva', () => {
+    // quem marca é quem está lendo o gráfico: o amarelo avisa, não barra
+    const mastroQueCai = { ...BASE, p8_topo_mastro2: { i: 40, preco: 99 } };
+    expect(validarPadrao(mastroQueCai, PADROES.bandeira_baixa)).toEqual([]);
+    expect(avisosDoPadrao(mastroQueCai, PADROES.bandeira_baixa).join(' '))
+      .toMatch(/não está abaixo de "Início Mastro 2"/);
   });
 
   it('normalizar não mexe no canal, que não tem pares', () => {
@@ -192,16 +201,34 @@ describe('Validações que bloqueiam', () => {
     // bloqueia é as duas pontas caírem no mesmo candle
     ['mastro 1 com as duas pontas no mesmo candle', { p2_topo_mastro1: { i: 0, preco: 20 } }, /Mastro 1: .* mesmo candle/],
     ['consolidação com as duas pontas no mesmo candle', { p4_fim_fundo: { i: 7, preco: 16 } }, /Fundo da Bandeira: .* mesmo candle/],
-    ['mastro 1 que não sobe', { p2_topo_mastro1: { i: 5, preco: 9 } }, /"Topo Mastro 1" precisa estar acima de "Início Mastro 1"/],
-    ['mastro 2 que não sobe', { p8_topo_mastro2: { i: 22, preco: 15 } }, /"Topo Mastro 2" precisa estar acima de "Início Mastro 2"/],
   ])('recusa %s', (_, mudanca, mensagem) => {
     expect(validarPadrao(com(ALTA, mudanca), PADROES.bandeira_alta).join(' ')).toMatch(mensagem);
   });
 
-  it('na bandeira de baixa as regras são espelhadas', () => {
+  it.each([
+    // mastro contra a direção deixou de bloquear: é leitura do analista
+    ['mastro 1 que não sobe', { p2_topo_mastro1: { i: 5, preco: 9 } }],
+    ['mastro 2 que não sobe', { p8_topo_mastro2: { i: 22, preco: 15 } }],
+  ])('%s salva, com aviso', (_, mudanca) => {
+    const pontos = com(ALTA, mudanca);
+    expect(validarPadrao(pontos, PADROES.bandeira_alta)).toEqual([]);
+    expect(avisosDoPadrao(pontos, PADROES.bandeira_alta).join(' ')).toMatch(/Confira: .* não está acima de/);
+  });
+
+  it('a marcação boa passa nas duas direções', () => {
     expect(validarPadrao(BAIXA, PADROES.bandeira_baixa)).toEqual([]);
-    expect(validarPadrao(BAIXA, PADROES.bandeira_alta).length).toBeGreaterThan(0);
-    expect(validarPadrao(ALTA, PADROES.bandeira_baixa).join(' ')).toMatch(/precisa estar abaixo/);
+    expect(validarPadrao(ALTA, PADROES.bandeira_alta)).toEqual([]);
+    // marcar uma de baixa na tela de alta não é mais erro: é aviso
+    expect(validarPadrao(BAIXA, PADROES.bandeira_alta)).toEqual([]);
+    expect(avisosDoPadrao(BAIXA, PADROES.bandeira_alta).join(' ')).toMatch(/Confira/);
+  });
+
+  it('o que bloqueia é topo e fundo da consolidação trocados', () => {
+    const trocado = com(ALTA, {
+      p5_inicio_topo: { i: ALTA.p5_inicio_topo.i, preco: ALTA.p3_inicio_fundo.preco - 5 },
+      p6_fim_topo: { i: ALTA.p6_fim_topo.i, preco: ALTA.p4_fim_fundo.preco - 5 },
+    });
+    expect(validarPadrao(trocado, PADROES.bandeira_alta).join(' ')).toMatch(/trocados/);
   });
 });
 

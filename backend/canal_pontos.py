@@ -42,7 +42,7 @@ def _preco_na_reta(a: Ponto, b: Ponto, x: float) -> float:
 
 
 def problemas(pontos: PontosCanal, alta: bool) -> List[str]:
-    """O que impede de salvar.
+    """O que impede de salvar: pontos faltando e topo/fundo trocados.
 
     Vale a GEOMETRIA das duas retas, não a posição de um clique em
     relação a outro: num canal que começa por um topo, o fundo esquerdo
@@ -60,20 +60,10 @@ def problemas(pontos: PontosCanal, alta: bool) -> List[str]:
     if erros:
         return erros
 
-    def inclinacao(a: Ponto, b: Ponto) -> float:
-        return (b.preco - a.preco) / (b.i - a.i)
-
-    sentido = "subindo" if alta else "descendo"
-    direcao = "alta" if alta else "baixa"
-
-    def na_direcao(m: float) -> bool:
-        return m > 0 if alta else m < 0
-
-    if not na_direcao(inclinacao(p1, p2)):
-        erros.append(f'A linha de "{r1}" a "{r2}" precisa estar {sentido} — num canal de {direcao} as duas linhas vão juntas.')
-    if not na_direcao(inclinacao(p3, p4)):
-        erros.append(f'A linha de "{r3}" a "{r4}" precisa estar {sentido} — num canal de {direcao} as duas linhas vão juntas.')
-
+    # Única coisa que impede de salvar além dos pontos faltando: as duas
+    # retas se cruzarem, ou seja, topo e fundo trocados de lugar. Canal
+    # marcado contra a direção da tela é aviso amarelo no admin, não erro —
+    # quem decide é quem está olhando o gráfico.
     de = min(p1.i, p2.i, p3.i, p4.i)
     ate = max(p1.i, p2.i, p3.i, p4.i)
     cruzam = any(
@@ -85,7 +75,7 @@ def problemas(pontos: PontosCanal, alta: bool) -> List[str]:
         lado = "acima" if alta else "abaixo"
         erros.append(
             f'A linha de "{r3}" a "{r4}" precisa ficar {lado} da linha de "{r1}" a "{r2}" '
-            "em todo o canal — do jeito que está, as duas se cruzam."
+            "— do jeito que está, topo e fundo se cruzam."
         )
 
     return erros

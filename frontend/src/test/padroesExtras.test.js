@@ -56,63 +56,63 @@ describe('Os 8 padrões de reversão e consolidação', () => {
     expect(validarExtra({}, P.retangulo)).toEqual(['Marque os 4 pontos antes de salvar.']);
   });
 
-  describe('regras que bloqueiam o salvamento', () => {
-    it('fundo duplo: ordem no tempo, vales no mesmo nível e pico acima', () => {
-      expect(validarExtra({ ...VALIDOS.fundo_duplo, vale2: pt(4, 102) }, P.fundo_duplo))
-        .toContain('"Vale 2" precisa vir depois do "Pico" no tempo.');
-      expect(validarExtra({ ...VALIDOS.fundo_duplo, confirmacao: pt(8, 118) }, P.fundo_duplo))
-        .toContain('"Confirmação" precisa vir depois do "Vale 2".');
-      // 100 e 130 é 30% de diferença: não são o mesmo nível
-      expect(validarExtra({ ...VALIDOS.fundo_duplo, vale2: pt(10, 130) }, P.fundo_duplo).join())
-        .toMatch(/mesmo nível/);
+  // O que bloqueia é só topo e fundo trocados de lugar. Tudo o mais —
+  // nível fora de ±5%, ordem no tempo, borda pouco horizontal — é
+  // conferência do analista: vira aviso amarelo e o template salva do
+  // jeito que foi marcado.
+  describe('o que bloqueia: topo e fundo trocados', () => {
+    it('fundo duplo com o pico abaixo dos vales', () => {
       expect(validarExtra({ ...VALIDOS.fundo_duplo, pico: pt(6, 95) }, P.fundo_duplo))
-        .toContain('O "Pico" precisa estar acima dos dois vales.');
+        .toEqual(['O "Pico" está abaixo dos vales — topo e fundo trocados de lugar.']);
     });
 
-    it('OCO invertido: cabeça mais baixa, ombros iguais, pescoço acima', () => {
-      expect(validarExtra({ ...VALIDOS.oco_invertido, cabeca: pt(6, 105) }, P.oco_invertido))
-        .toContain('A "Cabeça" precisa estar mais baixa que os dois ombros.');
-      expect(validarExtra({ ...VALIDOS.oco_invertido, ombro_dir: pt(10, 140) }, P.oco_invertido).join())
-        .toMatch(/ombros precisam estar no mesmo nível/);
-      expect(validarExtra({ ...VALIDOS.oco_invertido, pescoco: pt(12, 95) }, P.oco_invertido))
-        .toContain('A "Linha de Pescoço" precisa estar acima dos três fundos.');
+    it('OCO invertido com a cabeça acima dos ombros, ou o pescoço por baixo', () => {
+      expect(validarExtra({ ...VALIDOS.oco_invertido, cabeca: pt(6, 105) }, P.oco_invertido).join())
+        .toMatch(/"Cabeça" está acima dos ombros/);
+      expect(validarExtra({ ...VALIDOS.oco_invertido, pescoco: pt(12, 95) }, P.oco_invertido).join())
+        .toMatch(/"Linha de Pescoço" está abaixo dos fundos/);
     });
 
-    it('triplos: três extremos no mesmo nível e o meio entre eles', () => {
-      expect(validarExtra({ ...VALIDOS.topo_triplo, topo3: pt(10, 140) }, P.topo_triplo).join())
-        .toMatch(/três topos/);
-      expect(validarExtra({ ...VALIDOS.topo_triplo, vale1: pt(9, 90) }, P.topo_triplo))
-        .toContain('"Vale 1" precisa ficar entre "Topo 1" e "Topo 2".');
-      expect(validarExtra({ ...VALIDOS.fundo_triplo, pico2: pt(1, 111) }, P.fundo_triplo))
-        .toContain('"Pico 2" precisa ficar entre "Fundo 2" e "Fundo 3".');
+    it('triplos com o miolo do lado errado', () => {
+      expect(validarExtra({ ...VALIDOS.topo_triplo, vale1: pt(4, 130) }, P.topo_triplo))
+        .toEqual(['Tem vale acima de topo — os pontos estão trocados.']);
+      expect(validarExtra({ ...VALIDOS.fundo_triplo, pico1: pt(4, 80) }, P.fundo_triplo))
+        .toEqual(['Tem pico abaixo de fundo — os pontos estão trocados.']);
     });
 
-    it('triângulo ascendente: resistência horizontal e suporte subindo', () => {
-      expect(validarExtra({ ...VALIDOS.triangulo_ascendente, res_dir: pt(12, 130) }, P.triangulo_ascendente).join())
-        .toMatch(/resistência precisa ser horizontal/);
-      expect(validarExtra({ ...VALIDOS.triangulo_ascendente, sup_dir: pt(10, 85) }, P.triangulo_ascendente))
-        .toContain('"Suporte Direito" precisa estar acima de "Suporte Esquerdo" — é o suporte que sobe.');
+    it('triângulos e retângulo com o suporte acima da resistência', () => {
+      const trocado = { res_esq: pt(2, 90), res_dir: pt(12, 91), sup_esq: pt(4, 100), sup_dir: pt(10, 101) };
+      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'retangulo']) {
+        expect(validarExtra(trocado, P[id]), id).toEqual(['O suporte está acima da resistência — as duas bordas estão trocadas.']);
+      }
+      expect(validarExtra({ topo_esq: pt(2, 90), topo_dir: pt(12, 85), fundo_esq: pt(4, 100), fundo_dir: pt(10, 105) }, P.triangulo_simetrico))
+        .toEqual(['O fundo está acima do topo — as duas bordas estão trocadas.']);
+    });
+  });
+
+  describe('o que NÃO bloqueia mais — vira aviso e salva assim mesmo', () => {
+    const salvaComAviso = (id, pontos, trecho) => {
+      expect(validarExtra(pontos, P[id]), `${id} não devia bloquear`).toEqual([]);
+      expect(avisosExtras(pontos, P[id]).join()).toMatch(trecho);
+    };
+
+    it('níveis fora da tolerância', () => {
+      salvaComAviso('fundo_duplo', { ...VALIDOS.fundo_duplo, vale2: pt(10, 112) }, /vales estão a mais de 5%/);
+      salvaComAviso('oco_invertido', { ...VALIDOS.oco_invertido, ombro_dir: pt(10, 108) }, /ombros estão a mais de 5%/);
+      salvaComAviso('topo_triplo', { ...VALIDOS.topo_triplo, topo3: pt(10, 140) }, /topos estão a mais de 5%/);
     });
 
-    it('triângulo descendente: suporte horizontal e resistência cedendo', () => {
-      expect(validarExtra({ ...VALIDOS.triangulo_descendente, sup_dir: pt(10, 120) }, P.triangulo_descendente).join())
-        .toMatch(/suporte precisa ser horizontal/);
-      expect(validarExtra({ ...VALIDOS.triangulo_descendente, res_dir: pt(12, 120) }, P.triangulo_descendente).join())
-        .toMatch(/Resistência Direita/);
+    it('ordem no tempo', () => {
+      salvaComAviso('fundo_duplo', { ...VALIDOS.fundo_duplo, vale2: pt(4, 102) }, /Confira a ordem/);
+      salvaComAviso('topo_triplo', { ...VALIDOS.topo_triplo, vale1: pt(9, 90) }, /"Vale 1" não está entre/);
     });
 
-    it('triângulo simétrico: as duas bordas convergem', () => {
-      expect(validarExtra({ ...VALIDOS.triangulo_simetrico, topo_dir: pt(12, 120) }, P.triangulo_simetrico).join())
-        .toMatch(/Topo Direito/);
-      expect(validarExtra({ ...VALIDOS.triangulo_simetrico, fundo_dir: pt(10, 80) }, P.triangulo_simetrico).join())
-        .toMatch(/Fundo Direito/);
-    });
-
-    it('retângulo: bordas horizontais e suporte abaixo da resistência', () => {
-      expect(validarExtra({ ...VALIDOS.retangulo, res_dir: pt(12, 130) }, P.retangulo).join())
-        .toMatch(/resistências precisam estar no mesmo nível/);
-      expect(validarExtra({ ...VALIDOS.retangulo, sup_esq: pt(4, 105), sup_dir: pt(10, 105) }, P.retangulo))
-        .toContain('Os suportes precisam estar abaixo das resistências.');
+    it('bordas que não estão horizontais nem na inclinação esperada', () => {
+      salvaComAviso('triangulo_ascendente', { ...VALIDOS.triangulo_ascendente, res_dir: pt(12, 130) }, /resistência não está horizontal/);
+      salvaComAviso('triangulo_ascendente', { ...VALIDOS.triangulo_ascendente, sup_dir: pt(10, 85) }, /suporte não está subindo/);
+      salvaComAviso('triangulo_descendente', { ...VALIDOS.triangulo_descendente, sup_dir: pt(10, 98) }, /suporte não está horizontal/);
+      salvaComAviso('triangulo_simetrico', { ...VALIDOS.triangulo_simetrico, topo_dir: pt(12, 120) }, /topos não estão caindo/);
+      salvaComAviso('retangulo', { ...VALIDOS.retangulo, res_dir: pt(12, 130) }, /resistências estão a mais de 3%/);
     });
   });
 

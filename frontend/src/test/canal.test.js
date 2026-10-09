@@ -111,16 +111,17 @@ describe('Canal de alta e de baixa', () => {
       expect(validarCanal(cruzado, ALTA)).toEqual([]);
     });
 
-    it('canal de alta: as duas retas precisam subir', () => {
-      expect(validarCanal({ ...CANAL_ALTA, p2: pt(20, 90) }, ALTA).join())
-        .toMatch(/A linha de "Fundo Esq." a "Fundo Dir." precisa estar subindo/);
-      expect(validarCanal({ ...CANAL_ALTA, p4: pt(24, 100) }, ALTA).join())
-        .toMatch(/A linha de "Topo Esq." a "Topo Dir." precisa estar subindo/);
+    it('canal marcado num trecho que desce salva, com aviso', () => {
+      // a tela escolhida é do analista: num canal de alta marcado numa
+      // queda o template salva, e o amarelo avisa
+      const descendo = { p1: pt(5, 60), p2: pt(60, 40), p3: pt(10, 70), p4: pt(64, 50) };
+      expect(validarCanal(descendo, ALTA)).toEqual([]);
+      expect(avisosDoCanal(descendo, ALTA).join()).toMatch(/não está subindo/);
     });
 
     it('trocar topo com fundo é barrado: as retas se cruzam', () => {
       const trocado = { p1: pt(5, 50), p2: pt(60, 63), p3: pt(10, 45), p4: pt(64, 58) };
-      expect(validarCanal(trocado, ALTA).join()).toMatch(/as duas se cruzam/);
+      expect(validarCanal(trocado, ALTA).join()).toMatch(/topo e fundo se cruzam/);
     });
 
     it('retas que se encostam no meio do canal também são barradas', () => {
@@ -134,9 +135,9 @@ describe('Canal de alta e de baixa', () => {
     });
 
     it('canal de baixa: a mesma lógica, invertida', () => {
-      expect(validarCanal({ ...CANAL_BAIXA, p2: pt(20, 140) }, BAIXA).join()).toMatch(/precisa estar descendo/);
-      // um canal de alta marcado na tela de baixa não passa
-      expect(validarCanal(CANAL_ALTA, BAIXA).length).toBeGreaterThan(0);
+      // um canal de alta marcado na tela de baixa tem as retas cruzadas
+      expect(validarCanal(CANAL_ALTA, BAIXA).join()).toMatch(/topo e fundo se cruzam/);
+      expect(validarCanal(CANAL_BAIXA, BAIXA)).toEqual([]);
     });
   });
 

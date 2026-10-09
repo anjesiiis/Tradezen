@@ -171,16 +171,17 @@ export function validarPadrao(pontos, padrao) {
     }
   }
 
-  const contraMao = padrao.alta
-    ? (a, b) => b.preco <= a.preco
-    : (a, b) => b.preco >= a.preco;
-  const sentido = padrao.alta ? "acima" : "abaixo";
-  const movimento = padrao.alta ? "subida" : "queda";
-
-  for (const par of [pares[0], pares[3]]) {
-    if (contraMao(p[par.de], p[par.ate])) {
-      erros.push(`${par.rotulo}: "${par.rotuloAte}" precisa estar ${sentido} de "${par.rotuloDe}" — o mastro é uma ${movimento}.`);
-    }
+  // A direção dos mastros virou AVISO: marcar o mastro contra a direção
+  // do padrão é julgamento de quem está lendo o gráfico, não dado
+  // impossível de guardar. O que bloqueia aqui é só o que quebra o
+  // desenho (linha num candle só) e a inversão da consolidação, logo
+  // abaixo — topo e fundo trocados de lugar.
+  const topoAbaixoDoFundo = (
+    Math.max(p.p5_inicio_topo.preco, p.p6_fim_topo.preco) <
+    Math.min(p.p3_inicio_fundo.preco, p.p4_fim_fundo.preco)
+  );
+  if (topoAbaixoDoFundo) {
+    erros.push(`${pares[2].rotulo} está abaixo do ${pares[1].rotulo.toLowerCase()} — topo e fundo da consolidação trocados.`);
   }
 
   return erros;
@@ -194,6 +195,19 @@ export function avisosDoPadrao(pontos, padrao) {
   const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
   const pares = paresDoPadrao(padrao);
   const avisos = [];
+
+  // Mastro contra a direção do padrão: aviso, não erro. Uma bandeira de
+  // alta marcada num mastro que cai costuma ser clique trocado, mas quem
+  // decide é quem está olhando.
+  const contraMao = padrao.alta
+    ? (a, b) => b.preco <= a.preco
+    : (a, b) => b.preco >= a.preco;
+  const sentido = padrao.alta ? "acima" : "abaixo";
+  for (const par of [pares[0], pares[3]]) {
+    if (contraMao(p[par.de], p[par.ate])) {
+      avisos.push(`Confira: "${par.rotuloAte}" não está ${sentido} de "${par.rotuloDe}" — o mastro costuma ir na direção do padrão.`);
+    }
+  }
 
   // A consolidação costuma começar depois do mastro 1 — mas marcar antes
   // não é impossível (o analista pode estar pegando uma faixa mais larga).

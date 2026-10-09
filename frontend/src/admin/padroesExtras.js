@@ -38,7 +38,11 @@ const pct = (t) => `${Math.round(t * 100)}%`;
 // `linhas`: pares de chaves ligadas, no desenho.
 // `nivel`: linha horizontal tracejada calculada (média dos pontos).
 // `area`:  polígono preenchido, na ordem em que fecha.
-// `regras`: função (p) => string[] — o que BLOQUEIA o salvamento.
+// `inversao`: única coisa que BLOQUEIA — topo e fundo trocados de lugar,
+//              que é marcação impossível de ler e de treinar.
+// `conferir`:  o que vira AVISO amarelo e salva mesmo assim (níveis que
+//              não batem, ordem no tempo, bordas pouco horizontais). São
+//              julgamentos do analista, não erros: quem marca é quem sabe.
 const ESPEC = {
   fundo_duplo: {
     rotulo: "Fundo Duplo", nav: "fundo-duplo", alta: true, sigla: "FDU",
@@ -50,17 +54,15 @@ const ESPEC = {
     ],
     linhas: [["vale1", "pico"], ["pico", "vale2"], ["vale2", "confirmacao"]],
     nivel: { chaves: ["pico"], rotulo: "Linha de pescoço" },
-    regras: (p) => {
-      const erros = [];
-      if (p.vale2.i <= p.pico.i) erros.push('"Vale 2" precisa vir depois do "Pico" no tempo.');
-      if (p.confirmacao.i <= p.vale2.i) erros.push('"Confirmação" precisa vir depois do "Vale 2".');
+    inversao: (p) => (p.pico.preco <= p.vale1.preco || p.pico.preco <= p.vale2.preco)
+      ? 'O "Pico" está abaixo dos vales — topo e fundo trocados de lugar.' : null,
+    conferir: (p) => {
+      // a ordem no tempo já sai do laço das linhas, em avisosExtras
+      const avisos = [];
       if (!parecidos(p.vale1.preco, p.vale2.preco, TOLERANCIA_REVERSAO)) {
-        erros.push(`Os dois vales precisam estar no mesmo nível (até ${pct(TOLERANCIA_REVERSAO)} de diferença).`);
+        avisos.push(`Confira: os dois vales estão a mais de ${pct(TOLERANCIA_REVERSAO)} um do outro.`);
       }
-      if (p.pico.preco <= p.vale1.preco || p.pico.preco <= p.vale2.preco) {
-        erros.push('O "Pico" precisa estar acima dos dois vales.');
-      }
-      return erros;
+      return avisos;
     },
   },
 
@@ -74,20 +76,18 @@ const ESPEC = {
     ],
     linhas: [["ombro_esq", "cabeca"], ["cabeca", "ombro_dir"]],
     nivel: { chaves: ["pescoco"], rotulo: "Linha de pescoço" },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => {
       if (p.cabeca.preco >= p.ombro_esq.preco || p.cabeca.preco >= p.ombro_dir.preco) {
-        erros.push('A "Cabeça" precisa estar mais baixa que os dois ombros.');
+        return 'A "Cabeça" está acima dos ombros — num OCO invertido ela é o fundo mais baixo.';
       }
-      if (!parecidos(p.ombro_esq.preco, p.ombro_dir.preco, TOLERANCIA_REVERSAO)) {
-        erros.push(`Os dois ombros precisam estar no mesmo nível (até ${pct(TOLERANCIA_REVERSAO)} de diferença).`);
+      if (p.pescoco.preco <= Math.max(p.ombro_esq.preco, p.cabeca.preco, p.ombro_dir.preco)) {
+        return 'A "Linha de Pescoço" está abaixo dos fundos — ela fica por cima do padrão.';
       }
-      const maisAlto = Math.max(p.ombro_esq.preco, p.cabeca.preco, p.ombro_dir.preco);
-      if (p.pescoco.preco <= maisAlto) {
-        erros.push('A "Linha de Pescoço" precisa estar acima dos três fundos.');
-      }
-      return erros;
+      return null;
     },
+    conferir: (p) => (parecidos(p.ombro_esq.preco, p.ombro_dir.preco, TOLERANCIA_REVERSAO)
+      ? []
+      : [`Confira: os dois ombros estão a mais de ${pct(TOLERANCIA_REVERSAO)} um do outro.`]),
   },
 
   topo_triplo: {
@@ -101,15 +101,21 @@ const ESPEC = {
     ],
     linhas: [["topo1", "vale1"], ["vale1", "topo2"], ["topo2", "vale2"], ["vale2", "topo3"]],
     nivel: { chaves: ["topo1", "topo2", "topo3"], rotulo: "Resistência" },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => {
+      const topos = [p.topo1.preco, p.topo2.preco, p.topo3.preco];
+      const vales = [p.vale1.preco, p.vale2.preco];
+      return Math.max(...vales) >= Math.min(...topos)
+        ? "Tem vale acima de topo — os pontos estão trocados." : null;
+    },
+    conferir: (p) => {
+      const avisos = [];
       const topos = [p.topo1.preco, p.topo2.preco, p.topo3.preco];
       if (!parecidos(Math.min(...topos), Math.max(...topos), TOLERANCIA_REVERSAO)) {
-        erros.push(`Os três topos precisam estar no mesmo nível (até ${pct(TOLERANCIA_REVERSAO)} de diferença).`);
+        avisos.push(`Confira: os três topos estão a mais de ${pct(TOLERANCIA_REVERSAO)} entre si.`);
       }
-      if (!(p.topo1.i < p.vale1.i && p.vale1.i < p.topo2.i)) erros.push('"Vale 1" precisa ficar entre "Topo 1" e "Topo 2".');
-      if (!(p.topo2.i < p.vale2.i && p.vale2.i < p.topo3.i)) erros.push('"Vale 2" precisa ficar entre "Topo 2" e "Topo 3".');
-      return erros;
+      if (!(p.topo1.i < p.vale1.i && p.vale1.i < p.topo2.i)) avisos.push('Confira: "Vale 1" não está entre "Topo 1" e "Topo 2".');
+      if (!(p.topo2.i < p.vale2.i && p.vale2.i < p.topo3.i)) avisos.push('Confira: "Vale 2" não está entre "Topo 2" e "Topo 3".');
+      return avisos;
     },
   },
 
@@ -124,15 +130,21 @@ const ESPEC = {
     ],
     linhas: [["fundo1", "pico1"], ["pico1", "fundo2"], ["fundo2", "pico2"], ["pico2", "fundo3"]],
     nivel: { chaves: ["fundo1", "fundo2", "fundo3"], rotulo: "Suporte" },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => {
+      const fundos = [p.fundo1.preco, p.fundo2.preco, p.fundo3.preco];
+      const picos = [p.pico1.preco, p.pico2.preco];
+      return Math.min(...picos) <= Math.max(...fundos)
+        ? "Tem pico abaixo de fundo — os pontos estão trocados." : null;
+    },
+    conferir: (p) => {
+      const avisos = [];
       const fundos = [p.fundo1.preco, p.fundo2.preco, p.fundo3.preco];
       if (!parecidos(Math.min(...fundos), Math.max(...fundos), TOLERANCIA_REVERSAO)) {
-        erros.push(`Os três fundos precisam estar no mesmo nível (até ${pct(TOLERANCIA_REVERSAO)} de diferença).`);
+        avisos.push(`Confira: os três fundos estão a mais de ${pct(TOLERANCIA_REVERSAO)} entre si.`);
       }
-      if (!(p.fundo1.i < p.pico1.i && p.pico1.i < p.fundo2.i)) erros.push('"Pico 1" precisa ficar entre "Fundo 1" e "Fundo 2".');
-      if (!(p.fundo2.i < p.pico2.i && p.pico2.i < p.fundo3.i)) erros.push('"Pico 2" precisa ficar entre "Fundo 2" e "Fundo 3".');
-      return erros;
+      if (!(p.fundo1.i < p.pico1.i && p.pico1.i < p.fundo2.i)) avisos.push('Confira: "Pico 1" não está entre "Fundo 1" e "Fundo 2".');
+      if (!(p.fundo2.i < p.pico2.i && p.pico2.i < p.fundo3.i)) avisos.push('Confira: "Pico 2" não está entre "Fundo 2" e "Fundo 3".');
+      return avisos;
     },
   },
 
@@ -146,15 +158,17 @@ const ESPEC = {
     ],
     linhas: [["res_esq", "res_dir"], ["sup_esq", "sup_dir"]],
     area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: AZUL, opacidade: 0.15 },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
+      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
+    conferir: (p) => {
+      const avisos = [];
       if (!parecidos(p.res_esq.preco, p.res_dir.preco, TOLERANCIA_BORDA)) {
-        erros.push(`A resistência precisa ser horizontal: os dois pontos no mesmo nível (até ${pct(TOLERANCIA_BORDA)}).`);
+        avisos.push(`Confira: a resistência não está horizontal (mais de ${pct(TOLERANCIA_BORDA)} entre as pontas).`);
       }
       if (p.sup_dir.preco <= p.sup_esq.preco) {
-        erros.push('"Suporte Direito" precisa estar acima de "Suporte Esquerdo" — é o suporte que sobe.');
+        avisos.push('Confira: o suporte não está subindo — num triângulo ascendente ele sobe.');
       }
-      return erros;
+      return avisos;
     },
   },
 
@@ -168,15 +182,17 @@ const ESPEC = {
     ],
     linhas: [["res_esq", "res_dir"], ["sup_esq", "sup_dir"]],
     area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: AZUL, opacidade: 0.15 },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
+      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
+    conferir: (p) => {
+      const avisos = [];
       if (!parecidos(p.sup_esq.preco, p.sup_dir.preco, TOLERANCIA_BORDA)) {
-        erros.push(`O suporte precisa ser horizontal: os dois pontos no mesmo nível (até ${pct(TOLERANCIA_BORDA)}).`);
+        avisos.push(`Confira: o suporte não está horizontal (mais de ${pct(TOLERANCIA_BORDA)} entre as pontas).`);
       }
       if (p.res_dir.preco >= p.res_esq.preco) {
-        erros.push('"Resistência Direita" precisa estar abaixo de "Resistência Esquerda" — é a resistência que cede.');
+        avisos.push('Confira: a resistência não está cedendo — num triângulo descendente ela cai.');
       }
-      return erros;
+      return avisos;
     },
   },
 
@@ -190,11 +206,13 @@ const ESPEC = {
     ],
     linhas: [["topo_esq", "topo_dir"], ["fundo_esq", "fundo_dir"]],
     area: { chaves: ["topo_esq", "topo_dir", "fundo_dir", "fundo_esq"], cor: AZUL, opacidade: 0.15 },
-    regras: (p) => {
-      const erros = [];
-      if (p.topo_dir.preco >= p.topo_esq.preco) erros.push('"Topo Direito" precisa estar abaixo de "Topo Esquerdo" — as bordas convergem.');
-      if (p.fundo_dir.preco <= p.fundo_esq.preco) erros.push('"Fundo Direito" precisa estar acima de "Fundo Esquerdo" — as bordas convergem.');
-      return erros;
+    inversao: (p) => (Math.max(p.fundo_esq.preco, p.fundo_dir.preco) >= Math.min(p.topo_esq.preco, p.topo_dir.preco)
+      ? "O fundo está acima do topo — as duas bordas estão trocadas." : null),
+    conferir: (p) => {
+      const avisos = [];
+      if (p.topo_dir.preco >= p.topo_esq.preco) avisos.push('Confira: os topos não estão caindo — num triângulo simétrico as bordas convergem.');
+      if (p.fundo_dir.preco <= p.fundo_esq.preco) avisos.push('Confira: os fundos não estão subindo — num triângulo simétrico as bordas convergem.');
+      return avisos;
     },
   },
 
@@ -210,18 +228,17 @@ const ESPEC = {
     // As laterais do retângulo são verticais, e uma série do gráfico só
     // tem um preço por candle: quem as desenha é a borda do polígono.
     area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: CINZA, opacidade: 0.12, borda: true },
-    regras: (p) => {
-      const erros = [];
+    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
+      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
+    conferir: (p) => {
+      const avisos = [];
       if (!parecidos(p.res_esq.preco, p.res_dir.preco, TOLERANCIA_BORDA)) {
-        erros.push(`As duas resistências precisam estar no mesmo nível (até ${pct(TOLERANCIA_BORDA)}).`);
+        avisos.push(`Confira: as resistências estão a mais de ${pct(TOLERANCIA_BORDA)} uma da outra.`);
       }
       if (!parecidos(p.sup_esq.preco, p.sup_dir.preco, TOLERANCIA_BORDA)) {
-        erros.push(`Os dois suportes precisam estar no mesmo nível (até ${pct(TOLERANCIA_BORDA)}).`);
+        avisos.push(`Confira: os suportes estão a mais de ${pct(TOLERANCIA_BORDA)} um do outro.`);
       }
-      if (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)) {
-        erros.push("Os suportes precisam estar abaixo das resistências.");
-      }
-      return erros;
+      return avisos;
     },
   },
 };
@@ -312,18 +329,29 @@ export function areasExtras(pontos, padrao) {
   }];
 }
 
+/**
+ * O que IMPEDE de salvar. De propósito é quase nada: falta de ponto e
+ * topo/fundo trocados.
+ *
+ * Antes isto barrava nível fora de ±5%, ordem no tempo, borda pouco
+ * horizontal... e o analista ficava preso numa marcação que ele sabia
+ * estar certa. Essas conferências agora são avisos amarelos: aparecem,
+ * o template salva do jeito que foi marcado, e quem decide é quem está
+ * olhando o gráfico.
+ */
 export function validarExtra(pontos, padrao) {
   if (!temFormatoExtra(pontos, padrao)) {
     return [`Marque os ${passosExtras(padrao).length} pontos antes de salvar.`];
   }
-  return espec(padrao).regras(pontos);
+  const invertido = espec(padrao).inversao(pontos);
+  return invertido ? [invertido] : [];
 }
 
 export function avisosExtras(pontos, padrao) {
   if (!temFormatoExtra(pontos, padrao)) return [];
   const e = espec(padrao);
   const nome = (k) => e.passos.find(([chave]) => chave === k)[1];
-  const avisos = [];
+  const avisos = [...e.conferir(pontos)];
 
   // A ordem é conferida DENTRO de cada linha do desenho, não na ordem de
   // marcação. Num triângulo as duas bordas se alternam no tempo (o

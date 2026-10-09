@@ -161,33 +161,38 @@ export function validarCanal(pontos, padrao) {
   if (p4.i === p3.i) erros.push(`"${r3}" e "${r4}" estão no mesmo candle — a linha precisa de dois candles.`);
   if (erros.length) return erros;   // sem as duas retas, o resto não dá pra conferir
 
-  // 2. Direção: as duas acompanham o canal.
-  const inclinacao = (a, b) => (b.preco - a.preco) / (b.i - a.i);
-  const sentido = alta ? "subindo" : "descendo";
-  const naDirecao = (m) => (alta ? m > 0 : m < 0);
-  if (!naDirecao(inclinacao(p1, p2))) erros.push(`A linha de "${r1}" a "${r2}" precisa estar ${sentido} — num canal de ${alta ? "alta" : "baixa"} as duas linhas vão juntas.`);
-  if (!naDirecao(inclinacao(p3, p4))) erros.push(`A linha de "${r3}" a "${r4}" precisa estar ${sentido} — num canal de ${alta ? "alta" : "baixa"} as duas linhas vão juntas.`);
-
-  // 3. Separação: uma reta fica de um lado da outra do começo ao fim. É
-  // isso que faz do desenho um canal — e não importa em que ordem, nem em
-  // que candle, cada ponto foi marcado.
+  // 2. Inversão: a reta de cima precisa ficar de um lado só da de baixo.
+  // É a ÚNICA coisa que impede de salvar além dos pontos faltando — se as
+  // duas se cruzam, topo e fundo estão trocados e o desenho não é um canal.
   const { de, ate } = extremos(pontos);
   const linha1 = (x) => precoNaReta(p1, p2, x);
   const linha2 = (x) => precoNaReta(p3, p4, x);
-  const foraDeLugar = [de, ate].some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
-  if (foraDeLugar) {
+  const cruzam = [de, ate].some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
+  if (cruzam) {
     const ladoCerto = alta ? "acima" : "abaixo";
-    erros.push(`A linha de "${r3}" a "${r4}" precisa ficar ${ladoCerto} da linha de "${r1}" a "${r2}" em todo o canal — do jeito que está, as duas se cruzam.`);
+    erros.push(`A linha de "${r3}" a "${r4}" precisa ficar ${ladoCerto} da linha de "${r1}" a "${r2}" — do jeito que está, topo e fundo se cruzam.`);
   }
 
   return erros;
 }
 
 // ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
-export function avisosDoCanal(pontos) {
+export function avisosDoCanal(pontos, padrao) {
   if (!temFormatoCanal(pontos)) return [];
   const medidas = medidasDoCanal(pontos);
   const avisos = [];
+
+  // Canal de alta marcado num trecho que desce (ou o contrário) não é
+  // erro de marcação, é escolha de quem está olhando o gráfico: vira
+  // aviso, e o template salva na tabela que estiver selecionada.
+  if (padrao) {
+    const alta = padrao.alta !== false;
+    const esperado = alta ? "subindo" : "descendo";
+    const [r1, r2, r3, r4] = rotulosDoCanal(padrao);
+    const contra = (m) => (alta ? m <= 0 : m >= 0);
+    if (contra(medidas.inclinacao_suporte)) avisos.push(`Confira: a linha de "${r1}" a "${r2}" não está ${esperado} — num canal de ${alta ? "alta" : "baixa"} ela vai nesse sentido.`);
+    if (contra(medidas.inclinacao_resistencia)) avisos.push(`Confira: a linha de "${r3}" a "${r4}" não está ${esperado}.`);
+  }
 
   // Num canal as duas linhas são paralelas: a abertura no começo e no fim
   // é a mesma. Diferença grande quer dizer outro padrão (cunha, triângulo).

@@ -111,17 +111,20 @@ def validar_pares(pontos: PontosBandeira, alta: bool = True) -> List[str]:
                 f'a linha precisa de dois candles diferentes.'
             )
 
-    # 2) os dois mastros vão na direção do padrão
-    ponta = "Topo" if alta else "Fundo"
-    sentido = "acima" if alta else "abaixo"
-    movimento = "subida" if alta else "queda"
-    for numero, de, ate in (("1", "p1_inicio_mastro1", "p2_topo_mastro1"), ("2", "p7_inicio_mastro2", "p8_topo_mastro2")):
-        contra_mao = p[ate].preco <= p[de].preco if alta else p[ate].preco >= p[de].preco
-        if contra_mao:
-            erros.append(
-                f'Mastro {numero}: "{ponta} Mastro {numero}" precisa estar {sentido} de '
-                f'"Início Mastro {numero}" — o mastro é uma {movimento}.'
-            )
+    # 2) topo e fundo da consolidação não podem estar trocados
+    #
+    # A DIREÇÃO dos mastros deixou de bloquear: marcar o mastro contra a
+    # direção do padrão é leitura do analista, não dado impossível de
+    # guardar — no admin isso aparece como aviso amarelo. O que resta aqui
+    # é a inversão mesmo, que deixaria o desenho sem sentido.
+    topo_abaixo_do_fundo = (
+        max(p["p5_inicio_topo"].preco, p["p6_fim_topo"].preco)
+        < min(p["p3_inicio_fundo"].preco, p["p4_fim_fundo"].preco)
+    )
+    if topo_abaixo_do_fundo:
+        erros.append(
+            "O topo da consolidação está abaixo do fundo — os dois estão trocados de lugar."
+        )
 
     # A ordem ENTRE pares não bloqueia: é comum esticar as linhas do canal
     # pra direita, além do rompimento, e aí "Fim Fundo Bandeira" cai depois
