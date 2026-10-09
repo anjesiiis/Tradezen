@@ -44,6 +44,8 @@ from slowapi.errors import RateLimitExceeded
 from ativos import ATIVOS
 from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
 from patterns.classicos import detectar_padroes_classicos
+from patterns.consolidacao import detectar_consolidacoes
+from patterns.reversao import detectar_reversoes
 from config import FRONTEND_URL
 from rate_limit import limiter
 from admin_auth import router as admin_auth_router, require_admin
@@ -312,14 +314,14 @@ def detectar_padroes(
     intervalo: IntervaloAtivo = Query("1d"),
     janela: int = Query(5, ge=2, le=20, description="sensibilidade dos pivôs"),
 ):
-    """Roda o detector automático no histórico do ativo.
+    """Roda os detectores automáticos no histórico do ativo.
 
-    HOJE SÓ DETECTA OCO. O detector automático (patterns/classicos.py) é o
-    único que existe; topo duplo, bandeira, flâmula, cunha e canal ainda
-    dependem do modelo que está sendo treinado com os templates marcados à
-    mão. A rota devolve `cobertos` justamente pra a tela saber o que pode
-    prometer — em vez de dizer "nenhum padrão encontrado" quando a verdade
-    é "ninguém procurou".
+    Cobertos hoje: OCO (patterns/classicos.py), os quatro de reversão
+    (patterns/reversao.py) e os quatro de consolidação
+    (patterns/consolidacao.py). Bandeira, flâmula, cunha, canal e topo
+    duplo ainda dependem do modelo que está sendo treinado com os
+    templates marcados à mão — por isso a rota devolve `cobertos`: a tela
+    só promete o que alguém realmente procurou.
     """
     chave_cache = f"detectar:{ticker}:{periodo}:{intervalo}:{janela}"
     em_cache = cache_get(chave_cache, TTL_MEDIO)
@@ -330,7 +332,11 @@ def detectar_padroes(
     if not candles:
         raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
 
-    achados = detectar_padroes_classicos(candles, janela=janela)
+    achados = (
+        detectar_padroes_classicos(candles, janela=janela)
+        + detectar_reversoes(candles, janela=janela)
+        + detectar_consolidacoes(candles, janela=janela)
+    )
     # o índice do candle não serve pra outra janela de tempo; o timestamp sim
     for p in achados:
         intervalo_c = p.get("intervalo_candles") or {}
@@ -347,7 +353,11 @@ def detectar_padroes(
         "status": "ok",
         "ticker": ticker.upper(),
         "total_candles": len(candles),
-        "cobertos": ["oco"],
+        "cobertos": [
+            "oco", "fundo_duplo", "oco_invertido", "topo_triplo", "fundo_triplo",
+            "triangulo_ascendente", "triangulo_descendente", "triangulo_simetrico",
+            "retangulo",
+        ],
         "padroes": achados,
     }
     cache_set(chave_cache, resposta)

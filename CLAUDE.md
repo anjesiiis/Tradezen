@@ -315,7 +315,11 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | DTW (similaridade de formas) | `ml/dtw.py` |
 | Teste DTW topo duplo | `ml/testar_dtw_topo_duplo.py` |
 | Padrões marcados | `padroes_marcados.py` |
-| Detecção clássica | `patterns/classicos.py` |
+| Detecção clássica (OCO) | `patterns/classicos.py` |
+| Detecção: fundo duplo, OCO invertido, topos/fundos triplos | `patterns/reversao.py` |
+| Detecção: triângulos e retângulo | `patterns/consolidacao.py` |
+| Base dos detectores (tolerâncias, veredicto, recorte) | `patterns/comum.py` |
+| Rodar a detecção e gravar no Supabase | `detectar_e_salvar.py` (CLI) |
 | Detecção de níveis | `patterns/niveis.py` |
 | Detecção de pivôs | `patterns/pivos.py` |
 | Alertas | `alertas.py` |

@@ -21,6 +21,10 @@ create table if not exists templates_fundo_duplo (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_fundo_duplo_ticker_idx on templates_fundo_duplo (ticker);
@@ -38,6 +42,10 @@ create table if not exists templates_oco_invertido (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_oco_invertido_ticker_idx on templates_oco_invertido (ticker);
@@ -55,6 +63,10 @@ create table if not exists templates_topo_triplo (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_topo_triplo_ticker_idx on templates_topo_triplo (ticker);
@@ -72,6 +84,10 @@ create table if not exists templates_fundo_triplo (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_fundo_triplo_ticker_idx on templates_fundo_triplo (ticker);
@@ -89,6 +105,10 @@ create table if not exists templates_triangulo_ascendente (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_triangulo_ascendente_ticker_idx on templates_triangulo_ascendente (ticker);
@@ -106,6 +126,10 @@ create table if not exists templates_triangulo_descendente (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_triangulo_descendente_ticker_idx on templates_triangulo_descendente (ticker);
@@ -123,6 +147,10 @@ create table if not exists templates_triangulo_simetrico (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_triangulo_simetrico_ticker_idx on templates_triangulo_simetrico (ticker);
@@ -140,6 +168,10 @@ create table if not exists templates_retangulo (
   data_p1           timestamptz,
   resultado         text,
   observacao        text,
+  -- 'manual' = marcado por um analista na tela; 'detector' = achado pelo
+  -- detector automático. Sem essa coluna, o treino do modelo misturaria
+  -- o que o detector já acha com o que ele precisa aprender.
+  origem            text not null default 'manual',
   criado_em         timestamptz not null default now()
 );
 create index if not exists templates_retangulo_ticker_idx on templates_retangulo (ticker);
