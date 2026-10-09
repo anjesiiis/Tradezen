@@ -98,29 +98,44 @@ describe('Canal de alta e de baixa', () => {
         .toEqual(['Marque os 4 pontos do canal antes de salvar.']);
     });
 
-    it('canal de alta: as duas linhas precisam subir', () => {
-      expect(validarCanal({ ...CANAL_ALTA, p2: pt(20, 90) }, ALTA).join()).toMatch(/"Fundo Dir." precisa estar acima/);
-      expect(validarCanal({ ...CANAL_ALTA, p4: pt(24, 105) }, ALTA).join()).toMatch(/"Topo Dir." precisa estar acima/);
+    // O que vale é a geometria das duas retas, não a posição de um clique
+    // em relação a outro: foi comparando ponto com ponto que a validação
+    // barrava canal bem marcado.
+    it('canal que começa por um topo passa — o fundo esquerdo vem depois', () => {
+      const comecaNoTopo = { p1: pt(10, 45), p2: pt(60, 58), p3: pt(5, 50), p4: pt(64, 63) };
+      expect(validarCanal(comecaNoTopo, ALTA)).toEqual([]);
     });
 
-    it('a segunda linha fica do outro lado do canal', () => {
-      // topo esquerdo abaixo do fundo esquerdo não é canal
-      expect(validarCanal({ ...CANAL_ALTA, p3: pt(6, 95) }, ALTA).join()).toMatch(/"Topo Esq." precisa estar acima de "Fundo Esq."/);
+    it('a ponta de uma reta pode cair antes da ponta da outra', () => {
+      const cruzado = { p1: pt(5, 40), p2: pt(60, 50), p3: pt(10, 45), p4: pt(55, 54) };
+      expect(validarCanal(cruzado, ALTA)).toEqual([]);
     });
 
-    it('cada ponto da segunda linha vem depois do seu par na primeira', () => {
-      expect(validarCanal({ ...CANAL_ALTA, p3: pt(1, 112) }, ALTA))
-        .toContain('"Topo Esq." precisa vir depois de "Fundo Esq." no tempo.');
-      expect(validarCanal({ ...CANAL_ALTA, p4: pt(19, 132) }, ALTA))
-        .toContain('"Topo Dir." precisa vir depois de "Fundo Dir." no tempo.');
+    it('canal de alta: as duas retas precisam subir', () => {
+      expect(validarCanal({ ...CANAL_ALTA, p2: pt(20, 90) }, ALTA).join())
+        .toMatch(/A linha de "Fundo Esq." a "Fundo Dir." precisa estar subindo/);
+      expect(validarCanal({ ...CANAL_ALTA, p4: pt(24, 100) }, ALTA).join())
+        .toMatch(/A linha de "Topo Esq." a "Topo Dir." precisa estar subindo/);
     });
 
-    it('as duas pontas de uma linha não podem cair no mesmo candle', () => {
+    it('trocar topo com fundo é barrado: as retas se cruzam', () => {
+      const trocado = { p1: pt(5, 50), p2: pt(60, 63), p3: pt(10, 45), p4: pt(64, 58) };
+      expect(validarCanal(trocado, ALTA).join()).toMatch(/as duas se cruzam/);
+    });
+
+    it('retas que se encostam no meio do canal também são barradas', () => {
+      // sobem as duas, mas a de cima abre pouco e cruza a de baixo no fim
+      const cruzando = { p1: pt(5, 40), p2: pt(60, 70), p3: pt(10, 45), p4: pt(64, 60) };
+      expect(validarCanal(cruzando, ALTA).join()).toMatch(/precisa ficar acima/);
+    });
+
+    it('as duas pontas de uma reta não podem cair no mesmo candle', () => {
       expect(validarCanal({ ...CANAL_ALTA, p2: pt(2, 120) }, ALTA).join()).toMatch(/mesmo candle/);
     });
 
     it('canal de baixa: a mesma lógica, invertida', () => {
-      expect(validarCanal({ ...CANAL_BAIXA, p2: pt(20, 140) }, BAIXA).join()).toMatch(/precisa estar abaixo/);
+      expect(validarCanal({ ...CANAL_BAIXA, p2: pt(20, 140) }, BAIXA).join()).toMatch(/precisa estar descendo/);
+      // um canal de alta marcado na tela de baixa não passa
       expect(validarCanal(CANAL_ALTA, BAIXA).length).toBeGreaterThan(0);
     });
   });
@@ -131,8 +146,9 @@ describe('Canal de alta e de baixa', () => {
     });
 
     it('linhas que convergem avisam que aquilo é cunha ou triângulo', () => {
-      // abertura cai de 12 pra 2: as bordas estão se fechando
-      const fechando = { ...CANAL_ALTA, p4: pt(24, 122) };
+      // abertura cai de 12 pra 6: as bordas se fecham, mas sem se cruzar
+      // (se cruzassem, aí seria erro e não aviso)
+      const fechando = { ...CANAL_ALTA, p4: pt(24, 126) };
       expect(avisosDoCanal(fechando, ALTA).join()).toMatch(/não estão paralelas/);
       // mas salvar continua possível
       expect(validarCanal(fechando, ALTA)).toEqual([]);

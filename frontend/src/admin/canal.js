@@ -137,6 +137,17 @@ export function areasDoCanal(pontos, padrao) {
 }
 
 // ── Validações que BLOQUEIAM o salvamento ─────────────────────
+//
+// O que define um canal é a GEOMETRIA das duas retas, não a posição de um
+// clique em relação a outro. A primeira versão comparava ponto com ponto
+// ("Topo Esq. precisa estar acima de Fundo Esq.", "P3 depois de P1") e
+// barrava marcação correta: num canal que começa por um topo, o fundo
+// esquerdo vem DEPOIS do topo esquerdo no tempo, e isso é normal.
+//
+// Agora o que se exige é o que um canal é de fato:
+//   1. cada reta precisa de dois candles diferentes;
+//   2. as duas sobem (canal de alta) ou as duas descem (de baixa);
+//   3. a reta de cima fica acima da de baixo ao longo de todo o canal.
 export function validarCanal(pontos, padrao) {
   if (!temFormatoCanal(pontos)) return ["Marque os 4 pontos do canal antes de salvar."];
 
@@ -145,24 +156,29 @@ export function validarCanal(pontos, padrao) {
   const [r1, r2, r3, r4] = rotulosDoCanal(padrao);
   const erros = [];
 
-  // Uma linha precisa de dois candles diferentes pra existir.
+  // 1. Uma reta precisa de dois candles diferentes pra existir.
   if (p2.i === p1.i) erros.push(`"${r1}" e "${r2}" estão no mesmo candle — a linha precisa de dois candles.`);
   if (p4.i === p3.i) erros.push(`"${r3}" e "${r4}" estão no mesmo candle — a linha precisa de dois candles.`);
+  if (erros.length) return erros;   // sem as duas retas, o resto não dá pra conferir
 
-  const sobe = (a, b) => b.preco > a.preco;
-  const desce = (a, b) => b.preco < a.preco;
-  const naDirecao = alta ? sobe : desce;
-  const sentido = alta ? "acima" : "abaixo";
-  const inclinacao = alta ? "sobe" : "desce";
+  // 2. Direção: as duas acompanham o canal.
+  const inclinacao = (a, b) => (b.preco - a.preco) / (b.i - a.i);
+  const sentido = alta ? "subindo" : "descendo";
+  const naDirecao = (m) => (alta ? m > 0 : m < 0);
+  if (!naDirecao(inclinacao(p1, p2))) erros.push(`A linha de "${r1}" a "${r2}" precisa estar ${sentido} — num canal de ${alta ? "alta" : "baixa"} as duas linhas vão juntas.`);
+  if (!naDirecao(inclinacao(p3, p4))) erros.push(`A linha de "${r3}" a "${r4}" precisa estar ${sentido} — num canal de ${alta ? "alta" : "baixa"} as duas linhas vão juntas.`);
 
-  if (!naDirecao(p1, p2)) erros.push(`"${r2}" precisa estar ${sentido} de "${r1}" — num canal de ${alta ? "alta" : "baixa"} a linha ${inclinacao}.`);
-  if (!naDirecao(p1, p3)) erros.push(`"${r3}" precisa estar ${sentido} de "${r1}" — é o outro lado do canal.`);
-  if (!naDirecao(p3, p4)) erros.push(`"${r4}" precisa estar ${sentido} de "${r3}" — as duas linhas ${inclinacao}m juntas.`);
-
-  // A segunda linha é marcada no mesmo trecho da primeira: cada ponto
-  // dela vem depois do ponto correspondente.
-  if (p3.i <= p1.i) erros.push(`"${r3}" precisa vir depois de "${r1}" no tempo.`);
-  if (p4.i <= p2.i) erros.push(`"${r4}" precisa vir depois de "${r2}" no tempo.`);
+  // 3. Separação: uma reta fica de um lado da outra do começo ao fim. É
+  // isso que faz do desenho um canal — e não importa em que ordem, nem em
+  // que candle, cada ponto foi marcado.
+  const { de, ate } = extremos(pontos);
+  const linha1 = (x) => precoNaReta(p1, p2, x);
+  const linha2 = (x) => precoNaReta(p3, p4, x);
+  const foraDeLugar = [de, ate].some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
+  if (foraDeLugar) {
+    const ladoCerto = alta ? "acima" : "abaixo";
+    erros.push(`A linha de "${r3}" a "${r4}" precisa ficar ${ladoCerto} da linha de "${r1}" a "${r2}" em todo o canal — do jeito que está, as duas se cruzam.`);
+  }
 
   return erros;
 }

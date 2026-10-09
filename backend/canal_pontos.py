@@ -35,7 +35,20 @@ class PontosCanal(BaseModel):
     p4: Ponto
 
 
+def _preco_na_reta(a: Ponto, b: Ponto, x: float) -> float:
+    if b.i == a.i:
+        return a.preco
+    return a.preco + ((b.preco - a.preco) * (x - a.i)) / (b.i - a.i)
+
+
 def problemas(pontos: PontosCanal, alta: bool) -> List[str]:
+    """O que impede de salvar.
+
+    Vale a GEOMETRIA das duas retas, não a posição de um clique em
+    relação a outro: num canal que começa por um topo, o fundo esquerdo
+    vem depois do topo esquerdo no tempo, e isso é normal. Mesmas regras
+    de frontend/src/admin/canal.js.
+    """
     p1, p2, p3, p4 = pontos.p1, pontos.p2, pontos.p3, pontos.p4
     r1, r2, r3, r4 = ROTULOS_ALTA if alta else ROTULOS_BAIXA
     erros: List[str] = []
@@ -44,22 +57,36 @@ def problemas(pontos: PontosCanal, alta: bool) -> List[str]:
         erros.append(f'"{r1}" e "{r2}" estão no mesmo candle — a linha precisa de dois candles.')
     if p4.i == p3.i:
         erros.append(f'"{r3}" e "{r4}" estão no mesmo candle — a linha precisa de dois candles.')
+    if erros:
+        return erros
 
-    def na_direcao(a: Ponto, b: Ponto) -> bool:
-        return b.preco > a.preco if alta else b.preco < a.preco
+    def inclinacao(a: Ponto, b: Ponto) -> float:
+        return (b.preco - a.preco) / (b.i - a.i)
 
-    sentido = "acima" if alta else "abaixo"
-    if not na_direcao(p1, p2):
-        erros.append(f'"{r2}" precisa estar {sentido} de "{r1}".')
-    if not na_direcao(p1, p3):
-        erros.append(f'"{r3}" precisa estar {sentido} de "{r1}".')
-    if not na_direcao(p3, p4):
-        erros.append(f'"{r4}" precisa estar {sentido} de "{r3}".')
+    sentido = "subindo" if alta else "descendo"
+    direcao = "alta" if alta else "baixa"
 
-    if p3.i <= p1.i:
-        erros.append(f'"{r3}" precisa vir depois de "{r1}" no tempo.')
-    if p4.i <= p2.i:
-        erros.append(f'"{r4}" precisa vir depois de "{r2}" no tempo.')
+    def na_direcao(m: float) -> bool:
+        return m > 0 if alta else m < 0
+
+    if not na_direcao(inclinacao(p1, p2)):
+        erros.append(f'A linha de "{r1}" a "{r2}" precisa estar {sentido} — num canal de {direcao} as duas linhas vão juntas.')
+    if not na_direcao(inclinacao(p3, p4)):
+        erros.append(f'A linha de "{r3}" a "{r4}" precisa estar {sentido} — num canal de {direcao} as duas linhas vão juntas.')
+
+    de = min(p1.i, p2.i, p3.i, p4.i)
+    ate = max(p1.i, p2.i, p3.i, p4.i)
+    cruzam = any(
+        (_preco_na_reta(p3, p4, x) <= _preco_na_reta(p1, p2, x)) if alta
+        else (_preco_na_reta(p3, p4, x) >= _preco_na_reta(p1, p2, x))
+        for x in (de, ate)
+    )
+    if cruzam:
+        lado = "acima" if alta else "abaixo"
+        erros.append(
+            f'A linha de "{r3}" a "{r4}" precisa ficar {lado} da linha de "{r1}" a "{r2}" '
+            "em todo o canal — do jeito que está, as duas se cruzam."
+        )
 
     return erros
 
