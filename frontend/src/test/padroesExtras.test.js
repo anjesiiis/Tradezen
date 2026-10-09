@@ -13,9 +13,12 @@ const VALIDOS = {
   oco_invertido: { ombro_esq: pt(2, 100), cabeca: pt(6, 90), ombro_dir: pt(10, 102), pescoco: pt(12, 110) },
   topo_triplo: { topo1: pt(2, 100), vale1: pt(4, 90), topo2: pt(6, 101), vale2: pt(8, 91), topo3: pt(10, 99) },
   fundo_triplo: { fundo1: pt(2, 100), pico1: pt(4, 110), fundo2: pt(6, 101), pico2: pt(8, 111), fundo3: pt(10, 99) },
-  triangulo_ascendente: { res_esq: pt(2, 100), res_dir: pt(12, 101), sup_esq: pt(4, 90), sup_dir: pt(10, 96) },
-  triangulo_descendente: { res_esq: pt(2, 110), res_dir: pt(12, 102), sup_esq: pt(4, 90), sup_dir: pt(10, 90.5) },
-  triangulo_simetrico: { topo_esq: pt(2, 110), topo_dir: pt(12, 103), fundo_esq: pt(4, 90), fundo_dir: pt(10, 97) },
+  // os três triângulos têm os MESMOS 3 vértices: abertura em cima (P1),
+  // abertura embaixo (P2) e o bico (P3). Qual lado é horizontal é a tela
+  // que diz, não a marcação.
+  triangulo_ascendente: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 99) },
+  triangulo_descendente: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 81) },
+  triangulo_simetrico: { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 90) },
   retangulo: { res_esq: pt(2, 100), res_dir: pt(12, 101), sup_esq: pt(4, 90), sup_dir: pt(10, 90.5) },
 };
 
@@ -80,13 +83,18 @@ describe('Os 8 padrões de reversão e consolidação', () => {
         .toEqual(['Tem pico abaixo de fundo — os pontos estão trocados.']);
     });
 
-    it('triângulos e retângulo com o suporte acima da resistência', () => {
+    it('retângulo com o suporte acima da resistência', () => {
       const trocado = { res_esq: pt(2, 90), res_dir: pt(12, 91), sup_esq: pt(4, 100), sup_dir: pt(10, 101) };
-      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'retangulo']) {
-        expect(validarExtra(trocado, P[id]), id).toEqual(['O suporte está acima da resistência — as duas bordas estão trocadas.']);
+      expect(validarExtra(trocado, P.retangulo))
+        .toEqual(['O suporte está acima da resistência — as duas bordas estão trocadas.']);
+    });
+
+    it('triângulo com a abertura de cabeça pra baixo', () => {
+      const trocado = { p1: pt(2, 80), p2: pt(2, 100), p3: pt(30, 90) };
+      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
+        expect(validarExtra(trocado, P[id]), id)
+          .toEqual(['P1 está abaixo de P2 — na abertura do triângulo, P1 é o ponto de cima.']);
       }
-      expect(validarExtra({ topo_esq: pt(2, 90), topo_dir: pt(12, 85), fundo_esq: pt(4, 100), fundo_dir: pt(10, 105) }, P.triangulo_simetrico))
-        .toEqual(['O fundo está acima do topo — as duas bordas estão trocadas.']);
     });
   });
 
@@ -107,12 +115,18 @@ describe('Os 8 padrões de reversão e consolidação', () => {
       salvaComAviso('topo_triplo', { ...VALIDOS.topo_triplo, vale1: pt(9, 90) }, /"Vale 1" não está entre/);
     });
 
-    it('bordas que não estão horizontais nem na inclinação esperada', () => {
-      salvaComAviso('triangulo_ascendente', { ...VALIDOS.triangulo_ascendente, res_dir: pt(12, 130) }, /resistência não está horizontal/);
-      salvaComAviso('triangulo_ascendente', { ...VALIDOS.triangulo_ascendente, sup_dir: pt(10, 85) }, /suporte não está subindo/);
-      salvaComAviso('triangulo_descendente', { ...VALIDOS.triangulo_descendente, sup_dir: pt(10, 98) }, /suporte não está horizontal/);
-      salvaComAviso('triangulo_simetrico', { ...VALIDOS.triangulo_simetrico, topo_dir: pt(12, 120) }, /topos não estão caindo/);
+    it('bordas do retângulo que não estão horizontais', () => {
       salvaComAviso('retangulo', { ...VALIDOS.retangulo, res_dir: pt(12, 130) }, /resistências estão a mais de 3%/);
+    });
+
+    it('o triângulo aceita qualquer desenho: o tipo é o da tela', () => {
+      // o mesmo desenho salvo como os três — nenhum reclama de qual lado
+      // deveria estar horizontal
+      const desenho = { p1: pt(2, 100), p2: pt(2, 80), p3: pt(30, 95) };
+      for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
+        expect(validarExtra(desenho, P[id]), id).toEqual([]);
+        expect(avisosExtras(desenho, P[id]), id).toEqual([]);
+      }
     });
   });
 
@@ -136,14 +150,26 @@ describe('Os 8 padrões de reversão e consolidação', () => {
 
   it('área preenchida só nos triângulos e no retângulo', () => {
     const area = areasExtras(VALIDOS.triangulo_ascendente, P.triangulo_ascendente)[0];
-    // fecha pelos cantos, na ordem: resistência da esquerda pra direita e
-    // suporte voltando
-    expect(area.pontos.map((p) => p.i)).toEqual([2, 12, 10, 4]);
+    // o triângulo fecha nos três vértices: cima → bico → baixo
+    expect(area.pontos.map((p) => [p.i, p.preco])).toEqual([[2, 100], [30, 99], [2, 80]]);
     expect(area.opacidade).toBe(0.15);
     expect(areasExtras(VALIDOS.retangulo, P.retangulo)[0].borda).toBe(true);
     expect(areasExtras(VALIDOS.fundo_duplo, P.fundo_duplo)).toEqual([]);
-    // sem os 4 cantos, não desenha área nenhuma
+    // sem todos os vértices, não desenha área nenhuma
+    expect(areasExtras({ p1: pt(1, 100) }, P.triangulo_simetrico)).toEqual([]);
     expect(areasExtras({ res_esq: pt(1, 100) }, P.retangulo)).toEqual([]);
+  });
+
+  it('os três triângulos são 3 cliques, sem nome de ponto', () => {
+    for (const id of ['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']) {
+      expect(passosExtras(P[id]), id).toEqual(['p1', 'p2', 'p3']);
+      expect(stepsExtras(P[id]).map((s) => s.label), id).toEqual(['P1', 'P2', 'P3']);
+    }
+    // as duas linhas saem da abertura e se encontram no bico
+    expect(linhasExtras(VALIDOS.triangulo_simetrico, P.triangulo_simetrico).map((l) => l.id))
+      .toEqual(['p1-p3', 'p2-p3']);
+    // o retângulo continua com as 4 bordas nomeadas
+    expect(passosExtras(P.retangulo)).toEqual(['res_esq', 'res_dir', 'sup_esq', 'sup_dir']);
   });
 
   it('o emoji fica no ponto mais característico do padrão', () => {
@@ -169,8 +195,11 @@ describe('Os 8 padrões de reversão e consolidação', () => {
   it('o seletor só oferece padrões dos mesmos pontos', () => {
     // triângulo asc/desc e retângulo marcam as mesmas 4 bordas: dá pra
     // trocar no meio da marcação sem perder nada
+    // os três triângulos marcam os mesmos 3 vértices: dá pra trocar entre
+    // eles no meio da marcação, que é o que "salvo como ele é" pede
     expect(padroesCompativeis(P.triangulo_ascendente).map((p) => p.id))
-      .toEqual(['triangulo_ascendente', 'triangulo_descendente', 'retangulo']);
+      .toEqual(['triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico']);
+    expect(padroesCompativeis(P.retangulo).map((p) => p.id)).toEqual(['retangulo']);
     // o resto fica sozinho — trocar jogaria a marcação fora
     expect(padroesCompativeis(P.topo_triplo).map((p) => p.id)).toEqual(['topo_triplo']);
   });

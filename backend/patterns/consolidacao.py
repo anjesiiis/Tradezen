@@ -14,8 +14,8 @@ que a marcação manual pede (res_esq/res_dir/sup_esq/sup_dir).
 from typing import Dict, List, Optional
 
 from patterns.comum import (
-    TOLERANCIA_BORDA, melhor_por_regiao, nivel_medio, parecidos, ponto,
-    rompimento_apos, score, veredicto,
+    TOLERANCIA_BORDA, inclinacao, melhor_por_regiao, nivel_medio, parecidos,
+    ponto, rompimento_apos, score, veredicto,
 )
 from patterns.pivos import calcular_atr, encontrar_pivos
 
@@ -52,7 +52,11 @@ def _janelas(topos: List[Dict], fundos: List[Dict]):
 
 
 def _padrao(candles, tipo, nome, direcao, res, sup, chaves, explicacao, atrs) -> Optional[Dict]:
-    """Monta o padrão a partir das duas bordas, se houver confirmação."""
+    """Monta o padrão a partir das duas bordas, se houver confirmação.
+
+    `chaves` None = triângulo, que a marcação manual guarda como 3
+    vértices; com as 4 chaves = retângulo.
+    """
     res_esq, res_dir = res[0], res[-1]
     sup_esq, sup_dir = sup[0], sup[-1]
     inicio = min(res_esq["i"], sup_esq["i"])
@@ -86,7 +90,10 @@ def _padrao(candles, tipo, nome, direcao, res, sup, chaves, explicacao, atrs) ->
     stop = nivel_baixo if para_cima else nivel_cima
 
     toques = len(res) + len(sup)
-    pontos = dict(zip(chaves, [ponto(res_esq), ponto(res_dir), ponto(sup_esq), ponto(sup_dir)]))
+    pontos = (
+        _vertices_do_triangulo(res, sup) if chaves is None
+        else dict(zip(chaves, [ponto(res_esq), ponto(res_dir), ponto(sup_esq), ponto(sup_dir)]))
+    )
     return {
         "tipo": tipo,
         "nome": nome,
@@ -104,7 +111,33 @@ def _padrao(candles, tipo, nome, direcao, res, sup, chaves, explicacao, atrs) ->
 
 
 _BORDAS = ["res_esq", "res_dir", "sup_esq", "sup_dir"]
-_BORDAS_SIMETRICO = ["topo_esq", "topo_dir", "fundo_esq", "fundo_dir"]
+
+
+def _vertices_do_triangulo(res: List[Dict], sup: List[Dict]) -> Dict[str, Dict]:
+    """Os 3 vértices que a marcação manual usa: abertura (cima e baixo) e o bico.
+
+    O detector enxerga duas retas de toques; a tela marca o triângulo por
+    três pontos. O bico é onde as duas retas se encontram — e, quando elas
+    mal convergem, o fim do trecho, pra não inventar um ponto longe do
+    gráfico.
+    """
+    cima, baixo = res[0], sup[0]
+    fim = max(res[-1]["i"], sup[-1]["i"])
+    m_res, m_sup = inclinacao(res[0], res[-1]), inclinacao(sup[0], sup[-1])
+
+    bico_i = fim
+    if m_res != m_sup:
+        encontro = (sup[0]["preco"] - res[0]["preco"] + m_res * res[0]["i"] - m_sup * sup[0]["i"]) / (m_res - m_sup)
+        # só vale se o encontro estiver à frente e perto: senão é extrapolação
+        if fim < encontro <= fim + (fim - min(cima["i"], baixo["i"])):
+            bico_i = encontro
+    preco_res = res[0]["preco"] + m_res * (bico_i - res[0]["i"])
+    preco_sup = sup[0]["preco"] + m_sup * (bico_i - sup[0]["i"])
+    return {
+        "p1": ponto(cima),
+        "p2": ponto(baixo),
+        "p3": {"i": int(round(bico_i)), "preco": round((preco_res + preco_sup) / 2, 4)},
+    }
 
 
 def detectar_consolidacoes(candles: List[Dict], janela: int = 5,
@@ -134,20 +167,19 @@ def detectar_consolidacoes(candles: List[Dict], janela: int = 5,
                 "para o lado do rompimento.", atrs)
         elif quer("triangulo_ascendente") and topos_planos and fundos_subindo:
             achado = _padrao(
-                candles, "triangulo_ascendente", "Triângulo Ascendente", "alta", res, sup, _BORDAS,
+                candles, "triangulo_ascendente", "Triângulo Ascendente", "alta", res, sup, None,
                 "No Triângulo Ascendente a resistência é horizontal e o suporte sobe: os "
                 "compradores aceitam pagar cada vez mais caro enquanto os vendedores "
                 "seguram o mesmo teto. O rompimento costuma ser para cima.", atrs)
         elif quer("triangulo_descendente") and fundos_planos and topos_caindo:
             achado = _padrao(
-                candles, "triangulo_descendente", "Triângulo Descendente", "baixa", res, sup, _BORDAS,
+                candles, "triangulo_descendente", "Triângulo Descendente", "baixa", res, sup, None,
                 "No Triângulo Descendente o suporte é horizontal e a resistência cai: os "
                 "vendedores aceitam vender cada vez mais barato enquanto o suporte segura. "
                 "O rompimento costuma ser para baixo.", atrs)
         elif quer("triangulo_simetrico") and topos_caindo and fundos_subindo:
             achado = _padrao(
-                candles, "triangulo_simetrico", "Triângulo Simétrico", "qualquer", res, sup,
-                _BORDAS_SIMETRICO,
+                candles, "triangulo_simetrico", "Triângulo Simétrico", "qualquer", res, sup, None,
                 "No Triângulo Simétrico as duas bordas convergem: os topos caem e os fundos "
                 "sobem, até o preço ficar sem espaço. É um padrão de continuação — o "
                 "rompimento tende a seguir a tendência que vinha antes.", atrs)

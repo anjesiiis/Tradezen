@@ -33,6 +33,30 @@ function parecidos(a, b, tolerancia) {
 
 const pct = (t) => `${Math.round(t * 100)}%`;
 
+// ── Os três triângulos: 3 vértices, sem nome ──────────────────
+//
+// Triângulo é triângulo: dois pontos na abertura (o de cima e o de
+// baixo, à esquerda) e o bico onde as duas linhas se encontram. Qual
+// lado é horizontal — ascendente, descendente ou simétrico — é a tela
+// que diz, e o analista escolhe; o desenho é o mesmo nos três.
+//
+// Eram 4 pontos com nome (Resistência Esquerda, Suporte Direito...), o
+// que obrigava a marcar duas retas separadas e a acertar qual delas era
+// horizontal.
+const TRES_VERTICES = [
+  ["p1", "P1", VERMELHO],   // abertura, em cima
+  ["p2", "P2", VERDE],      // abertura, embaixo
+  ["p3", "P3", AZUL],       // o bico
+];
+const LINHAS_TRIANGULO = [["p1", "p3"], ["p2", "p3"]];
+const AREA_TRIANGULO = { chaves: ["p1", "p3", "p2"], cor: AZUL, opacidade: 0.15 };
+
+function inversaoTriangulo(p) {
+  return p.p1.preco <= p.p2.preco
+    ? "P1 está abaixo de P2 — na abertura do triângulo, P1 é o ponto de cima."
+    : null;
+}
+
 // ── Os oito padrões ───────────────────────────────────────────
 // `passos`: [chave, rótulo, cor] — a ordem é a ordem de marcação.
 // `linhas`: pares de chaves ligadas, no desenho.
@@ -150,70 +174,23 @@ const ESPEC = {
 
   triangulo_ascendente: {
     rotulo: "Triângulo Ascendente", nav: "triangulo-ascendente", alta: true, sigla: "TAS",
-    passos: [
-      ["res_esq", "Resistência Esquerda", VERMELHO],
-      ["res_dir", "Resistência Direita", VERMELHO],
-      ["sup_esq", "Suporte Esquerdo", VERDE],
-      ["sup_dir", "Suporte Direito", VERDE],
-    ],
-    linhas: [["res_esq", "res_dir"], ["sup_esq", "sup_dir"]],
-    area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: AZUL, opacidade: 0.15 },
-    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
-      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
-    conferir: (p) => {
-      const avisos = [];
-      if (!parecidos(p.res_esq.preco, p.res_dir.preco, TOLERANCIA_BORDA)) {
-        avisos.push(`Confira: a resistência não está horizontal (mais de ${pct(TOLERANCIA_BORDA)} entre as pontas).`);
-      }
-      if (p.sup_dir.preco <= p.sup_esq.preco) {
-        avisos.push('Confira: o suporte não está subindo — num triângulo ascendente ele sobe.');
-      }
-      return avisos;
-    },
+    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
+    inversao: inversaoTriangulo,
+    conferir: () => [],
   },
 
   triangulo_descendente: {
     rotulo: "Triângulo Descendente", nav: "triangulo-descendente", alta: false, sigla: "TDE",
-    passos: [
-      ["res_esq", "Resistência Esquerda", VERMELHO],
-      ["res_dir", "Resistência Direita", VERMELHO],
-      ["sup_esq", "Suporte Esquerdo", VERDE],
-      ["sup_dir", "Suporte Direito", VERDE],
-    ],
-    linhas: [["res_esq", "res_dir"], ["sup_esq", "sup_dir"]],
-    area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: AZUL, opacidade: 0.15 },
-    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
-      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
-    conferir: (p) => {
-      const avisos = [];
-      if (!parecidos(p.sup_esq.preco, p.sup_dir.preco, TOLERANCIA_BORDA)) {
-        avisos.push(`Confira: o suporte não está horizontal (mais de ${pct(TOLERANCIA_BORDA)} entre as pontas).`);
-      }
-      if (p.res_dir.preco >= p.res_esq.preco) {
-        avisos.push('Confira: a resistência não está cedendo — num triângulo descendente ela cai.');
-      }
-      return avisos;
-    },
+    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
+    inversao: inversaoTriangulo,
+    conferir: () => [],
   },
 
   triangulo_simetrico: {
     rotulo: "Triângulo Simétrico", nav: "triangulo-simetrico", alta: null, sigla: "TSI",
-    passos: [
-      ["topo_esq", "Topo Esquerdo", VERMELHO],
-      ["topo_dir", "Topo Direito", VERMELHO],
-      ["fundo_esq", "Fundo Esquerdo", VERDE],
-      ["fundo_dir", "Fundo Direito", VERDE],
-    ],
-    linhas: [["topo_esq", "topo_dir"], ["fundo_esq", "fundo_dir"]],
-    area: { chaves: ["topo_esq", "topo_dir", "fundo_dir", "fundo_esq"], cor: AZUL, opacidade: 0.15 },
-    inversao: (p) => (Math.max(p.fundo_esq.preco, p.fundo_dir.preco) >= Math.min(p.topo_esq.preco, p.topo_dir.preco)
-      ? "O fundo está acima do topo — as duas bordas estão trocadas." : null),
-    conferir: (p) => {
-      const avisos = [];
-      if (p.topo_dir.preco >= p.topo_esq.preco) avisos.push('Confira: os topos não estão caindo — num triângulo simétrico as bordas convergem.');
-      if (p.fundo_dir.preco <= p.fundo_esq.preco) avisos.push('Confira: os fundos não estão subindo — num triângulo simétrico as bordas convergem.');
-      return avisos;
-    },
+    passos: TRES_VERTICES, linhas: LINHAS_TRIANGULO, area: AREA_TRIANGULO,
+    inversao: inversaoTriangulo,
+    conferir: () => [],
   },
 
   retangulo: {
