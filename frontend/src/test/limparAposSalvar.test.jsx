@@ -2,11 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { createChart } from 'lightweight-charts';
 import TemplateMarkerChart from '../admin/TemplateMarkerChart.jsx';
 
-// Depois de salvar um template, a tela precisa ficar pronta pro próximo
-// padrão no MESMO ativo: os pontos saem do gráfico, mas o gráfico não é
-// recriado (recriar jogaria fora o ativo, o período e o trecho na tela).
-// O bug que isso cobre: a tela limpava só o seu próprio estado e os pontos
-// continuavam desenhados, porque o gráfico guarda uma cópia deles.
+// O gráfico guarda a PRÓPRIA cópia dos pontos, por índice de candle. A
+// tela limpar só o estado dela não basta: os pontos continuam desenhados.
+// É o mesmo bug em dois caminhos —
+//   • depois de salvar: a marcação anterior ficava na tela;
+//   • ao trocar de ativo ou período: as linhas do ativo ANTERIOR ficavam
+//     desenhadas sobre o novo, em preços que não existem nele.
+// Os dois são resolvidos pelo mesmo `limparEm`, que zera os pontos sem
+// recriar o gráfico (recriar jogaria fora o ativo, o período e o zoom).
 
 const DIA = 86400000;
 const candles = Array.from({ length: 40 }, (_, i) => ({
@@ -70,6 +73,22 @@ describe('Limpar os pontos depois de salvar', () => {
     );
 
     expect(screen.getByRole('button', { name: /Topo 1/ })).toHaveClass('active');
+  });
+
+  it('serve pra trocar de ativo: pontos do anterior não sobrevivem', () => {
+    // mesmo com candles NOVOS (outro ativo), o que apaga os pontos é o
+    // limparEm — sem ele o gráfico redesenha a marcação velha nos índices
+    // do ativo novo
+    const outroAtivo = candles.map((c) => ({ ...c, fechamento: c.fechamento * 3 }));
+    const { rerender } = montar({ limparEm: 0 });
+    expect(precosNaTela()).toHaveLength(3);
+
+    rerender(
+      <TemplateMarkerChart candles={outroAtivo} steps={STEPS} initialPontos={PONTOS} onChange={vi.fn()} limparEm={1} />,
+    );
+
+    expect(precosNaTela()).toHaveLength(0);
+    expect(createChart).toHaveBeenCalledTimes(1);
   });
 
   it('avisa a tela que os pontos ficaram vazios', () => {

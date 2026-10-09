@@ -210,6 +210,11 @@ export default function PainelMarcacao({ padraoInicial }) {
       setCandlesContexto(data.candles);
       setPontos({});
       setAnotacoes([]);
+      // O gráfico guarda a própria cópia dos pontos, por ÍNDICE de candle:
+      // sem zerar aqui, as linhas do ativo anterior continuavam desenhadas
+      // sobre o ativo novo, em preços que não existem nele.
+      setLimpezas((n) => n + 1);
+      setDesenhoSalvo(null);
       // gráfico novo: guarda pra próxima tela e zera a posição antiga
       faixaRef.current = null;
       guardarGrafico({ ticker: alvo, periodo: janela, intervalo, candles: data.candles, faixa: null });
