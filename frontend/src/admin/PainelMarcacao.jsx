@@ -21,7 +21,7 @@ import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } 
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
-import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
+import { filtroInicial } from "../lib/filtroPadroes.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -80,7 +80,8 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [editando, setEditando] = useState(null);
   const { avisos, mostrarToasts, fecharAviso } = useToasts();
   // Quais padrões já marcados ficam visíveis no gráfico (sidebar)
-  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
+  // O sidebar abre com só o padrão desta tela ligado (filtroPadroes.js)
+  const [padroesVisiveis, setPadroesVisiveis] = useState(() => filtroInicial(padrao.id));
 
   // 💡 dos templates já salvos DESTE ativo (todos os padrões)
   const marcadoresSalvos = useLampadas(ticker, templates);
@@ -173,6 +174,9 @@ export default function PainelMarcacao({ padraoInicial }) {
     if (!novoPadrao || novoPadrao.id === padrao.id) return;
     const marcados = Object.keys(pontos).length;
     setPadrao(novoPadrao);
+    // Trocar de padrão no seletor é entrar naquele padrão: o sidebar
+    // volta a mostrar só ele, como ao abrir a tela.
+    setPadroesVisiveis(filtroInicial(novoPadrao.id));
     setDesenhoSalvo(null);
     setEditando(null);
     setMensagem(null);
@@ -266,6 +270,9 @@ export default function PainelMarcacao({ padraoInicial }) {
       setObservacao("");
       setAnotacoes([]);
       setSalvoAgora(salvo?.id ?? null);
+      // o que acabou de ser salvo precisa aparecer: se o padrão estava
+      // desmarcado no sidebar, ele volta ligado
+      setPadroesVisiveis((atuais) => (atuais.includes(padrao.id) ? atuais : [...atuais, padrao.id]));
       // Zera os pontos no gráfico sem recriá-lo (ativo, período e zoom ficam).
       setLimpezas((n) => n + 1);
       carregarTemplates();
@@ -545,7 +552,12 @@ export default function PainelMarcacao({ padraoInicial }) {
                     padraoMarcado={{ id: padrao.id, ancora: ancoraDoEmoji(padrao), acima: ficaAcima(padrao.id) }}
                     areas={[
                       ...areasDoPadrao(pontos, padrao),
-                      ...desenhosVisiveis.flatMap((d) => d.areas || []),
+                      // o aberto pela 💡 ganha do mesmo padrão vindo do
+                      // sidebar: os dois têm o mesmo id de área, e duas
+                      // áreas iguais davam "two children with the same key"
+                      ...desenhosVisiveis
+                        .filter((d) => d.chave !== desenhoSalvo?.chave)
+                        .flatMap((d) => d.areas || []),
                       ...(desenhoSalvo?.areas || []),
                     ]}
                     candles={candlesContexto}

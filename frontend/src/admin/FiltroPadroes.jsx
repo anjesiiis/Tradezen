@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ICONE_GENERICO, classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
-import { PADROES_DO_FILTRO, guardarFiltro } from "../lib/filtroPadroes.js";
+import { PADROES_DO_FILTRO } from "../lib/filtroPadroes.js";
 
 // Sidebar do gráfico de marcação: escolhe quais padrões já salvos ficam
-// visíveis no gráfico e lista os que existem neste ativo. Começa com tudo
-// que já existe ligado — abrir um ativo mostra na hora o que foi marcado
-// nele; o analista desliga o que atrapalhar.
+// visíveis no gráfico e lista os que existem neste ativo.
 //
-// A escolha fica no localStorage: quem usa isso passa horas marcando, e
-// refazer a seleção a cada recarga seria trabalho repetido à toa.
+// Abre com SÓ o padrão da tela ligado (filtroPadroes.js): na hora de
+// marcar o que se precisa ver é o preço, não o gráfico coberto de emoji
+// de outros padrões. Quem quiser conferir os outros marca na mão.
 
 /**
  * @param {string[]} ligados — ids marcados
@@ -44,8 +43,6 @@ function classeDoResultado(resultado) {
 
 export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos = [], destacado = null, foraDaFaixa = new Set() }) {
   const [abertoNoCelular, setAberto] = useState(false);
-
-  useEffect(() => { guardarFiltro(ligados); }, [ligados]);
 
   function alternar(id) {
     aoMudar(ligados.includes(id) ? ligados.filter((x) => x !== id) : [...ligados, id]);
@@ -102,9 +99,11 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos 
         <>
           <span className="filtro-secao">Marcados neste ativo</span>
           <div className="filtro-salvos">
-            {/* mais recente primeiro: o que acabou de ser salvo fica no topo */}
+            {/* O que acabou de ser salvo fica no topo: ordena por quando
+                foi marcado, não pela data do padrão no gráfico — um padrão
+                de 2018 salvo agora tem que aparecer em primeiro. */}
             {[...salvos]
-              .sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
+              .sort((a, b) => new Date(b.criadoEm || b.data || 0) - new Date(a.criadoEm || a.data || 0))
               .map((m) => (
                 <a
                   key={m.id}

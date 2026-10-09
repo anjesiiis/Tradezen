@@ -71,6 +71,10 @@ export function useLampadas(ticker, gatilho) {
               time: Math.floor(new Date(t.data_p1).getTime() / 1000),
               // o que o sidebar mostra e pra onde ele leva
               data: t.data_p1,
+              // quando foi salvo — é o que põe o recém-salvo no topo do
+              // sidebar; `data` é a data do padrão no gráfico, que pode
+              // ser de anos atrás
+              criadoEm: t.criado_em || null,
               resultado: t.resultado || null,
               rota: ROTA_DO_TIPO[tipo] || null,
             }));

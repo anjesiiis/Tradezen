@@ -66,6 +66,8 @@ export default function TemplateMarkerChart({
   const [arrastando, setArrastando] = useState(null);
   const [sobreAlgo, setSobreAlgo] = useState(null); // "ponto" | "linha" | null
 
+  const chavesDosExtras = desenhosExtras.map((d) => d.chave).join("|");
+
   const [pontos, setPontos] = useState(initialPontos || {});
   const [activeStep, setActiveStep] = useState(() => {
     const primeiroFaltando = steps.find((s) => !(initialPontos || {})[s.key]);
@@ -549,7 +551,13 @@ export default function TemplateMarkerChart({
     const quadro = requestAnimationFrame(atualizarPosicoesSeMudaram);
     return () => cancelAnimationFrame(quadro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pontos, candles, desenhoSalvo, desenhosExtras]);
+    // `desenhosExtras` NÃO entra aqui: o valor padrão (`= []`) é um array
+    // novo a cada render, e como este efeito chama onChange — que troca o
+    // estado de quem renderiza —, a dependência mudava sozinha e o render
+    // entrava em loop ("Maximum update depth exceeded"). O que identifica
+    // os desenhos é a lista de chaves; o conteúdo deles depende dos
+    // candles, que já são dependência.
+  }, [pontos, candles, desenhoSalvo, chavesDosExtras]);
 
   function limpar() {
     setPontos({});

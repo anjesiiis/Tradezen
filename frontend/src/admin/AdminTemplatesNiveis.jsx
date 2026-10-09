@@ -8,7 +8,7 @@ import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
 import { useToasts } from "./toastsAdmin.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
-import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
+import { filtroInicial } from "../lib/filtroPadroes.js";
 import { useLampadas } from "./lampadas.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
@@ -69,7 +69,8 @@ export default function AdminTemplatesNiveis() {
   const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
   const [tipo, setTipo] = useState("suporte");
   // Padrões já marcados neste ativo (de qualquer tipo) — viram emoji
-  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
+  // O sidebar abre com só o padrão desta tela ligado (filtroPadroes.js)
+  const [padroesVisiveis, setPadroesVisiveis] = useState(() => filtroInicial("niveis"));
   const [candlesContexto, setCandlesContexto] = useState(() =>
     candlesGuardados(estadoDoGrafico().ticker, estadoDoGrafico().periodo, estadoDoGrafico().intervalo)
   );
@@ -165,6 +166,9 @@ export default function AdminTemplatesNiveis() {
       });
       mostrarToasts(["Padrão salvo ✓"], "ok", 2500);
       setSalvoAgora(salvo?.id ?? null);
+      // o que acabou de ser salvo precisa aparecer: se o padrão estava
+      // desmarcado no sidebar, ele volta ligado
+      setPadroesVisiveis((atuais) => (atuais.includes("niveis") ? atuais : [...atuais, "niveis"]));
       setToquesPorGrupo((prev) => ({ ...prev, [tipo]: [] }));
       setResultado("");
       setObservacao("");

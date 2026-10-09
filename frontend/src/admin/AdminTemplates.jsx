@@ -15,7 +15,7 @@ import { detectarPadroes, fetchAtivoCandles, templatesOcoApi, clearAdminToken } 
 import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
-import { lerFiltroSalvo } from "../lib/filtroPadroes.js";
+import { filtroInicial } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
@@ -60,7 +60,8 @@ export default function AdminTemplates() {
   const [editando, setEditando] = useState(null);
 
   // Quais padrões já marcados ficam visíveis no gráfico (sidebar)
-  const [padroesVisiveis, setPadroesVisiveis] = useState(lerFiltroSalvo);
+  // O sidebar abre com só o padrão desta tela ligado (filtroPadroes.js)
+  const [padroesVisiveis, setPadroesVisiveis] = useState(() => filtroInicial("oco"));
   const lampadas = useLampadas(ticker, templates);
   const contagemPorPadrao = lampadas.reduce((acc, m) => {
     acc[m.tipo] = (acc[m.tipo] || 0) + 1;
@@ -207,6 +208,9 @@ export default function AdminTemplates() {
       setObservacao("");
       setAnotacoes([]);
       setSalvoAgora(salvo?.id ?? null);
+      // o que acabou de ser salvo precisa aparecer: se o padrão estava
+      // desmarcado no sidebar, ele volta ligado
+      setPadroesVisiveis((atuais) => (atuais.includes("oco") ? atuais : [...atuais, "oco"]));
       // Zera os pontos no gráfico sem recriá-lo (ativo, período e zoom ficam).
       setLimpezas((n) => n + 1);
       carregarTemplates();

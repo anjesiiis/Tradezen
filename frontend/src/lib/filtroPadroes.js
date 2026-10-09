@@ -1,10 +1,7 @@
-// Lista e persistência do filtro de padrões do gráfico de marcação.
+// Lista do filtro de padrões do gráfico de marcação.
 //
-// Fica fora do componente porque três telas leem daqui (OCO, topo duplo e
-// a compartilhada de bandeira/flâmula/cunha/canal) e porque o estado
-// inicial é lido antes de qualquer render.
-
-const CHAVE = "tradezen_filtro_padroes";
+// Fica fora do componente porque todas as telas de marcação leem daqui e
+// porque o estado inicial é lido antes de qualquer render.
 
 // Todos têm tabela e tela de marcação própria — a marca "em breve" saiu
 // quando os oito últimos (fundo duplo, OCO invertido, topos/fundos
@@ -35,26 +32,18 @@ export const PADROES_DO_FILTRO = [
   { id: "niveis", nome: "Suporte/Resistência" },
 ];
 
-const DISPONIVEIS = PADROES_DO_FILTRO.filter((p) => !p.emBreve).map((p) => p.id);
+export const DISPONIVEIS = PADROES_DO_FILTRO.filter((p) => !p.emBreve).map((p) => p.id);
 
 /**
- * Começa com TUDO ligado: abrir um ativo tem que mostrar na hora o que já
- * foi marcado nele, de qualquer padrão — é o aviso de "não marque isso de
- * novo". Quem quiser limpar a tela desmarca, e a escolha fica salva.
+ * Com o que o sidebar abre: SÓ o padrão da tela.
+ *
+ * Antes abria com tudo ligado e o gráfico vinha coberto de emoji de
+ * outros padrões — justamente na hora de marcar, que é quando se precisa
+ * ver o preço. Quem quiser conferir os outros marca na mão; a escolha
+ * vale enquanto a tela estiver aberta e volta ao padrão da página na
+ * próxima (era guardada no localStorage, e aí "só o padrão atual" nunca
+ * acontecia de verdade).
  */
-export function lerFiltroSalvo() {
-  try {
-    const salvo = JSON.parse(localStorage.getItem(CHAVE));
-    if (!Array.isArray(salvo)) return [...DISPONIVEIS];
-    // ignora id que não existe mais (padrão renomeado, lixo de outra versão)
-    return salvo.filter((id) => DISPONIVEIS.includes(id));
-  } catch {
-    return [...DISPONIVEIS];   // localStorage bloqueado ou com conteúdo inválido
-  }
-}
-
-export function guardarFiltro(ligados) {
-  try {
-    localStorage.setItem(CHAVE, JSON.stringify(ligados));
-  } catch { /* sem localStorage, a escolha vale só enquanto a aba está aberta */ }
+export function filtroInicial(padraoDaTela) {
+  return DISPONIVEIS.includes(padraoDaTela) ? [padraoDaTela] : [];
 }

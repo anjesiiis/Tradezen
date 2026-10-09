@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FiltroPadroes from '../admin/FiltroPadroes.jsx';
-import { PADROES_DO_FILTRO, lerFiltroSalvo } from '../lib/filtroPadroes.js';
+import { DISPONIVEIS, PADROES_DO_FILTRO, filtroInicial } from '../lib/filtroPadroes.js';
 
 function montar(props = {}) {
   const aoMudar = vi.fn();
@@ -28,16 +28,24 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(caixas()).toHaveLength(19);
   });
 
-  it('sem escolha salva, começa com todos os padrões que existem ligados', () => {
-    // abrir um ativo tem que mostrar na hora o que já foi marcado nele
-    const ligados = lerFiltroSalvo();
+  it('abre com só o padrão da tela ligado', () => {
+    // na hora de marcar o que se precisa ver é o preço, não o gráfico
+    // coberto de emoji dos outros padrões
+    const ligados = filtroInicial('canal_alta');
     montar({ ligados });
 
-    const disponiveis = PADROES_DO_FILTRO.filter((p) => !p.emBreve);
-    expect(ligados).toHaveLength(disponiveis.length);
-    expect(caixas().filter((c) => c.checked)).toHaveLength(disponiveis.length);
-    // os "em breve" seguem desmarcados e travados
-    expect(caixas().filter((c) => c.disabled).every((c) => !c.checked)).toBe(true);
+    expect(ligados).toEqual(['canal_alta']);
+    expect(caixas().filter((c) => c.checked)).toHaveLength(1);
+    expect(screen.getByText('Canal de Alta').closest('label').querySelector('input').checked).toBe(true);
+  });
+
+  it('cada tela abre com o seu padrão', () => {
+    expect(filtroInicial('topo_duplo')).toEqual(['topo_duplo']);
+    expect(filtroInicial('retangulo')).toEqual(['retangulo']);
+    expect(filtroInicial('niveis')).toEqual(['niveis']);
+    // id que não existe não liga nada, em vez de quebrar
+    expect(filtroInicial('padrao_que_nao_existe')).toEqual([]);
+    expect(DISPONIVEIS).toHaveLength(PADROES_DO_FILTRO.filter((p) => !p.emBreve).length);
   });
 
   it('marcar um padrão avisa quem desenha o gráfico', async () => {
@@ -77,23 +85,8 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(within(screen.getByText('OCO').closest('label')).getByText('3')).toBeInTheDocument();
   });
 
-  it('a escolha fica salva pra próxima sessão', () => {
-    montar({ ligados: ['oco', 'niveis'] });
 
-    expect(lerFiltroSalvo()).toEqual(['oco', 'niveis']);
-  });
 
-  it('uma escolha salva é respeitada, ignorando o que não existe mais', () => {
-    localStorage.setItem('tradezen_filtro_padroes', JSON.stringify(['oco', 'padrao_que_sumiu', 'fundo_duplo']));
-
-    expect(lerFiltroSalvo()).toEqual(['oco', 'fundo_duplo']);
-  });
-
-  it('localStorage com lixo cai no padrão (tudo ligado), sem quebrar', () => {
-    localStorage.setItem('tradezen_filtro_padroes', 'isso não é json');
-
-    expect(lerFiltroSalvo()).toHaveLength(PADROES_DO_FILTRO.filter((p) => !p.emBreve).length);
-  });
 
   it('o botão de limpar só aparece com algo marcado', async () => {
     const user = userEvent.setup();
@@ -111,9 +104,9 @@ describe('Filtro de padrões no gráfico de marcação', () => {
 // naquele ativo — e pra o que acabou de salvar aparecer na hora.
 describe('Lista dos padrões marcados no ativo', () => {
   const salvos = [
-    { id: 'oco-1', templateId: 7, icone: '🔴', rotulo: 'OCO', data: '2026-02-04', resultado: 'sucesso', rota: '/admin/templates' },
-    { id: 'ba-2', templateId: 9, icone: '🟢', rotulo: 'Bandeira de Alta', data: '2026-03-10', resultado: 'falha', rota: '/admin/templates/bandeira-alta' },
-    { id: 'td-3', templateId: 11, icone: '🔴', rotulo: 'Topo Duplo', data: '2026-01-02', resultado: null, rota: '/admin/templates/topo-duplo' },
+    { id: 'oco-1', templateId: 7, icone: '🔴', rotulo: 'OCO', data: '2026-02-04', criadoEm: '2026-10-02T10:00:00Z', resultado: 'sucesso', rota: '/admin/templates' },
+    { id: 'ba-2', templateId: 9, icone: '🟢', rotulo: 'Bandeira de Alta', data: '2026-03-10', criadoEm: '2026-10-03T10:00:00Z', resultado: 'falha', rota: '/admin/templates/bandeira-alta' },
+    { id: 'td-3', templateId: 11, icone: '🔴', rotulo: 'Topo Duplo', data: '2026-01-02', criadoEm: '2026-10-01T10:00:00Z', resultado: null, rota: '/admin/templates/topo-duplo' },
   ];
 
   beforeEach(() => localStorage.clear());
@@ -124,11 +117,13 @@ describe('Lista dos padrões marcados no ativo', () => {
     expect(screen.queryByText('Marcados neste ativo')).not.toBeInTheDocument();
   });
 
-  it('lista emoji, nome e data de cada padrão, do mais recente pro mais antigo', () => {
+  it('lista emoji, nome e data, com o salvo mais recentemente no topo', () => {
     montar({ salvos });
 
     expect(screen.getByText('Marcados neste ativo')).toBeInTheDocument();
     const itens = document.querySelectorAll('.filtro-salvo');
+    // ordem por quando foi MARCADO (criadoEm), não pela data do padrão no
+    // gráfico: um padrão de 2018 salvo agora aparece em primeiro
     expect([...itens].map((i) => i.querySelector('strong').textContent))
       .toEqual(['Bandeira de Alta', 'OCO', 'Topo Duplo']);
     expect(within(itens[1]).getByText('04/02/2026')).toBeInTheDocument();
@@ -153,6 +148,15 @@ describe('Lista dos padrões marcados no ativo', () => {
     const oco = [...document.querySelectorAll('.filtro-salvo')]
       .find((i) => i.querySelector('strong').textContent === 'OCO');
     expect(oco).toHaveAttribute('href', '/admin/templates?modo=visualizar&id=7');
+  });
+
+  it('um padrão antigo salvo agora vai pro topo', () => {
+    const antigoSalvoAgora = { id: 'x-9', templateId: 42, icone: '⛰️', rotulo: 'OCO',
+      data: '2018-05-02', criadoEm: '2026-10-09T23:00:00Z', rota: '/admin/templates' };
+    montar({ salvos: [...salvos, antigoSalvoAgora] });
+
+    expect(document.querySelector('.filtro-salvo strong').textContent).toBe('OCO');
+    expect(document.querySelector('.filtro-salvo .filtro-salvo-texto span').textContent).toBe('02/05/2018');
   });
 
   it('o que acabou de ser salvo fica destacado', () => {
