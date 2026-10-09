@@ -24,6 +24,7 @@ export default function TemplateMarkerChart({
   marcadoresExtras = [],   // templates já salvos deste ativo: viram 💡 clicáveis
   desenhoSalvo,            // { linhas, pontos, anotacoes } do template aberto pela 💡
   desenhosExtras = [],     // desenhos dos padrões já salvos que o sidebar deixa visíveis
+  areas = [],              // polígonos preenchidos (triângulo, retângulo)
   aoClicarLampada,
   anotacoes,               // etiquetas de texto do template (vão pro banco)
   aoMudarAnotacoes,
@@ -663,6 +664,36 @@ export default function TemplateMarkerChart({
           touchAction: arrastando ? "none" : undefined,
         }}
       />
+
+      {/* Área preenchida do padrão (triângulos e retângulo).
+          O TradingView desenha séries, não polígonos — então a área sai
+          num SVG por cima do canvas, com cada canto convertido de
+          (candle, preço) pra pixel. `versaoGrafico` muda a cada rolagem
+          e zoom, o que faz o polígono ser recalculado junto. */}
+      {areas.length > 0 && (() => {
+        const poligonos = areas
+          .map((area) => ({
+            area,
+            cantos: area.pontos.map((pt) => ancoraParaPixel(pt)),
+          }))
+          .filter(({ cantos }) => cantos.every(Boolean));
+        if (!poligonos.length) return null;
+        return (
+          <svg className="area-padrao" aria-hidden="true">
+            {poligonos.map(({ area, cantos }) => (
+              <polygon
+                key={area.id}
+                points={cantos.map((c) => `${c.x},${c.y}`).join(" ")}
+                fill={area.cor}
+                fillOpacity={area.opacidade}
+                stroke={area.borda ? area.cor : "none"}
+                strokeWidth={area.borda ? 1 : 0}
+                strokeOpacity={area.borda ? 0.6 : 0}
+              />
+            ))}
+          </svg>
+        );
+      })()}
 
       {/* Emoji do padrão que está sendo marcado agora, ancorado no ponto
           principal dele — acima quando o padrão é de topo, abaixo quando é

@@ -101,9 +101,11 @@ describe('Admin — seletor de padrão', () => {
     await screen.findByText('Nova marcação');
 
     const seletor = screen.getByTitle(/Trocar o padrão marcado/);
+    // só os padrões que marcam os MESMOS pontos: trocar pra um de outro
+    // formato jogaria a marcação fora (pra esses existe a navegação)
     expect([...seletor.options].map((o) => o.textContent)).toEqual([
       'Bandeira de Alta', 'Bandeira de Baixa', 'Flâmula de Alta', 'Flâmula de Baixa',
-      'Cunha de Alta', 'Cunha de Baixa', 'Canal de Alta', 'Canal de Baixa',
+      'Cunha de Alta', 'Cunha de Baixa',
     ]);
     expect(seletor.value).toBe('flamula_alta');
   });

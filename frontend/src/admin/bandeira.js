@@ -14,8 +14,14 @@ import {
   PADROES_CANAL, avisosDoCanal, configDoCanal, ehCanal, linhasDoCanal,
   stepsDoCanal, temFormatoCanal, validarCanal,
 } from "./canal.js";
+import {
+  PADROES_EXTRAS, areasExtras, avisosExtras, ehExtra, linhasExtras,
+  siglaExtra, stepsExtras, temFormatoExtra, validarExtra,
+} from "./padroesExtras.js";
 
-// O canal (6 pontos, 2 linhas de toque) tem regras próprias, em canal.js.
+// Dois outros formatos têm regras próprias: o canal (6 pontos em duas
+// linhas de toque), em canal.js, e os oito padrões de reversão e
+// consolidação, em padroesExtras.js.
 // As funções daqui apenas encaminham quando o padrão é um canal, pra quem
 // chama (PainelMarcacao) continuar tratando todos os padrões igual.
 
@@ -42,6 +48,7 @@ export const PADROES = {
   cunha_alta:     { id: "cunha_alta",     rotulo: "Cunha de Alta",     forma: "cunha",    alta: true,  nav: "cunha-alta",     rota: "/admin/templates/cunha-alta" },
   cunha_baixa:    { id: "cunha_baixa",    rotulo: "Cunha de Baixa",    forma: "cunha",    alta: false, nav: "cunha-baixa",    rota: "/admin/templates/cunha-baixa" },
   ...PADROES_CANAL,
+  ...PADROES_EXTRAS,
 };
 
 const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula", cunha: "Cunha" };
@@ -51,6 +58,7 @@ const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula", cunha: "Cunha" }
 export const SIGLA_FORMA = { bandeira: "BAN", flamula: "FLA", cunha: "CUN", canal: "CAN" };
 
 export function siglaDoPadrao(id) {
+  if (PADROES_EXTRAS[id]) return siglaExtra(id);
   return SIGLA_FORMA[PADROES[id]?.forma] || "???";
 }
 
@@ -86,6 +94,7 @@ export function paresDoPadrao(padrao) {
 }
 
 export function stepsDoPadrao(padrao) {
+  if (ehExtra(padrao)) return stepsExtras(padrao);
   if (ehCanal(padrao)) return stepsDoCanal();
   return paresDoPadrao(padrao).flatMap((par, iPar) => [
     { key: par.de,  label: par.rotuloDe,  short: `P${iPar * 2 + 1}`, color: par.cor, par: par.id },
@@ -101,6 +110,7 @@ export function temFormatoPares(pontos) {
 // acontecem, sem depender dos outros pares.
 export function linhasDoPadrao(pontos, padrao, candles) {
   if (!pontos) return [];
+  if (ehExtra(padrao)) return linhasExtras(pontos, padrao);
   if (ehCanal(padrao)) return linhasDoCanal(pontos, candles);
   return paresDoPadrao(padrao)
     .filter((par) => pontos[par.de] && pontos[par.ate])
@@ -131,7 +141,7 @@ export function linhasDoPadrao(pontos, padrao, candles) {
  * estarem em candles diferentes.
  */
 export function normalizarPares(pontos, padrao) {
-  if (!pontos || ehCanal(padrao)) return pontos;
+  if (!pontos || ehCanal(padrao) || ehExtra(padrao)) return pontos;
   const ajustado = { ...pontos };
   for (const par of paresDoPadrao(padrao)) {
     const de = ajustado[par.de];
@@ -145,6 +155,7 @@ export function normalizarPares(pontos, padrao) {
 }
 
 export function validarPadrao(pontos, padrao) {
+  if (ehExtra(padrao)) return validarExtra(pontos, padrao);
   if (ehCanal(padrao)) return validarCanal(pontos, padrao);
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
 
@@ -177,6 +188,7 @@ export function validarPadrao(pontos, padrao) {
 
 // ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
 export function avisosDoPadrao(pontos, padrao) {
+  if (ehExtra(padrao)) return avisosExtras(pontos, padrao);
   if (ehCanal(padrao)) return avisosDoCanal(pontos);
   if (!temFormatoPares(pontos)) return [];
   const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, pontos[k]]));
@@ -220,11 +232,33 @@ export function avisosDoPadrao(pontos, padrao) {
  * editar um deles não pode virar uma parede de erros.
  */
 export function podeValidar(pontos, padrao) {
+  if (ehExtra(padrao)) return temFormatoExtra(pontos, padrao);
   return ehCanal(padrao) ? temFormatoCanal(pontos) : temFormatoPares(pontos);
 }
 
 // Medidas que o ML usa (mesmas contas das colunas geradas no Supabase —
 // ver sql/008 e sql/009)
+/**
+ * Padrões que o seletor do topo oferece: os que marcam EXATAMENTE os
+ * mesmos pontos do atual.
+ *
+ * É o que permite perceber no meio da marcação que aquilo é uma flâmula
+ * e não uma bandeira, e trocar sem remarcar nada. Oferecer um padrão de
+ * pontos diferentes (trocar bandeira por triângulo) jogaria a marcação
+ * fora, então esses ficam de fora da lista — pra eles existe a navegação
+ * de cima.
+ */
+export function padroesCompativeis(padrao) {
+  const chaves = (p) => stepsDoPadrao(p).map((s) => s.key).join("|");
+  const atual = chaves(padrao);
+  return Object.values(PADROES).filter((p) => chaves(p) === atual);
+}
+
+/** Polígono preenchido do padrão (triângulos e retângulo). */
+export function areasDoPadrao(pontos, padrao) {
+  return ehExtra(padrao) ? areasExtras(pontos, padrao) : [];
+}
+
 export function medidasDoPadrao(pontos) {
   if (!temFormatoPares(pontos)) return null;
   return {
@@ -298,11 +332,21 @@ export function stepsLegado() {
 // Pares de pontos que formam cada linha — é o que permite arrastar a linha
 // inteira (as duas pontas juntas) no gráfico de marcação.
 export function paresDeLinha(padrao) {
-  if (ehCanal(padrao)) return [];   // as linhas do canal são conta, não par de pontos
+  // nos extras cada linha sai da espec, não de um par arrastável
+  if (ehCanal(padrao) || ehExtra(padrao)) return [];
   return paresDoPadrao(padrao).map((par) => [par.de, par.ate]);
 }
 
 export function configDoTemplate(pontos, padrao) {
+  if (ehExtra(padrao) && temFormatoExtra(pontos, padrao)) {
+    return {
+      steps: stepsExtras(padrao),
+      linhas: (p) => linhasExtras(p, padrao),
+      areas: (p) => areasExtras(p, padrao),
+      linePairs: [],
+      pares: [],
+    };
+  }
   if (ehCanal(padrao) || temFormatoCanal(pontos)) return configDoCanal();
   if (temFormatoPares(pontos)) {
     return {

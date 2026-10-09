@@ -138,6 +138,14 @@ export const templatesCunhaAltaApi = makeTemplateApi("/admin/templates-cunha-alt
 export const templatesCunhaBaixaApi = makeTemplateApi("/admin/templates-cunha-baixa");
 export const templatesCanalAltaApi = makeTemplateApi("/admin/templates-canal-alta");
 export const templatesCanalBaixaApi = makeTemplateApi("/admin/templates-canal-baixa");
+export const templatesFundoDuploApi = makeTemplateApi("/admin/templates-fundo-duplo");
+export const templatesOcoInvertidoApi = makeTemplateApi("/admin/templates-oco-invertido");
+export const templatesTopoTriploApi = makeTemplateApi("/admin/templates-topo-triplo");
+export const templatesFundoTriploApi = makeTemplateApi("/admin/templates-fundo-triplo");
+export const templatesTrianguloAscendenteApi = makeTemplateApi("/admin/templates-triangulo-ascendente");
+export const templatesTrianguloDescendenteApi = makeTemplateApi("/admin/templates-triangulo-descendente");
+export const templatesTrianguloSimetricoApi = makeTemplateApi("/admin/templates-triangulo-simetrico");
+export const templatesRetanguloApi = makeTemplateApi("/admin/templates-retangulo");
 
 // Qual API usar pra cada padrão de continuação — é o que permite trocar de
 // padrão sem sair da tela de marcação (ver o seletor em PainelMarcacao).
@@ -150,6 +158,14 @@ export const API_DO_PADRAO = {
   cunha_baixa: templatesCunhaBaixaApi,
   canal_alta: templatesCanalAltaApi,
   canal_baixa: templatesCanalBaixaApi,
+  fundo_duplo: templatesFundoDuploApi,
+  oco_invertido: templatesOcoInvertidoApi,
+  topo_triplo: templatesTopoTriploApi,
+  fundo_triplo: templatesFundoTriploApi,
+  triangulo_ascendente: templatesTrianguloAscendenteApi,
+  triangulo_descendente: templatesTrianguloDescendenteApi,
+  triangulo_simetrico: templatesTrianguloSimetricoApi,
+  retangulo: templatesRetanguloApi,
 };
 
 /**

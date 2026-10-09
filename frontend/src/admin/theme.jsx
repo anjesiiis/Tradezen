@@ -16,7 +16,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 }
 .admin-shell *,.admin-shell *::before,.admin-shell *::after{box-sizing:border-box}
 
-.admin-header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
+/* altura automática: a navegação de padrões tem duas linhas */
+.admin-header{min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:6px 24px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
 .admin-logo{font-family:var(--font-h);font-size:20px;letter-spacing:2px;color:#fff}
 .notranslate{translate:no}
 .admin-logo span{color:var(--accent)}
@@ -68,6 +69,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 /* 💡 dos templates já salvos: só o emoji, clicável — sem marcador do
    gráfico embaixo (a bolinha amarela saía junto e poluía o candle). */
 .lampadas{position:absolute;inset:8px;pointer-events:none;z-index:6}
+/* Área preenchida do padrão: por cima do canvas, sem roubar o clique */
+.area-padrao{position:absolute;inset:8px;pointer-events:none;z-index:5;overflow:visible}
 .lampada{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:none;border:none;padding:2px;cursor:pointer;font-size:15px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));transition:transform .12s}
 .lampada:hover{transform:translate(-50%,-100%) scale(1.25)}
 /* Anotações de texto por cima do gráfico (só durante a sessão) */
@@ -109,7 +112,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-.admin-nav{display:flex;gap:4px;margin-left:20px;overflow-x:auto;scrollbar-width:none}
+.admin-nav-linhas{display:flex;flex-direction:column;gap:4px;margin-left:20px;min-width:0;flex:1}
+.admin-nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 .admin-nav::-webkit-scrollbar{display:none}
 .admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none;white-space:nowrap}
 .admin-nav a:hover{color:var(--text)}
@@ -133,7 +137,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .admin-grid2{grid-template-columns:1fr}
   .admin-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
   .admin-picker-dd{max-width:calc(100vw - 24px)}
-  .admin-nav{margin-left:0;flex-wrap:wrap;width:100%;margin-top:8px}
+  .admin-nav-linhas{margin-left:0;width:100%;margin-top:8px}
+  .admin-nav{flex-wrap:wrap;width:100%}
   .admin-btn,.admin-btn-ghost,.admin-picker-btn,.admin-input,.admin-select{min-height:44px}
 }
 
@@ -235,35 +240,53 @@ export default function AdminShell({ children }) {
 // mantém o gráfico no mesmo zoom quando se percebe que a bandeira de alta
 // era, na verdade, de baixa.
 export function AdminPatternNav({ active, aoTrocar }) {
-  const links = [
-    { key: "oco", label: "OCO", href: "/admin/templates" },
-    { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
-    { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
-    { key: "bandeira-alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
-    { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
-    { key: "flamula-alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
-    { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
-    { key: "cunha-alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
-    { key: "cunha-baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
-    { key: "canal-alta", label: "Canal de Alta", href: "/admin/templates/canal-alta" },
-    { key: "canal-baixa", label: "Canal de Baixa", href: "/admin/templates/canal-baixa" },
+  // Duas linhas, por família de padrão: numa linha só, 19 abas não cabem
+  // na tela. Reversão em cima, continuação e consolidação embaixo.
+  const linhas = [
+    [
+      { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
+      { key: "fundo-duplo", label: "Fundo Duplo", href: "/admin/templates/fundo-duplo" },
+      { key: "topo-triplo", label: "Topo Triplo", href: "/admin/templates/topo-triplo" },
+      { key: "fundo-triplo", label: "Fundo Triplo", href: "/admin/templates/fundo-triplo" },
+      { key: "oco", label: "OCO", href: "/admin/templates" },
+      { key: "oco-invertido", label: "OCO Invertido", href: "/admin/templates/oco-invertido" },
+    ],
+    [
+      { key: "bandeira-alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
+      { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
+      { key: "flamula-alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
+      { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
+      { key: "cunha-alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
+      { key: "cunha-baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
+      { key: "canal-alta", label: "Canal de Alta", href: "/admin/templates/canal-alta" },
+      { key: "canal-baixa", label: "Canal de Baixa", href: "/admin/templates/canal-baixa" },
+      { key: "triangulo-ascendente", label: "Triângulo Asc.", href: "/admin/templates/triangulo-ascendente" },
+      { key: "triangulo-descendente", label: "Triângulo Desc.", href: "/admin/templates/triangulo-descendente" },
+      { key: "triangulo-simetrico", label: "Triângulo Sim.", href: "/admin/templates/triangulo-simetrico" },
+      { key: "retangulo", label: "Retângulo", href: "/admin/templates/retangulo" },
+      { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
+    ],
   ];
   return (
-    <nav className="admin-nav">
-      {links.map((l) => (
-        /* Link, e não <a>: trocar de padrão não recarrega o app inteiro
-           (o que refazia todas as chamadas e, com token vencido, caía no
-           pedido de email). */
-        <Link
-          key={l.key}
-          to={l.href}
-          className={active === l.key ? "active" : ""}
-          onClick={(e) => { if (aoTrocar?.(l.key, l.href)) e.preventDefault(); }}
-        >
-          {l.label}
-        </Link>
+    <div className="admin-nav-linhas">
+      {linhas.map((linha, n) => (
+        <nav className="admin-nav" key={n}>
+          {linha.map((l) => (
+            /* Link, e não <a>: trocar de padrão não recarrega o app inteiro
+               (o que refazia todas as chamadas e, com token vencido, caía no
+               pedido de email). */
+            <Link
+              key={l.key}
+              to={l.href}
+              className={active === l.key ? "active" : ""}
+              onClick={(e) => { if (aoTrocar?.(l.key, l.href)) e.preventDefault(); }}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
       ))}
-    </nav>
+    </div>
   );
 }
 

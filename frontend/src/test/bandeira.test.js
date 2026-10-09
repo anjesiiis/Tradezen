@@ -88,14 +88,16 @@ describe('Ordem dos cliques numa linha', () => {
 
 describe('Padrões de continuação — os 6 templates', () => {
   it('bandeira, flâmula e cunha — de alta e de baixa', () => {
-    expect(Object.keys(PADROES)).toEqual([
+    // PADROES é o registro de TODOS os padrões com tela de marcação: os 6
+    // de continuação, os 2 canais (canal.js) e os 8 de reversão e
+    // consolidação (padroesExtras.js). Cada família tem regras próprias.
+    expect(Object.keys(PADROES).slice(0, 8)).toEqual([
       'bandeira_alta', 'bandeira_baixa', 'flamula_alta', 'flamula_baixa', 'cunha_alta', 'cunha_baixa',
-      // o canal entra no mesmo registro, mas com regras próprias (canal.js)
       'canal_alta', 'canal_baixa',
     ]);
-    expect(Object.values(PADROES).map((p) => p.rotulo)).toEqual([
-      'Bandeira de Alta', 'Bandeira de Baixa', 'Flâmula de Alta', 'Flâmula de Baixa',
-      'Cunha de Alta', 'Cunha de Baixa', 'Canal de Alta', 'Canal de Baixa',
+    expect(Object.keys(PADROES).slice(8)).toEqual([
+      'fundo_duplo', 'oco_invertido', 'topo_triplo', 'fundo_triplo',
+      'triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico', 'retangulo',
     ]);
   });
 
@@ -115,8 +117,9 @@ describe('Padrões de continuação — os 6 templates', () => {
   });
 
   it('os 6 de continuação usam as mesmas 8 chaves de ponto', () => {
-    // o canal fica de fora: são 6 pontos, com chaves próprias (ver canal.test.js)
-    for (const padrao of Object.values(PADROES).filter((p) => !p.canal)) {
+    // canal e extras ficam de fora: têm chaves próprias (canal.test.js,
+    // padroesExtras.test.js)
+    for (const padrao of Object.values(PADROES).filter((p) => ['bandeira', 'flamula', 'cunha'].includes(p.forma))) {
       expect(stepsDoPadrao(padrao).map((s) => s.key)).toEqual(PASSOS_PARES);
     }
   });

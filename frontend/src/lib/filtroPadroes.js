@@ -6,12 +6,19 @@
 
 const CHAVE = "tradezen_filtro_padroes";
 
-// Os que existem no banco hoje têm tabela e podem ter template salvo. Os
-// de "em breve" ficam na lista de propósito: mostram o que o detector
-// ainda não cobre, em vez de dar a impressão de que a lista é só isso.
+// Todos têm tabela e tela de marcação própria — a marca "em breve" saiu
+// quando os oito últimos (fundo duplo, OCO invertido, topos/fundos
+// triplos, triângulos e retângulo) ganharam tela. A ordem é a mesma das
+// duas linhas da navegação: reversão, continuação, consolidação.
 export const PADROES_DO_FILTRO = [
+  // reversão
   { id: "topo_duplo", nome: "Topo Duplo" },
-  { id: "fundo_duplo", nome: "Fundo Duplo", emBreve: true },
+  { id: "fundo_duplo", nome: "Fundo Duplo" },
+  { id: "topo_triplo", nome: "Topo Triplo" },
+  { id: "fundo_triplo", nome: "Fundo Triplo" },
+  { id: "oco", nome: "OCO" },
+  { id: "oco_invertido", nome: "OCO Invertido" },
+  // continuação
   { id: "bandeira_alta", nome: "Bandeira de Alta" },
   { id: "bandeira_baixa", nome: "Bandeira de Baixa" },
   { id: "flamula_alta", nome: "Flâmula de Alta" },
@@ -20,10 +27,11 @@ export const PADROES_DO_FILTRO = [
   { id: "cunha_baixa", nome: "Cunha de Baixa" },
   { id: "canal_alta", nome: "Canal de Alta" },
   { id: "canal_baixa", nome: "Canal de Baixa" },
-  { id: "oco", nome: "OCO" },
-  { id: "oco_invertido", nome: "OCO Invertido", emBreve: true },
-  { id: "topo_triplo", nome: "Topo Triplo", emBreve: true },
-  { id: "fundo_triplo", nome: "Fundo Triplo", emBreve: true },
+  // consolidação
+  { id: "triangulo_ascendente", nome: "Triângulo Asc." },
+  { id: "triangulo_descendente", nome: "Triângulo Desc." },
+  { id: "triangulo_simetrico", nome: "Triângulo Sim." },
+  { id: "retangulo", nome: "Retângulo" },
   { id: "niveis", nome: "Suporte/Resistência" },
 ];
 

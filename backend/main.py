@@ -57,6 +57,7 @@ from admin_templates_flamula_baixa import router as admin_templates_flamula_baix
 from admin_templates_cunha_alta import router as admin_templates_cunha_alta_router
 from admin_templates_cunha_baixa import router as admin_templates_cunha_baixa_router
 from admin_templates_canal_alta import router as admin_templates_canal_alta_router
+from admin_templates_extras import ROUTERS as admin_templates_extras_routers
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
 from padroes_marcados import router as padroes_marcados_router
 from analises import router as analises_router
@@ -139,6 +140,9 @@ app.include_router(admin_templates_cunha_alta_router)
 app.include_router(admin_templates_cunha_baixa_router)
 app.include_router(admin_templates_canal_alta_router)
 app.include_router(admin_templates_canal_baixa_router)
+# Fundo duplo, OCO invertido, topos/fundos triplos, triângulos e retângulo
+for _router in admin_templates_extras_routers:
+    app.include_router(_router)
 app.include_router(padroes_marcados_router)
 app.include_router(analises_router)
 app.include_router(alertas_router)

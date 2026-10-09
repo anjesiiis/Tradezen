@@ -209,10 +209,14 @@ export function montarDesenhoSalvo({ chave, rotulo, tipo, salvo, candlesAtuais, 
         }));
 
   const cores = Object.fromEntries((config.steps || []).map((st) => [st.key, st.color]));
+  // Área preenchida (triângulos e retângulo): o padrão salvo aparece com
+  // o mesmo preenchimento de quando foi marcado.
+  const areas = (config.areas ? config.areas(pontos) : []).map((a) => ({ ...a, id: `${chave}-${a.id}` }));
   return {
     chave,
     rotulo,
     linhas,
+    areas,
     anotacoes: converterAnotacoes(salvo, candlesAtuais),
     pontos: Object.entries(pontos).map(([nome, pt]) => ({ ...pt, cor: cores[nome] })),
   };

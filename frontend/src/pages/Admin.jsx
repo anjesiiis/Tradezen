@@ -10,6 +10,14 @@ import AdminTemplatesCunhaAlta from "../admin/AdminTemplatesCunhaAlta.jsx";
 import AdminTemplatesCunhaBaixa from "../admin/AdminTemplatesCunhaBaixa.jsx";
 import AdminTemplatesCanalAlta from "../admin/AdminTemplatesCanalAlta.jsx";
 import AdminTemplatesCanalBaixa from "../admin/AdminTemplatesCanalBaixa.jsx";
+import AdminTemplatesFundoDuplo from "../admin/AdminTemplatesFundoDuplo.jsx";
+import AdminTemplatesOcoInvertido from "../admin/AdminTemplatesOcoInvertido.jsx";
+import AdminTemplatesTopoTriplo from "../admin/AdminTemplatesTopoTriplo.jsx";
+import AdminTemplatesFundoTriplo from "../admin/AdminTemplatesFundoTriplo.jsx";
+import AdminTemplatesTrianguloAscendente from "../admin/AdminTemplatesTrianguloAscendente.jsx";
+import AdminTemplatesTrianguloDescendente from "../admin/AdminTemplatesTrianguloDescendente.jsx";
+import AdminTemplatesTrianguloSimetrico from "../admin/AdminTemplatesTrianguloSimetrico.jsx";
+import AdminTemplatesRetangulo from "../admin/AdminTemplatesRetangulo.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
@@ -29,6 +37,14 @@ const TEMPLATES = {
   "/admin/templates/cunha-baixa": AdminTemplatesCunhaBaixa,
   "/admin/templates/canal-alta": AdminTemplatesCanalAlta,
   "/admin/templates/canal-baixa": AdminTemplatesCanalBaixa,
+  "/admin/templates/fundo-duplo": AdminTemplatesFundoDuplo,
+  "/admin/templates/oco-invertido": AdminTemplatesOcoInvertido,
+  "/admin/templates/topo-triplo": AdminTemplatesTopoTriplo,
+  "/admin/templates/fundo-triplo": AdminTemplatesFundoTriplo,
+  "/admin/templates/triangulo-ascendente": AdminTemplatesTrianguloAscendente,
+  "/admin/templates/triangulo-descendente": AdminTemplatesTrianguloDescendente,
+  "/admin/templates/triangulo-simetrico": AdminTemplatesTrianguloSimetrico,
+  "/admin/templates/retangulo": AdminTemplatesRetangulo,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

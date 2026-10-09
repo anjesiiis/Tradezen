@@ -10,9 +10,12 @@ import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
-  PADROES, avisosDoPadrao, configDoTemplate, linhasDoPadrao, normalizarPares,
-  paresDeLinha, podeValidar, stepsDoPadrao, validarPadrao,
+  PADROES, areasDoPadrao, avisosDoPadrao, configDoTemplate, linhasDoPadrao,
+  normalizarPares, padroesCompativeis, paresDeLinha, podeValidar, stepsDoPadrao,
+  validarPadrao,
 } from "./bandeira.js";
+import { ancoraExtra, ehExtra } from "./padroesExtras.js";
+import { ficaAcima } from "../lib/iconesPadroes.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
@@ -45,6 +48,10 @@ export default function PainelMarcacao({ padraoInicial }) {
   // candles entram porque as linhas do canal são esticadas até o limite do
   // gráfico; os outros padrões ignoram esse segundo argumento
   const desenharLinhas = (pontos, candlesDoGrafico) => linhasDoPadrao(pontos, padrao, candlesDoGrafico);
+  // Onde o emoji do padrão fica ancorado. Nos padrões de 4 pares é sempre
+  // o topo do primeiro mastro; nos de reversão e consolidação, o ponto
+  // mais característico de cada um (a cabeça do OCO invertido, etc).
+  const ancoraDoEmoji = (p) => (ehExtra(p) ? ancoraExtra(p) : "p2_topo_mastro1");
 
   // Ativo, período, intervalo e candles vêm do que a tela anterior
   // deixou: trocar de padrão não pode recomeçar do PETR4 nem obrigar a
@@ -415,10 +422,11 @@ export default function PainelMarcacao({ padraoInicial }) {
               onChange={(p) => setEditando((prev) => ({ ...prev, pontosEdit: p }))}
               anotacoes={editando.anotacoesEdit}
               aoMudarAnotacoes={(lista) => setEditando((prev) => ({ ...prev, anotacoesEdit: lista }))}
+              areas={areasDoPadrao(editando.pontosEdit || editando.pontos, padraoEmEdicao)}
               padraoMarcado={{
                 id: padraoEmEdicao.id,
-                ancora: "p2_topo_mastro1",
-                acima: padraoEmEdicao.alta,
+                ancora: ancoraDoEmoji(padraoEmEdicao),
+                acima: ficaAcima(padraoEmEdicao.id),
                 modo: editando.readOnly ? "visualizar" : "editar",
               }}
               enquadrarPontos={editando.readOnly}
@@ -497,7 +505,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                   className="admin-select"
                   title="Trocar o padrão marcado — a marcação em andamento é descartada"
                 >
-                  {Object.values(PADROES).map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+                  {padroesCompativeis(padrao).map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
                 </select>
               </Campo>
               <Campo label="Ticker">
@@ -529,7 +537,12 @@ export default function PainelMarcacao({ padraoInicial }) {
                   <div className="marcacao-grafico">
                   <TemplateMarkerChart
                     key={padrao.id}
-                    padraoMarcado={{ id: padrao.id, ancora: padrao.alta ? "p2_topo_mastro1" : "p2_topo_mastro1", acima: padrao.alta }}
+                    padraoMarcado={{ id: padrao.id, ancora: ancoraDoEmoji(padrao), acima: ficaAcima(padrao.id) }}
+                    areas={[
+                      ...areasDoPadrao(pontos, padrao),
+                      ...desenhosVisiveis.flatMap((d) => d.areas || []),
+                      ...(desenhoSalvo?.areas || []),
+                    ]}
                     candles={candlesContexto}
                     steps={STEPS}
                     linhas={desenharLinhas}

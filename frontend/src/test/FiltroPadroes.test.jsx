@@ -23,6 +23,11 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(screen.getByText('Suporte/Resistência')).toBeInTheDocument();
   });
 
+  it('os 19 padrões aparecem na lista', () => {
+    montar();
+    expect(caixas()).toHaveLength(19);
+  });
+
   it('sem escolha salva, começa com todos os padrões que existem ligados', () => {
     // abrir um ativo tem que mostrar na hora o que já foi marcado nele
     const ligados = lerFiltroSalvo();
@@ -53,13 +58,17 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(aoMudar).toHaveBeenCalledWith(['topo_duplo']);
   });
 
-  it('os que ainda não existem aparecem com "(em breve)" e não dá pra marcar', () => {
+  it('todos têm tela de marcação: nenhum fica como "(em breve)"', () => {
     montar();
 
-    const futuro = screen.getByText('Fundo Duplo').closest('label');
-    expect(within(futuro).getByText('(em breve)')).toBeInTheDocument();
-    expect(within(futuro).getByRole('checkbox')).toBeDisabled();
-    expect(futuro).toHaveAttribute('title', 'Ainda não existe no detector');
+    // os oito últimos (fundo duplo, OCO invertido, triplos, triângulos e
+    // retângulo) deixaram de ser "em breve" quando ganharam tela
+    expect(screen.queryByText('(em breve)')).not.toBeInTheDocument();
+    expect(caixas().every((c) => !c.disabled)).toBe(true);
+    for (const nome of ['Fundo Duplo', 'OCO Invertido', 'Topo Triplo', 'Fundo Triplo',
+      'Triângulo Asc.', 'Triângulo Desc.', 'Triângulo Sim.', 'Retângulo']) {
+      expect(screen.getByText(nome)).toBeInTheDocument();
+    }
   });
 
   it('mostra quantos templates já existem naquele ativo', () => {
@@ -77,8 +86,7 @@ describe('Filtro de padrões no gráfico de marcação', () => {
   it('uma escolha salva é respeitada, ignorando o que não existe mais', () => {
     localStorage.setItem('tradezen_filtro_padroes', JSON.stringify(['oco', 'padrao_que_sumiu', 'fundo_duplo']));
 
-    // fundo_duplo é "em breve": não pode voltar ligado
-    expect(lerFiltroSalvo()).toEqual(['oco']);
+    expect(lerFiltroSalvo()).toEqual(['oco', 'fundo_duplo']);
   });
 
   it('localStorage com lixo cai no padrão (tudo ligado), sem quebrar', () => {
