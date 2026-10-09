@@ -599,6 +599,11 @@ export default function TemplateMarkerChart({
 
   return (
     <div style={{ background: "#0D1117", border: "1px solid #21262D", borderRadius: 10, overflow: "hidden", position: "relative" }}>
+      {/* Ajuda do padrão ANTES dos botões: é a ordem em que se lê a tela */}
+      {instrucao && !readOnly && (
+        <p className="marcacao-instrucao">{instrucao}</p>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #21262D", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {steps.map((s) => {
@@ -647,16 +652,15 @@ export default function TemplateMarkerChart({
         </span>
       )}
 
-      {instrucao && !readOnly && (
-        <p className="marcacao-instrucao">{instrucao}</p>
-      )}
-
       <p style={{ padding: "8px 14px", fontSize: 12, color: "#5A7299", borderBottom: "1px solid #21262D", margin: 0 }}>
         {readOnly
           ? "Visualização — somente leitura."
           : completo
             ? "Todos os pontos marcados. Arraste um ponto para ajustar, arraste a linha para mover as duas pontas juntas, e apague no ✕ do botão ou com o botão direito em cima do ponto."
-            : `Clique no gráfico para marcar: ${steps.find((s) => s.key === activeStep)?.label} — o que já está marcado pode ser arrastado (ponto ou linha inteira) e apagado no ✕.`}
+            : `Clique no gráfico para marcar: ${(() => {
+                const passo = steps.find((s) => s.key === activeStep);
+                return passo?.dica || passo?.label;   // a dica diz onde é o ponto
+              })()} — o que já está marcado pode ser arrastado (ponto ou linha inteira) e apagado no ✕.`}
       </p>
 
       <div style={{ position: "relative" }}>

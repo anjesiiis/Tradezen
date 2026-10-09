@@ -26,7 +26,16 @@ export const PASSOS_CANAL = ["p1", "p2", "p3", "p4"];
 export const PASSOS_CANAL_OBRIGATORIOS = PASSOS_CANAL;
 
 const LINHA_1 = ["p1", "p2"];   // a primeira marcada
-const LINHA_2 = ["p3", "p4"];   // a de cima no canal de alta
+const LINHA_2 = ["p3", "p4"];   // a segunda
+
+// A cor segue a POSIÇÃO no gráfico, não o papel da linha: a de cima é
+// sempre verde e a de baixo sempre vermelha, nas duas direções. No canal
+// de alta a de cima é a dos topos (p3/p4); no de baixa, a dos p1/p2.
+function corDaLinha(chaves, padrao) {
+  const alta = padrao?.alta !== false;
+  const ehDeCima = alta ? chaves === LINHA_2 : chaves === LINHA_1;
+  return ehDeCima ? VERDE : VERMELHO;
+}
 
 export const PADROES_CANAL = {
   canal_alta:  { id: "canal_alta",  rotulo: "Canal de Alta",  forma: "canal", alta: true,  nav: "canal-alta",  rota: "/admin/templates/canal-alta",  canal: true },
@@ -47,13 +56,13 @@ const ROTULOS_BAIXA = ["Topo Esq.", "Topo Dir.", "Fundo Esq.", "Fundo Dir."];
 
 // Qual linha cada ponto fecha — vai na dica do botão, porque "Fundo Esq."
 // sozinho não diz que os dois primeiros cliques são a linha de baixo.
-const DICAS = ["início da linha inferior", "fim da linha inferior",
-               "início da linha superior", "fim da linha superior"];
-const DICAS_BAIXA = ["início da linha superior", "fim da linha superior",
-                     "início da linha inferior", "fim da linha inferior"];
+const DICAS = ["ponto inferior esquerdo", "ponto inferior direito",
+               "ponto superior esquerdo", "ponto superior direito"];
+const DICAS_BAIXA = ["ponto superior esquerdo", "ponto superior direito",
+                     "ponto inferior esquerdo", "ponto inferior direito"];
 
 export const INSTRUCAO_CANAL =
-  "Marque primeiro os 2 pontos da linha INFERIOR, depois os 2 da linha SUPERIOR.";
+  "Marque primeiro os 2 pontos da linha inferior, depois os 2 da superior.";
 
 export function rotulosDoCanal(padrao) {
   return padrao?.alta === false ? ROTULOS_BAIXA : ROTULOS_ALTA;
@@ -66,10 +75,10 @@ export function stepsDoCanal(padrao) {
   return PASSOS_CANAL.map((key, n) => ({
     key,
     label: `P${n + 1} · ${rotulos[n]}`,
-    dica: `P${n + 1} — ${rotulos[n]} (${dicas[n]})`,
+    dica: `${rotulos[n]} — ${dicas[n]}`,
     short: `P${n + 1}`,
     // a cor seque o papel da linha: suporte verde, resistência vermelha
-    color: (n < 2) === alta ? VERDE : VERMELHO,
+    color: corDaLinha(n < 2 ? LINHA_1 : LINHA_2, padrao),
   }));
 }
 
@@ -92,13 +101,14 @@ function extremos(pontos) {
  * As três linhas: as duas marcadas, esticadas até as pontas do canal, e a
  * mediana no meio exato delas.
  */
-export function linhasDoCanal(pontos) {
+export function linhasDoCanal(pontos, padrao) {
   if (!pontos) return [];
   const linhas = [];
   const completo = temFormatoCanal(pontos);
   const { de, ate } = completo ? extremos(pontos) : { de: null, ate: null };
 
-  for (const [chaves, cor] of [[LINHA_1, VERDE], [LINHA_2, VERMELHO]]) {
+  for (const chaves of [LINHA_1, LINHA_2]) {
+    const cor = corDaLinha(chaves, padrao);
     const [a, b] = chaves.map((k) => pontos[k]);
     if (!a || !b) continue;
     // Enquanto o canal não está fechado, a linha vai só de ponta a ponta

@@ -24,20 +24,32 @@ describe('Canal de alta e de baixa', () => {
       expect(stepsDoCanal(ALTA).map((s) => s.label))
         .toEqual(['P1 · Fundo Esq.', 'P2 · Fundo Dir.', 'P3 · Topo Esq.', 'P4 · Topo Dir.']);
       expect(stepsDoCanal(ALTA).map((s) => s.dica)).toEqual([
-        'P1 — Fundo Esq. (início da linha inferior)', 'P2 — Fundo Dir. (fim da linha inferior)',
-        'P3 — Topo Esq. (início da linha superior)', 'P4 — Topo Dir. (fim da linha superior)',
+        'Fundo Esq. — ponto inferior esquerdo', 'Fundo Dir. — ponto inferior direito',
+        'Topo Esq. — ponto superior esquerdo', 'Topo Dir. — ponto superior direito',
       ]);
       // no canal de baixa o papel das linhas troca: marca-se o topo antes
       expect(stepsDoCanal(BAIXA).map((s) => s.label))
         .toEqual(['P1 · Topo Esq.', 'P2 · Topo Dir.', 'P3 · Fundo Esq.', 'P4 · Fundo Dir.']);
-      expect(stepsDoCanal(BAIXA)[0].dica).toContain('linha superior');
+      expect(stepsDoCanal(BAIXA)[0].dica).toBe('Topo Esq. — ponto superior esquerdo');
       expect(rotulosDoCanal(BAIXA)[0]).toBe('Topo Esq.');
     });
 
-    it('a cor segue o papel da linha: suporte verde, resistência vermelha', () => {
-      expect(stepsDoCanal(ALTA).map((s) => s.color)).toEqual(['#26a69a', '#26a69a', '#ef5350', '#ef5350']);
-      // de baixa: a primeira linha marcada é a resistência
-      expect(stepsDoCanal(BAIXA).map((s) => s.color)).toEqual(['#ef5350', '#ef5350', '#26a69a', '#26a69a']);
+    it('a cor segue a POSIÇÃO: a linha de cima é verde, a de baixo vermelha', () => {
+      // vale nas duas direções — o que muda é qual par faz a linha de cima
+      expect(stepsDoCanal(ALTA).map((s) => s.color)).toEqual(['#ef5350', '#ef5350', '#26a69a', '#26a69a']);
+      expect(stepsDoCanal(BAIXA).map((s) => s.color)).toEqual(['#26a69a', '#26a69a', '#ef5350', '#ef5350']);
+    });
+
+    it('as linhas desenhadas usam a mesma cor dos botões', () => {
+      const [baixo, cima] = linhasDoCanal(CANAL_ALTA, ALTA);
+      expect(baixo.dados[0].preco).toBeLessThan(cima.dados[0].preco);   // p1/p2 é a de baixo
+      expect(baixo.cor).toBe('#ef5350');
+      expect(cima.cor).toBe('#26a69a');
+      // no canal de baixa, p1/p2 é a de CIMA — e fica verde
+      const [primeira, segunda] = linhasDoCanal(CANAL_BAIXA, BAIXA);
+      expect(primeira.dados[0].preco).toBeGreaterThan(segunda.dados[0].preco);
+      expect(primeira.cor).toBe('#26a69a');
+      expect(segunda.cor).toBe('#ef5350');
     });
 
     it('só é canal com os quatro pontos', () => {
