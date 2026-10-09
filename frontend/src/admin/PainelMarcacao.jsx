@@ -402,8 +402,8 @@ export default function PainelMarcacao({ padraoInicial }) {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates {padrao.rotulo}</span>
-          <AdminPatternNav active={padrao.nav} aoTrocar={trocarPeloMenu} />
         </div>
+        <AdminPatternNav active={padrao.nav} aoTrocar={trocarPeloMenu} />
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
 

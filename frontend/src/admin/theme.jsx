@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 const ADMIN_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -26,7 +28,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-link-btn:hover{color:var(--text)}
 
 .admin-center{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
-.admin-main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.admin-main{flex:1;padding:24px;padding-left:264px;max-width:1764px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
 
 .admin-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:left}
 .admin-card h1{font-size:17px;font-weight:600;margin:0 0 4px;color:var(--text)}
@@ -112,12 +114,23 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-.admin-nav-linhas{display:flex;flex-direction:column;gap:4px;margin-left:20px;min-width:0;flex:1}
-.admin-nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
-.admin-nav::-webkit-scrollbar{display:none}
-.admin-nav a{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--text2);text-decoration:none;white-space:nowrap}
-.admin-nav a:hover{color:var(--text)}
-.admin-nav a.active{background:var(--s2);color:var(--text)}
+/* ── Menu lateral de padrões ───────────────────────────────────
+   Fixo à esquerda, abaixo do cabeçalho. Fica fora do fluxo de
+   propósito: assim o cabeçalho das telas não precisou mudar, e só o
+   conteúdo principal ganha o recuo. */
+.admin-nav-lateral{position:fixed;left:0;top:57px;bottom:0;width:240px;background:var(--s1);border-right:1px solid var(--border);padding:12px 10px;overflow-y:auto;scrollbar-width:thin;z-index:40;display:flex;flex-direction:column;gap:10px}
+.admin-nav-atual{display:none}
+.admin-nav-grupos{display:flex;flex-direction:column;gap:6px}
+.admin-nav-grupo{display:flex;flex-direction:column;gap:2px}
+.admin-nav-grupo-titulo{display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;padding:7px 8px;border-radius:7px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);cursor:pointer;text-align:left}
+.admin-nav-grupo-titulo:hover{background:var(--s2);color:var(--text)}
+.admin-nav-grupo-titulo.aberto{color:var(--text)}
+.admin-nav-seta{margin-left:auto;font-size:10px;color:var(--text3)}
+.admin-nav-itens{display:flex;flex-direction:column;gap:1px;padding-left:4px}
+.admin-nav-itens a{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:7px 9px;border-radius:7px;color:var(--text2);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-nav-itens a:hover{background:var(--s2);color:var(--text)}
+.admin-nav-itens a.active{background:var(--s2);color:var(--text);box-shadow:inset 2px 0 0 var(--accent)}
+.admin-nav-icone{font-size:13px;line-height:1;flex-shrink:0}
 
 .admin-picker{position:relative}
 .admin-picker-btn{width:100%;text-align:left;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--font-b);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -129,6 +142,18 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-picker-item:last-child{border-bottom:none}
 .admin-picker-item:hover{background:var(--s2)}
 
+/* Até 900px a barra fixa não cabe junto com o gráfico e o filtro da
+   direita: o menu sai da lateral e vira um dropdown no topo. */
+@media (max-width:900px){
+  .admin-nav-lateral{position:static;width:100%;border-right:0;border-bottom:1px solid var(--border);padding:8px 12px;gap:0;order:3}
+  .admin-nav-atual{display:flex;align-items:center;gap:8px;width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font:inherit;color:var(--text);cursor:pointer;text-align:left}
+  .admin-nav-atual::after{content:"▾";margin-left:auto;color:var(--text3)}
+  .admin-nav-atual-rotulo{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)}
+  .admin-nav-lateral:not(.aberto) .admin-nav-grupos{display:none}
+  .admin-nav-grupos{margin-top:8px;max-height:60vh;overflow-y:auto}
+  .admin-main{padding-left:24px}
+}
+
 /* Mobile <768px — tabelas viram scroll horizontal contido (não a página
    inteira), grid de 2 colunas empilha, botões ganham alvo de toque 44px. */
 @media (max-width:767px){
@@ -137,8 +162,6 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .admin-grid2{grid-template-columns:1fr}
   .admin-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
   .admin-picker-dd{max-width:calc(100vw - 24px)}
-  .admin-nav-linhas{margin-left:0;width:100%;margin-top:8px}
-  .admin-nav{flex-wrap:wrap;width:100%}
   .admin-btn,.admin-btn-ghost,.admin-picker-btn,.admin-input,.admin-select{min-height:44px}
 }
 
@@ -235,58 +258,134 @@ export default function AdminShell({ children }) {
 
 // Navegação entre as páginas de padrões — cada padrão tem sua própria
 // página/tabela/endpoint; isso só troca de tela, não mistura os dados.
+//
+// Virou menu lateral porque 19 padrões não cabem em aba: numa linha
+// transbordavam, em duas ainda espremiam o cabeçalho. Agrupados por
+// família, com só o grupo do padrão atual aberto, a lista inteira cabe
+// de pé sem rolagem na maioria das telas.
+//
 // `aoTrocar(chave)`: a tela pode assumir o clique e trocar o padrão no
 // lugar (devolvendo true), em vez de navegar e recarregar tudo. É o que
 // mantém o gráfico no mesmo zoom quando se percebe que a bandeira de alta
 // era, na verdade, de baixa.
+export const GRUPOS_DE_PADRAO = [
+  {
+    id: "reversao", nome: "Reversão", emoji: "🔴🟢",
+    itens: [
+      { key: "topo-duplo", id: "topo_duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
+      { key: "fundo-duplo", id: "fundo_duplo", label: "Fundo Duplo", href: "/admin/templates/fundo-duplo" },
+      { key: "topo-triplo", id: "topo_triplo", label: "Topo Triplo", href: "/admin/templates/topo-triplo" },
+      { key: "fundo-triplo", id: "fundo_triplo", label: "Fundo Triplo", href: "/admin/templates/fundo-triplo" },
+      { key: "oco", id: "oco", label: "OCO", href: "/admin/templates" },
+      { key: "oco-invertido", id: "oco_invertido", label: "OCO Invertido", href: "/admin/templates/oco-invertido" },
+    ],
+  },
+  {
+    id: "continuacao", nome: "Continuação", emoji: "🔵🟡",
+    itens: [
+      { key: "bandeira-alta", id: "bandeira_alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
+      { key: "bandeira-baixa", id: "bandeira_baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
+      { key: "flamula-alta", id: "flamula_alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
+      { key: "flamula-baixa", id: "flamula_baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
+      { key: "cunha-alta", id: "cunha_alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
+      { key: "cunha-baixa", id: "cunha_baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
+    ],
+  },
+  {
+    id: "canais", nome: "Canais e Triângulos", emoji: "🔵",
+    itens: [
+      { key: "canal-alta", id: "canal_alta", label: "Canal de Alta", href: "/admin/templates/canal-alta" },
+      { key: "canal-baixa", id: "canal_baixa", label: "Canal de Baixa", href: "/admin/templates/canal-baixa" },
+      { key: "triangulo-ascendente", id: "triangulo_ascendente", label: "Triângulo Ascendente", href: "/admin/templates/triangulo-ascendente" },
+      { key: "triangulo-descendente", id: "triangulo_descendente", label: "Triângulo Descendente", href: "/admin/templates/triangulo-descendente" },
+      { key: "triangulo-simetrico", id: "triangulo_simetrico", label: "Triângulo Simétrico", href: "/admin/templates/triangulo-simetrico" },
+    ],
+  },
+  {
+    id: "neutros", nome: "Neutros", emoji: "⬜💡",
+    itens: [
+      { key: "retangulo", id: "retangulo", label: "Retângulo", href: "/admin/templates/retangulo" },
+      { key: "niveis", id: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
+    ],
+  },
+];
+
+export function grupoDoPadrao(chave) {
+  return GRUPOS_DE_PADRAO.find((g) => g.itens.some((i) => i.key === chave)) || null;
+}
+
 export function AdminPatternNav({ active, aoTrocar }) {
-  // Duas linhas, por família de padrão: numa linha só, 19 abas não cabem
-  // na tela. Reversão em cima, continuação e consolidação embaixo.
-  const linhas = [
-    [
-      { key: "topo-duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
-      { key: "fundo-duplo", label: "Fundo Duplo", href: "/admin/templates/fundo-duplo" },
-      { key: "topo-triplo", label: "Topo Triplo", href: "/admin/templates/topo-triplo" },
-      { key: "fundo-triplo", label: "Fundo Triplo", href: "/admin/templates/fundo-triplo" },
-      { key: "oco", label: "OCO", href: "/admin/templates" },
-      { key: "oco-invertido", label: "OCO Invertido", href: "/admin/templates/oco-invertido" },
-    ],
-    [
-      { key: "bandeira-alta", label: "Bandeira de Alta", href: "/admin/templates/bandeira-alta" },
-      { key: "bandeira-baixa", label: "Bandeira de Baixa", href: "/admin/templates/bandeira-baixa" },
-      { key: "flamula-alta", label: "Flâmula de Alta", href: "/admin/templates/flamula-alta" },
-      { key: "flamula-baixa", label: "Flâmula de Baixa", href: "/admin/templates/flamula-baixa" },
-      { key: "cunha-alta", label: "Cunha de Alta", href: "/admin/templates/cunha-alta" },
-      { key: "cunha-baixa", label: "Cunha de Baixa", href: "/admin/templates/cunha-baixa" },
-      { key: "canal-alta", label: "Canal de Alta", href: "/admin/templates/canal-alta" },
-      { key: "canal-baixa", label: "Canal de Baixa", href: "/admin/templates/canal-baixa" },
-      { key: "triangulo-ascendente", label: "Triângulo Asc.", href: "/admin/templates/triangulo-ascendente" },
-      { key: "triangulo-descendente", label: "Triângulo Desc.", href: "/admin/templates/triangulo-descendente" },
-      { key: "triangulo-simetrico", label: "Triângulo Sim.", href: "/admin/templates/triangulo-simetrico" },
-      { key: "retangulo", label: "Retângulo", href: "/admin/templates/retangulo" },
-      { key: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
-    ],
-  ];
+  const grupoAtual = grupoDoPadrao(active);
+  const itemAtual = grupoAtual?.itens.find((i) => i.key === active);
+  // Abre só o grupo do padrão atual: os outros ficam a um clique, e a
+  // lista não nasce com 19 linhas abertas.
+  const [abertos, setAbertos] = useState(() => new Set(grupoAtual ? [grupoAtual.id] : []));
+  const [abertoNoCelular, setAbertoNoCelular] = useState(false);
+
+  function alternarGrupo(id) {
+    setAbertos((atuais) => {
+      const novo = new Set(atuais);
+      if (novo.has(id)) novo.delete(id); else novo.add(id);
+      return novo;
+    });
+  }
+
   return (
-    <div className="admin-nav-linhas">
-      {linhas.map((linha, n) => (
-        <nav className="admin-nav" key={n}>
-          {linha.map((l) => (
-            /* Link, e não <a>: trocar de padrão não recarrega o app inteiro
-               (o que refazia todas as chamadas e, com token vencido, caía no
-               pedido de email). */
-            <Link
-              key={l.key}
-              to={l.href}
-              className={active === l.key ? "active" : ""}
-              onClick={(e) => { if (aoTrocar?.(l.key, l.href)) e.preventDefault(); }}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      ))}
-    </div>
+    <nav className={`admin-nav-lateral${abertoNoCelular ? " aberto" : ""}`}>
+      {/* No celular a barra vira um botão no topo que abre a lista */}
+      <button
+        type="button"
+        className="admin-nav-atual"
+        onClick={() => setAbertoNoCelular((v) => !v)}
+        aria-expanded={abertoNoCelular}
+      >
+        <span className="admin-nav-atual-rotulo">Padrões</span>
+        <strong>{itemAtual?.label || "Escolher padrão"}</strong>
+      </button>
+
+      <div className="admin-nav-grupos">
+        {GRUPOS_DE_PADRAO.map((grupo) => {
+          const aberto = abertos.has(grupo.id);
+          return (
+            <div key={grupo.id} className="admin-nav-grupo">
+              <button
+                type="button"
+                className={`admin-nav-grupo-titulo${aberto ? " aberto" : ""}`}
+                onClick={() => alternarGrupo(grupo.id)}
+                aria-expanded={aberto}
+              >
+                <span aria-hidden="true">{grupo.emoji}</span>
+                {grupo.nome}
+                <span className="admin-nav-seta" aria-hidden="true">{aberto ? "▾" : "▸"}</span>
+              </button>
+              {aberto && (
+                <div className="admin-nav-itens">
+                  {grupo.itens.map((l) => (
+                    /* Link, e não <a>: trocar de padrão não recarrega o app
+                       inteiro (o que refazia todas as chamadas e, com token
+                       vencido, caía no pedido de email). */
+                    <Link
+                      key={l.key}
+                      to={l.href}
+                      className={active === l.key ? "active" : ""}
+                      onClick={(e) => {
+                        setAbertoNoCelular(false);
+                        if (aoTrocar?.(l.key, l.href)) e.preventDefault();
+                      }}
+                    >
+                      <span className={`admin-nav-icone ${classeDoPadrao(l.id)}`} aria-hidden="true">
+                        {iconeDoPadrao(l.id)}
+                      </span>
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

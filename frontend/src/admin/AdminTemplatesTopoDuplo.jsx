@@ -265,8 +265,8 @@ export default function AdminTemplatesTopoDuplo() {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates Topo Duplo</span>
-          <AdminPatternNav active="topo-duplo" />
         </div>
+        <AdminPatternNav active="topo-duplo" />
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
 

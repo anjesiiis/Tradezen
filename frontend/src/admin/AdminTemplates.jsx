@@ -293,8 +293,8 @@ export default function AdminTemplates() {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates OCO</span>
-          <AdminPatternNav active="oco" />
         </div>
+        <AdminPatternNav active="oco" />
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
 

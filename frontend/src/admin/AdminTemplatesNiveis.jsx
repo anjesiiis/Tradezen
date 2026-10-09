@@ -247,8 +247,8 @@ export default function AdminTemplatesNiveis() {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates Suporte/Resistência</span>
-          <AdminPatternNav active="niveis" />
         </div>
+        <AdminPatternNav active="niveis" />
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
 
