@@ -223,6 +223,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Lista de ativos | `components/AssetList.jsx` |
 | Card de ativo | `components/AssetCard.jsx` |
 | Gráfico de candles (componente) | `components/CandleChart.jsx` |
+| Barra de ferramentas do gráfico (coluna esquerda) | `components/chart/LeftToolbar.jsx` + `components/chart/ferramentasGrafico.js` |
 | Sidebar desktop | `components/Sidebar.jsx` |
 | Barra de busca | `components/SearchBar.jsx` |
 | Mini gráfico de linha | `components/MiniLine.jsx` |

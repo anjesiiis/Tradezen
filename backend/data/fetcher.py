@@ -169,11 +169,20 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
 
     if _eh_cripto(ticker):
         # Binance: traduz periodo em quantidade de candles
-        limites = {
-            "1mo": 30, "3mo": 90, "6mo": 180,
-            "1y": 365, "2y": 730, "3y": 1095, "5y": 1825, "10y": 3650, "max": 100000,
-        }
-        limite = limites.get(periodo, 365)
+        # A Binance pede QUANTIDADE de candles, não período. Com o mapa
+        # antigo (só períodos longos, 1 candle = 1 dia), qualquer timeframe
+        # intraday caía no padrão de 365 candles — 1 minuto virava 6 horas
+        # de gráfico. Agora a conta é dias × candles por dia.
+        dias = {
+            "5d": 5, "1mo": 30, "60d": 60, "3mo": 90, "6mo": 180,
+            "1y": 365, "2y": 730, "3y": 1095, "5y": 1825, "10y": 3650, "max": 3650,
+        }.get(periodo, 365)
+        por_dia = {"1m": 1440, "5m": 288, "15m": 96, "60m": 24, "1h": 24, "4h": 6}.get(intervalo, 1)
+        if intervalo in ("1wk", "1w"):
+            por_dia = 1 / 7
+        # teto de 5.000: acima disso são 5+ páginas de 1.000 na API e o
+        # gráfico não aguenta desenhar
+        limite = max(1, min(5000, int(dias * por_dia)))
         candles = _buscar_binance(ticker, intervalo, limite)
         if candles:
             _cache_set(chave, candles)

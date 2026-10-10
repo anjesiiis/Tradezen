@@ -28,11 +28,21 @@ export const TOOLS=[
 // no admin hoje são todos timeframe="1d" (/padroes-marcados filtra por
 // timeframe no banco), então no 60m e no 1S eles não aparecem — comportamento
 // limpo (nenhum padrão), não "alguns sumindo por estarem fora da janela".
+// Timeframes do gráfico. O período é o máximo que a fonte dá de graça em
+// cada um (ver PERIODO_MAXIMO em backend/ativos.py): pedir mais volta
+// vazio, não dá erro, e o gráfico abriria em branco.
 export const TFS=[
-  {label:"60m", periodo:"2y",  intervalo:"60m"},
+  {label:"1m",  periodo:"5d",  intervalo:"1m"},
+  {label:"5m",  periodo:"60d", intervalo:"5m"},
+  {label:"15m", periodo:"60d", intervalo:"15m"},
+  {label:"60m", periodo:"60d", intervalo:"60m"},
   {label:"1D",  periodo:"max", intervalo:"1d"},
   {label:"1S",  periodo:"max", intervalo:"1wk"},
 ];
+
+// Com qual o gráfico abre: diário, que é onde os padrões do TradeZen
+// vivem. Os intraday ficam a um clique pra quem quer olhar de perto.
+export const TF_PADRAO = TFS.find(t=>t.label==="1D");
 
 export const INDICADORES = [
   {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},

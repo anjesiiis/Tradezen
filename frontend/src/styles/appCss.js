@@ -166,6 +166,22 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .sep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}
 
 .abody{display:flex;flex:1;overflow:hidden}
+/* ── Barra de ferramentas do gráfico (coluna da esquerda) ───────
+   Coluna do corpo, e não posicionada de forma fixa: com multitelas cada
+   gráfico tem a sua, e uma barra fixa cobriria as outras. */
+.chart-toolbar{width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
+.chart-toolbar::-webkit-scrollbar{display:none}
+.chart-toolbar-grupo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
+.chart-toolbar-grupo:not(:last-child){padding-bottom:12px;border-bottom:1px solid var(--border)}
+.chart-tool{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:0;border-left:2px solid transparent;border-radius:7px;color:var(--text2);font-size:16px;line-height:1;cursor:pointer;padding:0}
+.chart-tool:hover{background:var(--s2);color:var(--text)}
+.chart-tool.ativo{background:var(--s2);color:var(--accent);border-left-color:var(--accent);border-radius:0 7px 7px 0}
+.chart-tool.destaque{color:var(--accent)}
+/* dica à direita do ícone, fora da barra */
+.chart-tool-dica{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);white-space:nowrap;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);pointer-events:none;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+
+/* o mercado dentro do seletor de ativo, em vez de solto na barra */
+.atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
 
 /* RIGHT PANEL */
@@ -867,6 +883,13 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
   /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */
   .abody{flex-direction:column}
+  /* A barra NÃO vira linha no celular: continua coluna, só mais
+     estreita — virar linha comeria altura do gráfico, que lá é o que
+     menos sobra. */
+  .abody{flex-direction:row}
+  .chart-toolbar{width:44px;gap:8px}
+  .chart-toolbar-grupo:not(:last-child){padding-bottom:8px}
+  .chart-tool{width:36px;height:36px;font-size:15px}
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
 
   /* ── INÍCIO: globo ── */

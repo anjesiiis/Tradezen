@@ -916,7 +916,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // — cada linha ganha um "x" de fechar rápido (ver _anchorFechar), pra
       // remover sem precisar abrir o menu de clique-direito.
       for(const d of desenhos){
-        _desenharDesenhoUsuario(ctx, toLogX, toY, d, false, canvas.width);
+        _desenharDesenhoUsuario(ctx, toLogX, toY, d, false, canvas.width, false, canvas.height);
         const anc = _anchorFechar(d, toLogX, toY, canvas.width);
         if(anc) _desenharBotaoFechar(ctx, anc.x, anc.y);
       }
@@ -924,7 +924,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // Régua — some sozinha no 3º clique (ver onMouseDown), não é uma
       // anotação persistida como as outras; por isso vive fora de `desenhos`.
       if(reguaFinalizada){
-        _desenharDesenhoUsuario(ctx, toLogX, toY, reguaFinalizada, false, canvas.width);
+        _desenharDesenhoUsuario(ctx, toLogX, toY, reguaFinalizada, false, canvas.width, false, canvas.height);
       }
 
       // Preview ao vivo — a ferramenta ainda está sendo colocada (já tem
@@ -933,7 +933,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // de "o retângulo/linha/canal se formando" antes do clique final.
       if(ferramentaAtiva && pontosProgresso.length>0 && previewPontoRef.current){
         const desenhoPreview = { tipo: ferramentaAtiva, pontos: [...pontosProgresso, previewPontoRef.current] };
-        _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true);
+        _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true, canvas.height);
       }
 
       // ── Ícone de "já tem padrão marcado aqui" ──────────────

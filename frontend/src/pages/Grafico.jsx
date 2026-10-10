@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
+import LeftToolbar from "../components/chart/LeftToolbar.jsx";
+import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferramentasGrafico.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
-import { FERRAMENTAS_DESENHO_LISTA, INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TOOLS } from "../lib/grafico/config.js";
+import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp } from "../lib/grafico/padroes.js";
 import { fmtP } from "../lib/mercado.js";
 
@@ -15,7 +17,7 @@ import { fmtP } from "../lib/mercado.js";
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
 function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
   const navigate = useNavigate();
-  const [tf, setTf] = useState(TFS[0]);
+  const [tf, setTf] = useState(TF_PADRAO);
 
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
@@ -32,17 +34,19 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [painelAberto,setPainelAberto] = useState(true);
   const [switcherAberto,setSwitcherAberto] = useState(false);
   const [maisAberto,setMaisAberto] = useState(false); // legenda: mostra os indicadores "a mais" (além do limite visível)
-  const [ferramentaAtiva,setFerramentaAtiva] = useState(null); // ferramenta de desenho armada (trend/horizontal/retangulo_desenho/canal)
+  // A ferramenta armada volta do localStorage (como no TradingView) e é
+  // guardada a cada troca — ver LeftToolbar.
+  const [ferramentaAtiva,setFerramentaAtiva] = useState(lerFerramentaSalva);
+  const [desenhosEscondidos,setDesenhosEscondidos] = useState(false);
+  const [desenhosTravados,setDesenhosTravados] = useState(false);
+  useEffect(()=>{ guardarFerramenta(ferramentaAtiva); },[ferramentaAtiva]);
   const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
-  const [desenhoOpen,setDesenhoOpen] = useState(false); // dropdown de ferramentas de desenho — botão próprio, separado do de Indicadores
   // Espelha o prop mais recente pro effect de troca de ticker ler sem
   // precisar entrar nas deps dele (entrar nas deps causaria um refetch
   // toda vez que QUALQUER ativo salvasse configuração, não só o ticker que
   // está sendo trocado).
   const ativoConfigRef = useRef(ativoConfig);
   useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
-  const desenhoBtnRef = useRef(null);
-  const [desenhoPos,setDesenhoPos] = useState({top:0,left:0});
 
   // Desfazer/Refazer (Ctrl+Z) — cobre indicadores (tools) e linhas (desenhos)
   // juntos numa única linha do tempo por ativo. `registrarHistorico` é
@@ -100,14 +104,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     return ()=>document.removeEventListener("mousedown", h);
   },[indOpen]);
 
-  // Fecha dropdown de ferramentas de desenho ao clicar fora
-  useEffect(()=>{
-    if(!desenhoOpen) return;
-    const h = e => { if(!e.target.closest(".ind-wrap")) setDesenhoOpen(false); };
-    document.addEventListener("mousedown", h);
-    return ()=>document.removeEventListener("mousedown", h);
-  },[desenhoOpen]);
-
   // Busca candles + padrões marcados sempre que o ticker OU o timeframe
   // DESTA tela mudam — cada ChartPane tem o seu próprio ciclo de fetch,
   // independente das outras. Reseta tools/desenhos/histórico igual troca de
@@ -134,7 +130,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     setCandles([]);
     setPadroes([]);
     setNiveis([]);
-    setFerramentaAtiva(null);
+    // A ferramenta armada NÃO é zerada aqui: quem está desenhando linha de
+    // tendência em três ativos seguidos não quer rearmar a cada troca. Os
+    // desenhos, sim, somem — eles são por ativo (ver setDesenhos abaixo).
     // Começa limpo — a restauração (se houver conta e dado salvo) roda no
     // effect separado logo abaixo, que também reage a `user`. Isso evita
     // vazar os indicadores do ativo anterior pro novo.
@@ -232,7 +230,14 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         {!onClose && <button className="bbtn" onClick={()=>navigate("/mercados")} title="Voltar pra home">←</button>}
 
         <span className="atick" onClick={()=>setSwitcherAberto(v=>!v)} title="Trocar ativo desta tela">
-          {selAtivo.simbolo} <span style={{fontSize:11}}>▾</span>
+          {selAtivo.simbolo}
+          {/* o mercado vem junto do ativo, em vez de flutuar sozinho na
+              barra. Enquanto a lista de ativos não chegou, o mercado é "—":
+              aí o selo nem aparece. */}
+          {selAtivo.mercado && selAtivo.mercado !== "—" && (
+            <span className="atick-mercado">{selAtivo.mercado}</span>
+          )}
+          <span style={{fontSize:11}}>▾</span>
         </span>
 
         {toggleFavorito && (
@@ -250,7 +255,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           <span className="apr">{fmtP(selAtivo.preco)}</span>
           <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
         </>}
-        <span style={{fontSize:10,color:"var(--text2)",fontFamily:"var(--font-m)"}}>{selAtivo.mercado}</span>
 
         <div className="sep"/>
 
@@ -300,47 +304,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </button>
         </div>
 
-        {/* Dropdown Ferramentas de Desenho — botão próprio, separado do de Indicadores */}
-        <div className="ind-wrap">
-          <button
-            ref={desenhoBtnRef}
-            className={`ind-btn ${desenhoOpen?"open":""}`}
-            onClick={()=>{
-              if(!desenhoOpen && desenhoBtnRef.current){
-                const r = desenhoBtnRef.current.getBoundingClientRect();
-                setDesenhoPos({top: r.bottom+4, left: r.left});
-              }
-              setDesenhoOpen(v=>!v);
-            }}
-          >
-            Linhas <span className="arr">▼</span>
-            {(desenhos.length + (tools.has("fibo")?1:0))>0&&(
-              <span style={{background:"var(--accent)",color:"#fff",borderRadius:8,padding:"1px 5px",fontSize:9,fontWeight:700}}>
-                {desenhos.length + (tools.has("fibo")?1:0)}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Régua — mede a distância entre 2 pontos (preço/%/velas), estilo
-            TradingView. Ícone próprio ao lado de Linhas, sem dropdown: um
-            clique arma, outro clique no gráfico marca o início, mais um
-            marca o fim. */}
-        <button
-          className="pane-btn"
-          style={ferramentaAtiva==="regua" ? {background:"var(--accent)",borderColor:"var(--accent)",color:"#fff"} : undefined}
-          title="Régua — medir variação entre 2 pontos"
-          onClick={()=>setFerramentaAtiva(prev=>prev==="regua" ? null : "regua")}
-        >
-          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/>
-            <path d="m14.5 12.5 2-2"/>
-            <path d="m11.5 9.5 2-2"/>
-            <path d="m8.5 6.5 2-2"/>
-            <path d="m17.5 15.5 2-2"/>
-          </svg>
-        </button>
-
         {/* Desfazer/Refazer — cobre indicadores e linhas juntos (ver
             registrarHistorico/desfazer/refazer). Também funciona com
             Ctrl+Z / Ctrl+Shift+Z (ver effect de teclado acima). */}
@@ -387,6 +350,25 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
       </div>
 
       <div className="abody">
+        {/* Barra de ferramentas: coluna do corpo, não `position:fixed` —
+            com multitelas (2 a 4 gráficos lado a lado) cada tela precisa
+            da sua, e uma barra fixa cobriria as outras. */}
+        <LeftToolbar
+          ativa={ferramentaAtiva}
+          aoEscolher={id=>setFerramentaAtiva(prev=>prev===id?null:id)}
+          estado={{escondidos:desenhosEscondidos, travados:desenhosTravados}}
+          aoAgir={acao=>{
+            if(acao==="limpar"){
+              if(!desenhos.length) return;
+              registrarHistorico();
+              setDesenhos([]);
+            }
+            else if(acao==="visibilidade") setDesenhosEscondidos(v=>!v);
+            else if(acao==="travar") setDesenhosTravados(v=>!v);
+            else if(acao==="templates") setIndOpen(true);
+            else if(acao==="config") setPainelAberto(true);
+          }}
+        />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
           {!loading&&candles.length>0&&(
@@ -400,11 +382,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
               showVolume={selAtivo.mercado!=="COMMODITY"}
               tema={tema}
-              ferramentaAtiva={ferramentaAtiva}
+              ferramentaAtiva={desenhosTravados ? null : ferramentaAtiva}
               setFerramentaAtiva={setFerramentaAtiva}
               toggleTool={toggleTool}
-              desenhos={desenhos}
-              setDesenhos={setDesenhos}
+              desenhos={desenhosEscondidos ? [] : desenhos}
+              setDesenhos={desenhosTravados ? ()=>{} : setDesenhos}
               registrarHistorico={registrarHistorico}
             />
           )}
@@ -616,52 +598,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
                 ))}
               </div>
             ))}
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ── PORTAL DO DROPDOWN DE FERRAMENTAS DE DESENHO ── */}
-      {desenhoOpen && createPortal(
-        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setDesenhoOpen(false)}>
-          <div
-            className="ind-drop ind-drop-sheet"
-            style={{position:"fixed",top:desenhoPos.top,left:desenhoPos.left}}
-            onMouseDown={e=>e.stopPropagation()}
-          >
-            <div className="ind-section">Linhas</div>
-            {FERRAMENTAS_DESENHO_LISTA.map(ind=>{
-              const ligado = ind.desenho ? ferramentaAtiva===ind.id : tools.has(ind.id);
-              return (
-                <div
-                  key={ind.id}
-                  className="ind-item"
-                  onMouseDown={e=>{
-                    e.stopPropagation();
-                    if(ind.desenho){
-                      setFerramentaAtiva(prev=>prev===ind.id?null:ind.id);
-                    } else {
-                      toggleTool(ind.id);
-                    }
-                    setDesenhoOpen(false);
-                  }}
-                >
-                  <div className={`ind-chk ${ligado?"on":""}`}>{ligado&&"✓"}</div>
-                  <span className="ind-label">{ind.label}</span>
-                  <span style={{fontSize:12,color:ind.cor,fontFamily:"var(--font-m)",width:14,textAlign:"center",flexShrink:0}}>{ind.icone}</span>
-                </div>
-              );
-            })}
-            {desenhos.length>0 && (
-              <button
-                onMouseDown={e=>{ e.stopPropagation(); registrarHistorico(); setDesenhos([]); }}
-                style={{
-                  width:"calc(100% - 12px)",margin:"4px 6px 2px",padding:"7px 8px",
-                  background:"none",border:"1px solid var(--border)",borderRadius:6,
-                  color:"var(--down)",fontSize:11,fontWeight:600,cursor:"pointer",
-                }}
-              >Limpar desenhos</button>
-            )}
           </div>
         </div>,
         document.body

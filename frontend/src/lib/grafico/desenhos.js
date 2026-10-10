@@ -514,6 +514,18 @@ export const FERRAMENTA_INFO = {
     npontos: 3,
     hints: ["Canal Paralelo: clique no 1º ponto da linha base", "Canal Paralelo: clique no 2º ponto da linha base", "Canal Paralelo: clique pra definir a largura"],
   },
+  vertical: {
+    npontos: 1,
+    hints: ["Linha Vertical: clique no candle que você quer marcar"],
+  },
+  triangulo_desenho: {
+    npontos: 3,
+    hints: ["Triângulo: clique no 1º vértice", "Triângulo: clique no 2º vértice", "Triângulo: clique no 3º vértice"],
+  },
+  fibo_extensao: {
+    npontos: 3,
+    hints: ["Fibonacci Extensão: clique no início do movimento", "Fibonacci Extensão: clique no fim do movimento", "Fibonacci Extensão: clique no ponto de retorno"],
+  },
   texto: {
     npontos: 1,
     hints: ["Texto: clique no gráfico pra escolher onde escrever"],
@@ -583,6 +595,79 @@ function _desenharHorizontal(ctx, toY, pontos, isSel, canvasWidth){
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
   ctx.fillText(fmtP(pontos[0].preco), canvasWidth-6, y-4);
+  ctx.restore();
+}
+
+// Linha vertical: marca um candle (um evento, um dia). Só precisa do
+// índice lógico — o preço do clique não importa.
+function _desenharVertical(ctx, toX, pontos, isSel, canvasHeight){
+  if(pontos.length<1) return;
+  const x = toX(pontos[0].logical);
+  if(x==null) return;
+  ctx.save();
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?3:2;
+  ctx.beginPath();
+  ctx.moveTo(x,0);
+  ctx.lineTo(x,canvasHeight);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Triângulo livre: três vértices ligados, com o miolo preenchido.
+function _desenharTrianguloDesenho(ctx, toX, toY, pontos, isSel){
+  const cantos = pontos.map(p=>({x:toX(p.logical), y:toY(p.preco)}));
+  if(cantos.some(c=>c.x==null||c.y==null)) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cantos[0].x, cantos[0].y);
+  for(const c of cantos.slice(1)) ctx.lineTo(c.x, c.y);
+  if(cantos.length>2) ctx.closePath();
+  if(cantos.length>2){ ctx.fillStyle = DESENHO_FILL; ctx.fill(); }
+  ctx.strokeStyle = DESENHO_COR;
+  ctx.lineWidth = isSel?2.5:1.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Fibonacci de extensão: dois pontos marcam o movimento, o terceiro o
+// retorno — e os níveis são projetados PRA FRENTE a partir dele (a
+// retração, em _desenharFibonacci, divide o trecho entre dois pontos).
+const NIVEIS_EXTENSAO = [0, 0.618, 1, 1.618, 2.618];
+function _desenharFiboExtensao(ctx, toX, toY, pontos, isSel, canvasWidth){
+  if(pontos.length<3) return;
+  const [a,b,c] = pontos;
+  const altura = b.preco - a.preco;
+  const xBase = toX(c.logical);
+  if(xBase==null) return;
+  ctx.save();
+  ctx.lineWidth = isSel?2:1.2;
+  ctx.font = "bold 9px 'JetBrains Mono',monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  for(const nivel of NIVEIS_EXTENSAO){
+    const preco = c.preco + altura*nivel;
+    const y = toY(preco);
+    if(y==null) continue;
+    ctx.strokeStyle = DESENHO_COR;
+    ctx.globalAlpha = nivel===1 ? 0.9 : 0.55;
+    ctx.beginPath();
+    ctx.moveTo(xBase, y);
+    ctx.lineTo(canvasWidth, y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = DESENHO_COR;
+    ctx.fillText(`${(nivel*100).toFixed(1)}%  ${fmtP(preco)}`, xBase+4, y-3);
+  }
+  // o movimento que gerou a projeção, tracejado
+  const xa=toX(a.logical), ya=toY(a.preco), xb=toX(b.logical), yb=toY(b.preco);
+  if([xa,ya,xb,yb].every(v=>v!=null)){
+    ctx.setLineDash([4,4]);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(xa,ya); ctx.lineTo(xb,yb); ctx.lineTo(xBase, toY(c.preco));
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -765,9 +850,12 @@ export function _desenharBotaoFechar(ctx, x, y){
 // `preview`: true enquanto o usuário ainda está arrastando o mouse antes do
 // clique final (ver comentário no redraw() do CandleChart) — desenha
 // tracejado/translúcido pra distinguir do desenho já confirmado.
-export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth, preview=false){
+export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth, preview=false, canvasHeight=0){
   if(preview){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
   if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  else if(d.tipo==="vertical") _desenharVertical(ctx, toLogX, d.pontos, isSel, canvasHeight);
+  else if(d.tipo==="triangulo_desenho") _desenharTrianguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
+  else if(d.tipo==="fibo_extensao") _desenharFiboExtensao(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="horizontal") _desenharHorizontal(ctx, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="retangulo_desenho") _desenharRetanguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
   else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);

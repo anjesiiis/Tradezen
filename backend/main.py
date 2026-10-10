@@ -36,7 +36,7 @@ from typing import Literal, Optional
 # solto rejeita input malformado direto no FastAPI (422), antes de gastar
 # uma chamada no Yahoo Finance com um período/intervalo inválido.
 PeriodoAtivo = Literal["1mo", "3mo", "6mo", "1y", "2y", "3y", "5y", "max"]
-IntervaloAtivo = Literal["1d", "60m", "1wk"]
+IntervaloAtivo = Literal["1m", "5m", "15m", "60m", "1d", "1wk"]
 import uvicorn
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -261,7 +261,7 @@ def dados_ativo(
     request: Request,
     ticker: str,
     periodo: PeriodoAtivo = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 3y, 5y, max"),
-    intervalo: IntervaloAtivo = Query("1d", description="1d, 60m, 1wk")
+    intervalo: IntervaloAtivo = Query("1d", description="1m, 5m, 15m, 60m, 1d, 1wk")
 ):
     """
     Retorna candles de um ativo.

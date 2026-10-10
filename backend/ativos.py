@@ -39,7 +39,10 @@ cotação no Yahoo) e UNI-USD virou UNI7083-USD.
 # mas intraday de 60 minutos o Yahoo só devolve dos últimos 60 dias de
 # graça — e devolve VAZIO em vez de erro quando se pede mais, o que faz o
 # gráfico abrir em branco e parecer ativo sem dados.
-PERIODO_MAXIMO = {"60m": "60d"}
+# Teto de histórico por timeframe intraday, medido contra o Yahoo. Pedir
+# mais do que isso volta VAZIO (não dá erro), e o gráfico abriria em
+# branco parecendo ativo sem dados.
+PERIODO_MAXIMO = {"1m": "5d", "5m": "60d", "15m": "60d", "60m": "60d"}
 
 # O que a detecção de padrões pede. Diário com 5 anos é o que dá exemplo
 # suficiente de padrão estrutural sem puxar histórico que já não se parece
@@ -47,7 +50,7 @@ PERIODO_MAXIMO = {"60m": "60d"}
 PERIODO_PADRAO = {"1d": "5y", "1wk": "5y", "60m": "60d"}
 
 # Ordem de grandeza dos períodos, pra saber qual é "maior" que qual
-_ESCALA = {"1mo": 1, "60d": 2, "3mo": 3, "6mo": 4, "1y": 5, "2y": 6, "3y": 7, "5y": 8, "max": 9}
+_ESCALA = {"5d": 1, "1mo": 2, "60d": 3, "3mo": 4, "6mo": 5, "1y": 6, "2y": 7, "3y": 8, "5y": 9, "max": 10}
 
 
 def periodo_valido(intervalo: str, periodo: str) -> str:
