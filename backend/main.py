@@ -35,7 +35,7 @@ from typing import Literal, Optional
 # Valores aceitos pelo yfinance de verdade — travar aqui em vez de "str"
 # solto rejeita input malformado direto no FastAPI (422), antes de gastar
 # uma chamada no Yahoo Finance com um período/intervalo inválido.
-PeriodoAtivo = Literal["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"]
+PeriodoAtivo = Literal["1mo", "3mo", "6mo", "1y", "2y", "3y", "5y", "max"]
 IntervaloAtivo = Literal["1d", "60m", "1wk"]
 import uvicorn
 from slowapi import _rate_limit_exceeded_handler
@@ -260,7 +260,7 @@ def resumo_mercado(request: Request):
 def dados_ativo(
     request: Request,
     ticker: str,
-    periodo: PeriodoAtivo = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 5y, max"),
+    periodo: PeriodoAtivo = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 3y, 5y, max"),
     intervalo: IntervaloAtivo = Query("1d", description="1d, 60m, 1wk")
 ):
     """

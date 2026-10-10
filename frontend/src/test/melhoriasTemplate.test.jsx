@@ -12,7 +12,9 @@ describe('Botões de período', () => {
   it('mostra os atalhos e marca o escolhido', () => {
     render(<BotoesPeriodo valor="3mo" aoEscolher={vi.fn()} />);
 
-    expect(PERIODOS_RAPIDOS.map((p) => p.rotulo)).toEqual(['1M', '3M', '6M', '1A', '5A']);
+    expect(PERIODOS_RAPIDOS.map((p) => p.rotulo)).toEqual(['1M', '3M', '6M', '1A', '2A', '3A', '5A']);
+    // o valor é o que o backend entende (ver PeriodoAtivo em main.py)
+    expect(PERIODOS_RAPIDOS.map((p) => p.valor)).toEqual(['1mo', '3mo', '6mo', '1y', '2y', '3y', '5y']);
     expect(screen.getByRole('button', { name: '3M' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '1A' })).toHaveAttribute('aria-pressed', 'false');
   });
@@ -23,8 +25,13 @@ describe('Botões de período', () => {
     render(<BotoesPeriodo valor="3mo" aoEscolher={aoEscolher} />);
 
     await user.click(screen.getByRole('button', { name: '6M' }));
-
     expect(aoEscolher).toHaveBeenCalledWith('6mo');
+
+    // 2A e 3A preenchem o salto que havia entre 1 e 5 anos
+    await user.click(screen.getByRole('button', { name: '2A' }));
+    expect(aoEscolher).toHaveBeenCalledWith('2y');
+    await user.click(screen.getByRole('button', { name: '3A' }));
+    expect(aoEscolher).toHaveBeenCalledWith('3y');
   });
 
   it('enquanto carrega, não aceita outro clique', async () => {

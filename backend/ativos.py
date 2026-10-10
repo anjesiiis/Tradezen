@@ -47,7 +47,7 @@ PERIODO_MAXIMO = {"60m": "60d"}
 PERIODO_PADRAO = {"1d": "5y", "1wk": "5y", "60m": "60d"}
 
 # Ordem de grandeza dos períodos, pra saber qual é "maior" que qual
-_ESCALA = {"1mo": 1, "60d": 2, "3mo": 3, "6mo": 4, "1y": 5, "2y": 6, "5y": 7, "max": 8}
+_ESCALA = {"1mo": 1, "60d": 2, "3mo": 3, "6mo": 4, "1y": 5, "2y": 6, "3y": 7, "5y": 8, "max": 9}
 
 
 def periodo_valido(intervalo: str, periodo: str) -> str:

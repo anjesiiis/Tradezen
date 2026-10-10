@@ -171,7 +171,7 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
         # Binance: traduz periodo em quantidade de candles
         limites = {
             "1mo": 30, "3mo": 90, "6mo": 180,
-            "1y": 365, "2y": 730, "5y": 1825, "10y": 3650, "max": 100000,
+            "1y": 365, "2y": 730, "3y": 1095, "5y": 1825, "10y": 3650, "max": 100000,
         }
         limite = limites.get(periodo, 365)
         candles = _buscar_binance(ticker, intervalo, limite)
