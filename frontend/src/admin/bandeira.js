@@ -95,7 +95,7 @@ export function paresDoPadrao(padrao) {
 
 export function stepsDoPadrao(padrao) {
   if (ehExtra(padrao)) return stepsExtras(padrao);
-  if (ehCanal(padrao)) return stepsDoCanal(padrao);
+  if (ehCanal(padrao)) return stepsDoCanal();
   return paresDoPadrao(padrao).flatMap((par, iPar) => [
     { key: par.de,  label: par.rotuloDe,  short: `P${iPar * 2 + 1}`, color: par.cor, par: par.id },
     { key: par.ate, label: par.rotuloAte, short: `P${iPar * 2 + 2}`, color: par.cor, par: par.id },
@@ -156,7 +156,7 @@ export function normalizarPares(pontos, padrao) {
 
 export function validarPadrao(pontos, padrao) {
   if (ehExtra(padrao)) return validarExtra(pontos, padrao);
-  if (ehCanal(padrao)) return validarCanal(pontos, padrao);
+  if (ehCanal(padrao)) return validarCanal(pontos);
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
 
   const p = Object.fromEntries(PASSOS_PARES.map((k) => [k, normalizarPares(pontos, padrao)[k]]));

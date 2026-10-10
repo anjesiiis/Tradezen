@@ -69,38 +69,17 @@ def _tres_niveis(chaves_nivel: List[str], chaves_meio: List[str], alta: bool):
     return validar
 
 
-def _bordas_trocadas(p: Dict[str, Ponto]) -> List[str]:
-    """Retângulo: suporte não pode ficar acima da resistência."""
-    if max(p["sup_esq"].preco, p["sup_dir"].preco) >= min(p["res_esq"].preco, p["res_dir"].preco):
-        return ["O suporte está acima da resistência — as duas bordas estão trocadas."]
+# Triângulos e retângulo: os pontos são POSIÇÕES, sem papel de topo ou
+# fundo, e sem regra de preço entre eles. Quem sabe se aquilo é um
+# triângulo ascendente ou descendente é quem marcou — e a resposta está
+# na tabela em que foi salvo. As regras antigas ("o suporte precisa ficar
+# abaixo da resistência") recusavam marcação boa.
+def _sem_regra(p: Dict[str, Ponto]) -> List[str]:
     return []
 
 
-# Os três triângulos têm 3 pontos: a borda inclinada (P1→P2) e a
-# horizontal (P3, só o preço). O vértice é calculado, não marcado. No
-# simétrico, P1 e P2 são as duas bordas e P3 é o próprio vértice.
-
-
-def _triangulo_ascendente(p: Dict[str, Ponto]) -> List[str]:
-    if p["p2"].preco <= p["p1"].preco:
-        return ['"Fundo Dir." precisa estar acima de "Fundo Esq." — no triângulo ascendente o suporte sobe.']
-    return []
-
-
-def _triangulo_descendente(p: Dict[str, Ponto]) -> List[str]:
-    if p["p2"].preco >= p["p1"].preco:
-        return ['"Topo Dir." precisa estar abaixo de "Topo Esq." — no triângulo descendente a resistência cai.']
-    return []
-
-
-def _triangulo_simetrico(p: Dict[str, Ponto]) -> List[str]:
-    # o simétrico é o caso livre: sem regra rígida de preço
-    return []
-
-
-_BORDAS = ["res_esq", "res_dir", "sup_esq", "sup_dir"]
-# Triângulo: 3 vértices, sem nome (ver _triangulo)
 _TRIANGULO = ["p1", "p2", "p3"]
+_RETANGULO = ["p1", "p2", "p3", "p4"]
 
 # tipo → (rota, tabela, chaves obrigatórias, validação)
 PADROES_EXTRAS: Dict[str, Dict[str, Any]] = {
@@ -124,19 +103,19 @@ PADROES_EXTRAS: Dict[str, Dict[str, Any]] = {
     },
     "triangulo_ascendente": {
         "rota": "triangulo-ascendente", "tabela": "templates_triangulo_ascendente",
-        "pontos": _TRIANGULO, "validar": _triangulo_ascendente,
+        "pontos": _TRIANGULO, "validar": _sem_regra,
     },
     "triangulo_descendente": {
         "rota": "triangulo-descendente", "tabela": "templates_triangulo_descendente",
-        "pontos": _TRIANGULO, "validar": _triangulo_descendente,
+        "pontos": _TRIANGULO, "validar": _sem_regra,
     },
     "triangulo_simetrico": {
         "rota": "triangulo-simetrico", "tabela": "templates_triangulo_simetrico",
-        "pontos": _TRIANGULO, "validar": _triangulo_simetrico,
+        "pontos": _TRIANGULO, "validar": _sem_regra,
     },
     "retangulo": {
         "rota": "retangulo", "tabela": "templates_retangulo",
-        "pontos": _BORDAS, "validar": _bordas_trocadas,
+        "pontos": _RETANGULO, "validar": _sem_regra,
     },
 }
 

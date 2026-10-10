@@ -155,7 +155,10 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - `rotulagens_topo_duplo` — candidatos Topo Duplo rotulados
 - `templates_niveis` — suporte e resistência
 - `templates_bandeira_*`, `templates_flamula_*`, `templates_cunha_*` — padrões de continuação (8 pontos)
-- `templates_canal_alta` / `templates_canal_baixa` — canais (6 pontos, 2 opcionais)
+- `templates_canal_alta` / `templates_canal_baixa` — canais (4 pontos: P1/P2 uma linha, P3/P4 a outra)
+- `templates_triangulo_*` — triângulos (3 pontos ligados, sem papel de topo/fundo)
+- `templates_retangulo` — retângulo (4 pontos: P1/P2 linha inferior, P3/P4 superior)
+- Nesses seis, os pontos são POSIÇÕES: não há validação de preço entre eles
 
 ### Ativos monitorados
 - Catálogo único em `backend/ativos.py` (282 ativos: B3, NYSE, NASDAQ, cripto, forex, commodities, índices)
@@ -269,7 +272,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Gráfico de marcação (clique → ponto) | `admin/TemplateMarkerChart.jsx` |
 | Gráfico de marcação de níveis | `admin/NivelMarkerChart.jsx` |
 | Lógica dos padrões de continuação (pontos, validação, linhas) | `admin/bandeira.js` |
-| Lógica do canal (6 pontos, suporte/resistência/mediana) | `admin/canal.js` |
+| Lógica do canal (4 pontos, duas linhas + mediana calculada) | `admin/canal.js` |
 | Gráfico que sobrevive à troca de padrão (ativo, candles, zoom) | `admin/estadoGrafico.js` |
 | Recorte salvo no banco (candles + pontos + etiquetas) | `admin/janela.js` |
 | Zoom de leitura ao abrir um padrão pela 💡 | `admin/enquadrar.js` |
@@ -319,6 +322,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Detecção clássica (OCO) | `patterns/classicos.py` |
 | Detecção: fundo duplo, OCO invertido, topos/fundos triplos | `patterns/reversao.py` |
 | Detecção: triângulos e retângulo | `patterns/consolidacao.py` |
+| Pontos e validação dos 8 padrões novos | `padroes_extras.py` |
 | Base dos detectores (tolerâncias, veredicto, recorte) | `patterns/comum.py` |
 | Rodar a detecção e gravar no Supabase | `detectar_e_salvar.py` (CLI) |
 | Detecção de níveis | `patterns/niveis.py` |

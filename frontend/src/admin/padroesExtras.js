@@ -33,94 +33,42 @@ function parecidos(a, b, tolerancia) {
 
 const pct = (t) => `${Math.round(t * 100)}%`;
 
-// ── Os três triângulos: 3 pontos cada ─────────────────────────
+// ── Triângulos e retângulo: só pontos, sem topo nem fundo ─────
 //
-// Um triângulo tem uma borda inclinada e uma horizontal (ou duas
-// inclinadas, no simétrico). A inclinada precisa de 2 pontos; a
-// horizontal, de 1 — o preço dela. O vértice onde as duas se encontram é
-// CALCULADO, não marcado.
+// P1, P2, P3 (e P4 no retângulo) são posições no gráfico, nada além
+// disso. O sistema liga os pontos e desenha; quem sabe se aquilo é um
+// triângulo ascendente, descendente ou simétrico é quem está marcando —
+// e é a tela escolhida que guarda essa resposta.
 //
-//   Ascendente    P1/P2 o suporte que sobe    + P3 a resistência
-//   Descendente   P1/P2 a resistência que cai + P3 o suporte
-//   Simétrico     P1 o topo, P2 o fundo       + P3 o vértice
-//
-// Eram 4 pontos com as duas bordas marcadas ponta a ponta, o que pedia
-// quatro cliques pra dizer o que três dizem.
+// Antes cada ponto tinha nome ("Resistência Esquerda", "Suporte") e
+// havia regra de preço entre eles. Isso recusava marcação boa e obrigava
+// a decidir o tipo antes de desenhar.
+const TRES_PONTOS = [
+  ["p1", "P1", AZUL, "P1 — canto esquerdo da base"],
+  ["p2", "P2", AZUL, "P2 — canto direito da base"],
+  ["p3", "P3", AZUL, "P3 — o vértice"],
+];
 
-/** Onde a reta P1→P2 cruza o preço da horizontal. */
-function vertice(p1, p2, precoHorizontal) {
-  const inclinacao = p2.i === p1.i ? 0 : (p2.preco - p1.preco) / (p2.i - p1.i);
-  if (!inclinacao) return null;
-  const x = p1.i + (precoHorizontal - p1.preco) / inclinacao;
-  // só vale pra frente da marcação: atrás não é vértice, é cruzamento
-  // que já aconteceu
-  return x > Math.max(p1.i, p2.i) ? x : null;
-}
+export const INSTRUCAO_TRIANGULO =
+  "Marque os 2 pontos da base e depois o vértice. Os três se ligam sozinhos.";
+export const INSTRUCAO_RETANGULO =
+  "Marque os 2 pontos da linha inferior (P1, P2) e os 2 da superior (P3, P4).";
 
-/** Desenho de ascendente e descendente: a inclinada e a horizontal.
- *
- * `ultimoCandle` limita o vértice ao fim do gráfico: quando a horizontal
- * está longe, as duas bordas só se encontrariam fora dos candles — e aí
- * nem a linha nem a área apareciam, porque não existe pixel pra um
- * candle que não existe.
- */
-function desenhoComHorizontal(pontos, ultimoCandle) {
+/** Triângulo: os três pontos ligados, com a base fechando o desenho. */
+function desenhoTriangulo(pontos) {
   const { p1, p2, p3 } = pontos;
-  const linhas = [];
-  if (p1 && p2) {
-    linhas.push({
-      id: "inclinada", cor: AZUL, largura: 2, tracejada: false,
-      dados: [{ i: p1.i, preco: p1.preco }, { i: p2.i, preco: p2.preco }],
-    });
-  }
-  if (!p1 || !p2 || !p3) return { linhas, area: null };
-
-  // A horizontal vai do começo do padrão até o vértice (ou até o fim do
-  // que foi marcado, quando as duas não se encontram à frente).
-  const bruto = vertice(p1, p2, p3.preco);
-  const de = Math.min(p1.i, p2.i, p3.i);
-  const limite = Number.isFinite(ultimoCandle) ? ultimoCandle : Infinity;
-  const x = bruto == null ? null : Math.min(bruto, limite);
-  const ate = x ?? Math.min(Math.max(p1.i, p2.i, p3.i), limite);
-  linhas.push({
-    id: "horizontal", cor: AZUL, largura: 2, tracejada: false,
-    dados: [{ i: de, preco: p3.preco }, { i: ate, preco: p3.preco }],
+  const liga = (id, a, b) => ({
+    id, cor: AZUL, largura: 2, tracejada: false,
+    dados: [{ i: a.i, preco: a.preco }, { i: b.i, preco: b.preco }],
   });
-  // a inclinada acompanha: vai do começo até o vértice (ou até onde o
-  // gráfico termina, se o vértice ficou além dele)
-  if (x != null) {
-    const inclinacao = (p2.preco - p1.preco) / (p2.i - p1.i);
-    linhas[0].dados = [
-      { i: de, preco: p1.preco + inclinacao * (de - p1.i) },
-      { i: ate, preco: p1.preco + inclinacao * (ate - p1.i) },
-    ];
-  }
-  const inicioDaInclinada = linhas[0].dados[0];
-  const fimDaInclinada = linhas[0].dados[linhas[0].dados.length - 1];
-  return {
-    linhas,
-    area: {
-      cor: AZUL, opacidade: 0.15,
-      pontos: [
-        { i: de, preco: inicioDaInclinada.preco },
-        { i: ate, preco: fimDaInclinada.preco },
-        { i: ate, preco: p3.preco },
-        { i: de, preco: p3.preco },
-      ],
-    },
-  };
-}
-
-/** Desenho do simétrico: as duas bordas indo pro vértice marcado. */
-function desenhoSimetrico(pontos) {
-  const { p1, p2, p3 } = pontos;
   const linhas = [];
-  if (p1 && p3) linhas.push({ id: "superior", cor: AZUL, largura: 2, tracejada: false, dados: [{ i: p1.i, preco: p1.preco }, { i: p3.i, preco: p3.preco }] });
-  if (p2 && p3) linhas.push({ id: "inferior", cor: AZUL, largura: 2, tracejada: false, dados: [{ i: p2.i, preco: p2.preco }, { i: p3.i, preco: p3.preco }] });
+  if (p1 && p3) linhas.push(liga("p1-p3", p1, p3));
+  if (p2 && p3) linhas.push(liga("p2-p3", p2, p3));
+  if (p1 && p2) linhas.push(liga("base", p1, p2));
   if (!p1 || !p2 || !p3) return { linhas, area: null };
   return {
     linhas,
-    area: { cor: AZUL, opacidade: 0.15, pontos: [{ i: p1.i, preco: p1.preco }, { i: p3.i, preco: p3.preco }, { i: p2.i, preco: p2.preco }] },
+    area: { cor: AZUL, opacidade: 0.15, pontos: [p1, p3, p2].map((p) => ({ i: p.i, preco: p.preco })) },
   };
 }
 
@@ -241,70 +189,42 @@ const ESPEC = {
 
   triangulo_ascendente: {
     rotulo: "Triângulo Ascendente", nav: "triangulo-ascendente", alta: true, sigla: "TAS",
-    passos: [
-      ["p1", "P1 · Fundo Esq.", VERDE, "Fundo Esq. — suporte esquerdo, o mais baixo"],
-      ["p2", "P2 · Fundo Dir.", VERDE, "Fundo Dir. — suporte direito, acima do esquerdo"],
-      ["p3", "P3 · Resistência", VERMELHO, "Resistência — a linha horizontal de cima"],
-    ],
-    desenho: desenhoComHorizontal,
-    inversao: (p) => (p.p2.preco <= p.p1.preco
-      ? '"Fundo Dir." precisa estar acima de "Fundo Esq." — no triângulo ascendente o suporte sobe.' : null),
-    conferir: (p) => (p.p3.preco > Math.max(p.p1.preco, p.p2.preco) ? []
-      : ['Confira: a resistência está abaixo dos fundos marcados.']),
+    passos: TRES_PONTOS, desenho: desenhoTriangulo,
+    instrucao: INSTRUCAO_TRIANGULO,
+    inversao: () => null,
+    conferir: () => [],
   },
 
   triangulo_descendente: {
     rotulo: "Triângulo Descendente", nav: "triangulo-descendente", alta: false, sigla: "TDE",
-    passos: [
-      ["p1", "P1 · Topo Esq.", VERMELHO, "Topo Esq. — resistência esquerda, a mais alta"],
-      ["p2", "P2 · Topo Dir.", VERMELHO, "Topo Dir. — resistência direita, abaixo da esquerda"],
-      ["p3", "P3 · Suporte", VERDE, "Suporte — a linha horizontal de baixo"],
-    ],
-    desenho: desenhoComHorizontal,
-    inversao: (p) => (p.p2.preco >= p.p1.preco
-      ? '"Topo Dir." precisa estar abaixo de "Topo Esq." — no triângulo descendente a resistência cai.' : null),
-    conferir: (p) => (p.p3.preco < Math.min(p.p1.preco, p.p2.preco) ? []
-      : ['Confira: o suporte está acima dos topos marcados.']),
+    passos: TRES_PONTOS, desenho: desenhoTriangulo,
+    instrucao: INSTRUCAO_TRIANGULO,
+    inversao: () => null,
+    conferir: () => [],
   },
 
   triangulo_simetrico: {
     rotulo: "Triângulo Simétrico", nav: "triangulo-simetrico", alta: null, sigla: "TSI",
-    passos: [
-      ["p1", "P1 · Topo Esq.", VERMELHO, "Topo Esq. — começo da borda de cima"],
-      ["p2", "P2 · Fundo Esq.", VERDE, "Fundo Esq. — começo da borda de baixo"],
-      ["p3", "P3 · Vértice", AZUL, "Vértice — onde as duas bordas se encontram"],
-    ],
-    desenho: desenhoSimetrico,
-    // sem regra de preço: o simétrico é o caso livre dos três
+    passos: TRES_PONTOS, desenho: desenhoTriangulo,
+    instrucao: INSTRUCAO_TRIANGULO,
     inversao: () => null,
-    conferir: (p) => (p.p1.preco > p.p2.preco ? []
-      : ['Confira: "Topo Esq." está abaixo de "Fundo Esq.".']),
+    conferir: () => [],
   },
 
   retangulo: {
     rotulo: "Retângulo", nav: "retangulo", alta: null, sigla: "RET",
+    // P1/P2 fecham a linha de baixo, P3/P4 a de cima — posição, não papel
     passos: [
-      ["res_esq", "Resistência Esquerda", VERMELHO],
-      ["res_dir", "Resistência Direita", VERMELHO],
-      ["sup_esq", "Suporte Esquerdo", VERDE],
-      ["sup_dir", "Suporte Direito", VERDE],
+      ["p1", "P1", AZUL, "P1 — primeiro ponto da linha inferior"],
+      ["p2", "P2", AZUL, "P2 — segundo ponto da linha inferior"],
+      ["p3", "P3", AZUL, "P3 — primeiro ponto da linha superior"],
+      ["p4", "P4", AZUL, "P4 — segundo ponto da linha superior"],
     ],
-    linhas: [["res_esq", "res_dir"], ["sup_esq", "sup_dir"]],
-    // As laterais do retângulo são verticais, e uma série do gráfico só
-    // tem um preço por candle: quem as desenha é a borda do polígono.
-    area: { chaves: ["res_esq", "res_dir", "sup_dir", "sup_esq"], cor: CINZA, opacidade: 0.12, borda: true },
-    inversao: (p) => (Math.max(p.sup_esq.preco, p.sup_dir.preco) >= Math.min(p.res_esq.preco, p.res_dir.preco)
-      ? "O suporte está acima da resistência — as duas bordas estão trocadas." : null),
-    conferir: (p) => {
-      const avisos = [];
-      if (!parecidos(p.res_esq.preco, p.res_dir.preco, TOLERANCIA_BORDA)) {
-        avisos.push(`Confira: as resistências estão a mais de ${pct(TOLERANCIA_BORDA)} uma da outra.`);
-      }
-      if (!parecidos(p.sup_esq.preco, p.sup_dir.preco, TOLERANCIA_BORDA)) {
-        avisos.push(`Confira: os suportes estão a mais de ${pct(TOLERANCIA_BORDA)} um do outro.`);
-      }
-      return avisos;
-    },
+    linhas: [["p1", "p2"], ["p3", "p4"]],
+    area: { chaves: ["p3", "p4", "p2", "p1"], cor: CINZA, opacidade: 0.12, borda: true },
+    instrucao: INSTRUCAO_RETANGULO,
+    inversao: () => null,
+    conferir: () => [],
   },
 };
 
@@ -343,6 +263,11 @@ export function temFormatoExtra(pontos, padrao) {
 }
 
 /** O emoji do padrão fica ancorado no ponto mais característico dele. */
+/** Linha de ajuda da tela, quando o padrão tem uma. */
+export function instrucaoExtra(padrao) {
+  return espec(padrao)?.instrucao || null;
+}
+
 export function ancoraExtra(padrao) {
   const chaves = passosExtras(padrao);
   const preferida = { oco_invertido: "cabeca", topo_triplo: "topo2", fundo_triplo: "fundo2", fundo_duplo: "pico" };

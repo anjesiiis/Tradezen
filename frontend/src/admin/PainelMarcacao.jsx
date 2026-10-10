@@ -14,7 +14,7 @@ import {
   normalizarPares, padroesCompativeis, paresDeLinha, podeValidar, stepsDoPadrao,
   validarPadrao,
 } from "./bandeira.js";
-import { ancoraExtra, ehExtra } from "./padroesExtras.js";
+import { ancoraExtra, ehExtra, instrucaoExtra } from "./padroesExtras.js";
 import { INSTRUCAO_CANAL } from "./canal.js";
 import { ficaAcima } from "../lib/iconesPadroes.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
@@ -556,7 +556,7 @@ export default function PainelMarcacao({ padraoInicial }) {
                   <TemplateMarkerChart
                     key={padrao.id}
                     padraoMarcado={{ id: padrao.id, ancora: ancoraDoEmoji(padrao), acima: ficaAcima(padrao.id) }}
-                    instrucao={padrao.canal ? INSTRUCAO_CANAL : null}
+                    instrucao={padrao.canal ? INSTRUCAO_CANAL : instrucaoExtra(padrao)}
                     areas={[
                       ...areasDoPadrao(pontos, padrao, candlesContexto),
                       // o aberto pela 💡 ganha do mesmo padrão vindo do

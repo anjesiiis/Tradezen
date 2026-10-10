@@ -1,3 +1,5 @@
+// As telas do admin entram por lazy loading: a espera precisa caber o
+// import do chunk, que com a suíte inteira rodando junto passa de 1s.
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './helpers.jsx';
@@ -48,7 +50,7 @@ async function abrirMarcacao(rota) {
   localStorage.setItem('admin_token', 'token-de-teste');
   const user = userEvent.setup();
   renderApp(rota);
-  await screen.findByText('Nova marcação');
+  await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
   await user.click(screen.getByRole('button', { name: 'Carregar gráfico' }));
   await waitFor(() => expect(document.querySelectorAll('.admin-chip').length).toBe(8));
   return [...document.querySelectorAll('.admin-chip')].map((c) => c.textContent);
@@ -98,7 +100,7 @@ describe('Admin — seletor de padrão', () => {
   it('lista todos os padrões marcáveis e abre no padrão da rota', async () => {
     localStorage.setItem('admin_token', 'token-de-teste');
     renderApp('/admin/templates/flamula-alta');
-    await screen.findByText('Nova marcação');
+    await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
 
     const seletor = screen.getByTitle(/Trocar o padrão marcado/);
     // só os padrões que marcam os MESMOS pontos: trocar pra um de outro
@@ -114,7 +116,7 @@ describe('Admin — seletor de padrão', () => {
     const user = userEvent.setup();
     localStorage.setItem('admin_token', 'token-de-teste');
     renderApp('/admin/templates/bandeira-alta');
-    await screen.findByText('Nova marcação');
+    await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: 'Carregar gráfico' }));
     await waitFor(() => expect(document.querySelectorAll('.admin-chip').length).toBe(8));
     expect(document.querySelectorAll('.admin-chip')[2]).toHaveTextContent('Início Fundo Bandeira');
@@ -132,7 +134,7 @@ describe('Admin — lista de marcações salvas', () => {
   it('mostra um card com ticker, data do P1 e a anotação', async () => {
     localStorage.setItem('admin_token', 'token-de-teste');
     renderApp('/admin/templates/bandeira-alta');
-    await screen.findByText('Nova marcação');
+    await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
 
     const card = await waitFor(() => {
       const el = document.querySelector('.admin-card-item');

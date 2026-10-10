@@ -28,13 +28,10 @@ export const PASSOS_CANAL_OBRIGATORIOS = PASSOS_CANAL;
 const LINHA_1 = ["p1", "p2"];   // a primeira marcada
 const LINHA_2 = ["p3", "p4"];   // a segunda
 
-// A cor segue a POSIÇÃO no gráfico, não o papel da linha: a de cima é
-// sempre verde e a de baixo sempre vermelha, nas duas direções. No canal
-// de alta a de cima é a dos topos (p3/p4); no de baixa, a dos p1/p2.
-function corDaLinha(chaves, padrao) {
-  const alta = padrao?.alta !== false;
-  const ehDeCima = alta ? chaves === LINHA_2 : chaves === LINHA_1;
-  return ehDeCima ? VERDE : VERMELHO;
+// Uma cor por linha, fixa: P1/P2 vermelha, P3/P4 verde. Não depende de
+// qual ficou em cima — isso é leitura do gráfico, não regra do sistema.
+function corDaLinha(chaves) {
+  return chaves === LINHA_1 ? VERMELHO : VERDE;
 }
 
 export const PADROES_CANAL = {
@@ -50,35 +47,31 @@ export function temFormatoCanal(pontos) {
   return Boolean(pontos) && PASSOS_CANAL.every((k) => pontos[k]);
 }
 
-// No canal de alta marca-se primeiro o fundo; no de baixa, o topo.
-const ROTULOS_ALTA = ["Fundo Esq.", "Fundo Dir.", "Topo Esq.", "Topo Dir."];
-const ROTULOS_BAIXA = ["Topo Esq.", "Topo Dir.", "Fundo Esq.", "Fundo Dir."];
-
-// Qual linha cada ponto fecha — vai na dica do botão, porque "Fundo Esq."
-// sozinho não diz que os dois primeiros cliques são a linha de baixo.
-const DICAS = ["ponto inferior esquerdo", "ponto inferior direito",
-               "ponto superior esquerdo", "ponto superior direito"];
-const DICAS_BAIXA = ["ponto superior esquerdo", "ponto superior direito",
-                     "ponto inferior esquerdo", "ponto inferior direito"];
+// Os pontos são posições, não papéis: P1/P2 fecham uma linha, P3/P4 a
+// outra. Qual delas é o suporte e qual é a resistência é leitura de quem
+// marca — o sistema só liga os pontos.
+const DICAS_CANAL = [
+  "P1 — primeiro ponto de uma linha",
+  "P2 — segundo ponto da mesma linha",
+  "P3 — primeiro ponto da outra linha",
+  "P4 — segundo ponto da outra linha",
+];
 
 export const INSTRUCAO_CANAL =
-  "Marque primeiro os 2 pontos da linha inferior, depois os 2 da superior.";
+  "Marque os 2 pontos de uma linha (P1, P2) e os 2 da outra (P3, P4). A mediana sai sozinha.";
 
-export function rotulosDoCanal(padrao) {
-  return padrao?.alta === false ? ROTULOS_BAIXA : ROTULOS_ALTA;
+export function rotulosDoCanal() {
+  return ["P1", "P2", "P3", "P4"];
 }
 
-export function stepsDoCanal(padrao) {
-  const rotulos = rotulosDoCanal(padrao);
-  const alta = padrao?.alta !== false;
-  const dicas = alta ? DICAS : DICAS_BAIXA;
+export function stepsDoCanal() {
   return PASSOS_CANAL.map((key, n) => ({
     key,
-    label: `P${n + 1} · ${rotulos[n]}`,
-    dica: `${rotulos[n]} — ${dicas[n]}`,
+    label: `P${n + 1}`,
+    dica: DICAS_CANAL[n],
     short: `P${n + 1}`,
-    // a cor seque o papel da linha: suporte verde, resistência vermelha
-    color: corDaLinha(n < 2 ? LINHA_1 : LINHA_2, padrao),
+    // uma cor por linha, fixa: P1/P2 vermelha, P3/P4 verde
+    color: n < 2 ? VERMELHO : VERDE,
   }));
 }
 
@@ -108,7 +101,7 @@ export function linhasDoCanal(pontos, padrao) {
   const { de, ate } = completo ? extremos(pontos) : { de: null, ate: null };
 
   for (const chaves of [LINHA_1, LINHA_2]) {
-    const cor = corDaLinha(chaves, padrao);
+    const cor = corDaLinha(chaves);
     const [a, b] = chaves.map((k) => pontos[k]);
     if (!a || !b) continue;
     // Enquanto o canal não está fechado, a linha vai só de ponta a ponta
@@ -158,84 +151,28 @@ export function areasDoCanal(pontos, padrao) {
   }];
 }
 
-// ── Validações que BLOQUEIAM o salvamento ─────────────────────
-//
-// O que define um canal é a GEOMETRIA das duas retas, não a posição de um
-// clique em relação a outro. A primeira versão comparava ponto com ponto
-// ("Topo Esq. precisa estar acima de Fundo Esq.", "P3 depois de P1") e
-// barrava marcação correta: num canal que começa por um topo, o fundo
-// esquerdo vem DEPOIS do topo esquerdo no tempo, e isso é normal.
-//
-// Agora o que se exige é o que um canal é de fato:
-//   1. cada reta precisa de dois candles diferentes;
-//   2. as duas sobem (canal de alta) ou as duas descem (de baixa);
-//   3. a reta de cima fica acima da de baixo ao longo de todo o canal.
-export function validarCanal(pontos, padrao) {
-  if (!temFormatoCanal(pontos)) return ["Marque os 4 pontos do canal antes de salvar."];
-
-  const { p1, p2, p3, p4 } = pontos;
-  const alta = padrao?.alta !== false;
-  const [r1, r2, r3, r4] = rotulosDoCanal(padrao);
-  const erros = [];
-
-  // 1. Uma reta precisa de dois candles diferentes pra existir.
-  if (p2.i === p1.i) erros.push(`"${r1}" e "${r2}" estão no mesmo candle — a linha precisa de dois candles.`);
-  if (p4.i === p3.i) erros.push(`"${r3}" e "${r4}" estão no mesmo candle — a linha precisa de dois candles.`);
-  if (erros.length) return erros;   // sem as duas retas, o resto não dá pra conferir
-
-  // 2. Inversão: a reta de cima precisa ficar de um lado só da de baixo.
-  // É a ÚNICA coisa que impede de salvar além dos pontos faltando — se as
-  // duas se cruzam, topo e fundo estão trocados e o desenho não é um canal.
-  //
-  // A conferência vale só no TRECHO ONDE AS DUAS FORAM MARCADAS. Antes ela
-  // esticava as duas retas até o extremo dos quatro pontos, e aí num canal
-  // que estreita (a linha de baixo mais inclinada que a de cima) a de baixo
-  // ultrapassava a de cima lá fora, num pedaço que ninguém marcou — e a
-  // marcação, correta, era recusada.
-  const de = Math.max(Math.min(p1.i, p2.i), Math.min(p3.i, p4.i));
-  const ate = Math.min(Math.max(p1.i, p2.i), Math.max(p3.i, p4.i));
-  const linha1 = (x) => precoNaReta(p1, p2, x);
-  const linha2 = (x) => precoNaReta(p3, p4, x);
-  // sem trecho em comum, compara onde cada uma começa e termina
-  const ondeConferir = de <= ate ? [de, ate] : [Math.min(p1.i, p2.i, p3.i, p4.i), Math.max(p1.i, p2.i, p3.i, p4.i)];
-  const cruzam = ondeConferir.some((x) => (alta ? linha2(x) <= linha1(x) : linha2(x) >= linha1(x)));
-  if (cruzam) {
-    const ladoCerto = alta ? "acima" : "abaixo";
-    erros.push(`A linha de "${r3}" a "${r4}" precisa ficar ${ladoCerto} da linha de "${r1}" a "${r2}" — do jeito que está, topo e fundo se cruzam.`);
-  }
-
-  return erros;
+// ── Validação ─────────────────────────────────────────────────
+// Só os 4 pontos. Nada de "a linha X precisa ficar acima da Y": as
+// regras de preço entre os pontos recusavam canal bem marcado (o que
+// começa por um topo, o que estreita) e obrigavam a adivinhar qual par
+// seria qual antes de desenhar.
+export function validarCanal(pontos) {
+  return temFormatoCanal(pontos) ? [] : ["Marque os 4 pontos do canal antes de salvar."];
 }
 
 // ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
-export function avisosDoCanal(pontos, padrao) {
+export function avisosDoCanal(pontos) {
   if (!temFormatoCanal(pontos)) return [];
   const medidas = medidasDoCanal(pontos);
   const avisos = [];
 
-  // Canal de alta marcado num trecho que desce (ou o contrário) não é
-  // erro de marcação, é escolha de quem está olhando o gráfico: vira
-  // aviso, e o template salva na tabela que estiver selecionada.
-  if (padrao) {
-    const alta = padrao.alta !== false;
-    const esperado = alta ? "subindo" : "descendo";
-    const [r1, r2, r3, r4] = rotulosDoCanal(padrao);
-    const contra = (m) => (alta ? m <= 0 : m >= 0);
-    if (contra(medidas.inclinacao_suporte)) avisos.push(`Confira: a linha de "${r1}" a "${r2}" não está ${esperado} — num canal de ${alta ? "alta" : "baixa"} ela vai nesse sentido.`);
-    if (contra(medidas.inclinacao_resistencia)) avisos.push(`Confira: a linha de "${r3}" a "${r4}" não está ${esperado}.`);
-  }
-
   // Num canal as duas linhas são paralelas: a abertura no começo e no fim
-  // é a mesma. Diferença grande quer dizer outro padrão (cunha, triângulo).
+  // é a mesma. Diferença grande quer dizer outro padrão (cunha,
+  // triângulo). É só um aviso — salva do mesmo jeito.
   const maior = Math.max(Math.abs(medidas.abertura_inicio), Math.abs(medidas.abertura_fim));
   const menor = Math.min(Math.abs(medidas.abertura_inicio), Math.abs(medidas.abertura_fim));
   if (maior > 0 && menor / maior < 0.6) {
-    avisos.push("Confira: as duas linhas não estão paralelas — a abertura do canal muda bastante do começo pro fim. Se elas convergem, o padrão é cunha ou triângulo.");
-  }
-
-  const mesmaDirecao = medidas.inclinacao_suporte * medidas.inclinacao_resistencia > 0;
-  if (!mesmaDirecao) {
-    avisos.push("Confira: as duas linhas estão inclinando para lados opostos — num canal elas seguem juntas.");
+    avisos.push("Confira: as duas linhas não estão paralelas — a abertura muda bastante do começo pro fim. Se elas convergem, o padrão é cunha ou triângulo.");
   }
   return avisos;
 }

@@ -21,14 +21,14 @@ describe('Rotas do admin', () => {
   it('/admin (sem sub-rota) abre o login do admin', async () => {
     renderApp('/admin');
 
-    expect(await screen.findByText(/Acesso restrito/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Acesso restrito/i, undefined, { timeout: 5000 })).toBeInTheDocument();
     naoCaiuNaPaginaInicial();
   });
 
   it('/admin/login abre o login do admin', async () => {
     renderApp('/admin/login');
 
-    expect(await screen.findByText(/Acesso restrito/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Acesso restrito/i, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 });
 
@@ -36,7 +36,7 @@ describe('Retorno do link de acesso do admin', () => {
   it('link expirado na raiz do site avisa, em vez de mostrar a página inicial', async () => {
     renderApp('/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
 
-    expect(await screen.findByText(/expirou ou já foi usado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/expirou ou já foi usado/i, undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText(/Pedir novo link/i)).toBeInTheDocument();
     naoCaiuNaPaginaInicial();
   });
@@ -44,7 +44,7 @@ describe('Retorno do link de acesso do admin', () => {
   it('formato ?code= na raiz avisa, em vez de mostrar a página inicial', async () => {
     renderApp('/?code=abc123');
 
-    expect(await screen.findByText(/Não foi possível concluir o acesso/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Não foi possível concluir o acesso/i, undefined, { timeout: 5000 })).toBeInTheDocument();
     naoCaiuNaPaginaInicial();
   });
 
