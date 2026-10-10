@@ -111,7 +111,7 @@ export function temFormatoPares(pontos) {
 export function linhasDoPadrao(pontos, padrao, candles) {
   if (!pontos) return [];
   if (ehExtra(padrao)) return linhasExtras(pontos, padrao, candles);
-  if (ehCanal(padrao)) return linhasDoCanal(pontos, padrao);
+  if (ehCanal(padrao)) return linhasDoCanal(pontos);
   return paresDoPadrao(padrao)
     .filter((par) => pontos[par.de] && pontos[par.ate])
     .map((par) => ({

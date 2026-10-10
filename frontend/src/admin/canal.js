@@ -94,7 +94,7 @@ function extremos(pontos) {
  * As três linhas: as duas marcadas, esticadas até as pontas do canal, e a
  * mediana no meio exato delas.
  */
-export function linhasDoCanal(pontos, padrao) {
+export function linhasDoCanal(pontos) {
   if (!pontos) return [];
   const linhas = [];
   const completo = temFormatoCanal(pontos);
