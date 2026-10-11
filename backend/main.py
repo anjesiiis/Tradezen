@@ -42,7 +42,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from ativos import ATIVOS
-from data.fetcher import buscar_candles, buscar_resumo_mercado, buscar_ativo_info
+from data.fetcher import _eh_cripto, buscar_candles, buscar_pagina_cripto, buscar_resumo_mercado, buscar_ativo_info
 from patterns.classicos import detectar_padroes_classicos
 from patterns.consolidacao import detectar_consolidacoes
 from patterns.reversao import detectar_reversoes
@@ -362,6 +362,62 @@ def detectar_padroes(
     }
     cache_set(chave_cache, resposta)
     return resposta
+
+
+@app.get("/ativo/{ticker}/pagina")
+@limiter.limit("60/minute")
+def pagina_de_candles(
+    request: Request,
+    ticker: str,
+    intervalo: IntervaloAtivo = Query("60m", description="1m, 5m, 15m, 60m, 1d, 1wk"),
+    antes_de: Optional[int] = Query(None, description="timestamp em ms — devolve os candles ANTES dele"),
+    limite: int = Query(1000, ge=1, le=1000, description="candles por página (teto da Binance)"),
+):
+    """Uma página de candles, do mais recente pro passado.
+
+    É o que deixa o gráfico abrir rápido num intraday longo: a primeira
+    tela vem no /ativo/{ticker} e o resto chega conforme se rola pra
+    trás. Sem `antes_de` vem a página mais recente; depois, passando o
+    timestamp do candle mais antigo que já se tem, vem a anterior.
+
+    Só cripto: o histórico vem da Binance, que dá anos de intraday de
+    graça. Ação e forex vêm do Yahoo, que corta 60 minutos em 60 dias
+    (ver PERIODO_MAXIMO em ativos.py) — ali a primeira resposta já traz
+    tudo o que existe, e paginar não acrescentaria nada.
+    """
+    if not _eh_cripto(ticker):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Paginação só existe para cripto. Para '{ticker}', use /ativo/{ticker} — "
+                   "o histórico do Yahoo já vem inteiro na primeira resposta.",
+        )
+
+    chave_cache = f"pagina:{ticker}:{intervalo}:{antes_de}:{limite}"
+    em_cache = cache_get(chave_cache, TTL_LONGO)
+    if em_cache is not None:
+        return {**em_cache, "cache": True}
+
+    try:
+        candles, tem_mais = buscar_pagina_cripto(ticker, intervalo, antes_de, limite)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Binance indisponível: {e}")
+
+    if candles is None:
+        raise HTTPException(status_code=404, detail=f"'{ticker}' não existe na Binance.")
+
+    resposta = {
+        "status": "ok",
+        "ticker": ticker.upper(),
+        "intervalo": intervalo,
+        "candles": candles,
+        "total": len(candles),
+        # palpite honesto: a página veio cheia, então provavelmente ainda
+        # há passado. A Binance não informa isso.
+        "tem_mais": tem_mais,
+        "mais_antigo_ts": candles[0]["timestamp"] if candles else None,
+    }
+    cache_set(chave_cache, resposta)
+    return {**resposta, "cache": False}
 
 
 @app.get("/ativos")

@@ -83,22 +83,55 @@ def _buscar_binance(ticker, intervalo="1d", limite=1000):
             if len(lote) < pedido:
                 break  # veio menos que o pedido: chegou no início do histórico
 
-        candles = []
-        for k in klines[-limite:]:
-            candles.append({
-                "timestamp": int(k[0]),
-                "data": datetime.fromtimestamp(k[0]/1000).strftime("%Y-%m-%d %H:%M"),
-                "abertura": float(k[1]),
-                "maxima": float(k[2]),
-                "minima": float(k[3]),
-                "fechamento": float(k[4]),
-                "volume": float(k[5]),
-                "fonte": "binance",
-            })
-        return candles
+        return [_kline_para_candle(k) for k in klines[-limite:]]
     except Exception as e:
         print(f"[Binance] Erro {ticker}: {e}")
         return []
+
+
+def _kline_para_candle(k):
+    """Formato da Binance → o formato interno do TradeZen."""
+    return {
+        "timestamp": int(k[0]),
+        "data": datetime.fromtimestamp(k[0] / 1000).strftime("%Y-%m-%d %H:%M"),
+        "abertura": float(k[1]),
+        "maxima": float(k[2]),
+        "minima": float(k[3]),
+        "fechamento": float(k[4]),
+        "volume": float(k[5]),
+        "fonte": "binance",
+    }
+
+
+def buscar_pagina_cripto(ticker, intervalo="60m", antes_de=None, limite=1000):
+    """Uma página de candles de cripto, do mais recente pro passado.
+
+    É o que permite o gráfico abrir rápido e ir buscando o resto
+    conforme se rola pra trás: sem `antes_de` vem a página mais recente;
+    depois, passando o timestamp do candle mais antigo que já se tem,
+    vem a anterior.
+
+    Devolve (candles, tem_mais). `tem_mais` é um palpite honesto: veio a
+    página cheia, provavelmente ainda há passado — a Binance não diz.
+    """
+    symbol = BINANCE_SYMBOLS.get(ticker.upper())
+    if not symbol:
+        return None, False   # None = ticker que a Binance não conhece
+
+    limite = max(1, min(int(limite), 1000))   # 1000 é o teto da API por request
+    params = {
+        "symbol": symbol,
+        "interval": BINANCE_INTERVALS.get(intervalo, "1h"),
+        "limit": limite,
+    }
+    if antes_de:
+        # -1 pra não repetir o candle que o frontend já tem na ponta
+        params["endTime"] = int(antes_de) - 1
+
+    resp = requests.get(f"{BINANCE_URL}/klines", params=params, timeout=15)
+    resp.raise_for_status()
+    lote = resp.json()
+    return [_kline_para_candle(k) for k in lote], len(lote) == limite
 
 
 def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
@@ -180,9 +213,12 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
         por_dia = {"1m": 1440, "5m": 288, "15m": 96, "60m": 24, "1h": 24, "4h": 6}.get(intervalo, 1)
         if intervalo in ("1wk", "1w"):
             por_dia = 1 / 7
-        # teto de 5.000: acima disso são 5+ páginas de 1.000 na API e o
-        # gráfico não aguenta desenhar
-        limite = max(1, min(5000, int(dias * por_dia)))
+        # A Binance dá muito mais histórico que o Yahoo, e sem custo:
+        # 26.280 = 3 anos de 60 minutos (1.095 dias × 24). O gráfico
+        # aguenta porque o frontend carrega o resto sob demanda, conforme
+        # se rola pro passado (ver /ativo/{ticker}/pagina).
+        TETO_CANDLES_CRIPTO = 26_280
+        limite = max(1, min(TETO_CANDLES_CRIPTO, int(dias * por_dia)))
         candles = _buscar_binance(ticker, intervalo, limite)
         if candles:
             _cache_set(chave, candles)

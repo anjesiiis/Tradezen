@@ -164,7 +164,8 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - Catálogo único em `backend/ativos.py` (282 ativos: B3, NYSE, NASDAQ, cripto, forex, commodities, índices)
 - Acrescentar ativo = acrescentar uma linha lá; busca, resumo da home e backtest leem desse arquivo
 - `resumo: True` marca os que entram na fileira de cotações da home (subconjunto, pra não disparar centenas de requisições por ciclo)
-- Histórico: diário e semanal aceitam até `max`; 60 minutos o Yahoo só dá 60 dias (ver `periodo_valido`)
+- Histórico: diário e semanal aceitam até `max`; no intraday o Yahoo corta (1m→5d, 5m/15m/60m→60d, ver `periodo_valido`)
+- Cripto vem da Binance, que dá muito mais intraday: teto de 26.280 candles (3 anos de 60m) na primeira carga, e o resto chega sob demanda pela rota `/ativo/{ticker}/pagina` (ver `lib/grafico/historico.js` no frontend)
 - `analises_diarias` — resultados da detecção diária
 
 ## Variáveis de ambiente
@@ -241,6 +242,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Desenhos no gráfico (linhas, markers) | `lib/grafico/desenhos.js` |
 | Indicadores técnicos (médias, volume) | `lib/grafico/indicadores.js` |
 | Detecção de padrões no frontend | `lib/grafico/padroes.js` |
+| Histórico sob demanda do gráfico (só cripto) | `lib/grafico/historico.js` |
 | Dados de mercado (tickers, categorias) | `lib/mercado.js` |
 | Bolsas do mundo (coordenadas, índices) | `lib/mercadosGlobais.js` |
 | Top 5 mais negociadas por praça | `lib/topAcoes.js` |

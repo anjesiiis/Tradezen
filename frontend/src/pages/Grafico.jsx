@@ -7,6 +7,7 @@ import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferra
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
+import { buscarPaginaAnterior, temHistoricoSobDemanda } from "../lib/grafico/historico.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp } from "../lib/grafico/padroes.js";
 import { fmtP } from "../lib/mercado.js";
 
@@ -38,6 +39,13 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // guardada a cada troca — ver LeftToolbar.
   const [ferramentaAtiva,setFerramentaAtiva] = useState(lerFerramentaSalva);
   const [desenhosEscondidos,setDesenhosEscondidos] = useState(false);
+  // ── Histórico sob demanda (só cripto) ──────────────────────────
+  // A Binance dá anos de intraday; o Yahoo corta 60 minutos em 60 dias.
+  // Então pra cripto a primeira resposta é só o começo: o resto chega
+  // conforme se rola pro passado (ver /ativo/{ticker}/pagina).
+  const [carregandoMais,setCarregandoMais] = useState(false);
+  const temMaisRef = useRef(true);
+  const buscandoRef = useRef(false);
   const [desenhosTravados,setDesenhosTravados] = useState(false);
   useEffect(()=>{ guardarFerramenta(ferramentaAtiva); },[ferramentaAtiva]);
   const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
@@ -45,8 +53,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // precisar entrar nas deps dele (entrar nas deps causaria um refetch
   // toda vez que QUALQUER ativo salvasse configuração, não só o ticker que
   // está sendo trocado).
+  const candlesRef = useRef([]);
   const ativoConfigRef = useRef(ativoConfig);
   useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
+  useEffect(()=>{ candlesRef.current = candles; },[candles]);
 
   // Desfazer/Refazer (Ctrl+Z) — cobre indicadores (tools) e linhas (desenhos)
   // juntos numa única linha do tempo por ativo. `registrarHistorico` é
@@ -128,6 +138,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     setLampPos(null);
     setTooltipAberto(false);
     setCandles([]);
+    temMaisRef.current = true;   // ativo/timeframe novo: há passado de novo
     setPadroes([]);
     setNiveis([]);
     // A ferramenta armada NÃO é zerada aqui: quem está desenhando linha de
@@ -221,6 +232,27 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     if(!ticker || !user) return;
     salvarConfigAtivo?.(ticker, { tools:[...tools], desenhos: desenhos.filter(d=>d.tipo!=="regua") });
   },[tools, desenhos, user, ticker]);
+
+  // Busca a página anterior e a coloca na frente do array. O gráfico
+  // recoloca a faixa visível no lugar (ver anteriorRef no CandleChart)
+  // pra a tela não dar um salto no meio da rolagem.
+  const ehCripto = temHistoricoSobDemanda(selAtivo);
+  const carregarMaisCandles = useCallback(async ()=>{
+    if(buscandoRef.current || !temMaisRef.current) return;
+    if(!ehCripto || !candlesRef.current.length) return;
+
+    buscandoRef.current = true;
+    setCarregandoMais(true);
+    try{
+      const { novos, temMais } = await buscarPaginaAnterior(
+        ticker, tf.intervalo, candlesRef.current[0].timestamp);
+      temMaisRef.current = temMais;
+      if(novos.length) setCandles(prev=>[...novos, ...prev]);
+    }finally{
+      buscandoRef.current = false;
+      setCarregandoMais(false);
+    }
+  },[ehCripto, ticker, tf.intervalo]);
 
   if(!selAtivo) return null;
 
@@ -371,6 +403,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
+          {carregandoMais&&(
+            <div className="chart-carregando-mais">Carregando histórico…</div>
+          )}
           {!loading&&candles.length>0&&(
             <CandleChart
               candles={candles}
@@ -388,6 +423,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               desenhos={desenhosEscondidos ? [] : desenhos}
               setDesenhos={desenhosTravados ? ()=>{} : setDesenhos}
               registrarHistorico={registrarHistorico}
+              aoChegarNoComeco={carregarMaisCandles}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip

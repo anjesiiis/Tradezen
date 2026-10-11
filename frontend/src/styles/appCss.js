@@ -169,6 +169,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* ── Barra de ferramentas do gráfico (coluna da esquerda) ───────
    Coluna do corpo, e não posicionada de forma fixa: com multitelas cada
    gráfico tem a sua, e uma barra fixa cobriria as outras. */
+.chart-carregando-mais{position:absolute;top:8px;left:8px;z-index:20;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text2);pointer-events:none}
 .chart-toolbar{width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
 .chart-toolbar::-webkit-scrollbar{display:none}
 .chart-toolbar-grupo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}

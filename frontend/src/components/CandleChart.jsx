@@ -8,7 +8,7 @@ import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco}){
   const isMobile = useIsMobile();
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
@@ -30,6 +30,12 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const iconesRef    = useRef([]);
   const [dicaPadrao, setDicaPadrao] = useState(null);   // { x, y, texto }
   const redrawRef    = useRef(null);
+  // ref: o listener de rolagem é registrado uma vez só (deps:[tema]) e
+  // ficaria preso na primeira versão da função
+  const aoChegarNoCoRef = useRef(aoChegarNoComeco);
+  // o que havia antes da última troca de candles — serve pra saber se o
+  // array CRESCEU PELO COMEÇO (lazy loading) e segurar a tela no lugar
+  const anteriorRef = useRef({primeiro:null, total:0});
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
 
@@ -39,6 +45,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const [fibo, setFibo] = useState(null); // {a:{i,preco}, b:{i,preco}} | null
   const fiboRef = useRef(null);
   useEffect(()=>{ fiboRef.current = fibo; },[fibo]);
+  useEffect(()=>{ aoChegarNoCoRef.current = aoChegarNoComeco; },[aoChegarNoComeco]);
 
   // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal) —
   // `desenhos` é dono do pai (ChartPane), porque o botão "Limpar desenhos"
@@ -186,8 +193,12 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       });
     }
 
-    chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(()=>{
+    chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((faixa)=>{
       redrawRef.current?.();
+      // Chegou perto do começo dos dados: quem tem mais histórico pra
+      // buscar é o pai (ele é dono do array de candles). 50 candles de
+      // antecedência pra o próximo lote chegar antes da borda aparecer.
+      if(faixa && faixa.from < 50) aoChegarNoCoRef.current?.();
     });
 
     const ro = new ResizeObserver(()=>{
@@ -241,8 +252,27 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // Atualiza candles
   useEffect(()=>{
     if(!candleRef.current || !candles.length) return;
+    // Lazy loading: quando chega histórico mais antigo, o array cresce
+    // PELO COMEÇO e todos os índices lógicos andam pra frente. Sem
+    // recolocar a faixa visível no lugar, o gráfico daria um salto pro
+    // passado bem na hora em que a pessoa está rolando.
+    const anterior = anteriorRef.current;
+    const cresceuNoComeco = anterior.total > 0
+      && candles.length > anterior.total
+      && candles[0].timestamp < anterior.primeiro;
+    const faixaAntes = cresceuNoComeco ? chartRef.current?.timeScale().getVisibleLogicalRange() : null;
+
     const lw = toLWCandles(candles);
     candleRef.current.setData(lw);
+
+    if(faixaAntes){
+      const deslocou = candles.length - anterior.total;
+      chartRef.current?.timeScale().setVisibleLogicalRange({
+        from: faixaAntes.from + deslocou,
+        to:   faixaAntes.to + deslocou,
+      });
+    }
+    anteriorRef.current = {primeiro: candles[0].timestamp, total: candles.length};
 
     // Volume — filtra timestamps duplicados (acontece em intradiários após arredondar pra segundos)
     const volMap = new Map();
