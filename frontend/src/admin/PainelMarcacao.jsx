@@ -152,24 +152,12 @@ export default function PainelMarcacao({ padraoInicial }) {
   // os mesmos 8 pontos, então perceber no meio do caminho que aquilo é uma
   // flâmula e não uma bandeira é só trocar aqui — salva na tabela da
   // flâmula, sem remarcar nada. O que muda é a validação na hora de salvar.
-  // Chave da nav do topo ("bandeira-baixa") → padrão. Só os de continuação:
-  // OCO, topo duplo e níveis marcam outros pontos, aí é tela mesmo.
-  function padraoDaNav(chave) {
-    return Object.values(PADROES).find((p) => p.nav === chave) || null;
-  }
-
-  function trocarPeloMenu(chave, href) {
-    const novoPadrao = padraoDaNav(chave);
-    if (!novoPadrao) return false;                 // deixa navegar normalmente
-    if (novoPadrao.id !== padrao.id) {
-      trocarPadrao(novoPadrao.id);
-      // endereço acompanha o padrão sem remontar a tela (recarregar aqui
-      // jogaria fora candles, zoom e marcação — que é o que se quer manter)
-      window.history.replaceState(null, "", href);
-    }
-    return true;
-  }
-
+  // O menu da esquerda NÃO troca o padrão da marcação em andamento: ele
+  // navega, e ponto. Antes ele sequestrava o clique — quem estava
+  // marcando uma bandeira de alta e clicava em "Flâmula de Alta" via a
+  // própria análise virar flâmula, com os pontos mantidos. Trocar de
+  // tipo é decisão deliberada, e pra isso existe o seletor "Padrão"
+  // logo acima do gráfico.
   function trocarPadrao(id) {
     const novoPadrao = PADROES[id];
     if (!novoPadrao || novoPadrao.id === padrao.id) return;
@@ -409,7 +397,7 @@ export default function PainelMarcacao({ padraoInicial }) {
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
           <span className="admin-header-title">Admin · Templates {padrao.rotulo}</span>
         </div>
-        <AdminPatternNav active={padrao.nav} aoTrocar={trocarPeloMenu} />
+        <AdminPatternNav active={padrao.nav} />
         <button onClick={sair} className="admin-link-btn">Sair</button>
       </div>
 
