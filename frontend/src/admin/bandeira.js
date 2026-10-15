@@ -40,6 +40,26 @@ export const PASSOS_PARES = [
   "p7_inicio_mastro2", "p8_topo_mastro2",
 ];
 
+// Fracassos: o que PARECE o padrão e não é. Mesmos 8 pontos da
+// bandeira — o que muda é a tabela em que caem e o fato de a validação
+// de forma não valer (é o desenho torto que se quer guardar).
+export const PADROES_FRACASSO = {
+  bandeira_alta_fracasso: {
+    id: "bandeira_alta_fracasso", rotulo: "Fracassos — Bandeira de Alta",
+    forma: "bandeira", alta: true, fracasso: true,
+    nav: "fracasso-bandeira-alta", rota: "/admin/templates/fracasso-bandeira-alta",
+  },
+  bandeira_baixa_fracasso: {
+    id: "bandeira_baixa_fracasso", rotulo: "Fracassos — Bandeira de Baixa",
+    forma: "bandeira", alta: false, fracasso: true,
+    nav: "fracasso-bandeira-baixa", rota: "/admin/templates/fracasso-bandeira-baixa",
+  },
+};
+
+export function ehFracasso(padrao) {
+  return Boolean(padrao?.fracasso);
+}
+
 export const PADROES = {
   bandeira_alta:  { id: "bandeira_alta",  rotulo: "Bandeira de Alta",  forma: "bandeira", alta: true,  nav: "bandeira-alta",  rota: "/admin/templates/bandeira-alta" },
   bandeira_baixa: { id: "bandeira_baixa", rotulo: "Bandeira de Baixa", forma: "bandeira", alta: false, nav: "bandeira-baixa", rota: "/admin/templates/bandeira-baixa" },
@@ -49,6 +69,7 @@ export const PADROES = {
   cunha_baixa:    { id: "cunha_baixa",    rotulo: "Cunha de Baixa",    forma: "cunha",    alta: false, nav: "cunha-baixa",    rota: "/admin/templates/cunha-baixa" },
   ...PADROES_CANAL,
   ...PADROES_EXTRAS,
+  ...PADROES_FRACASSO,
 };
 
 const NOME_FORMA = { bandeira: "Bandeira", flamula: "Flâmula", cunha: "Cunha" };
@@ -155,6 +176,11 @@ export function normalizarPares(pontos, padrao) {
 }
 
 export function validarPadrao(pontos, padrao) {
+  // Fracasso é o desenho torto de propósito: exigir forma aqui recusaria
+  // justamente o exemplo negativo que se quer guardar. Só os 8 pontos.
+  if (ehFracasso(padrao)) {
+    return temFormatoPares(pontos) ? [] : ["Marque os 8 pontos antes de salvar."];
+  }
   if (ehExtra(padrao)) return validarExtra(pontos, padrao);
   if (ehCanal(padrao)) return validarCanal(pontos);
   if (!temFormatoPares(pontos)) return ["Marque os 8 pontos antes de salvar."];
@@ -189,6 +215,7 @@ export function validarPadrao(pontos, padrao) {
 
 // ── Avisos (amarelos, NÃO bloqueiam) ──────────────────────────
 export function avisosDoPadrao(pontos, padrao) {
+  if (ehFracasso(padrao)) return [];   // nada a conferir: é um contraexemplo
   if (ehExtra(padrao)) return avisosExtras(pontos, padrao);
   if (ehCanal(padrao)) return avisosDoCanal(pontos);
   if (!temFormatoPares(pontos)) return [];
@@ -265,7 +292,12 @@ export function podeValidar(pontos, padrao) {
 export function padroesCompativeis(padrao) {
   const chaves = (p) => stepsDoPadrao(p).map((s) => s.key).join("|");
   const atual = chaves(padrao);
-  return Object.values(PADROES).filter((p) => chaves(p) === atual);
+  return Object.values(PADROES).filter(
+    // Fracasso só troca com fracasso, e padrão só com padrão: os pontos
+    // são os mesmos, mas são classes opostas — oferecer a troca faria a
+    // análise de uma bandeira virar contraexemplo num clique.
+    (p) => chaves(p) === atual && ehFracasso(p) === ehFracasso(padrao),
+  );
 }
 
 /** Polígono preenchido do padrão (triângulos e retângulo). */

@@ -104,10 +104,13 @@ describe('Padrões de continuação — os 6 templates', () => {
       'bandeira_alta', 'bandeira_baixa', 'flamula_alta', 'flamula_baixa', 'cunha_alta', 'cunha_baixa',
       'canal_alta', 'canal_baixa',
     ]);
-    expect(Object.keys(PADROES).slice(8)).toEqual([
+    expect(Object.keys(PADROES).slice(8, 16)).toEqual([
       'fundo_duplo', 'oco_invertido', 'topo_triplo', 'fundo_triplo',
       'triangulo_ascendente', 'triangulo_descendente', 'triangulo_simetrico', 'retangulo',
     ]);
+    // e os contraexemplos, que usam os mesmos 8 pontos da bandeira mas
+    // são a classe oposta (ver PADROES_FRACASSO)
+    expect(Object.keys(PADROES).slice(16)).toEqual(['bandeira_alta_fracasso', 'bandeira_baixa_fracasso']);
   });
 
   it('cada padrão tem sua sigla de 3 letras (marcadores do gráfico)', () => {

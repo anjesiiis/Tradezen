@@ -23,9 +23,11 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     expect(screen.getByText('Suporte/Resistência')).toBeInTheDocument();
   });
 
-  it('os 19 padrões aparecem na lista', () => {
+  it('os 21 padrões aparecem na lista', () => {
     montar();
-    expect(caixas()).toHaveLength(19);
+    // 19 padrões + os 2 contraexemplos de bandeira
+    expect(caixas()).toHaveLength(21);
+    expect(screen.getByText('Fracasso — Band. Alta')).toBeInTheDocument();
   });
 
   it('abre com só o padrão da tela ligado', () => {

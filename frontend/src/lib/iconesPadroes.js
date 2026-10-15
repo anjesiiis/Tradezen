@@ -32,6 +32,12 @@ const ICONES = {
   suporte: { icone: "🟢", cor: "alta", rotulo: "Suporte", acima: false },
   resistencia: { icone: "🔴", cor: "baixa", rotulo: "Resistência", acima: true },
 
+  // ── fracassos: o que PARECE o padrão e não é ──
+  // ❌ em cima da bandeira, pra na hora de marcar dar pra ver que
+  // naquele trecho já existe um contraexemplo registrado.
+  bandeira_alta_fracasso: { icone: "❌", cor: "baixa", rotulo: "Fracasso — Bandeira de Alta", acima: false },
+  bandeira_baixa_fracasso: { icone: "❌", cor: "baixa", rotulo: "Fracasso — Bandeira de Baixa", acima: true },
+
   // ── ainda não existem no projeto; já ficam prontos ──
   fundo_duplo: { icone: "🇼", cor: "alta", rotulo: "Fundo Duplo", acima: false },
   // mesmo ⛰️ do OCO, de cabeça pra baixo (é o mesmo desenho espelhado)

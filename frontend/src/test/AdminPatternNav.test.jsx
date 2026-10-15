@@ -18,17 +18,25 @@ const grupos = () => [...document.querySelectorAll('.admin-nav-grupo-titulo')];
 const itens = () => document.querySelectorAll('.admin-nav-itens a');
 
 describe('Menu lateral de padrões do admin', () => {
-  it('tem os quatro grupos, nessa ordem', () => {
+  it('tem os cinco grupos, nessa ordem', () => {
     montar();
     expect(grupos().map((g) => g.textContent.replace(/[▾▸]/g, '').trim())).toEqual([
-      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros',
+      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🔴Fracassos',
     ]);
   });
 
-  it('os 19 padrões estão distribuídos entre os grupos, sem repetir', () => {
+  it('o grupo dos fracassos vem destacado em vermelho', () => {
+    montar();
+    const fracassos = grupos().find((g) => g.textContent.includes('Fracassos'));
+    // o que se marca ali é o contrário do padrão: não pode parecer igual
+    expect(fracassos).toHaveClass('perigo');
+    expect(grupos().filter((g) => g.className.includes('perigo'))).toHaveLength(1);
+  });
+
+  it('os padrões estão distribuídos entre os grupos, sem repetir', () => {
     const todos = GRUPOS_DE_PADRAO.flatMap((g) => g.itens.map((i) => i.key));
-    expect(todos).toHaveLength(19);
-    expect(new Set(todos).size).toBe(19);
+    expect(todos).toHaveLength(21);   // 19 padrões + 2 fracassos de bandeira
+    expect(new Set(todos).size).toBe(21);
     // as rotas não mudaram
     expect(GRUPOS_DE_PADRAO[0].itens.find((i) => i.key === 'oco').href).toBe('/admin/templates');
     expect(GRUPOS_DE_PADRAO[3].itens.find((i) => i.key === 'niveis').href).toBe('/admin/templates/niveis');
@@ -55,6 +63,7 @@ describe('Menu lateral de padrões do admin', () => {
     expect(grupoDoPadrao('flamula-baixa').id).toBe('continuacao');
     expect(grupoDoPadrao('triangulo-simetrico').id).toBe('canais');
     expect(grupoDoPadrao('retangulo').id).toBe('neutros');
+    expect(grupoDoPadrao('fracasso-bandeira-alta').id).toBe('fracassos');
     expect(grupoDoPadrao('nao-existe')).toBeNull();
   });
 

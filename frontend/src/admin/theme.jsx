@@ -18,6 +18,10 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   box-sizing:border-box;
 }
 .admin-shell *,.admin-shell *::before,.admin-shell *::after{box-sizing:border-box}
+/* Telas de fracasso: o azul de destaque vira vermelho, e só isso — o
+   resto do layout é igual ao das telas de sucesso de propósito, pra a
+   marcação ser o mesmo gesto. */
+.admin-shell.tema-fracasso{--accent:var(--down)}
 
 /* altura automática: a navegação de padrões tem duas linhas */
 .admin-header{min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:6px 24px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
@@ -131,6 +135,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-nav-grupo-titulo{display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;padding:7px 8px;border-radius:7px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);cursor:pointer;text-align:left}
 .admin-nav-grupo-titulo:hover{background:var(--s2);color:var(--text)}
 .admin-nav-grupo-titulo.aberto{color:var(--text)}
+.admin-nav-grupo-titulo.perigo{color:var(--down)}
+.admin-nav-grupo-titulo.perigo:hover{color:var(--down)}
 .admin-nav-seta{margin-left:auto;font-size:10px;color:var(--text3)}
 .admin-nav-itens{display:flex;flex-direction:column;gap:1px;padding-left:4px}
 .admin-nav-itens a{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:7px 9px;border-radius:7px;color:var(--text2);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -253,9 +259,11 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 }
 `;
 
-export default function AdminShell({ children }) {
+export default function AdminShell({ children, tema }) {
+  // `tema="fracasso"`: as telas de contraexemplo ficam vermelhas, pra
+  // não restar dúvida de que o que se marca ali NÃO é o padrão.
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell${tema === "fracasso" ? " tema-fracasso" : ""}`}>
       <style>{ADMIN_CSS}</style>
       {children}
     </div>
@@ -310,7 +318,7 @@ export function AdminPatternNav({ active, aoTrocar }) {
             <div key={grupo.id} className="admin-nav-grupo">
               <button
                 type="button"
-                className={`admin-nav-grupo-titulo${aberto ? " aberto" : ""}`}
+                className={`admin-nav-grupo-titulo${aberto ? " aberto" : ""}${grupo.perigo ? " perigo" : ""}`}
                 onClick={() => alternarGrupo(grupo.id)}
                 aria-expanded={aberto}
               >

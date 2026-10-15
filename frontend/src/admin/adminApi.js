@@ -156,6 +156,9 @@ export const templatesCunhaAltaApi = makeTemplateApi("/admin/templates-cunha-alt
 export const templatesCunhaBaixaApi = makeTemplateApi("/admin/templates-cunha-baixa");
 export const templatesCanalAltaApi = makeTemplateApi("/admin/templates-canal-alta");
 export const templatesCanalBaixaApi = makeTemplateApi("/admin/templates-canal-baixa");
+// Fracassos — o que parece o padrão e não é (ver admin_templates_fracasso.py)
+export const templatesBandeiraAltaFracassoApi = makeTemplateApi("/admin/templates-bandeira-alta-fracasso");
+export const templatesBandeiraBaixaFracassoApi = makeTemplateApi("/admin/templates-bandeira-baixa-fracasso");
 export const templatesFundoDuploApi = makeTemplateApi("/admin/templates-fundo-duplo");
 export const templatesOcoInvertidoApi = makeTemplateApi("/admin/templates-oco-invertido");
 export const templatesTopoTriploApi = makeTemplateApi("/admin/templates-topo-triplo");
@@ -184,6 +187,8 @@ export const API_DO_PADRAO = {
   triangulo_descendente: templatesTrianguloDescendenteApi,
   triangulo_simetrico: templatesTrianguloSimetricoApi,
   retangulo: templatesRetanguloApi,
+  bandeira_alta_fracasso: templatesBandeiraAltaFracassoApi,
+  bandeira_baixa_fracasso: templatesBandeiraBaixaFracassoApi,
 };
 
 /**

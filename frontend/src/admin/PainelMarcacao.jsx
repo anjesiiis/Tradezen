@@ -10,9 +10,9 @@ import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import {
-  PADROES, areasDoPadrao, avisosDoPadrao, configDoTemplate, linhasDoPadrao,
-  normalizarPares, padroesCompativeis, paresDeLinha, podeValidar, stepsDoPadrao,
-  validarPadrao,
+  PADROES, areasDoPadrao, avisosDoPadrao, configDoTemplate, ehFracasso,
+  linhasDoPadrao, normalizarPares, padroesCompativeis, paresDeLinha,
+  podeValidar, stepsDoPadrao, validarPadrao,
 } from "./bandeira.js";
 import { ancoraExtra, ehExtra, instrucaoExtra } from "./padroesExtras.js";
 import { INSTRUCAO_CANAL } from "./canal.js";
@@ -70,6 +70,9 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [pontos, setPontos] = useState({});
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
+  // Só nas telas de fracasso: por que aquilo NÃO é o padrão.
+  const [motivo, setMotivo] = useState("");
+  const souFracasso = ehFracasso(padrao);
   // Etiquetas de texto escritas em cima do gráfico — salvas junto
   const [anotacoes, setAnotacoes] = useState([]);
   const [salvando, setSalvando] = useState(false);
@@ -253,6 +256,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         data_p1: candleP1 ? new Date(candleP1.timestamp).toISOString() : null,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
+        ...(souFracasso ? { motivo_fracasso: motivo.trim() || null } : {}),
         anotacoes: anotacoesAjustadas,
       });
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
@@ -262,6 +266,7 @@ export default function PainelMarcacao({ padraoInicial }) {
       setPontos({});
       setResultado("");
       setObservacao("");
+      setMotivo("");
       setAnotacoes([]);
       setSalvoAgora(salvo?.id ?? null);
       // o que acabou de ser salvo precisa aparecer: se o padrão estava
@@ -391,11 +396,11 @@ export default function PainelMarcacao({ padraoInicial }) {
   const configEdicao = editando ? configDoTemplate(editando.pontos, padraoEmEdicao) : null;
 
   return (
-    <AdminShell>
+    <AdminShell tema={souFracasso ? "fracasso" : undefined}>
       <div className="admin-header">
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className="admin-logo notranslate">Trade<span>Zen</span></span>
-          <span className="admin-header-title">Admin · Templates {padrao.rotulo}</span>
+          <span className="admin-header-title">Admin · {souFracasso ? padrao.rotulo : `Templates ${padrao.rotulo}`}</span>
         </div>
         <AdminPatternNav active={padrao.nav} />
         <button onClick={sair} className="admin-link-btn">Sair</button>
@@ -609,6 +614,18 @@ export default function PainelMarcacao({ padraoInicial }) {
                     rows={3}
                   />
                 </Campo>
+
+                {souFracasso && (
+                  <Campo label="Motivo do fracasso (opcional)">
+                    <textarea
+                      placeholder="por que isso NÃO é o padrão — ex: mastro fraco demais, consolidação sem forma"
+                      value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}
+                      className="admin-input admin-textarea"
+                      rows={2}
+                    />
+                  </Campo>
+                )}
 
                 {completo && (
                   <button onClick={salvarNovo} disabled={salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>

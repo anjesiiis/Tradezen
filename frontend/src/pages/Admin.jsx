@@ -18,6 +18,8 @@ import AdminTemplatesTrianguloAscendente from "../admin/AdminTemplatesTrianguloA
 import AdminTemplatesTrianguloDescendente from "../admin/AdminTemplatesTrianguloDescendente.jsx";
 import AdminTemplatesTrianguloSimetrico from "../admin/AdminTemplatesTrianguloSimetrico.jsx";
 import AdminTemplatesRetangulo from "../admin/AdminTemplatesRetangulo.jsx";
+import AdminTemplatesFracassoBandeiraAlta from "../admin/AdminTemplatesFracassoBandeiraAlta.jsx";
+import AdminTemplatesFracassoBandeiraBaixa from "../admin/AdminTemplatesFracassoBandeiraBaixa.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
@@ -45,6 +47,9 @@ const TEMPLATES = {
   "/admin/templates/triangulo-descendente": AdminTemplatesTrianguloDescendente,
   "/admin/templates/triangulo-simetrico": AdminTemplatesTrianguloSimetrico,
   "/admin/templates/retangulo": AdminTemplatesRetangulo,
+  // Fracassos — contraexemplos, em tabelas próprias
+  "/admin/templates/fracasso-bandeira-alta": AdminTemplatesFracassoBandeiraAlta,
+  "/admin/templates/fracasso-bandeira-baixa": AdminTemplatesFracassoBandeiraBaixa,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

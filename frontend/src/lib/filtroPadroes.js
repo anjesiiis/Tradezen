@@ -30,6 +30,10 @@ export const PADROES_DO_FILTRO = [
   { id: "triangulo_simetrico", nome: "Triângulo Sim." },
   { id: "retangulo", nome: "Retângulo" },
   { id: "niveis", nome: "Suporte/Resistência" },
+  // contraexemplos: aparecem no gráfico com ❌, pra não se marcar duas
+  // vezes o mesmo trecho
+  { id: "bandeira_alta_fracasso", nome: "Fracasso — Band. Alta" },
+  { id: "bandeira_baixa_fracasso", nome: "Fracasso — Band. Baixa" },
 ];
 
 export const DISPONIVEIS = PADROES_DO_FILTRO.filter((p) => !p.emBreve).map((p) => p.id);

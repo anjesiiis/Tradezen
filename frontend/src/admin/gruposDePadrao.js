@@ -46,6 +46,16 @@ export const GRUPOS_DE_PADRAO = [
       { key: "niveis", id: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
     ],
   },
+  {
+    // O que PARECE o padrão e não é — os contraexemplos que ensinam o
+    // detector a não confundir. Separado e em vermelho justamente pra
+    // não se misturar com as telas de marcação de padrão de verdade.
+    id: "fracassos", nome: "Fracassos", emoji: "🔴", perigo: true,
+    itens: [
+      { key: "fracasso-bandeira-alta", id: "bandeira_alta_fracasso", label: "Bandeira de Alta", href: "/admin/templates/fracasso-bandeira-alta" },
+      { key: "fracasso-bandeira-baixa", id: "bandeira_baixa_fracasso", label: "Bandeira de Baixa", href: "/admin/templates/fracasso-bandeira-baixa" },
+    ],
+  },
 ];
 
 export function grupoDoPadrao(chave) {

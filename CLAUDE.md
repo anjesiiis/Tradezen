@@ -159,6 +159,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 - `templates_triangulo_*` — triângulos (3 pontos ligados, sem papel de topo/fundo)
 - `templates_retangulo` — retângulo (4 pontos: P1/P2 linha inferior, P3/P4 superior)
 - Nesses seis, os pontos são POSIÇÕES: não há validação de preço entre eles
+- `templates_bandeira_alta_fracasso` / `_baixa_fracasso` — FRACASSOS: o que PARECE o padrão e não é (hard negatives de forma). NÃO confundir com padrão que falhou: esse se formou e o desfecho dele vai na coluna `resultado` da tabela de sucesso. Nas telas de fracasso a validação de forma não vale — é o desenho torto que se quer guardar
 
 ### Ativos monitorados
 - Catálogo único em `backend/ativos.py` (282 ativos: B3, NYSE, NASDAQ, cripto, forex, commodities, índices)
@@ -272,6 +273,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Tela de marcação compartilhada (bandeira/flâmula) | `admin/PainelMarcacao.jsx` |
 | Marcação de Topo Duplo | `admin/AdminTemplatesTopoDuplo.jsx` |
 | Marcação de Níveis (suporte/resistência) | `admin/AdminTemplatesNiveis.jsx` |
+| Marcação de fracassos (contraexemplos) | `admin/AdminTemplatesFracassoBandeira*.jsx` + `PADROES_FRACASSO` em `admin/bandeira.js` |
 | Gráfico de marcação (clique → ponto) | `admin/TemplateMarkerChart.jsx` |
 | Gráfico de marcação de níveis | `admin/NivelMarkerChart.jsx` |
 | Lógica dos padrões de continuação (pontos, validação, linhas) | `admin/bandeira.js` |
@@ -315,6 +317,7 @@ F5: neckline_slope, F6: volume_ratio, F7: pivot_distance, F8: trend_strength, F9
 | Templates Canal de Baixa | `admin_templates_canal_baixa.py` |
 | Templates Topo Duplo | `admin_templates_topo_duplo.py` |
 | Templates Níveis | `admin_templates_niveis.py` |
+| Fracassos (contraexemplos de forma) | `admin_templates_fracasso.py` |
 | Pontos de bandeira/flâmula (validação) | `bandeira_pontos.py` |
 | Pontos do canal (validação) | `canal_pontos.py` |
 | Migrations SQL do Supabase | `sql/0NN_*.sql` (rodar no SQL Editor, em ordem) |
