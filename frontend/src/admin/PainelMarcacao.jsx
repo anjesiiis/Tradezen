@@ -17,6 +17,7 @@ import {
 import { ancoraExtra, ehExtra, instrucaoExtra } from "./padroesExtras.js";
 import { INSTRUCAO_CANAL } from "./canal.js";
 import { ficaAcima } from "../lib/iconesPadroes.js";
+import { TIPOS_FRACASSO } from "../lib/tiposFracasso.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
 import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
@@ -72,6 +73,7 @@ export default function PainelMarcacao({ padraoInicial }) {
   const [observacao, setObservacao] = useState("");
   // Só nas telas de fracasso: por que aquilo NÃO é o padrão.
   const [motivo, setMotivo] = useState("");
+  const [tipoFracasso, setTipoFracasso] = useState("");
   const souFracasso = ehFracasso(padrao);
   // Etiquetas de texto escritas em cima do gráfico — salvas junto
   const [anotacoes, setAnotacoes] = useState([]);
@@ -256,7 +258,9 @@ export default function PainelMarcacao({ padraoInicial }) {
         data_p1: candleP1 ? new Date(candleP1.timestamp).toISOString() : null,
         resultado: resultado.trim() || null,
         observacao: observacao.trim() || null,
-        ...(souFracasso ? { motivo_fracasso: motivo.trim() || null } : {}),
+        ...(souFracasso
+          ? { tipo_fracasso: tipoFracasso || null, motivo_fracasso: motivo.trim() || null }
+          : {}),
         anotacoes: anotacoesAjustadas,
       });
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
@@ -267,6 +271,7 @@ export default function PainelMarcacao({ padraoInicial }) {
       setResultado("");
       setObservacao("");
       setMotivo("");
+      setTipoFracasso("");
       setAnotacoes([]);
       setSalvoAgora(salvo?.id ?? null);
       // o que acabou de ser salvo precisa aparecer: se o padrão estava
@@ -614,6 +619,23 @@ export default function PainelMarcacao({ padraoInicial }) {
                     rows={3}
                   />
                 </Campo>
+
+                {souFracasso && (
+                  <Campo label="Tipo de fracasso (opcional)">
+                    <select
+                      value={tipoFracasso}
+                      onChange={(e) => setTipoFracasso(e.target.value)}
+                      className="admin-input"
+                      style={{ maxWidth: 260 }}
+                      title="Classificação do fracasso"
+                    >
+                      <option value="">— não classificado —</option>
+                      {TIPOS_FRACASSO.map((t) => (
+                        <option key={t.id} value={t.id}>{t.rotulo}</option>
+                      ))}
+                    </select>
+                  </Campo>
+                )}
 
                 {souFracasso && (
                   <Campo label="Motivo do fracasso (opcional)">

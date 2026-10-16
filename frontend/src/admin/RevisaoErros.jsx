@@ -4,6 +4,7 @@ import { APIS_DE_TEMPLATE, ROTA_DO_TIPO, rotuloDoTipo } from "./lampadas.js";
 import { clearAdminToken } from "./adminApi";
 import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { falhou, rotuloDoDesfecho } from "../lib/resultado.js";
+import { rotuloDoTipoFracasso } from "../lib/tiposFracasso.js";
 
 // ── O QUE DEU ERRADO ──────────────────────────────────────────
 // Um lugar pra rever os próprios erros, que é de onde vem o olho
@@ -138,8 +139,13 @@ export default function RevisaoErros() {
                     <span>{rotuloDoTipo(t.tipo)} · {formatarData(t.data_p1)}</span>
                   </span>
                   {texto && <span className="revisao-motivo">{texto}</span>}
-                  {aba === "falharam" && (
+                  {aba === "falharam" ? (
                     <span className="revisao-tag">{rotuloDoDesfecho(t.resultado)}</span>
+                  ) : (
+                    // só aparece quando o fracasso foi classificado na marcação
+                    rotuloDoTipoFracasso(t.tipo_fracasso) && (
+                      <span className="revisao-tag">{rotuloDoTipoFracasso(t.tipo_fracasso)}</span>
+                    )
                   )}
                 </a>
               );

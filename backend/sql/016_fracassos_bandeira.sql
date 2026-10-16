@@ -24,6 +24,13 @@ create table if not exists templates_bandeira_baixa_fracasso (like templates_ban
 alter table templates_bandeira_alta_fracasso  add column if not exists motivo_fracasso text;
 alter table templates_bandeira_baixa_fracasso add column if not exists motivo_fracasso text;
 
+-- Classificação do fracasso, também opcional: "nao_rompeu",
+-- "falso_rompimento" ou "nao_atingiu_alvo". Texto livre de propósito,
+-- sem check constraint: a lista pode crescer sem migração nova, e uma
+-- marcação nunca é recusada pelo banco por causa do rótulo.
+alter table templates_bandeira_alta_fracasso  add column if not exists tipo_fracasso text;
+alter table templates_bandeira_baixa_fracasso add column if not exists tipo_fracasso text;
+
 create index if not exists templates_bandeira_alta_fracasso_ticker_idx  on templates_bandeira_alta_fracasso (ticker);
 create index if not exists templates_bandeira_baixa_fracasso_ticker_idx on templates_bandeira_baixa_fracasso (ticker);
 

@@ -41,7 +41,10 @@ FRACASSOS: Dict[str, Dict[str, str]] = {
 # Colunas leves de propósito: `candles` e `candles_contexto` guardam o
 # histórico inteiro de cada template e devolver isso na LISTAGEM derruba
 # o servidor (ver o comentário em admin_templates_canal_alta.py).
-_COLUNAS_LISTA = "id,ticker,timeframe,resultado,observacao,motivo_fracasso,criado_em,data_p1"
+_COLUNAS_LISTA = (
+    "id,ticker,timeframe,resultado,observacao,"
+    "motivo_fracasso,tipo_fracasso,criado_em,data_p1"
+)
 
 
 class FracassoCreate(BaseModel):
@@ -53,7 +56,10 @@ class FracassoCreate(BaseModel):
     data_p1: Optional[str] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
-    # por que não é o padrão — opcional
+    # por que não é o padrão — os dois opcionais: `tipo_fracasso` é o
+    # rótulo curto ("nao_rompeu", "falso_rompimento", "nao_atingiu_alvo")
+    # e `motivo_fracasso` é a explicação em texto livre.
+    tipo_fracasso: Optional[str] = None
     motivo_fracasso: Optional[str] = None
     anotacoes: Optional[List[Dict[str, Any]]] = None
 
@@ -62,6 +68,7 @@ class FracassoUpdate(BaseModel):
     pontos: Optional[PontosBandeira] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
+    tipo_fracasso: Optional[str] = None
     motivo_fracasso: Optional[str] = None
     anotacoes: Optional[List[Dict[str, Any]]] = None
 
