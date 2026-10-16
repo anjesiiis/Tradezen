@@ -62,6 +62,7 @@ describe('Fracassos — contraexemplos de forma', () => {
     const grupo = GRUPOS_DE_PADRAO.find((g) => g.id === 'fracassos');
     expect(grupo.perigo).toBe(true);
     expect(grupo.itens.map((i) => i.href)).toEqual([
+      '/admin/o-que-deu-errado',                      // a revisão vem primeiro
       '/admin/templates/fracasso-bandeira-alta',
       '/admin/templates/fracasso-bandeira-baixa',
     ]);

@@ -136,6 +136,22 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-nav-grupo-titulo:hover{background:var(--s2);color:var(--text)}
 .admin-nav-grupo-titulo.aberto{color:var(--text)}
 .admin-nav-grupo-titulo.perigo{color:var(--down)}
+/* Revisão do que deu errado: duas abas, porque falhar e não ser o
+   padrão são aprendizados diferentes. */
+.revisao-abas{display:flex;gap:6px}
+.revisao-aba{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font:inherit;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer}
+.revisao-aba:hover{color:var(--text)}
+.revisao-aba.ativa{border-color:var(--accent);color:var(--text)}
+.revisao-conta{background:var(--accent);color:#fff;border-radius:999px;padding:1px 7px;font-size:10px;font-family:var(--font-m)}
+.revisao-lista{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto;scrollbar-width:thin}
+.revisao-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text2);font-size:12px}
+.revisao-item:hover{background:var(--s2);color:var(--text);border-color:var(--accent)}
+.revisao-icone{font-size:15px;flex-shrink:0;width:22px;text-align:center}
+.revisao-texto{display:flex;flex-direction:column;min-width:0;flex-shrink:0;width:200px}
+.revisao-texto strong{color:var(--text);font-size:12.5px;font-family:var(--font-m)}
+.revisao-texto span{font-size:10.5px;color:var(--text3)}
+.revisao-motivo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;color:var(--text3)}
+.revisao-tag{flex-shrink:0;font-size:9px;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:999px;border:1px solid var(--down);color:var(--down)}
 .admin-nav-grupo-titulo.perigo:hover{color:var(--down)}
 .admin-nav-seta{margin-left:auto;font-size:10px;color:var(--text3)}
 .admin-nav-itens{display:flex;flex-direction:column;gap:1px;padding-left:4px}

@@ -21,6 +21,7 @@ import AdminTemplatesRetangulo from "../admin/AdminTemplatesRetangulo.jsx";
 import AdminTemplatesFracassoBandeiraAlta from "../admin/AdminTemplatesFracassoBandeiraAlta.jsx";
 import AdminTemplatesFracassoBandeiraBaixa from "../admin/AdminTemplatesFracassoBandeiraBaixa.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
+import RevisaoErros from "../admin/RevisaoErros.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
 
@@ -50,6 +51,8 @@ const TEMPLATES = {
   // Fracassos — contraexemplos, em tabelas próprias
   "/admin/templates/fracasso-bandeira-alta": AdminTemplatesFracassoBandeiraAlta,
   "/admin/templates/fracasso-bandeira-baixa": AdminTemplatesFracassoBandeiraBaixa,
+  // Revisão: o que deu errado, das duas formas (ver RevisaoErros.jsx)
+  "/admin/o-que-deu-errado": RevisaoErros,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

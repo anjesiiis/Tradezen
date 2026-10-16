@@ -21,13 +21,13 @@ describe('Menu lateral de padrões do admin', () => {
   it('tem os cinco grupos, nessa ordem', () => {
     montar();
     expect(grupos().map((g) => g.textContent.replace(/[▾▸]/g, '').trim())).toEqual([
-      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🔴Fracassos',
+      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🔴O que deu errado',
     ]);
   });
 
-  it('o grupo dos fracassos vem destacado em vermelho', () => {
+  it('o grupo do que deu errado vem destacado em vermelho', () => {
     montar();
-    const fracassos = grupos().find((g) => g.textContent.includes('Fracassos'));
+    const fracassos = grupos().find((g) => g.textContent.includes('O que deu errado'));
     // o que se marca ali é o contrário do padrão: não pode parecer igual
     expect(fracassos).toHaveClass('perigo');
     expect(grupos().filter((g) => g.className.includes('perigo'))).toHaveLength(1);
@@ -35,14 +35,16 @@ describe('Menu lateral de padrões do admin', () => {
 
   it('os padrões estão distribuídos entre os grupos, sem repetir', () => {
     const todos = GRUPOS_DE_PADRAO.flatMap((g) => g.itens.map((i) => i.key));
-    expect(todos).toHaveLength(21);   // 19 padrões + 2 fracassos de bandeira
-    expect(new Set(todos).size).toBe(21);
+    // 19 padrões + 2 fracassos de bandeira + a tela de revisão
+    expect(todos).toHaveLength(22);
+    expect(new Set(todos).size).toBe(22);
     // as rotas não mudaram
     expect(GRUPOS_DE_PADRAO[0].itens.find((i) => i.key === 'oco').href).toBe('/admin/templates');
     expect(GRUPOS_DE_PADRAO[3].itens.find((i) => i.key === 'niveis').href).toBe('/admin/templates/niveis');
     for (const g of GRUPOS_DE_PADRAO) {
       for (const i of g.itens) {
-        expect(i.href, i.key).toMatch(/^\/admin\/templates(\/[a-z-]+)?$/);
+        // a revisão é a única que não é tela de marcação
+        expect(i.href, i.key).toMatch(/^\/admin\/(templates(\/[a-z-]+)?|o-que-deu-errado)$/);
       }
     }
   });

@@ -50,10 +50,13 @@ export const GRUPOS_DE_PADRAO = [
     // O que PARECE o padrão e não é — os contraexemplos que ensinam o
     // detector a não confundir. Separado e em vermelho justamente pra
     // não se misturar com as telas de marcação de padrão de verdade.
-    id: "fracassos", nome: "Fracassos", emoji: "🔴", perigo: true,
+    id: "fracassos", nome: "O que deu errado", emoji: "🔴", perigo: true,
     itens: [
-      { key: "fracasso-bandeira-alta", id: "bandeira_alta_fracasso", label: "Bandeira de Alta", href: "/admin/templates/fracasso-bandeira-alta" },
-      { key: "fracasso-bandeira-baixa", id: "bandeira_baixa_fracasso", label: "Bandeira de Baixa", href: "/admin/templates/fracasso-bandeira-baixa" },
+      // a revisão vem primeiro: é pra onde se vai pra aprender, e as
+      // duas telas abaixo são onde se marca
+      { key: "revisao-erros", id: "revisao", label: "Revisão", href: "/admin/o-que-deu-errado" },
+      { key: "fracasso-bandeira-alta", id: "bandeira_alta_fracasso", label: "Fracasso — Band. Alta", href: "/admin/templates/fracasso-bandeira-alta" },
+      { key: "fracasso-bandeira-baixa", id: "bandeira_baixa_fracasso", label: "Fracasso — Band. Baixa", href: "/admin/templates/fracasso-bandeira-baixa" },
     ],
   },
 ];
