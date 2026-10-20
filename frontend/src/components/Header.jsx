@@ -73,9 +73,17 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
 
-      {/* Tema — no mobile fica sozinho no canto superior direito (fora
-          do menu hambúrguer, que só tem navegação + conta agora). */}
+      {/* Tema — no mobile fica no canto superior direito (fora do menu
+          hambúrguer, que só tem navegação + conta agora). */}
       <ThemeToggle className="tema-toggle-mobile" tema={tema} onToggle={alternarTema}/>
+
+      {/* Entrar ao lado do tema, no mobile. A versão do desktop vive no
+          .nav-r, que o mobile esconde — então quem abria o site no
+          celular só achava o login dentro do hambúrguer. Logado não
+          aparece: aí a conta (e o Sair) está no menu. */}
+      {!user && (
+        <button className="btn-in btn-in-mobile" onClick={()=>navigate("/login")}>Entrar</button>
+      )}
 
       <div className="nav-r">
         {acoesConta}

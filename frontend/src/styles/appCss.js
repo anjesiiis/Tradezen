@@ -436,7 +436,7 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* ── Header: elementos exclusivos de mobile ficam escondidos no
    desktop por padrão; a media query abaixo inverte pra <768px. ── */
-.hamburger-btn,.search-toggle-btn,.search-close-btn,.tema-toggle-mobile{display:none}
+.hamburger-btn,.search-toggle-btn,.search-close-btn,.tema-toggle-mobile,.btn-in-mobile{display:none}
 .hamburger-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0}
 .hamburger-btn svg,.search-toggle-btn svg,.tema-toggle-mobile svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .search-toggle-btn,.tema-toggle-mobile{width:44px;height:44px;flex-shrink:0}
@@ -726,6 +726,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .logo{font-size:19px;letter-spacing:2px}
   .nav-r{display:none}
   .hamburger-btn,.search-toggle-btn,.tema-toggle-mobile{display:flex}
+  /* Entrar ao lado do tema: o do .nav-r está escondido aqui. Altura 44px
+     pra bater com o alvo de toque do tema, que fica do lado. */
+  .btn-in-mobile{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;flex-shrink:0}
   .nav-search-wrap{display:none}
   .nav-search-wrap.aberta{
     display:flex;align-items:center;gap:6px;

@@ -23,8 +23,25 @@ describe('Header', () => {
     // mostra só um); aqui vale o do mobile.
     expect(header.querySelector('.tema-toggle-mobile')).toHaveAttribute('title', expect.stringMatching(/Mudar pro tema/));
     // Ninguém logado (Supabase mockado sem sessão) → botão Entrar
-    expect(h.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+    expect(header.querySelector('.btn-in-mobile')).toHaveTextContent('Entrar');
   });
+
+  // No mobile o .nav-r (com o Entrar do desktop) tem display:none, então
+  // sem este botão o login só existia dentro do menu hambúrguer — era
+  // preciso saber que ele estava lá pra achar. jsdom não aplica media
+  // query, por isso o teste olha as classes, não a visibilidade.
+  it('o Entrar do mobile fica ao lado do botão de tema', async () => {
+    renderApp('/mercados', { mobile: true });
+    const header = await acharHeader();
+
+    const entrar = header.querySelector('.btn-in-mobile');
+    expect(entrar).not.toBeNull();
+    // irmão imediato do tema do mobile: é o que põe os dois juntos no canto
+    expect(entrar.previousElementSibling).toHaveClass('tema-toggle-mobile');
+    // o do desktop continua onde estava, no bloco que o mobile esconde
+    expect(header.querySelector('.nav-r .btn-in')).toHaveTextContent('Entrar');
+  });
+
 
   it('botão de tema alterna entre claro e escuro', async () => {
     const user = userEvent.setup();
