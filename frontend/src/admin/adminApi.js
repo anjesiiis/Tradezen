@@ -206,3 +206,16 @@ export async function detectarPadroes(ticker, periodo = "5y", intervalo = "1d") 
   if (!r.ok) throw new Error(`Erro ${r.status}`);
   return r.json();
 }
+
+// ── Usuários e planos ──
+// Lista quem se cadastrou e vira o plano. O email vem de auth.users pela
+// Admin API do Supabase (o backend junta com profiles) — ver
+// backend/admin_usuarios.py.
+export const usuariosApi = {
+  list: () => adminFetch("/admin/usuarios").then((d) => d?.usuarios || []),
+  mudarPlano: (id, plano) =>
+    adminFetch(`/admin/usuarios/${encodeURIComponent(id)}/plano`, {
+      method: "PATCH",
+      body: JSON.stringify({ plano }),
+    }),
+};

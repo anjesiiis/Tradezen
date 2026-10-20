@@ -152,6 +152,26 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .revisao-texto span{font-size:10.5px;color:var(--text3)}
 .revisao-motivo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;color:var(--text3)}
 .revisao-tag{flex-shrink:0;font-size:9px;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:999px;border:1px solid var(--down);color:var(--down)}
+/* Usuários e planos. Mesma linguagem das listas acima: uma linha por
+   registro, a ação na ponta direita. */
+.admin-nav-extra{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.admin-nav-extra a{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:7px 9px;border-radius:7px;color:var(--text2);text-decoration:none}
+.admin-nav-extra a:hover{background:var(--s2);color:var(--text)}
+.admin-nav-extra a.active{background:var(--s2);color:var(--text);box-shadow:inset 2px 0 0 var(--accent)}
+.usuarios-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.usuarios-contagem{font-size:11px;color:var(--text3);font-family:var(--font-m)}
+.usuarios-erro{margin:0;font-size:12px;color:var(--down)}
+.usuarios-lista{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto;scrollbar-width:thin}
+.usuarios-linha{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px}
+.usuarios-quem{display:flex;flex-direction:column;min-width:0;flex:1}
+.usuarios-quem strong{color:var(--text);font-size:12.5px;font-family:var(--font-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usuarios-quem span{font-size:10.5px;color:var(--text3)}
+.usuarios-plano{flex-shrink:0;font-size:9px;text-transform:uppercase;letter-spacing:.3px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text3)}
+.usuarios-plano.premium{border-color:var(--up);color:var(--up)}
+.admin-btn-pequeno{flex-shrink:0;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:7px;padding:6px 12px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.admin-btn-pequeno.secundario{background:transparent;color:var(--text2);border-color:var(--border)}
+.admin-btn-pequeno:disabled{opacity:.5;cursor:default}
+@media (max-width:767px){.usuarios-linha{flex-wrap:wrap}.usuarios-quem{flex-basis:100%}}
 .admin-nav-grupo-titulo.perigo:hover{color:var(--down)}
 .admin-nav-seta{margin-left:auto;font-size:10px;color:var(--text3)}
 .admin-nav-itens{display:flex;flex-direction:column;gap:1px;padding-left:4px}
@@ -368,6 +388,16 @@ export function AdminPatternNav({ active, aoTrocar }) {
             </div>
           );
         })}
+      </div>
+
+      {/* Fora dos grupos: não é padrão pra marcar, é administração da
+          conta dos usuários. Fica aqui porque esta barra é o único lugar
+          presente em todas as telas do admin. */}
+      <div className="admin-nav-extra">
+        <Link to="/admin/usuarios" className={active === "usuarios" ? "active" : ""}>
+          <span aria-hidden="true">👤</span>
+          Usuários e planos
+        </Link>
       </div>
     </nav>
   );

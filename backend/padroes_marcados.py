@@ -2,9 +2,13 @@
 TRADEZEN — PADRÕES MARCADOS
 =============================
 
-Expõe (sem autenticação, é dado educativo público) os templates marcados
-manualmente no admin — não é detecção automática, é o histórico real e
-confirmado por um analista, plugado no gráfico que o usuário comum vê.
+Expõe os templates marcados manualmente no admin — não é detecção
+automática, é o histórico real e confirmado por um analista, plugado no
+gráfico que o usuário comum vê.
+
+CONTEÚDO PAGO: só plano premium (e admin) recebe os padrões. Quem não
+manda token, ou é free, recebe 200 com as listas vazias — ver planos.py
+pra por que não é 403.
 
 Os pontos são devolvidos com `timestamp` (não índice `i`), porque o índice
 salvo é relativo ao recorte de candles daquele template — quem resolve pro
@@ -13,8 +17,9 @@ salvo é relativo ao recorte de candles daquele template — quem resolve pro
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request
 
+from planos import plano_do_token, tem_acesso
 from rate_limit import limiter
 from supabase_client import supabase
 
@@ -150,8 +155,20 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 @router.get("/padroes-marcados/{ticker}")
 @limiter.limit("60/minute")
-def padroes_marcados(request: Request, ticker: str, timeframe: Optional[str] = Query(None)):
+def padroes_marcados(
+    request: Request,
+    ticker: str,
+    timeframe: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+):
     """Templates marcados manualmente pro ticker — não é detecção automática."""
+    plano = plano_do_token(authorization)
+    if not tem_acesso(plano):
+        # Mesma forma da resposta cheia, só sem conteúdo: o frontend não
+        # precisa de um caminho de erro, e `plano` deixa a UI saber que o
+        # vazio é por causa do plano, não por falta de padrão marcado.
+        return {"status": "ok", "padroes": [], "niveis": [], "plano": plano}
+
     ticker_norm = ticker.strip().upper()
     padroes: List[Dict[str, Any]] = []
 
@@ -195,4 +212,4 @@ def padroes_marcados(request: Request, ticker: str, timeframe: Optional[str] = Q
     # "niveis" fica sempre vazio agora — era o campo do detector automático
     # antigo (reta infinita); os níveis marcados manualmente já vão em
     # "padroes", como faixas limitadas no tempo.
-    return {"status": "ok", "padroes": padroes, "niveis": []}
+    return {"status": "ok", "padroes": padroes, "niveis": [], "plano": plano}

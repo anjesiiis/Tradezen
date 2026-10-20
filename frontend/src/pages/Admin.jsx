@@ -22,6 +22,7 @@ import AdminTemplatesFracassoBandeiraAlta from "../admin/AdminTemplatesFracassoB
 import AdminTemplatesFracassoBandeiraBaixa from "../admin/AdminTemplatesFracassoBandeiraBaixa.jsx";
 import AdminTemplatesNiveis from "../admin/AdminTemplatesNiveis.jsx";
 import RevisaoErros from "../admin/RevisaoErros.jsx";
+import AdminUsuarios from "../admin/AdminUsuarios.jsx";
 import AdminTemplatesTopoDuplo from "../admin/AdminTemplatesTopoDuplo.jsx";
 import RequireAdmin from "../admin/RequireAdmin.jsx";
 
@@ -53,6 +54,8 @@ const TEMPLATES = {
   "/admin/templates/fracasso-bandeira-baixa": AdminTemplatesFracassoBandeiraBaixa,
   // Revisão: o que deu errado, das duas formas (ver RevisaoErros.jsx)
   "/admin/o-que-deu-errado": RevisaoErros,
+  // Usuários e planos — não é marcação, por isso fora da nav de padrões
+  "/admin/usuarios": AdminUsuarios,
 };
 
 export default function Admin({ hashInicial = "", queryInicial = "" }){

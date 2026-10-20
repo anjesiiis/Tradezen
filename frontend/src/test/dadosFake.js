@@ -46,13 +46,22 @@ function json(body, status = 200) {
   });
 }
 
+// Dois usuários, um de cada plano — é o que a tela de planos precisa
+// distinguir.
+export const USUARIOS_FAKE = [
+  { id: 'u-1', email: 'premium@teste.com', nome: 'Quem Assinou', plano: 'premium', criado_em: '2026-09-10T12:00:00Z', sem_perfil: false },
+  { id: 'u-2', email: 'free@teste.com', nome: 'Quem Nao Assinou', plano: 'free', criado_em: '2026-09-01T12:00:00Z', sem_perfil: false },
+];
+
 export async function respostaFake(url) {
   const u = String(url);
   if (/\/mercado(\?|$)/.test(u)) return json({ dados: MERCADO_FAKE });
   if (u.includes('/mercado/visao-geral')) return json({});
   if (u.includes('/ativos/batch')) return json({ resultados: [] });
   if (u.includes('/ativos/buscar')) return json({ resultados: [] });
-  if (u.includes('/padroes-marcados/')) return json({ padroes: [] });
+  if (u.includes('/padroes-marcados/')) return json({ padroes: [], niveis: [], plano: 'free' });
+  if (/\/eu(\?|$)/.test(u)) return json({ plano: 'free', admin: false, acesso: false });
+  if (u.includes('/admin/usuarios')) return json({ usuarios: USUARIOS_FAKE, usuario: USUARIOS_FAKE[0] });
   // rotas do admin (templates de padrões)
   if (u.includes('/admin/templates')) {
     return json({ templates: [TEMPLATE_FAKE], template: TEMPLATE_FAKE });

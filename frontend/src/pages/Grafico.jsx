@@ -8,7 +8,7 @@ import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
 import { buscarPaginaAnterior, temHistoricoSobDemanda } from "../lib/grafico/historico.js";
-import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp } from "../lib/grafico/padroes.js";
+import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp, tokenDaSessao } from "../lib/grafico/padroes.js";
 import { fmtP } from "../lib/mercado.js";
 
 // Um gráfico de análise completo e independente: ativo, candles, padrões
@@ -24,6 +24,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [candles,setCandles]  = useState([]);
   const [padroes,setPadroes]  = useState([]);
   const [niveis,setNiveis]    = useState([]);
+  // plano que o backend informou na resposta das detecções ("free" quando
+  // veio vazio por causa do gate). null = ainda não respondeu.
+  const [planoDetec,setPlanoDetec] = useState(null);
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
   const [selPat,setSelPat]    = useState(null);
@@ -158,7 +161,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // dois voltarem, e padrões-marcados (consulta ao Supabase) sozinho já
     // leva mais de 1s. Candles aparece assim que chega; padrões (as
     // lâmpadas) entram por cima logo depois, sem segurar o resto da tela.
-    const padroesPromise = fetchPadroesMarcados(ativo.ticker, tf.intervalo);
+    // As detecções são do plano premium, e quem decide é o backend: o
+    // token vai no fetch e a resposta volta vazia pra quem é free.
+    const padroesPromise = (user ? tokenDaSessao() : Promise.resolve(null))
+      .then(token => fetchPadroesMarcados(ativo.ticker, tf.intervalo, token));
     fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
       .then(r=>r.json())
       .then(d=>{
@@ -172,6 +178,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         setLoading(false);
         padroesPromise.then(marcados=>{
           if(cancelado) return;
+          setPlanoDetec(marcados.plano);
           setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
         });
       })
@@ -179,6 +186,24 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
     return () => { cancelado = true; };
   },[ticker, tf.intervalo]);
+
+  // As detecções entram em effect próprio por causa do token: num reload
+  // direto na URL do ativo, o fetch de cima já saiu antes do Supabase
+  // devolver a sessão, então foi como visitante e voltou vazio. Quando
+  // `user` resolve, só as detecções são buscadas de novo — os candles, que
+  // são o pesado e não dependem de plano, ficam onde estão.
+  useEffect(()=>{
+    if(!ticker || !user) return;
+    let cancelado = false;
+    tokenDaSessao()
+      .then(token => fetchPadroesMarcados(ticker, tf.intervalo, token))
+      .then(marcados=>{
+        if(cancelado || !candlesRef.current.length) return;
+        setPlanoDetec(marcados.plano);
+        setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRef.current));
+      });
+    return ()=>{ cancelado = true; };
+  },[ticker, user, tf.intervalo]);
 
   // Restaura indicadores/desenhos salvos — em effect próprio (não junto do
   // fetch acima) porque precisa reagir a `user` também: numa montagem via
@@ -405,6 +430,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           {loading&&<SkeletonGraficoArea/>}
           {carregandoMais&&(
             <div className="chart-carregando-mais">Carregando histórico…</div>
+          )}
+          {/* Só aparece quando o backend confirmou que o vazio é por causa
+              do plano — assim ninguém vê "premium" num ativo que de fato
+              não tem padrão marcado nenhum. */}
+          {planoDetec==="free"&&!loading&&(
+            <div className="chart-premium-aviso">
+              <span aria-hidden="true">🔒</span>
+              <span><strong>Premium</strong> — padrões marcados por analista</span>
+            </div>
           )}
           {!loading&&candles.length>0&&(
             <CandleChart

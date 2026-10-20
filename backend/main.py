@@ -62,7 +62,9 @@ from admin_templates_canal_alta import router as admin_templates_canal_alta_rout
 from admin_templates_extras import ROUTERS as admin_templates_extras_routers
 from admin_templates_fracasso import ROUTERS as admin_templates_fracasso_routers
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
+from admin_usuarios import router as admin_usuarios_router
 from padroes_marcados import router as padroes_marcados_router
+from planos import router as usuario_router
 from analises import router as analises_router
 from alertas import router as alertas_router
 
@@ -150,6 +152,9 @@ for _router in admin_templates_extras_routers:
 for _router in admin_templates_fracasso_routers:
     app.include_router(_router)
 app.include_router(padroes_marcados_router)
+# Plano do usuário logado (/eu) e o painel de planos do admin
+app.include_router(usuario_router)
+app.include_router(admin_usuarios_router)
 app.include_router(analises_router)
 app.include_router(alertas_router)
 

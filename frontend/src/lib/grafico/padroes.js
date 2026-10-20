@@ -10,14 +10,21 @@ export const normalizarTipo = (tipo = "") => {
 // real já confirmado. Os pontos vêm com timestamp (não índice), porque foram
 // marcados num recorte de candles diferente do que o usuário está vendo
 // agora; resolvemos pro índice certo aqui.
-export async function fetchPadroesMarcados(ticker, timeframe){
+//
+// CONTEÚDO PAGO: o `token` é o access_token do Supabase, e é por ele que o
+// backend sabe o plano. Sem token (ou plano free) a resposta vem 200 com
+// listas vazias e `plano: "free"` — não é erro, é o gate. Quem decide é
+// sempre o servidor: esconder no frontend não esconderia nada, porque a
+// resposta passaria pela aba de rede do navegador.
+export async function fetchPadroesMarcados(ticker, timeframe, token){
   try {
-    const r = await fetch(`${API}/padroes-marcados/${encodeURIComponent(ticker)}?timeframe=${timeframe}`);
-    if(!r.ok) return { padroes: [], niveis: [] };
+    const r = await fetch(`${API}/padroes-marcados/${encodeURIComponent(ticker)}?timeframe=${timeframe}`,
+      token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+    if(!r.ok) return { padroes: [], niveis: [], plano: null };
     const d = await r.json();
-    return { padroes: d.padroes || [], niveis: d.niveis || [] };
+    return { padroes: d.padroes || [], niveis: d.niveis || [], plano: d.plano || null };
   } catch {
-    return { padroes: [], niveis: [] };
+    return { padroes: [], niveis: [], plano: null };
   }
 }
 
@@ -78,3 +85,16 @@ export const estiloNivel = (nivel, selecionado) => {
   const lineWidth = nivel.rank===0 ? 2 : 1;
   return { color:`rgba(${rgb},${alpha})`, lineWidth };
 };
+
+// Access_token da sessão atual, pra mandar no fetch das detecções. O
+// client do Supabase é importado sob demanda (são ~200 KB) e qualquer
+// falha vira "sem token" — o backend então responde como visitante.
+export async function tokenDaSessao(){
+  try {
+    const { supabase } = await import("../supabaseClient.js");
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
