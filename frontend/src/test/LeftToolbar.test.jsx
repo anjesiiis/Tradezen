@@ -79,11 +79,18 @@ describe('Barra de ferramentas do gráfico', () => {
     expect(aoEscolher).toHaveBeenCalledWith(null);
   });
 
-  it('o Fibonacci é desenhado em SVG, não é mais o Φ', () => {
+  // Glifo depende da fonte do sistema ter o caractere; quando não tem,
+  // aparece o quadradinho vazio — foi o que aconteceu com ─ e ∥, lidos
+  // como um X de cursor. Desenho em SVG sai igual em qualquer máquina.
+  it('todo ícone é SVG, nenhum é caractere de fonte', () => {
     montar();
 
-    expect(botao('Fibonacci — retração').querySelector('svg')).not.toBeNull();
-    expect(document.body.textContent).not.toMatch(/Φ|𝝋/);
+    for (const b of document.querySelectorAll('.chart-tool')) {
+      const rotulo = b.getAttribute('aria-label');
+      if (rotulo === 'Texto') continue;   // o T é letra mesmo, e sempre existe
+      expect(b.querySelector('svg'), rotulo).not.toBeNull();
+    }
+    expect(document.body.textContent).not.toMatch(/Φ|𝝋|─|∥|╱|▭/);
   });
 
   it('a dica aparece ao passar o mouse', async () => {

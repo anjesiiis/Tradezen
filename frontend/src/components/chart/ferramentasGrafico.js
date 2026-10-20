@@ -28,6 +28,10 @@ export function guardarFerramenta(id) {
 // ícones e a maioria nunca era usada — cursor, vertical, triângulo,
 // extensão de Fibonacci, engrenagem. Quem larga a ferramenta é o Esc, ou
 // um segundo clique no ícone aceso.
+//
+// O `icone` aqui é só reserva: quem desenha de verdade é o mapa ICONES do
+// LeftToolbar, em SVG. Glifo depende da fonte do sistema ter o caractere,
+// e quando não tem aparece o quadradinho vazio.
 export const GRUPOS_FERRAMENTAS = [
   [
     { id: "trend", rotulo: "Linha de tendência", icone: "╱" },
@@ -38,10 +42,7 @@ export const GRUPOS_FERRAMENTAS = [
     { id: "canal", rotulo: "Canal paralelo", icone: "∥" },
   ],
   [
-    // `svg` troca o glifo por um desenho de verdade: o Φ não dizia nada,
-    // e as linhas horizontais com espaçamento desigual são como a
-    // retração aparece no gráfico. O `icone` fica de reserva.
-    { id: "fibo", rotulo: "Fibonacci — retração", icone: "≡", svg: "fibo" },
+    { id: "fibo", rotulo: "Fibonacci — retração", icone: "≡" },
     { id: "texto", rotulo: "Texto", icone: "T" },
   ],
 ];

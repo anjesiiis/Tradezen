@@ -41,7 +41,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // A ferramenta armada volta do localStorage (como no TradingView) e é
   // guardada a cada troca — ver LeftToolbar.
   const [ferramentaAtiva,setFerramentaAtiva] = useState(lerFerramentaSalva);
-  const [desenhosEscondidos,setDesenhosEscondidos] = useState(false);
   // ── Histórico sob demanda (só cripto) ──────────────────────────
   // A Binance dá anos de intraday; o Yahoo corta 60 minutos em 60 dias.
   // Então pra cripto a primeira resposta é só o começo: o resto chega
@@ -49,7 +48,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [carregandoMais,setCarregandoMais] = useState(false);
   const temMaisRef = useRef(true);
   const buscandoRef = useRef(false);
-  const [desenhosTravados,setDesenhosTravados] = useState(false);
   useEffect(()=>{ guardarFerramenta(ferramentaAtiva); },[ferramentaAtiva]);
   const [desenhos,setDesenhos] = useState([]); // desenhos do usuário nesta tela — só sessão, não salva no backend
   // Espelha o prop mais recente pro effect de troca de ticker ler sem
@@ -222,19 +220,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     }
   },[ticker, user, tf.intervalo]);
 
-  // Ações sobre os desenhos. Ficavam na barra lateral, junto das
-  // ferramentas; agora moram na barra de cima, que é onde já estavam
-  // desfazer e refazer — mesma natureza (agem na hora, não armam nada).
-  const acaoDeDesenho = useCallback(acao=>{
-    if(acao==="limpar"){
-      if(!desenhos.length) return;
-      registrarHistorico();
-      setDesenhos([]);
-    }
-    else if(acao==="visibilidade") setDesenhosEscondidos(v=>!v);
-    else if(acao==="travar") setDesenhosTravados(v=>!v);
-  },[desenhos.length, registrarHistorico]);
-
   const toggleTool=id=>{
     // Só entra no histórico de desfazer/refazer quando é de fato "adicionar
     // um indicador/linha" (indicador técnico ou Fibonacci) — os outros ids
@@ -404,31 +389,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
         <div className="sep"/>
 
-        {/* Ações dos desenhos — vieram da barra lateral, que ficou só com
-            as ferramentas. Régua é medição rápida: arma igual ferramenta,
-            mas não é desenho que fica, então mora aqui. */}
+        {/* Régua: medição rápida. Arma como ferramenta, mas o que ela
+            desenha não fica salvo, então não é da barra lateral.
+            Esconder (👁), travar (🔒) e limpar (🗑) ficavam aqui e foram
+            retirados por pedido do dono. */}
         <button
           className={`pane-btn${ferramentaAtiva==="regua"?" ativo":""}`}
           title="Régua — medir variação"
           onClick={()=>setFerramentaAtiva(prev=>prev==="regua"?null:"regua")}
         >📏</button>
-        <button
-          className={`pane-btn${desenhosEscondidos?" ativo":""}`}
-          title={desenhosEscondidos?"Mostrar desenhos":"Esconder desenhos"}
-          onClick={()=>acaoDeDesenho("visibilidade")}
-        >👁</button>
-        <button
-          className={`pane-btn${desenhosTravados?" ativo":""}`}
-          title={desenhosTravados?"Destravar desenhos":"Travar desenhos"}
-          onClick={()=>acaoDeDesenho("travar")}
-        >{desenhosTravados?"🔒":"🔓"}</button>
-        <button
-          className="pane-btn"
-          disabled={desenhos.length===0}
-          style={desenhos.length===0 ? {opacity:.35,cursor:"not-allowed"} : undefined}
-          title="Limpar desenhos"
-          onClick={()=>acaoDeDesenho("limpar")}
-        >🗑</button>
 
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
@@ -451,8 +420,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         {/* Barra de ferramentas: coluna do corpo, não `position:fixed` —
             com multitelas (2 a 4 gráficos lado a lado) cada tela precisa
             da sua, e uma barra fixa cobriria as outras. */}
-        {/* Só as ferramentas de desenho. As ações (limpar, esconder,
-            travar, régua) estão na barra de cima — ver acaoDeDesenho. */}
+        {/* Só as ferramentas de desenho. Esconder, travar e limpar saíram
+            da interface por pedido do dono — com eles saiu também o estado
+            que os sustentava (desenhosEscondidos/desenhosTravados), que
+            sem botão nenhum ficaria preso em "false" pra sempre. */}
         <LeftToolbar
           // Fibonacci mora no Set `tools` (mecanismo antigo, ver
           // CandleChart: activeTools.has("fibo")), não no `ferramentaAtiva`
@@ -495,11 +466,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               onLampPos={pos=>{ setLampPos(pos); if(!pos) setTooltipAberto(false); }}
               showVolume={selAtivo.mercado!=="COMMODITY"}
               tema={tema}
-              ferramentaAtiva={desenhosTravados ? null : ferramentaAtiva}
+              ferramentaAtiva={ferramentaAtiva}
               setFerramentaAtiva={setFerramentaAtiva}
               toggleTool={toggleTool}
-              desenhos={desenhosEscondidos ? [] : desenhos}
-              setDesenhos={desenhosTravados ? ()=>{} : setDesenhos}
+              desenhos={desenhos}
+              setDesenhos={setDesenhos}
               registrarHistorico={registrarHistorico}
               aoChegarNoComeco={carregarMaisCandles}
             />

@@ -22,17 +22,17 @@ describe('Gráfico do ativo', () => {
     );
   });
 
-  // As ações saíram da barra lateral (que ficou só com as 6 ferramentas de
-  // desenho) e vieram pra barra de cima. Se elas sumirem, não sobra jeito
-  // de limpar, esconder ou travar desenho nenhum.
-  it('as ações dos desenhos ficam na barra de cima', async () => {
+  // A régua fica na barra de cima: arma como ferramenta, mas o que ela
+  // desenha não fica salvo. Esconder, travar e limpar foram retirados da
+  // interface por pedido do dono.
+  it('a régua fica na barra de cima, e as outras ações saíram', async () => {
     renderApp('/ativo/PETR4.SA');
     await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
 
     expect(screen.getByTitle('Régua — medir variação')).toBeInTheDocument();
-    expect(screen.getByTitle('Esconder desenhos')).toBeInTheDocument();
-    expect(screen.getByTitle('Travar desenhos')).toBeInTheDocument();
-    expect(screen.getByTitle('Limpar desenhos')).toBeInTheDocument();
+    for (const titulo of ['Esconder desenhos', 'Travar desenhos', 'Limpar desenhos']) {
+      expect(screen.queryByTitle(titulo)).not.toBeInTheDocument();
+    }
   });
 
   it('a barra lateral tem só as seis ferramentas de desenho', async () => {
