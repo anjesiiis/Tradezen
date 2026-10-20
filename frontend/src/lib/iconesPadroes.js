@@ -29,8 +29,11 @@ const ICONES = {
   canal_baixa: { icone: "↙️", cor: "baixa", rotulo: "Canal de Baixa", acima: true },
   oco: { icone: "⛰️", cor: "baixa", rotulo: "OCO", acima: true },
   niveis: { icone: "🟢", cor: "neutro", rotulo: "Suporte/Resistência", acima: true },
-  suporte: { icone: "🟢", cor: "alta", rotulo: "Suporte", acima: false },
-  resistencia: { icone: "🔴", cor: "baixa", rotulo: "Resistência", acima: true },
+  // 🔴 suporte e 🟢 resistência, por escolha do analista. A bolinha
+  // é o nível, e a cor diz qual dos dois — então o brilho em volta
+  // acompanha o emoji pra não brigar com ele.
+  suporte: { icone: "🔴", cor: "baixa", rotulo: "Suporte", acima: false },
+  resistencia: { icone: "🟢", cor: "alta", rotulo: "Resistência", acima: true },
 
   // ── fracassos: o que PARECE o padrão e não é ──
   // ❌ em cima da bandeira, pra na hora de marcar dar pra ver que

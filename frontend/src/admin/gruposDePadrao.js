@@ -50,7 +50,10 @@ export const GRUPOS_DE_PADRAO = [
     // O que PARECE o padrão e não é — os contraexemplos que ensinam o
     // detector a não confundir. Separado e em vermelho justamente pra
     // não se misturar com as telas de marcação de padrão de verdade.
-    id: "fracassos", nome: "O que deu errado", emoji: "🔴", perigo: true,
+    //
+    // 🏴 é a bandeira preta: a mesma forma das bandeiras de verdade
+    // (🏳️), mas escura. 🔴 saiu daqui porque virou o ícone do suporte.
+    id: "fracassos", nome: "Bandeiras de falha", emoji: "🏴", perigo: true,
     itens: [
       // a revisão vem primeiro: é pra onde se vai pra aprender, e as
       // duas telas abaixo são onde se marca

@@ -11,7 +11,7 @@ describe('Ícones dos padrões já marcados', () => {
       oco: '⛰️', oco_invertido: '⛰️',
       topo_triplo: '🔺🔺🔺', fundo_triplo: '🔻🔻🔻',
       triangulo_ascendente: '🔺', triangulo_simetrico: '🔺',
-      suporte: '🟢', resistencia: '🔴',
+      suporte: '🔴', resistencia: '🟢',
     };
     for (const [tipo, icone] of Object.entries(esperado)) {
       expect(iconeDoPadrao(tipo)).toBe(icone);
@@ -60,8 +60,8 @@ describe('Ícones dos padrões já marcados', () => {
     // caixa alta, e os níveis vêm como "suporte"/"resistencia"
     expect(iconeDoPadrao('OCO')).toBe('⛰️');
     expect(iconeDoPadrao('TOPO_DUPLO')).toBe('Ⓜ️');
-    expect(iconeDoPadrao('suporte')).toBe('🟢');
-    expect(iconeDoPadrao('Resistência')).toBe('🔴');
+    expect(iconeDoPadrao('suporte')).toBe('🔴');
+    expect(iconeDoPadrao('Resistência')).toBe('🟢');
     expect(chaveDoPadrao('Bandeira-Alta')).toBe('bandeira_alta');
   });
 

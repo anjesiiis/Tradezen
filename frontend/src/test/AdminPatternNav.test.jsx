@@ -21,13 +21,13 @@ describe('Menu lateral de padrões do admin', () => {
   it('tem os cinco grupos, nessa ordem', () => {
     montar();
     expect(grupos().map((g) => g.textContent.replace(/[▾▸]/g, '').trim())).toEqual([
-      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🔴O que deu errado',
+      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🏴Bandeiras de falha',
     ]);
   });
 
   it('o grupo do que deu errado vem destacado em vermelho', () => {
     montar();
-    const fracassos = grupos().find((g) => g.textContent.includes('O que deu errado'));
+    const fracassos = grupos().find((g) => g.textContent.includes('Bandeiras de falha'));
     // o que se marca ali é o contrário do padrão: não pode parecer igual
     expect(fracassos).toHaveClass('perigo');
     expect(grupos().filter((g) => g.className.includes('perigo'))).toHaveLength(1);
