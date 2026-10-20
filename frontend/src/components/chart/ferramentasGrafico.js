@@ -20,37 +20,28 @@ export function guardarFerramenta(id) {
   } catch { /* sem storage, vale só nesta sessão */ }
 }
 
-// Grupos na ordem em que aparecem. `acao` marca os botões que fazem algo
-// na hora (limpar, esconder) em vez de armar uma ferramenta.
+// Grupos na ordem em que aparecem. São SÓ as ferramentas de desenho: o
+// que faz algo na hora (limpar, esconder, travar, régua) mora na barra de
+// cima, junto de desfazer/refazer, que é da mesma natureza.
+//
+// A barra ficou nessas seis por pedido do dono: ela estava com vinte
+// ícones e a maioria nunca era usada — cursor, vertical, triângulo,
+// extensão de Fibonacci, engrenagem. Quem larga a ferramenta é o Esc, ou
+// um segundo clique no ícone aceso.
 export const GRUPOS_FERRAMENTAS = [
-  [
-    { id: null, rotulo: "Cursor", icone: "⌖" },
-  ],
   [
     { id: "trend", rotulo: "Linha de tendência", icone: "╱" },
     { id: "horizontal", rotulo: "Linha horizontal", icone: "─" },
-    { id: "vertical", rotulo: "Linha vertical", icone: "│" },
   ],
   [
     { id: "retangulo_desenho", rotulo: "Retângulo", icone: "▭" },
-    { id: "triangulo_desenho", rotulo: "Triângulo", icone: "◁" },
     { id: "canal", rotulo: "Canal paralelo", icone: "∥" },
   ],
   [
-    { id: "fibo", rotulo: "Fibonacci — retração", icone: "𝝋" },
-    { id: "fibo_extensao", rotulo: "Fibonacci — extensão", icone: "⟲" },
-  ],
-  [
+    // `svg` troca o glifo por um desenho de verdade: o Φ não dizia nada,
+    // e as linhas horizontais com espaçamento desigual são como a
+    // retração aparece no gráfico. O `icone` fica de reserva.
+    { id: "fibo", rotulo: "Fibonacci — retração", icone: "≡", svg: "fibo" },
     { id: "texto", rotulo: "Texto", icone: "T" },
-    { id: "regua", rotulo: "Régua — medir variação", icone: "📏" },
-    { acao: "visibilidade", rotulo: "Mostrar/esconder desenhos", icone: "👁" },
-    { acao: "travar", rotulo: "Travar desenhos", icone: "🔒" },
-  ],
-  [
-    { acao: "templates", rotulo: "Padrões do TradeZen", icone: "📐", destaque: true },
-  ],
-  [
-    { acao: "limpar", rotulo: "Limpar desenhos", icone: "🗑" },
-    { acao: "config", rotulo: "Configurações do gráfico", icone: "⚙" },
   ],
 ];

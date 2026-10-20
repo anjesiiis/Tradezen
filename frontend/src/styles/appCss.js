@@ -161,6 +161,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .pane-btn{margin-left:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all .15s}
 .pane-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pane-btn.danger:hover{background:var(--down);border-color:var(--down)}
+/* Aceso = ligado: régua armada, desenhos escondidos, desenhos travados.
+   Mesma leitura do ícone aceso na barra de ferramentas. */
+.pane-btn.ativo{border-color:var(--accent);color:var(--accent)}
 .apr{font-family:var(--font-m);font-size:14px;color:var(--text);flex-shrink:0}
 .achg{font-size:11px;padding:2px 8px;border-radius:5px;flex-shrink:0;font-weight:700}
 .sep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}

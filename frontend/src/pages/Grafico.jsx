@@ -222,6 +222,19 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     }
   },[ticker, user, tf.intervalo]);
 
+  // Ações sobre os desenhos. Ficavam na barra lateral, junto das
+  // ferramentas; agora moram na barra de cima, que é onde já estavam
+  // desfazer e refazer — mesma natureza (agem na hora, não armam nada).
+  const acaoDeDesenho = useCallback(acao=>{
+    if(acao==="limpar"){
+      if(!desenhos.length) return;
+      registrarHistorico();
+      setDesenhos([]);
+    }
+    else if(acao==="visibilidade") setDesenhosEscondidos(v=>!v);
+    else if(acao==="travar") setDesenhosTravados(v=>!v);
+  },[desenhos.length, registrarHistorico]);
+
   const toggleTool=id=>{
     // Só entra no histórico de desfazer/refazer quando é de fato "adicionar
     // um indicador/linha" (indicador técnico ou Fibonacci) — os outros ids
@@ -389,6 +402,34 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </svg>
         </button>
 
+        <div className="sep"/>
+
+        {/* Ações dos desenhos — vieram da barra lateral, que ficou só com
+            as ferramentas. Régua é medição rápida: arma igual ferramenta,
+            mas não é desenho que fica, então mora aqui. */}
+        <button
+          className={`pane-btn${ferramentaAtiva==="regua"?" ativo":""}`}
+          title="Régua — medir variação"
+          onClick={()=>setFerramentaAtiva(prev=>prev==="regua"?null:"regua")}
+        >📏</button>
+        <button
+          className={`pane-btn${desenhosEscondidos?" ativo":""}`}
+          title={desenhosEscondidos?"Mostrar desenhos":"Esconder desenhos"}
+          onClick={()=>acaoDeDesenho("visibilidade")}
+        >👁</button>
+        <button
+          className={`pane-btn${desenhosTravados?" ativo":""}`}
+          title={desenhosTravados?"Destravar desenhos":"Travar desenhos"}
+          onClick={()=>acaoDeDesenho("travar")}
+        >{desenhosTravados?"🔒":"🔓"}</button>
+        <button
+          className="pane-btn"
+          disabled={desenhos.length===0}
+          style={desenhos.length===0 ? {opacity:.35,cursor:"not-allowed"} : undefined}
+          title="Limpar desenhos"
+          onClick={()=>acaoDeDesenho("limpar")}
+        >🗑</button>
+
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
             <button className="pane-btn" onClick={onAddSplit} title="Adicionar mesa">+</button>
@@ -410,20 +451,23 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         {/* Barra de ferramentas: coluna do corpo, não `position:fixed` —
             com multitelas (2 a 4 gráficos lado a lado) cada tela precisa
             da sua, e uma barra fixa cobriria as outras. */}
+        {/* Só as ferramentas de desenho. As ações (limpar, esconder,
+            travar, régua) estão na barra de cima — ver acaoDeDesenho. */}
         <LeftToolbar
-          ativa={ferramentaAtiva}
-          aoEscolher={id=>setFerramentaAtiva(prev=>prev===id?null:id)}
-          estado={{escondidos:desenhosEscondidos, travados:desenhosTravados}}
-          aoAgir={acao=>{
-            if(acao==="limpar"){
-              if(!desenhos.length) return;
-              registrarHistorico();
-              setDesenhos([]);
+          // Fibonacci mora no Set `tools` (mecanismo antigo, ver
+          // CandleChart: activeTools.has("fibo")), não no `ferramentaAtiva`
+          // das outras cinco. Sem este desvio, clicar no ícone armava um
+          // `ferramentaAtiva="fibo"` que ninguém lia — e a retração
+          // simplesmente não começava.
+          ativa={tools.has("fibo") ? "fibo" : ferramentaAtiva}
+          aoEscolher={id=>{
+            if(id==="fibo" || tools.has("fibo")){
+              // sair do fibo pra outra ferramenta também desliga o fibo
+              toggleTool("fibo");
+              setFerramentaAtiva(id==="fibo" ? null : id);
+              return;
             }
-            else if(acao==="visibilidade") setDesenhosEscondidos(v=>!v);
-            else if(acao==="travar") setDesenhosTravados(v=>!v);
-            else if(acao==="templates") setIndOpen(true);
-            else if(acao==="config") setPainelAberto(true);
+            setFerramentaAtiva(prev=>prev===id?null:id);
           }}
         />
         <div className="achart">

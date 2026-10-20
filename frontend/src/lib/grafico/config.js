@@ -57,20 +57,6 @@ export const INDICADORES = [
   {id:"obv",       label:"OBV",           cor:"#9B6DFF", grupo:"Volume"},
 ];
 
-// Ferramentas de desenho — botão/dropdown próprio na toolbar, separado do
-// de Indicadores (ver ChartPane). Fibonacci usa o mecanismo antigo
-// (toggleTool/activeTools, igual antes); as outras 4 usam `ferramentaAtiva`
-// (ver FERRAMENTA_INFO/CandleChart) — o dropdown sabe qual usar pelo
-// `desenho:true`.
-export const FERRAMENTAS_DESENHO_LISTA = [
-  {id:"trend",      label:"Linha de Tendência", cor:"#2962FF", icone:"⟋", desenho:true},
-  {id:"horizontal", label:"Linha Horizontal",   cor:"#2962FF", icone:"➖", desenho:true},
-  {id:"fibo",       label:"Fibonacci",          cor:"#F5A623", icone:"Φ"},
-  {id:"retangulo_desenho", label:"Retângulo",   cor:"#2962FF", icone:"▭", desenho:true},
-  {id:"canal",      label:"Canal Paralelo",     cor:"#2962FF", icone:"∥", desenho:true},
-  {id:"texto",      label:"Texto",              cor:"#2962FF", icone:"T", desenho:true},
-];
-
 // Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo
 // TradingView) — junta os dois catálogos (indicadores técnicos + padrões de
 // gráfico) já que os dois ligam/desligam pelo mesmo Set `tools`. Padrões não

@@ -22,6 +22,27 @@ describe('Gráfico do ativo', () => {
     );
   });
 
+  // As ações saíram da barra lateral (que ficou só com as 6 ferramentas de
+  // desenho) e vieram pra barra de cima. Se elas sumirem, não sobra jeito
+  // de limpar, esconder ou travar desenho nenhum.
+  it('as ações dos desenhos ficam na barra de cima', async () => {
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+
+    expect(screen.getByTitle('Régua — medir variação')).toBeInTheDocument();
+    expect(screen.getByTitle('Esconder desenhos')).toBeInTheDocument();
+    expect(screen.getByTitle('Travar desenhos')).toBeInTheDocument();
+    expect(screen.getByTitle('Limpar desenhos')).toBeInTheDocument();
+  });
+
+  it('a barra lateral tem só as seis ferramentas de desenho', async () => {
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+
+    await waitFor(() => expect(document.querySelectorAll('.chart-tool')).toHaveLength(6));
+    expect(screen.queryByLabelText('Cursor')).not.toBeInTheDocument();
+  });
+
   it('renderiza sem crash no mobile', async () => {
     renderApp('/ativo/PETR4.SA', { mobile: true });
 
