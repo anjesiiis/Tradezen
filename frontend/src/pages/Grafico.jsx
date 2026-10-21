@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
 import LeftToolbar from "../components/chart/LeftToolbar.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferramentasGrafico.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
@@ -16,7 +17,7 @@ import { fmtP } from "../lib/mercado.js";
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", alternarTema, user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
   const navigate = useNavigate();
   const [tf, setTf] = useState(TF_PADRAO);
 
@@ -225,7 +226,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // um indicador/linha" (indicador técnico ou Fibonacci) — os outros ids
     // que passam por aqui são filtros de visibilidade dos padrões já
     // detectados na legenda, não conteúdo criado pelo usuário.
-    if(INDICADORES.some(i=>i.id===id) || id==="fibo") registrarHistorico();
+    if(INDICADORES.some(i=>i.id===id)) registrarHistorico();
     setTools(prev=>{
       const n=new Set(prev);
       n.has(id) ? n.delete(id) : n.add(id);
@@ -399,6 +400,20 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           onClick={()=>setFerramentaAtiva(prev=>prev==="regua"?null:"regua")}
         >📏</button>
 
+        {/* Busca e tema: na tela do gráfico eles moram aqui, não no header
+            (ver semBuscaETema no Header). A lupa abre o mesmo seletor de
+            ativo do clique no ticker — é a busca que já existia. */}
+        <button
+          className="pane-btn"
+          title="Buscar ativo"
+          onClick={()=>setSwitcherAberto(true)}
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+        {alternarTema && <ThemeToggle className="pane-btn" tema={tema} onToggle={alternarTema}/>}
+
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
             <button className="pane-btn" onClick={onAddSplit} title="Adicionar mesa">+</button>
@@ -425,21 +440,8 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             que os sustentava (desenhosEscondidos/desenhosTravados), que
             sem botão nenhum ficaria preso em "false" pra sempre. */}
         <LeftToolbar
-          // Fibonacci mora no Set `tools` (mecanismo antigo, ver
-          // CandleChart: activeTools.has("fibo")), não no `ferramentaAtiva`
-          // das outras cinco. Sem este desvio, clicar no ícone armava um
-          // `ferramentaAtiva="fibo"` que ninguém lia — e a retração
-          // simplesmente não começava.
-          ativa={tools.has("fibo") ? "fibo" : ferramentaAtiva}
-          aoEscolher={id=>{
-            if(id==="fibo" || tools.has("fibo")){
-              // sair do fibo pra outra ferramenta também desliga o fibo
-              toggleTool("fibo");
-              setFerramentaAtiva(id==="fibo" ? null : id);
-              return;
-            }
-            setFerramentaAtiva(prev=>prev===id?null:id);
-          }}
+          ativa={ferramentaAtiva}
+          aoEscolher={id=>setFerramentaAtiva(prev=>prev===id?null:id)}
         />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
@@ -468,7 +470,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               tema={tema}
               ferramentaAtiva={ferramentaAtiva}
               setFerramentaAtiva={setFerramentaAtiva}
-              toggleTool={toggleTool}
               desenhos={desenhos}
               setDesenhos={setDesenhos}
               registrarHistorico={registrarHistorico}

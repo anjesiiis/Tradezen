@@ -7,7 +7,7 @@ import ThemeToggle from "./ThemeToggle.jsx";
 
 // Header fixo + drawer do mobile (hambúrguer). `drawerAberto` vem de fora
 // porque a aba "Menu" da barra inferior também abre esse mesmo drawer.
-export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao, setSecao, drawerAberto, setDrawerAberto }){
+export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao, setSecao, drawerAberto, setDrawerAberto, semBuscaETema=false }){
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -20,7 +20,7 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
   // via variável pra não duplicar a lógica do menu "Sair".
   const acoesConta = (
     <>
-      <ThemeToggle className="tema-toggle" tema={tema} onToggle={alternarTema}/>
+      {!semBuscaETema && <ThemeToggle className="tema-toggle" tema={tema} onToggle={alternarTema}/>}
       {user
         ? <div style={{position:"relative"}}>
             <button className="btn-in" onClick={()=>setUserMenuAberto(v=>!v)}>
@@ -62,20 +62,24 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
 
       <div className="logo notranslate" onClick={()=>{ navigate("/mercados"); setDrawerAberto(false); setBuscaMobileAberta(false); }}>TRADE<span>ZEN</span></div>
 
-      <div className={`nav-search-wrap ${buscaMobileAberta?"aberta":""}`}>
-        <SearchBar onSelect={a=>{ abrirAtivo(a); setBuscaMobileAberta(false); }} mercado={mercado}/>
-        <button className="nav-ic search-close-btn" title="Fechar busca" onClick={()=>setBuscaMobileAberta(false)}>✕</button>
-      </div>
+      {!semBuscaETema && (
+        <div className={`nav-search-wrap ${buscaMobileAberta?"aberta":""}`}>
+          <SearchBar onSelect={a=>{ abrirAtivo(a); setBuscaMobileAberta(false); }} mercado={mercado}/>
+          <button className="nav-ic search-close-btn" title="Fechar busca" onClick={()=>setBuscaMobileAberta(false)}>✕</button>
+        </div>
+      )}
 
       <div style={{flex:1}}/>
 
-      <button className="nav-ic search-toggle-btn" title="Buscar" onClick={()=>setBuscaMobileAberta(true)}>
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
+      {!semBuscaETema && (
+        <button className="nav-ic search-toggle-btn" title="Buscar" onClick={()=>setBuscaMobileAberta(true)}>
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      )}
 
       {/* Tema — no mobile fica no canto superior direito (fora do menu
           hambúrguer, que só tem navegação + conta agora). */}
-      <ThemeToggle className="tema-toggle-mobile" tema={tema} onToggle={alternarTema}/>
+      {!semBuscaETema && <ThemeToggle className="tema-toggle-mobile" tema={tema} onToggle={alternarTema}/>}
 
       {/* Entrar ao lado do tema, no mobile. A versão do desktop vive no
           .nav-r, que o mobile esconde — então quem abria o site no

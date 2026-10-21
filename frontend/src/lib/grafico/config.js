@@ -65,8 +65,4 @@ export const INDICADORES = [
 export const LEGENDA_ITENS = [
   ...INDICADORES.map(i => ({ id: i.id, label: i.label, cor: i.cor })),
   ...TOOLS.map(t => ({ id: t.id, label: t.name, cor: "#8B949E" })),
-  // Fibonacci não está mais em INDICADORES (ganhou botão próprio de
-  // Ferramentas de Desenho), mas continua ligando/desligando pelo mesmo
-  // Set `tools` — sem essa linha ele sumia da legenda do gráfico.
-  { id:"fibo", label:"Fibonacci", cor:"#F5A623" },
 ];

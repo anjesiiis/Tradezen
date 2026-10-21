@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers } from "lightweight-charts";
 import { useIsMobile } from "../hooks/useIsMobile.js";
-import { FERRAMENTA_INFO, _anchorFechar, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharFibonacci, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento } from "../lib/grafico/desenhos.js";
+import { FERRAMENTA_INFO, _anchorFechar, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, toggleTool, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco}){
   const isMobile = useIsMobile();
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
@@ -39,12 +39,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
 
-  // Fibonacci — pontos marcados pelo próprio usuário (não vem de padrão
-  // nenhum). fiboRef espelha o state pro handler de clique (fechamento do
-  // effect não pega o valor mais novo sem isso).
-  const [fibo, setFibo] = useState(null); // {a:{i,preco}, b:{i,preco}} | null
-  const fiboRef = useRef(null);
-  useEffect(()=>{ fiboRef.current = fibo; },[fibo]);
   useEffect(()=>{ aoChegarNoCoRef.current = aoChegarNoComeco; },[aoChegarNoComeco]);
 
   // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal) —
@@ -57,6 +51,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   useEffect(()=>{ pontosProgressoRef.current = pontosProgresso; },[pontosProgresso]);
   const desenhosRef = useRef(desenhos);
   useEffect(()=>{ desenhosRef.current = desenhos; },[desenhos]);
+  // Os candles pro handler de clique (que é um listener nativo registrado
+  // uma vez só, com deps []): sem o ref, `candles` ficaria congelado no
+  // array vazio da montagem e o canal nunca acharia o pico da paralela.
+  const candlesRef = useRef(candles);
+  useEffect(()=>{ candlesRef.current = candles; },[candles]);
   const ferramentaAtivaRef = useRef(ferramentaAtiva);
   useEffect(()=>{ ferramentaAtivaRef.current = ferramentaAtiva; },[ferramentaAtiva]);
   // Régua — medição rápida (estilo TradingView): fica em state próprio, fora
@@ -92,8 +91,8 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // Trocou de ferramenta (ou desarmou) → começa a contagem de pontos do zero
   useEffect(()=>{ setPontosProgresso([]); previewPontoRef.current = null; redrawRef.current?.(); },[ferramentaAtiva]);
 
-  // Cursor crosshair enquanto uma ferramenta (nova ou o fibo antigo) está
-  // esperando clique; volta ao normal quando nenhuma está armada (o próprio
+  // Cursor crosshair enquanto uma ferramenta está esperando clique; volta
+  // ao normal quando nenhuma está armada (o próprio
   // mousemove troca pra "move" ao passar perto de um handle arrastável).
   //
   // No mobile, o mesmo toque que devia marcar um ponto também é lido pelo
@@ -105,8 +104,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // desarma — o desenho fica completo/cancelado.
   useEffect(()=>{
     if(!containerRef.current) return;
-    const fiboArmado = activeTools.has("fibo") && !fibo?.b;
-    const armado = !!(ferramentaAtiva || fiboArmado);
+    const armado = !!ferramentaAtiva;
     containerRef.current.style.cursor = armado ? "crosshair" : "default";
     // touch-action:none trava o navegador de tentar fazer pan/zoom nativo
     // com o dedo enquanto uma ferramenta está armada — sem isso, mesmo com
@@ -114,7 +112,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // "roubar" o toque antes do nosso pointerdown/pointerup rodar.
     containerRef.current.style.touchAction = armado ? "none" : "auto";
     chartRef.current?.applyOptions({ handleScroll: !armado, handleScale: !armado });
-  },[ferramentaAtiva, activeTools, fibo]);
+  },[ferramentaAtiva]);
 
   // Inicializa o gráfico
   useEffect(()=>{
@@ -525,41 +523,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
   },[padroes, candles, activeTools, setSelPat]);
 
-  // Fibonacci — captura os 2 cliques do usuário no gráfico (índice do candle
-  // + preço exato do clique). Depois dos 2 pontos, novos cliques não fazem
-  // mais nada até a ferramenta ser desligada e ligada de novo.
-  useEffect(()=>{
-    if(!chartRef.current || !candleRef.current || !candles.length) return;
-    const timeToIndex = new Map(candles.map((c,i)=>[Math.floor(c.timestamp/1000), i]));
-    const handler = (param) => {
-      if(!activeTools.has("fibo")) return;
-      if(fiboRef.current?.b) return;
-      if(!param.time || !param.point) return;
-      const idx = timeToIndex.get(param.time);
-      if(idx === undefined) return;
-      const preco = candleRef.current.coordinateToPrice(param.point.y);
-      if(preco === null || preco === undefined) return;
-      setFibo(prev=>{
-        if(!prev) return { a: { i:idx, preco } };
-        if(!prev.b) return { ...prev, b: { i:idx, preco } };
-        return prev;
-      });
-    };
-    chartRef.current.subscribeClick(handler);
-    return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
-  },[candles, activeTools]);
-
-  // Desliga a ferramenta → limpa o desenho (próxima vez que ligar, começa do zero)
-  useEffect(()=>{
-    if(!activeTools.has("fibo")) setFibo(null);
-  },[activeTools]);
-
-  // Trocou de candles (novo ativo/timeframe) → os pontos antigos não fazem
-  // mais sentido nesse gráfico
-  useEffect(()=>{
-    setFibo(null);
-  },[candles]);
-
   // Hover/arrastar/clique-direito/colocar-ponto — tudo em eventos de
   // mouse nativos no container (não dá pra usar subscribeClick do LWC aqui,
   // ele só cobre clique simples, não arraste). Registrado uma vez só
@@ -799,7 +762,17 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           });
           return;
         }
-        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:novo };
+        // O canal é marcado com 2 cliques (a linha base) e a paralela sai
+        // calculada do maior desvio entre eles — aqui é o único lugar com
+        // os candles na mão, então é aqui que o 3º ponto nasce. Sem candle
+        // entre os dois cliques, pontoDaParalela devolve null e o canal
+        // fica só com a base.
+        let pontosFinais = novo;
+        if(ferramenta === "canal"){
+          const paralela = pontoDaParalela(novo[0], novo[1], candlesRef.current);
+          if(paralela) pontosFinais = [...novo, paralela];
+        }
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosFinais };
         // setDesenhos/setFerramentaAtiva são do pai (ChartPane) — chamar
         // direto aqui (ainda dentro do listener de mouseup nativo) disparava
         // "Cannot update a component while rendering a different component"
@@ -937,11 +910,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         else _desenharOCO(ctx, toX, toY, p, isSel);
       }
 
-      // Fibonacci — marcado pelo usuário, só desenha com os 2 pontos prontos
-      if(activeTools.has("fibo") && fibo?.a && fibo?.b){
-        _desenharFibonacci(ctx, toX, toY, fibo, canvas.width);
-      }
-
       // Ferramentas de desenho do usuário (trend/horizontal/retângulo/canal)
       // — cada linha ganha um "x" de fechar rápido (ver _anchorFechar), pra
       // remover sem precisar abrir o menu de clique-direito.
@@ -1031,7 +999,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
 
     redrawRef.current = redraw;
     redraw();
-  },[candles, padroes, activeTools, selPat, fibo, desenhos, ferramentaAtiva, pontosProgresso, reguaFinalizada]);
+  },[candles, padroes, activeTools, selPat, desenhos, ferramentaAtiva, pontosProgresso, reguaFinalizada]);
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0}}>
@@ -1045,21 +1013,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           style={{position:"absolute",left:dicaPadrao.x,top:dicaPadrao.y - 14,transform:"translate(-50%,-100%)",zIndex:11,pointerEvents:"none"}}
         >
           {dicaPadrao.texto}
-        </div>
-      )}
-      {activeTools.has("fibo") && !fibo?.b && (
-        <div style={{
-          position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
-          background:"rgba(6,8,15,.85)",border:"1px solid rgba(245,166,35,.4)",color:"#F5A623",
-          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 8px 6px 14px",borderRadius:20,zIndex:15,
-          display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",
-        }}>
-          <span style={{pointerEvents:"none"}}>{!fibo ? "Fibonacci: toque no 1º ponto" : "Fibonacci: toque no 2º ponto"}</span>
-          <button
-            onClick={()=>{ setFibo(null); toggleTool?.("fibo"); }}
-            title="Cancelar"
-            style={{background:"rgba(255,255,255,.08)",border:"none",color:"inherit",width:20,height:20,borderRadius:"50%",cursor:"pointer",fontSize:12,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
-          >✕</button>
         </div>
       )}
       {ferramentaAtiva && FERRAMENTA_INFO[ferramentaAtiva] && (

@@ -30,6 +30,17 @@ describe('Header', () => {
   // sem este botão o login só existia dentro do menu hambúrguer — era
   // preciso saber que ele estava lá pra achar. jsdom não aplica media
   // query, por isso o teste olha as classes, não a visibilidade.
+  // A tela do ativo esconde os dois (eles descem pra toolbar do gráfico);
+  // nas demais telas o header é o único lugar que busca e tema têm.
+  it('fora da tela do ativo, busca e tema seguem no header', async () => {
+    renderApp('/mercados', { mobile: true });
+    const header = await acharHeader();
+
+    expect(within(header).getByTitle('Buscar')).toBeInTheDocument();
+    expect(header.querySelector('.tema-toggle-mobile')).not.toBeNull();
+    expect(header.querySelector('.nav-search-wrap')).not.toBeNull();
+  });
+
   it('o Entrar do mobile fica ao lado do botão de tema', async () => {
     renderApp('/mercados', { mobile: true });
     const header = await acharHeader();

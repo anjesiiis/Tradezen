@@ -442,19 +442,23 @@ export function _desenharNivel(ctx, toX, toY, p, isSel){
   ctx.restore();
 }
 
-// Fibonacci — desenhado a partir de 2 pontos que o próprio usuário marcou no
-// gráfico (fibo = {a:{i,preco}, b:{i,preco}}), não vem de padrão nenhum.
+// Fibonacci — dois pontos marcados pelo usuário. O PRIMEIRO clique é o
+// 0% e o segundo é o 100%: a retração se lê na direção em que ela
+// aconteceu, então clicar no topo e depois no fundo dá o contrário de
+// clicar no fundo e depois no topo. Antes o 0% ia sempre no preço mais
+// alto dos dois, e o desenho saía invertido pra metade dos casos.
+//
 // As linhas vão do ponto mais antigo até a borda direita do canvas — jeito
 // clássico de projetar os níveis pra frente no tempo.
-export function _desenharFibonacci(ctx, toX, toY, fibo, canvasWidth){
-  const { a, b } = fibo;
-  const xA = toX(a.i);
-  if(xA == null) return;
+export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
+  if(!pontos || pontos.length < 2) return;
+  const [a, b] = pontos;
+  const xA = toX(a.logical), xB = toX(b.logical);
+  if(xA == null || xB == null) return;
 
-  const precoAlto = Math.max(a.preco, b.preco);
-  const precoBaixo = Math.min(a.preco, b.preco);
-  const amplitude = precoAlto - precoBaixo;
-  if(amplitude <= 0) return;
+  const amplitude = b.preco - a.preco;   // sinal importa: define o sentido
+  if(amplitude === 0) return;
+  const xIni = Math.min(xA, xB);
 
   ctx.save();
   ctx.font = "bold 9px 'JetBrains Mono',monospace";
@@ -462,41 +466,89 @@ export function _desenharFibonacci(ctx, toX, toY, fibo, canvasWidth){
   ctx.textBaseline = "middle";
 
   FIBO_NIVEIS.forEach(nivel => {
-    // 0% sempre no preço mais alto dos dois pontos, 100% no mais baixo —
-    // convenção padrão de retração.
-    const preco = precoAlto - amplitude*nivel;
+    const preco = a.preco + amplitude*nivel;
     const y = toY(preco);
     if(y == null) return;
 
     const destaque = nivel === 0 || nivel === 1 || nivel === 0.5;
     ctx.globalAlpha = destaque ? 0.85 : 0.55;
-    ctx.strokeStyle = "#F5A623";
-    ctx.lineWidth = destaque ? 1.3 : 1;
+    ctx.strokeStyle = FIBO_COR;
+    ctx.lineWidth = (destaque ? 1.3 : 1) * (isSel ? 2 : 1);
     ctx.setLineDash(nivel === 0 || nivel === 1 ? [] : [5,4]);
     ctx.beginPath();
-    ctx.moveTo(xA, y);
+    ctx.moveTo(xIni, y);
     ctx.lineTo(canvasWidth, y);
     ctx.stroke();
 
     ctx.globalAlpha = 0.9;
-    ctx.fillStyle = "#F5A623";
-    ctx.fillText(`${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`, xA + 6, y - 8);
+    ctx.fillStyle = FIBO_COR;
+    ctx.fillText(`${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`, xIni + 6, y - 8);
   });
 
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  _desenharHandle(ctx, xA, toY(a.preco), FIBO_COR);
+  _desenharHandle(ctx, xB, toY(b.preco), FIBO_COR);
   ctx.restore();
 }
 
 // ── Ferramentas de desenho (usuário) ─────────────────────────
 // Cor única pros 4 desenhos livres (trend/horizontal/retângulo/canal) — o
 // Fibonacci continua laranja (já existia antes, ver _desenharFibonacci acima).
+/**
+ * Terceiro ponto do canal, calculado em vez de clicado.
+ *
+ * A linha base são os dois pontos que o usuário marcou. A paralela passa
+ * pelo candle que mais se afasta dessa base entre eles — o maior pico se
+ * os dois cliques foram em fundos, o maior fundo se foram em topos. É o
+ * sinal do desvio que decide o lado, então o canal nunca sai invertido.
+ *
+ * Devolve null quando não há candle entre os dois pontos: aí o canal fica
+ * só com a linha base, em vez de inventar uma largura.
+ */
+export function pontoDaParalela(a, b, candles){
+  if(!a || !b || !candles?.length) return null;
+  const iA = Math.round(a.logical), iB = Math.round(b.logical);
+  const ini = Math.max(0, Math.min(iA, iB));
+  const fim = Math.min(candles.length-1, Math.max(iA, iB));
+  if(fim <= ini) return null;
+
+  const dx = b.logical - a.logical;
+  const m = dx !== 0 ? (b.preco - a.preco)/dx : 0;
+  const naBase = (i) => a.preco + m*(i - a.logical);
+
+  let melhor = null;
+  for(let i=ini; i<=fim; i++){
+    const c = candles[i];
+    if(!c) continue;
+    const base = naBase(i);
+    // os dois lados entram na disputa; ganha o desvio de maior módulo
+    for(const preco of [c.high, c.low]){
+      if(preco == null) continue;
+      const desvio = preco - base;
+      if(!melhor || Math.abs(desvio) > Math.abs(melhor.desvio)){
+        melhor = { logical:i, preco, desvio };
+      }
+    }
+  }
+  if(!melhor || melhor.desvio === 0) return null;
+  return { logical: melhor.logical, preco: melhor.preco };
+}
+
 const DESENHO_COR  = "#2962ff";
+const FIBO_COR     = "#F5A623";
 const DESENHO_FILL = "rgba(41,98,255,0.1)";
 
 // Metadados de cada ferramenta de desenho por clique (quantos pontos precisa
 // e o texto de dica mostrado enquanto o usuário ainda não terminou de
-// clicar). "fibo" fica de fora — continua no mecanismo antigo
-// (tools/activeTools), só ganha um ícone novo na lista pra aparecer junto.
+// clicar).
+//
+// O Fibonacci entrou aqui: ele vivia num mecanismo próprio (o Set
+// `tools` + subscribeClick com `param.time`), e por isso só registrava o
+// ponto se o clique caísse exatamente em cima de um candle — clicar no
+// espaço vazio à direita não fazia nada. Agora é ferramenta como as
+// outras: coordenada lógica, preview, desfazer, seleção e vários na
+// mesma tela.
 export const FERRAMENTA_INFO = {
   trend: {
     npontos: 2,
@@ -510,9 +562,17 @@ export const FERRAMENTA_INFO = {
     npontos: 2,
     hints: ["Retângulo: clique no 1º canto", "Retângulo: clique no canto oposto"],
   },
+  // 2 cliques: os dois pontos são a linha base. A paralela sai calculada
+  // do maior desvio entre eles (ver larguraDoCanal) — pedir um 3º clique
+  // pra "definir a largura" era trabalho que o próprio gráfico já sabe
+  // fazer, e o usuário clicava no lugar errado.
   canal: {
-    npontos: 3,
-    hints: ["Canal Paralelo: clique no 1º ponto da linha base", "Canal Paralelo: clique no 2º ponto da linha base", "Canal Paralelo: clique pra definir a largura"],
+    npontos: 2,
+    hints: ["Canal Paralelo: clique no 1º ponto da linha base", "Canal Paralelo: clique no 2º ponto da linha base"],
+  },
+  fibo: {
+    npontos: 2,
+    hints: ["Fibonacci: clique no 0% (início do movimento)", "Fibonacci: clique no 100% (fim do movimento)"],
   },
   vertical: {
     npontos: 1,
@@ -689,15 +749,30 @@ function _desenharRetanguloDesenho(ctx, toX, toY, pontos, isSel){
 }
 
 function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
-  if(pontos.length<3) return;
+  if(pontos.length<2) return;
   const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
   const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
-  const x3=toX(pontos[2].logical), y3=toY(pontos[2].preco);
-  if([x1,y1,x2,y2,x3,y3].some(v=>v==null)) return;
+  if([x1,y1,x2,y2].some(v=>v==null)) return;
   const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
   const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
   const xEnd = canvasWidth;
   const yBaseEnd = yR + m*(xEnd-xR);
+
+  // Só a linha base: é o preview depois do 1º clique, e o caso em que não
+  // havia candle nenhum entre os dois pontos pra tirar a largura.
+  if(pontos.length<3){
+    ctx.save();
+    ctx.strokeStyle = DESENHO_COR;
+    ctx.lineWidth = isSel?3:2;
+    ctx.beginPath(); ctx.moveTo(xL,yL); ctx.lineTo(xEnd,yBaseEnd); ctx.stroke();
+    ctx.restore();
+    _desenharHandle(ctx,x1,y1,DESENHO_COR);
+    _desenharHandle(ctx,x2,y2,DESENHO_COR);
+    return;
+  }
+
+  const x3=toX(pontos[2].logical), y3=toY(pontos[2].preco);
+  if([x3,y3].some(v=>v==null)) return;
   const yBaseAtX3 = yL + m*(x3-xL);
   const offset = y3 - yBaseAtX3;
 
@@ -719,7 +794,6 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
 
   _desenharHandle(ctx,x1,y1,DESENHO_COR);
   _desenharHandle(ctx,x2,y2,DESENHO_COR);
-  _desenharHandle(ctx,x3,y3,DESENHO_COR);
 }
 
 function _desenharTexto(ctx, toX, toY, pontos, texto, isSel){
@@ -859,6 +933,7 @@ export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasW
   else if(d.tipo==="horizontal") _desenharHorizontal(ctx, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="retangulo_desenho") _desenharRetanguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
   else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  else if(d.tipo==="fibo")   _desenharFibonacci(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="texto")  _desenharTexto(ctx, toLogX, toPrecoY, d.pontos, d.texto, isSel);
   else if(d.tipo==="regua")  _desenharRegua(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   if(preview){ ctx.restore(); }
