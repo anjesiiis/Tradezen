@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
 import LeftToolbar from "../components/chart/LeftToolbar.jsx";
-import ThemeToggle from "../components/ThemeToggle.jsx";
 import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferramentasGrafico.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
@@ -17,7 +16,7 @@ import { fmtP } from "../lib/mercado.js";
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", alternarTema, user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
   const navigate = useNavigate();
   const [tf, setTf] = useState(TF_PADRAO);
 
@@ -296,6 +295,24 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           <span style={{fontSize:11}}>▾</span>
         </span>
 
+        {selAtivo.preco>0&&<>
+          <span className="apr">{fmtP(selAtivo.preco)}</span>
+          <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
+        </>}
+
+        {/* A lupa fica colada no ativo porque é isso que ela faz: trocar de
+            ativo. Abre o mesmo seletor do clique no ticker. */}
+        <button
+          className="pane-btn"
+          style={{marginLeft:4}}
+          title="Buscar ativo"
+          onClick={()=>setSwitcherAberto(true)}
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+
         {toggleFavorito && (
           <button
             className={`ac-fav ${favoritos?.has(ticker)?"on":""}`}
@@ -306,11 +323,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             onClick={handleFavoritar}
           >{favoritos?.has(ticker)?"★":"☆"}</button>
         )}
-
-        {selAtivo.preco>0&&<>
-          <span className="apr">{fmtP(selAtivo.preco)}</span>
-          <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
-        </>}
 
         <div className="sep"/>
 
@@ -360,6 +372,18 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </button>
         </div>
 
+        <div className="sep"/>
+
+        {/* Régua: medição rápida. Arma como ferramenta, mas o que ela
+            desenha não fica salvo, então não é da barra lateral.
+            Esconder (👁), travar (🔒) e limpar (🗑) ficavam aqui e foram
+            retirados por pedido do dono. */}
+        <button
+          className={`pane-btn${ferramentaAtiva==="regua"?" ativo":""}`}
+          title="Régua — medir variação"
+          onClick={()=>setFerramentaAtiva(prev=>prev==="regua"?null:"regua")}
+        >📏</button>
+
         {/* Desfazer/Refazer — cobre indicadores e linhas juntos (ver
             registrarHistorico/desfazer/refazer). Também funciona com
             Ctrl+Z / Ctrl+Shift+Z (ver effect de teclado acima). */}
@@ -387,32 +411,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
           </svg>
         </button>
-
-        <div className="sep"/>
-
-        {/* Régua: medição rápida. Arma como ferramenta, mas o que ela
-            desenha não fica salvo, então não é da barra lateral.
-            Esconder (👁), travar (🔒) e limpar (🗑) ficavam aqui e foram
-            retirados por pedido do dono. */}
-        <button
-          className={`pane-btn${ferramentaAtiva==="regua"?" ativo":""}`}
-          title="Régua — medir variação"
-          onClick={()=>setFerramentaAtiva(prev=>prev==="regua"?null:"regua")}
-        >📏</button>
-
-        {/* Busca e tema: na tela do gráfico eles moram aqui, não no header
-            (ver semBuscaETema no Header). A lupa abre o mesmo seletor de
-            ativo do clique no ticker — é a busca que já existia. */}
-        <button
-          className="pane-btn"
-          title="Buscar ativo"
-          onClick={()=>setSwitcherAberto(true)}
-        >
-          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
-        {alternarTema && <ThemeToggle className="pane-btn" tema={tema} onToggle={alternarTema}/>}
 
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (

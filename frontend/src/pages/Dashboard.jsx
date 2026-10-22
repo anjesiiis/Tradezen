@@ -254,11 +254,10 @@ function AppInner(){
           tema={tema} alternarTema={alternarTema}
           secao={secao} setSecao={setSecao}
           drawerAberto={drawerAberto} setDrawerAberto={setDrawerAberto}
-          // Na tela do gráfico a busca e o tema descem pra toolbar do
-          // próprio gráfico (ver ChartPane), onde ficam junto de
-          // Indicadores/Undo/Redo. Nas outras telas seguem no header,
-          // que é o único lugar que elas têm lá.
-          semBuscaETema={isAnalysis}
+          // Na tela do gráfico a busca desce pra toolbar, colada no nome
+          // do ativo — é lá que ela faz sentido, porque é busca de ativo.
+          // O tema fica no header em todas as telas, ao lado do login.
+          semBusca={isAnalysis}
         />
       )}
 
@@ -473,7 +472,6 @@ function AppInner(){
             onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? ()=>adicionarTelaEIrPara(tickerUrl) : undefined}
             ocultoMobile={isMobile && telaAtivaMobile!==0}
             tema={tema}
-            alternarTema={alternarTema}
             user={user}
             favoritos={favoritos}
             toggleFavorito={toggleFavorito}
@@ -489,7 +487,6 @@ function AppInner(){
               onClose={()=>fecharTelaMobile(idx)}
               ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
               tema={tema}
-              alternarTema={alternarTema}
               user={user}
               favoritos={favoritos}
               toggleFavorito={toggleFavorito}

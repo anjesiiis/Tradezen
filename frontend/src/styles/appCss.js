@@ -325,12 +325,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .nav-ic{width:36px;height:36px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);transition:background .15s,color .15s}
 .nav-ic:hover{background:var(--s2);color:var(--text)}
 .nav-ic svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-/* O ThemeToggle é o mesmo componente do header (vem com .nav-ic), mas na
-   toolbar do gráfico ele tem que ter o tamanho dos vizinhos. Esta regra
-   vem depois de .nav-ic de propósito: é ela que ganha. */
-.pane-btn.nav-ic{width:28px;height:28px;border-radius:7px;margin-left:8px}
-.pane-btn.nav-ic svg{width:15px;height:15px}
-@media (max-width:767px){.pane-btn.nav-ic{width:40px;height:40px}}
 
 /* ───────── FILEIRA DE ÍNDICES (home) ───────── */
 .idx-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%}

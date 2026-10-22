@@ -43,22 +43,44 @@ describe('Gráfico do ativo', () => {
     expect(screen.queryByLabelText('Cursor')).not.toBeInTheDocument();
   });
 
-  // Busca e tema desceram do header pra toolbar do gráfico. O risco aqui é
-  // o oposto: tirar do header e esquecer de pôr embaixo, deixando a tela do
-  // ativo sem busca e sem tema em lugar nenhum.
-  it('busca e tema ficam na toolbar do gráfico, não no header', async () => {
+  // A busca desce pro gráfico (é busca de ativo, fica colada no ativo); o
+  // tema fica no header, do lado do login. O risco é tirar de um lugar e
+  // esquecer de pôr no outro, deixando a função sem acesso nenhum.
+  it('a busca fica na toolbar e o tema no header', async () => {
     renderApp('/ativo/PETR4.SA');
     await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
 
     const toolbar = document.querySelector('.atb');
-    expect(within(toolbar).getByTitle('Buscar ativo')).toBeInTheDocument();
-    expect(within(toolbar).getByTitle(/Mudar pro tema/)).toBeInTheDocument();
-
     const header = document.querySelector('nav.nav');
+
+    expect(within(toolbar).getByTitle('Buscar ativo')).toBeInTheDocument();
+    expect(within(toolbar).queryByTitle(/Mudar pro tema/)).not.toBeInTheDocument();
     expect(within(header).queryByTitle('Buscar')).not.toBeInTheDocument();
-    expect(within(header).queryByTitle(/Mudar pro tema/)).not.toBeInTheDocument();
-    // o Entrar continua no header, como pedido
+    expect(header.querySelector('.tema-toggle-mobile')).not.toBeNull();
+    // o Entrar continua no header, com o tema à esquerda dele
     expect(header.querySelector('.btn-in-mobile')).toHaveTextContent('Entrar');
+  });
+
+  // A ordem é o pedido inteiro desta mudança: lupa junto do ativo, e
+  // desfazer/refazer DEPOIS da régua, não antes.
+  it('a ordem da toolbar é ativo → lupa → ☆ → timeframe → indicadores → régua → undo/redo', async () => {
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+
+    const toolbar = document.querySelector('.atb');
+    const ordem = [...toolbar.querySelectorAll('.atick, [title], select')]
+      .map((el) => el.className.includes('atick') ? 'ativo'
+        : el.tagName === 'SELECT' ? 'timeframe'
+        : el.getAttribute('title'))
+      .filter((x) => x && !/Voltar|Adicionar mesa|Fechar|painel/.test(x));
+
+    const posicao = (re) => ordem.findIndex((x) => re.test(x));
+    expect(posicao(/^ativo$/)).toBeLessThan(posicao(/Buscar ativo/));
+    expect(posicao(/Buscar ativo/)).toBeLessThan(posicao(/favoritos/i));
+    expect(posicao(/favoritos/i)).toBeLessThan(posicao(/^timeframe$/));
+    expect(posicao(/^timeframe$/)).toBeLessThan(posicao(/Régua/));
+    expect(posicao(/Régua/)).toBeLessThan(posicao(/Desfazer/));
+    expect(posicao(/Desfazer/)).toBeLessThan(posicao(/Refazer/));
   });
 
   it('renderiza sem crash no mobile', async () => {
