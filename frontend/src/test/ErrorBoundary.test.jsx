@@ -5,6 +5,10 @@ function Quebra() {
   throw new Error('preço indefinido no candle 42');
 }
 
+function QuebraPorChunk() {
+  throw new TypeError('Failed to fetch dynamically imported module: /assets/Admin-x1.js');
+}
+
 describe('ErrorBoundary', () => {
   // o React escreve o erro no console mesmo quando o boundary trata; sem
   // silenciar, a saída do teste fica ilegível
@@ -45,5 +49,56 @@ describe('ErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copiar o erro' }));
 
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('preço indefinido no candle 42'));
+  });
+});
+
+// Deploy novo apaga os arquivos com hash da versão anterior. Quem tem o
+// index.html velho no cache pede uma peça que não existe mais: o import
+// falha, nada renderiza, e o usuário vê branco sem ter mexido em nada.
+// Acusar erro aqui seria inútil — o conserto é buscar a versão nova.
+describe('ErrorBoundary — versão velha no cache', () => {
+  let replace;
+
+  // O módulo guarda uma marca em memória pra não recarregar duas vezes na
+  // mesma carga da página. Entre testes isso vazaria, então cada um
+  // importa o componente do zero.
+  async function montarComChunkQuebrado({ jaTentouAntes = false, erroComum = false } = {}) {
+    vi.resetModules();
+    sessionStorage.clear();
+    if (jaTentouAntes) sessionStorage.setItem('tradezen_recarregou_por_chunk', '1');
+    const { default: Boundary } = await import('../components/ErrorBoundary.jsx');
+    const Filho = erroComum ? Quebra : QuebraPorChunk;
+    return render(<Boundary><Filho/></Boundary>);
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    replace = vi.fn();
+    delete window.location;
+    window.location = { href: 'https://tradezen.com.br/ativo/PETR4.SA', replace };
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('chunk que não baixou faz recarregar furando o cache, sem tela de erro', async () => {
+    await montarComChunkQuebrado();
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0]).toMatch(/\?v=/);
+    expect(screen.queryByText(/Algo quebrou/)).not.toBeInTheDocument();
+    expect(screen.getByText('Atualizando o site…')).toBeInTheDocument();
+  });
+
+  it('não recarrega duas vezes — se já tentou, mostra o erro', async () => {
+    await montarComChunkQuebrado({ jaTentouAntes: true });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText(/Algo quebrou ao abrir esta tela/)).toBeInTheDocument();
+  });
+
+  it('erro comum de render não vira recarga', async () => {
+    await montarComChunkQuebrado({ erroComum: true });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText(/Algo quebrou ao abrir esta tela/)).toBeInTheDocument();
   });
 });

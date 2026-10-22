@@ -34,9 +34,32 @@
           guardar(e && e.reason && (e.reason.message || e.reason));
         });
 
+        // Versão velha no cache pedindo arquivo que o deploy novo apagou.
+        // É a causa número um de "tava funcionando e ficou branco": o nome
+        // dos arquivos leva hash, e o Safari guarda o index.html com
+        // vontade. Antes de acusar erro, tenta recarregar furando o cache —
+        // uma vez só, com marca na sessão pra não virar laço.
+        function versaoVelha(texto) {
+          var t = (texto || "").toLowerCase();
+          return t.indexOf("module") >= 0 || t.indexOf("importing") >= 0 ||
+                 t.indexOf("fetch") >= 0 || t.indexOf("load") >= 0 ||
+                 t.indexOf("falha ao carregar") >= 0;
+        }
+
         setTimeout(function () {
           var root = document.getElementById("root");
           if (!root || root.children.length > 0) return;   // app subiu: nada a fazer
+
+          var jaTentou = true;
+          try {
+            jaTentou = !!sessionStorage.getItem("tradezen_recarregou_por_chunk");
+            if (!jaTentou) sessionStorage.setItem("tradezen_recarregou_por_chunk", "1");
+          } catch (e) { jaTentou = true; }   // sem sessionStorage, não arrisca o laço
+
+          if (!jaTentou && versaoVelha(primeiroErro)) {
+            location.replace(location.pathname + "?v=" + Date.now().toString(36) + location.hash);
+            return;
+          }
 
           var escuro = document.documentElement.getAttribute("data-theme") !== "light";
           root.innerHTML =
@@ -47,8 +70,9 @@
             'TRADE<span style="color:#2962ff">ZEN</span></div>' +
             '<h2 style="font-size:17px;margin:0 0 10px">O site não conseguiu abrir neste navegador</h2>' +
             '<p style="font-size:13px;line-height:1.5;margin:0 0 14px;color:' + (escuro ? "#787b86" : "#5b5f6b") + '">' +
-            'Isto costuma ser arquivo antigo guardado no navegador. Recarregue; ' +
-            'se insistir, mande o texto abaixo pro suporte.</p>' +
+            'Já tentei recarregar buscando a versão nova e não resolveu. ' +
+            'No iPhone: Ajustes → Safari → Limpar Histórico e Dados. ' +
+            'Se insistir, mande o texto abaixo pro suporte.</p>' +
             '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;background:' +
             (escuro ? "#0f1118" : "#f4f5f7") + ';border:1px solid ' + (escuro ? "#1e222d" : "#e3e5ea") +
             ';border-radius:8px;padding:10px;margin:0 0 16px">' +

@@ -16,10 +16,55 @@ import { Component } from "react";
  * existe console à mão, e "tente de novo" sem o motivo não conserta nada:
  * com a mensagem na tela, dá pra mandar pra quem vai corrigir.
  */
+// Chunk que não baixou. Acontece depois de cada deploy: o nome dos
+// arquivos leva um hash, então a versão nova apaga os arquivos da antiga.
+// Quem tem o index.html velho no cache (o Safari guarda com vontade) pede
+// um arquivo que não existe mais, o import falha, e NADA renderiza — a
+// tela branca clássica de "tava funcionando e parou sozinho".
+//
+// Não é erro de programação: é versão velha pedindo peça velha. O conserto
+// é recarregar buscando na rede, e é isso que se faz aqui, uma vez só.
+const CHAVE_RECARGA = "tradezen_recarregou_por_chunk";
+
+// Duas marcas, pra dois perigos diferentes:
+// - a da sessão impede o laço ENTRE cargas da página (recarregou e
+//   quebrou de novo → não insiste);
+// - esta, em memória, impede o laço DENTRO da mesma carga: o React
+//   tenta renderizar de novo depois de capturar o erro, e sem ela a
+//   segunda tentativa via a marca da sessão já posta e caía na tela de
+//   erro, apagando o "Atualizando" meio segundo antes da navegação.
+let recargaEmAndamento = false;
+
+function ehChunkQueFaltou(erro) {
+  const texto = `${erro?.name || ""} ${erro?.message || ""}`.toLowerCase();
+  return /dynamically imported module|importing a module script failed|error loading dynamically|failed to fetch|chunkloaderror|module script/.test(texto);
+}
+
+/** Recarrega uma vez só, furando o cache. Devolve true se vai recarregar. */
+function tentarRecarregar() {
+  if (recargaEmAndamento) return true;   // já está indo: segue mostrando "Atualizando"
+  try {
+    if (sessionStorage.getItem(CHAVE_RECARGA)) return false;   // já tentamos: não entra em laço
+    sessionStorage.setItem(CHAVE_RECARGA, "1");
+  } catch {
+    return false;   // sem sessionStorage não há como evitar o laço: melhor não recarregar
+  }
+  recargaEmAndamento = true;
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", Date.now().toString(36));   // URL nova = o cache não serve
+  window.location.replace(url.toString());
+  return true;
+}
+
 export default class ErrorBoundary extends Component {
-  state = { erro: null };
+  state = { erro: null, recarregando: false };
 
   static getDerivedStateFromError(erro) {
+    // `recarregando` em vez de voltar pro filho: devolver o filho faria
+    // ele estourar de novo no mesmo instante, e o usuário veria a tela de
+    // erro piscar antes da navegação. Aqui a tela fica numa mensagem curta
+    // até o location.replace levar embora.
+    if (ehChunkQueFaltou(erro) && tentarRecarregar()) return { recarregando: true };
     return { erro };
   }
 
@@ -35,6 +80,15 @@ export default class ErrorBoundary extends Component {
   };
 
   render() {
+    if (this.state.recarregando) {
+      return (
+        <div className="erro-tela">
+          <span className="erro-logo notranslate">TRADE<span>ZEN</span></span>
+          <h2>Atualizando o site…</h2>
+          <p>Saiu uma versão nova. Buscando os arquivos novos — é rápido.</p>
+        </div>
+      );
+    }
     if (!this.state.erro) return this.props.children;
 
     return (
