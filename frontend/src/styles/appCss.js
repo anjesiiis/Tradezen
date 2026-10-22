@@ -76,7 +76,12 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .sitk{font-family:var(--font-m);font-size:12px;color:var(--text);font-weight:600}
 .sinm{font-size:10px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sempty{padding:24px;text-align:center;font-size:12px;color:var(--text2)}
-.nav-r{display:flex;align-items:center;gap:10px;margin-left:auto}
+.nav-r{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
+/* O nome pode ser truncado; o botão, não. Numa janela estreita quem cede
+   espaço é o texto (ellipsis), nunca o acesso à conta. */
+.btn-conta{display:flex;align-items:center;gap:6px;max-width:140px}
+.btn-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conta-wrap{flex-shrink:0}
 .btn-in{background:none;border:1px solid var(--border);color:var(--text3);font-size:12px;padding:6px 16px;border-radius:7px;cursor:pointer;transition:all .2s;font-family:var(--font-b)}
 .btn-in:hover{border-color:var(--accent);color:var(--text)}
 .btn-pr{background:#3D7EFF;border:none;color:#fff;font-weight:700;font-size:12px;padding:6px 18px;border-radius:7px;cursor:pointer;font-family:var(--font-b)}
@@ -140,20 +145,31 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .tn{color:var(--text3)}
 
 /* ANALYSIS */
-.analysis{display:flex;flex-direction:column;height:calc(100vh - 52px);min-width:960px;position:relative}
+/* min-width aqui era 960px e virava um chão: numa janela de 900px a mesa
+   continuava com 960 e o que não cabia ia pra fora da tela, atrás do
+   overflow:hidden do .analysis-row — o usuário via área vazia no lugar do
+   gráfico. Agora a mesa acompanha a janela, e quem rola quando fica
+   apertado é a toolbar (.atb), não o gráfico. */
+.analysis{display:flex;flex-direction:column;height:calc(100vh - 52px);min-width:0;position:relative}
 /* Multitelas: até 2 telas → linha única, cada .analysis vira metade da
    largura (min-width bem menor, senão 2×960px nunca cabe numa tela comum).
    3-4 telas → classe "grid4", grade 2×2 (4×480px numa linha só não cabe em
    tela nenhuma). */
 .analysis-row{display:flex;height:calc(100vh - 52px);overflow:hidden}
-.analysis-row .analysis{flex:1;min-width:480px;height:100%}
+/* Mesma história com 2 mesas: 480px cada dava 960 fixos, e abaixo disso a
+   segunda saía da tela inteira. flex:1 já divide o espaço em partes
+   iguais — o chão só servia pra estourar. */
+.analysis-row .analysis{flex:1;min-width:0;height:100%}
 .analysis-row .analysis:not(:last-child){border-right:1px solid var(--border)}
 .analysis-row.grid4{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .analysis-row.grid4 .analysis{min-width:0}
 .analysis-row.grid4 .analysis:not(:last-child){border-right:1px solid var(--border)}
 .analysis-row.grid4 .analysis:nth-child(even){border-right:none}
 .analysis-row.grid4 .analysis:nth-child(-n+2){border-bottom:1px solid var(--border)}
-.atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;position:relative;z-index:20}
+.atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:20}
+/* A barra de rolagem some de vista mas a rolagem continua: numa toolbar de
+   44px de altura ela comeria metade do espaço dos botões. */
+.atb::-webkit-scrollbar{display:none}
 .bbtn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 8px 2px 0;line-height:1}
 .bbtn:hover{color:var(--text)}
 .atick{font-family:var(--font-h);font-size:21px;letter-spacing:2px;color:var(--text);flex-shrink:0;cursor:pointer;user-select:none}
@@ -726,9 +742,13 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
   .logo{font-size:19px;letter-spacing:2px}
   .nav-r{display:none}
   .hamburger-btn,.search-toggle-btn,.tema-toggle-mobile{display:flex}
-  /* Entrar ao lado do tema: o do .nav-r está escondido aqui. Altura 44px
-     pra bater com o alvo de toque do tema, que fica do lado. */
-  .btn-in-mobile{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;flex-shrink:0}
+  /* Conta ao lado do tema: a do .nav-r está escondida aqui. Altura 44px
+     pra bater com o alvo de toque do tema, que fica do lado. Quando o
+     usuário está logado a classe cai no wrapper do menu, e aí o padding
+     é do botão de dentro — por isso ele vem separado. */
+  .btn-in-mobile{display:inline-flex;align-items:center;flex-shrink:0}
+  button.btn-in-mobile{min-height:44px;padding:0 14px}
+  .btn-in-mobile .btn-conta{min-height:44px;max-width:104px}
   .nav-search-wrap{display:none}
   .nav-search-wrap.aberta{
     display:flex;align-items:center;gap:6px;

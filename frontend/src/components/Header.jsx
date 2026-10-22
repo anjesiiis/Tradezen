@@ -11,35 +11,51 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const [userMenuAberto,setUserMenuAberto] = useState(false); // menu "Sair" no nome do usuário no header
+  // Qual slot tem o menu "Sair" aberto: "desktop", "mobile" ou null. Não é
+  // booleano porque o botão da conta existe duas vezes (o CSS mostra um
+  // por largura) — com um booleano só, clicar num abria o dropdown dos
+  // dois, e o DOM ficava com dois menus iguais.
+  const [contaAberta,setContaAberta] = useState(null);
   const [buscaMobileAberta,setBuscaMobileAberta] = useState(false); // ícone de lupa → expande a busca (mobile)
 
   // Ações de conta (tema/sino/entrar-usuário/pro) — renderizadas duas
   // vezes: uma no header (visível só no desktop) e outra dentro do
   // menu hambúrguer (visível só no mobile). É o mesmo bloco reusado
   // via variável pra não duplicar a lógica do menu "Sair".
+  // Entrar (deslogado) ou o menu da conta (logado). Uma função, não um
+  // bloco pronto, porque o header precisa dela em DOIS lugares com
+  // classes diferentes: o .nav-r do desktop e o canto do mobile, que o
+  // CSS alterna. O botão nunca sai do header em nenhuma largura — logado
+  // ele só aparecia no desktop, e no celular quem tinha conta ficava sem
+  // nada (só o tema), com a conta enterrada no menu hambúrguer.
+  const botaoConta = (slot, classeExtra = "") => (
+    user
+      ? <div className={`conta-wrap ${classeExtra}`} style={{position:"relative"}}>
+          <button className="btn-in btn-conta" onClick={()=>setContaAberta(a=>a===slot?null:slot)}>
+            <span className="btn-conta-nome">
+              {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()}
+            </span>
+            <span style={{fontSize:9}}>▾</span>
+          </button>
+          {contaAberta===slot && (
+            <>
+              <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setContaAberta(null)}/>
+              <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
+                <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
+                <div className="ind-item" onClick={()=>{ setContaAberta(null); logout(); navigate("/"); }}>
+                  <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      : <button className={`btn-in ${classeExtra}`} onClick={()=>navigate("/login")}>Entrar</button>
+  );
+
   const acoesConta = (
     <>
       <ThemeToggle className="tema-toggle" tema={tema} onToggle={alternarTema}/>
-      {user
-        ? <div style={{position:"relative"}}>
-            <button className="btn-in" onClick={()=>setUserMenuAberto(v=>!v)}>
-              {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()} <span style={{fontSize:9}}>▾</span>
-            </button>
-            {userMenuAberto && (
-              <>
-                <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenuAberto(false)}/>
-                <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
-                  <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
-                  <div className="ind-item" onClick={()=>{ setUserMenuAberto(false); logout(); navigate("/"); }}>
-                    <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        : <button className="btn-in" onClick={()=>navigate("/login")}>Entrar</button>
-      }
+      {botaoConta("desktop")}
     </>
   );
 
@@ -81,13 +97,10 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
           hambúrguer, que só tem navegação + conta agora). */}
       <ThemeToggle className="tema-toggle-mobile" tema={tema} onToggle={alternarTema}/>
 
-      {/* Entrar ao lado do tema, no mobile. A versão do desktop vive no
-          .nav-r, que o mobile esconde — então quem abria o site no
-          celular só achava o login dentro do hambúrguer. Logado não
-          aparece: aí a conta (e o Sair) está no menu. */}
-      {!user && (
-        <button className="btn-in btn-in-mobile" onClick={()=>navigate("/login")}>Entrar</button>
-      )}
+      {/* Conta ao lado do tema, no mobile. A versão do desktop vive no
+          .nav-r, que o mobile esconde — sem isto, quem abre o site no
+          celular não acha nem o login nem o próprio nome. */}
+      {botaoConta("mobile", "btn-in-mobile")}
 
       <div className="nav-r">
         {acoesConta}
