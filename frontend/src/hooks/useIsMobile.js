@@ -13,8 +13,15 @@ export function useIsMobile(){
     const mq = window.matchMedia(`(max-width:${MOBILE_BREAKPOINT-1}px)`);
     const onChange = ()=> setIsMobile(mq.matches);
     onChange();
-    mq.addEventListener("change", onChange);
-    return ()=> mq.removeEventListener("change", onChange);
+    // Safari só ganhou addEventListener em MediaQueryList na versão 14 —
+    // antes disso era addListener, e chamar o que não existe aqui dentro
+    // derruba a árvore do React: tela branca, no iPhone, sem explicação.
+    if(mq.addEventListener){
+      mq.addEventListener("change", onChange);
+      return ()=> mq.removeEventListener("change", onChange);
+    }
+    mq.addListener(onChange);
+    return ()=> mq.removeListener(onChange);
   },[]);
   return isMobile;
 }

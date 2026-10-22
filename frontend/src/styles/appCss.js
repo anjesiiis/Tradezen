@@ -46,6 +46,18 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
 /* NAV */
+/* Tela de erro (ErrorBoundary). Vive no CSS do app porque o erro pode
+   acontecer em qualquer rota — inclusive antes de a rota carregar o seu
+   próprio estilo. */
+.erro-tela{min-height:100vh;box-sizing:border-box;padding:28px 20px;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.erro-logo{font-weight:800;letter-spacing:-.5px;font-size:20px}
+.erro-logo span{color:var(--accent)}
+.erro-tela h2{font-size:17px;margin:6px 0 0;font-weight:600}
+.erro-tela p{font-size:13px;line-height:1.5;margin:0;color:var(--text2);max-width:520px}
+.erro-detalhe{font-family:var(--font-m);font-size:11px;white-space:pre-wrap;word-break:break-word;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;margin:0;width:100%;max-width:520px;max-height:40vh;overflow:auto}
+.erro-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.erro-btn{font:inherit;font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:28px;padding:11px 26px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.erro-btn.secundario{background:transparent;color:var(--text2);border-color:var(--border)}
 .nav{height:52px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;z-index:200;position:relative}
 .logo{font-family:var(--font-h);font-size:22px;letter-spacing:3px;color:var(--text);cursor:pointer;user-select:none}
 .notranslate{translate:no}
