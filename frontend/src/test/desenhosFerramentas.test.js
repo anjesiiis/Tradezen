@@ -1,4 +1,6 @@
 import { FERRAMENTA_INFO, pontoDaParalela, _desenharDesenhoUsuario } from '../lib/grafico/desenhos.js';
+import { toLWCandles } from '../lib/grafico/indicadores.js';
+import { CANDLES_FAKE } from './dadosFake.js';
 
 // Um ctx de canvas que só anota o que foi pedido — dá pra afirmar sobre o
 // desenho sem precisar de canvas de verdade.
@@ -66,14 +68,31 @@ describe('Fibonacci', () => {
 });
 
 describe('Canal paralelo', () => {
-  // candles com um pico claro no meio
+  // `maxima`/`minima` é como o candle chega do backend — e é o que esta
+  // função recebe. A versão anterior deste teste usava high/low, que só
+  // existem na cópia convertida pro gráfico: passava verde enquanto o
+  // canal saía com uma linha só no site. O teste abaixo trava isso.
   const candles = [
-    { high: 12, low: 10 },
-    { high: 14, low: 11 },
-    { high: 30, low: 12 },   // o pico
-    { high: 16, low: 13 },
-    { high: 18, low: 14 },
+    { maxima: 12, minima: 10 },
+    { maxima: 14, minima: 11 },
+    { maxima: 30, minima: 12 },   // o pico
+    { maxima: 16, minima: 13 },
+    { maxima: 18, minima: 14 },
   ];
+
+  it('usa os nomes de campo que o candle do projeto realmente tem', () => {
+    // se alguém trocar maxima/minima por high/low, isto quebra na hora
+    const comHighLow = toLWCandles(CANDLES_FAKE);
+    expect(comHighLow[0]).toHaveProperty('high');
+    expect(CANDLES_FAKE[0]).not.toHaveProperty('high');
+    expect(CANDLES_FAKE[0]).toHaveProperty('maxima');
+
+    // candle cru (o que a função recebe): acha a paralela
+    expect(pontoDaParalela({ logical: 0, preco: CANDLES_FAKE[0].minima },
+      { logical: 10, preco: CANDLES_FAKE[10].minima }, CANDLES_FAKE)).not.toBeNull();
+    // candle convertido (o que ela NUNCA recebe): não acha nada
+    expect(pontoDaParalela({ logical: 0, preco: 38 }, { logical: 10, preco: 38 }, comHighLow)).toBeNull();
+  });
 
   it('são 2 cliques: a linha base. O 3º ponto não é mais pedido', () => {
     expect(FERRAMENTA_INFO.canal.npontos).toBe(2);
@@ -90,9 +109,9 @@ describe('Canal paralelo', () => {
   // paralela vai — é isso que impede o canal de sair invertido
   it('clicando em topos, a paralela desce', () => {
     const topos = [
-      { high: 20, low: 19 },
-      { high: 21, low: 5 },    // fundo bem abaixo da base
-      { high: 22, low: 20 },
+      { maxima: 20, minima: 19 },
+      { maxima: 21, minima: 5 },    // fundo bem abaixo da base
+      { maxima: 22, minima: 20 },
     ];
     const p = pontoDaParalela({ logical: 0, preco: 20 }, { logical: 2, preco: 22 }, topos);
 

@@ -522,8 +522,12 @@ export function pontoDaParalela(a, b, candles){
     const c = candles[i];
     if(!c) continue;
     const base = naBase(i);
-    // os dois lados entram na disputa; ganha o desvio de maior módulo
-    for(const preco of [c.high, c.low]){
+    // `maxima`/`minima`, que é como o candle chega do backend. NÃO é
+    // high/low: esses só existem na cópia que vai pro Lightweight Charts
+    // (toLWCandles), e aqui o que chega é o candle cru. Com os nomes
+    // errados os dois lados vinham undefined, nenhum candle entrava na
+    // conta, a função devolvia null — e o canal saía com uma linha só.
+    for(const preco of [c.maxima, c.minima]){
       if(preco == null) continue;
       const desvio = preco - base;
       if(!melhor || Math.abs(desvio) > Math.abs(melhor.desvio)){
