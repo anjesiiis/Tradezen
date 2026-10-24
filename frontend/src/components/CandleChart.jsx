@@ -210,18 +210,67 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     });
 
     const ro = new ResizeObserver(()=>{
-      if(chartRef.current && containerRef.current){
-        chartRef.current.applyOptions({
-          width:  containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
-        redrawRef.current?.();
-      }
+      // 0x0 NÃO se aplica ao gráfico. O container zera quando a tela está
+      // escondida (mesa de trás no celular, aba em segundo plano, janela
+      // minimizada) — e mandar o gráfico pra 0 nesse momento é pedir pra
+      // ele voltar quebrado. Ignorar é o certo: quando reaparecer, o
+      // próprio observer dispara de novo com o tamanho de verdade.
+      if(!chartRef.current || !containerRef.current) return;
+      const l = containerRef.current.clientWidth, a = containerRef.current.clientHeight;
+      if(l <= 0 || a <= 0) return;
+      chartRef.current.applyOptions({ width:l, height:a });
+      redrawRef.current?.();
     });
     ro.observe(containerRef.current);
 
+    // ── Volta da invisibilidade ────────────────────────────────
+    // O navegador pode jogar fora o conteúdo dos canvas enquanto a página
+    // está escondida (é memória de vídeo que ele recupera). Quando se
+    // volta, o canvas está em branco e o Lightweight Charts não repinta
+    // sozinho: ele só redesenha quando alguém rola, dá zoom ou troca o
+    // dado. Resultado: a área do gráfico fica preta até recarregar.
+    //
+    // Aqui a gente força a repintura (o 3º argumento do resize) e
+    // redesenha a nossa camada por cima. A faixa visível é guardada e
+    // reposta, pra não jogar o zoom de quem estava olhando um trecho.
+    const repintar = () => {
+      const chart = chartRef.current, cont = containerRef.current;
+      if(!chart || !cont) return;
+      const l = cont.clientWidth, a = cont.clientHeight;
+      if(l <= 0 || a <= 0) return;   // ainda escondido: não adianta
+      let faixa = null;
+      try { faixa = chart.timeScale().getVisibleLogicalRange(); } catch { /* gráfico vazio */ }
+      try { chart.resize(l, a, true); } catch { return; }
+      if(faixa){ try { chart.timeScale().setVisibleLogicalRange(faixa); } catch { /* ignora */ } }
+      redrawRef.current?.();
+    };
+    // rAF: logo ao voltar, o layout ainda pode estar com as medidas
+    // antigas; um quadro depois elas já são as de verdade.
+    const aoVoltar = () => {
+      if(document.visibilityState === "hidden") return;
+      requestAnimationFrame(repintar);
+    };
+
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    window.addEventListener("pageshow", aoVoltar);   // volta do cache de histórico (Safari)
+    // O evento é por canvas, e o Lightweight Charts cria vários (painel,
+    // eixos, volume). Delegar no container pega todos, inclusive os que
+    // ele criar depois.
+    // preventDefault no contextlost é o que PEDE a restauração: sem ele,
+    // a perda é definitiva e o canvas nunca mais volta.
+    const aoPerderContexto = (e) => { e.preventDefault?.(); };
+    containerRef.current.addEventListener("contextrestored", repintar, true);
+    containerRef.current.addEventListener("contextlost", aoPerderContexto, true);
+
+    const contEfeito = containerRef.current;
     return()=>{
       ro.disconnect();
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
+      window.removeEventListener("pageshow", aoVoltar);
+      contEfeito?.removeEventListener("contextrestored", repintar, true);
+      contEfeito?.removeEventListener("contextlost", aoPerderContexto, true);
       markersRef.current = null;
       sma20Ref.current = null;
       sma100Ref.current = null;
