@@ -46,6 +46,17 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .auth-msg{font-size:13px;padding:12px 14px;border-radius:8px;border:1px solid;margin-bottom:16px;line-height:1.5}
 .auth-msg-ok{background:rgba(0,214,143,.08);border-color:rgba(0,214,143,.25);color:var(--up)}
 .auth-msg-err{background:rgba(255,69,96,.08);border-color:rgba(255,69,96,.25);color:var(--down)}
+/* Força da senha: barra + lista que mudam a cada tecla. As cores são as
+   da paleta — vermelho (--down), âmbar (--gold) e verde (--up) — e quem
+   escolhe qual é o avaliarSenha, não o CSS. */
+.senha-forca{margin-top:8px}
+.senha-barra{height:5px;background:var(--s2);border-radius:999px;overflow:hidden}
+.senha-barra-preenchida{height:100%;border-radius:999px;transition:width .25s ease,background .25s ease}
+.senha-nivel{margin:6px 0 0;font-size:11.5px;font-weight:700}
+.senha-criterios{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.senha-criterios li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text3)}
+.senha-criterios li.ok{color:var(--up)}
+.senha-criterios li span{width:11px;text-align:center;flex-shrink:0}
 
 .auth-switch{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
 .auth-switch a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}

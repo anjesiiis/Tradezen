@@ -22,6 +22,9 @@ describe('Cadastro', () => {
     expect(screen.getByPlaceholderText('Seu nome')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('seu@email.com')).toHaveAttribute('type', 'email');
     expect(screen.getByPlaceholderText('Mínimo 8 caracteres')).toHaveAttribute('type', 'password');
-    expect(screen.getByRole('button', { name: 'Criar conta grátis' })).toBeEnabled();
+    // Nasce travado: só libera quando a senha atende os 5 requisitos
+    // (ver forcaSenha.test.jsx). Antes abria liberado, e o formulário
+    // vazio podia ser enviado.
+    expect(screen.getByRole('button', { name: 'Criar conta grátis' })).toBeDisabled();
   });
 });

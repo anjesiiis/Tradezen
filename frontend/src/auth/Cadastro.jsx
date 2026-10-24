@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AuthShell from "./theme.jsx";
 import { supabase, supabaseConfigurado } from "../lib/supabaseClient.js";
 import { useAuth } from "./AuthContext.jsx";
+import { CRITERIOS, avaliarSenha } from "./forcaSenha.js";
 
 export default function Cadastro() {
   const navigate = useNavigate();
@@ -11,6 +12,12 @@ export default function Cadastro() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  // Recalculado a cada tecla: a lista abaixo do campo muda enquanto a
+  // pessoa digita, em vez de só reclamar depois que ela aperta o botão.
+  const forca = avaliarSenha(senha);
+  // A lista só aparece depois do primeiro caractere — num campo vazio ela
+  // seria uma parede de exigências antes mesmo de começar.
+  const mostrarForca = senha.length > 0;
   const [erro, setErro] = useState("");
 
   useEffect(() => {
@@ -24,6 +31,14 @@ export default function Cadastro() {
     if (!supabaseConfigurado) {
       setStatus("error");
       setErro("Este site está sem a chave de acesso ao banco (VITE_SUPABASE_ANON_KEY). Avise o administrador — nenhum login ou cadastro funciona até isso ser configurado.");
+      return;
+    }
+    // O botão já fica desabilitado, mas o navegador deixa enviar o
+    // formulário por Enter em alguns casos — e esta é a última linha
+    // antes de uma senha fraca virar conta de verdade.
+    if (!forca.forte) {
+      setStatus("error");
+      setErro("A senha ainda não atende todos os requisitos abaixo do campo.");
       return;
     }
     setStatus("sending");
@@ -107,10 +122,34 @@ export default function Cadastro() {
                 placeholder="Mínimo 8 caracteres"
                 value={senha}
                 onChange={e => setSenha(e.target.value)}
+                aria-describedby="forca-da-senha"
               />
+              {mostrarForca && (
+                <div id="forca-da-senha" className="senha-forca">
+                  <div className="senha-barra">
+                    <div
+                      className="senha-barra-preenchida"
+                      style={{ width: `${(forca.atendidos / forca.total) * 100}%`, background: forca.cor }}
+                    />
+                  </div>
+                  {/* aria-live: quem usa leitor de tela ouve a mudança de
+                      nível sem precisar sair do campo pra conferir */}
+                  <p className="senha-nivel" style={{ color: forca.cor }} aria-live="polite">
+                    {forca.rotulo}
+                  </p>
+                  <ul className="senha-criterios">
+                    {CRITERIOS.map((c) => (
+                      <li key={c.id} className={forca.criterios[c.id] ? "ok" : ""}>
+                        <span aria-hidden="true">{forca.criterios[c.id] ? "✓" : "○"}</span>
+                        {c.rotulo}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             {status === "error" && <div className="auth-msg auth-msg-err">{erro}</div>}
-            <button className="auth-btn" type="submit" disabled={status === "sending"}>
+            <button className="auth-btn" type="submit" disabled={status === "sending" || !forca.forte}>
               {status === "sending" ? "Enviando..." : "Criar conta grátis"}
             </button>
           </form>
