@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FiltroPadroes from '../admin/FiltroPadroes.jsx';
-import { DISPONIVEIS, PADROES_DO_FILTRO, filtroInicial } from '../lib/filtroPadroes.js';
+import { DISPONIVEIS, PADROES_DO_FILTRO, VISIVEIS_NO_FILTRO, filtroInicial } from '../lib/filtroPadroes.js';
 
 function montar(props = {}) {
   const aoMudar = vi.fn();
@@ -14,20 +14,26 @@ const caixas = () => screen.getAllByRole('checkbox');
 describe('Filtro de padrões no gráfico de marcação', () => {
   beforeEach(() => localStorage.clear());
 
-  it('lista todos os padrões, com o título em cima', () => {
+  it('lista os padrões em uso, com o título em cima', () => {
     montar();
 
     expect(screen.getByText(/^Padrões/)).toBeInTheDocument();
-    expect(caixas()).toHaveLength(PADROES_DO_FILTRO.length);
-    expect(screen.getByText('Topo Duplo')).toBeInTheDocument();
+    expect(caixas()).toHaveLength(VISIVEIS_NO_FILTRO.length);
+    expect(screen.getByText('Bandeira de Alta')).toBeInTheDocument();
     expect(screen.getByText('Suporte/Resistência')).toBeInTheDocument();
   });
 
-  it('os 21 padrões aparecem na lista', () => {
+  // reversão (6) e o retângulo saíram da lista junto com a navegação
+  it('os 14 padrões em uso aparecem; os ocultos, não', () => {
     montar();
-    // 19 padrões + os 2 contraexemplos de bandeira
-    expect(caixas()).toHaveLength(21);
+
+    expect(caixas()).toHaveLength(14);
     expect(screen.getByText('Fracasso — Band. Alta')).toBeInTheDocument();
+    for (const oculto of ['Topo Duplo', 'Fundo Duplo', 'OCO', 'Retângulo']) {
+      expect(screen.queryByText(oculto), oculto).not.toBeInTheDocument();
+    }
+    // continuam no dado, prontos pra voltar
+    expect(PADROES_DO_FILTRO.find((p) => p.id === 'topo_duplo').oculto).toBe(true);
   });
 
   it('abre com só o padrão da tela ligado', () => {
@@ -54,37 +60,35 @@ describe('Filtro de padrões no gráfico de marcação', () => {
     const user = userEvent.setup();
     const { aoMudar } = montar();
 
-    await user.click(screen.getByText('OCO').closest('label').querySelector('input'));
+    await user.click(screen.getByText('Canal de Alta').closest('label').querySelector('input'));
 
-    expect(aoMudar).toHaveBeenCalledWith(['oco']);
+    expect(aoMudar).toHaveBeenCalledWith(['canal_alta']);
   });
 
   it('desmarcar tira só aquele padrão', async () => {
     const user = userEvent.setup();
-    const { aoMudar } = montar({ ligados: ['oco', 'topo_duplo'] });
+    const { aoMudar } = montar({ ligados: ['canal_alta', 'bandeira_alta'] });
 
-    await user.click(screen.getByText('OCO').closest('label').querySelector('input'));
+    await user.click(screen.getByText('Canal de Alta').closest('label').querySelector('input'));
 
-    expect(aoMudar).toHaveBeenCalledWith(['topo_duplo']);
+    expect(aoMudar).toHaveBeenCalledWith(['bandeira_alta']);
   });
 
-  it('todos têm tela de marcação: nenhum fica como "(em breve)"', () => {
+  it('todos os listados têm tela de marcação: nenhum fica como "(em breve)"', () => {
     montar();
 
-    // os oito últimos (fundo duplo, OCO invertido, triplos, triângulos e
-    // retângulo) deixaram de ser "em breve" quando ganharam tela
     expect(screen.queryByText('(em breve)')).not.toBeInTheDocument();
     expect(caixas().every((c) => !c.disabled)).toBe(true);
-    for (const nome of ['Fundo Duplo', 'OCO Invertido', 'Topo Triplo', 'Fundo Triplo',
-      'Triângulo Asc.', 'Triângulo Desc.', 'Triângulo Sim.', 'Retângulo']) {
+    for (const nome of ['Cunha de Alta', 'Cunha de Baixa', 'Canal de Baixa',
+      'Triângulo Asc.', 'Triângulo Desc.', 'Triângulo Sim.']) {
       expect(screen.getByText(nome)).toBeInTheDocument();
     }
   });
 
   it('mostra quantos templates já existem naquele ativo', () => {
-    montar({ contagem: { oco: 3 } });
+    montar({ contagem: { canal_alta: 3 } });
 
-    expect(within(screen.getByText('OCO').closest('label')).getByText('3')).toBeInTheDocument();
+    expect(within(screen.getByText('Canal de Alta').closest('label')).getByText('3')).toBeInTheDocument();
   });
 
 

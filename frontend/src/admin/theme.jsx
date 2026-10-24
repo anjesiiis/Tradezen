@@ -348,7 +348,7 @@ export function AdminPatternNav({ active, aoTrocar }) {
       </button>
 
       <div className="admin-nav-grupos">
-        {GRUPOS_DE_PADRAO.map((grupo) => {
+        {GRUPOS_DE_PADRAO.filter((g) => !g.oculto).map((grupo) => {
           const aberto = abertos.has(grupo.id);
           return (
             <div key={grupo.id} className="admin-nav-grupo">
@@ -364,7 +364,7 @@ export function AdminPatternNav({ active, aoTrocar }) {
               </button>
               {aberto && (
                 <div className="admin-nav-itens">
-                  {grupo.itens.map((l) => (
+                  {grupo.itens.filter((l) => !l.oculto).map((l) => (
                     /* Link, e não <a>: trocar de padrão não recarrega o app
                        inteiro (o que refazia todas as chamadas e, com token
                        vencido, caía no pedido de email). */

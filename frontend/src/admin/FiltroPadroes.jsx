@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ICONE_GENERICO, classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
-import { PADROES_DO_FILTRO } from "../lib/filtroPadroes.js";
+import { VISIVEIS_NO_FILTRO } from "../lib/filtroPadroes.js";
 
 // Sidebar do gráfico de marcação: escolhe quais padrões já salvos ficam
 // visíveis no gráfico e lista os que existem neste ativo.
@@ -62,7 +62,7 @@ export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos 
       </button>
 
       <div className="filtro-padroes-lista">
-        {PADROES_DO_FILTRO.map((p) => {
+        {VISIVEIS_NO_FILTRO.map((p) => {
           const marcado = ligados.includes(p.id);
           const quantos = contagem[p.id] || 0;
           return (

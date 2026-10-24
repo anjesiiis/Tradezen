@@ -9,12 +9,12 @@
 // duas linhas da navegação: reversão, continuação, consolidação.
 export const PADROES_DO_FILTRO = [
   // reversão
-  { id: "topo_duplo", nome: "Topo Duplo" },
-  { id: "fundo_duplo", nome: "Fundo Duplo" },
-  { id: "topo_triplo", nome: "Topo Triplo" },
-  { id: "fundo_triplo", nome: "Fundo Triplo" },
-  { id: "oco", nome: "OCO" },
-  { id: "oco_invertido", nome: "OCO Invertido" },
+  { id: "topo_duplo", nome: "Topo Duplo", oculto: true },
+  { id: "fundo_duplo", nome: "Fundo Duplo", oculto: true },
+  { id: "topo_triplo", nome: "Topo Triplo", oculto: true },
+  { id: "fundo_triplo", nome: "Fundo Triplo", oculto: true },
+  { id: "oco", nome: "OCO", oculto: true },
+  { id: "oco_invertido", nome: "OCO Invertido", oculto: true },
   // continuação
   { id: "bandeira_alta", nome: "Bandeira de Alta" },
   { id: "bandeira_baixa", nome: "Bandeira de Baixa" },
@@ -28,13 +28,19 @@ export const PADROES_DO_FILTRO = [
   { id: "triangulo_ascendente", nome: "Triângulo Asc." },
   { id: "triangulo_descendente", nome: "Triângulo Desc." },
   { id: "triangulo_simetrico", nome: "Triângulo Sim." },
-  { id: "retangulo", nome: "Retângulo" },
+  { id: "retangulo", nome: "Retângulo", oculto: true },
   { id: "niveis", nome: "Suporte/Resistência" },
   // contraexemplos: aparecem no gráfico com ❌, pra não se marcar duas
   // vezes o mesmo trecho
   { id: "bandeira_alta_fracasso", nome: "Fracasso — Band. Alta" },
   { id: "bandeira_baixa_fracasso", nome: "Fracasso — Band. Baixa" },
 ];
+
+// `oculto` é só da LISTA: o padrão continua existindo, com tela, tabela e
+// templates salvos — ele apenas não aparece pra ligar/desligar enquanto
+// não for o foco do trabalho. Ver gruposDePadrao.js, que esconde os
+// mesmos na navegação.
+export const VISIVEIS_NO_FILTRO = PADROES_DO_FILTRO.filter((p) => !p.oculto);
 
 export const DISPONIVEIS = PADROES_DO_FILTRO.filter((p) => !p.emBreve).map((p) => p.id);
 

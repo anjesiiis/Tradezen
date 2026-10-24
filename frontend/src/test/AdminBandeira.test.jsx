@@ -3,6 +3,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './helpers.jsx';
+import { guardarGrafico } from '../admin/estadoGrafico.js';
 
 // O gráfico do TradingView é simulado nos testes (setup.js), então aqui a
 // marcação em si não roda — o que se testa é a tela: os botões, a ordem
@@ -46,11 +47,26 @@ const ROTULOS = {
   ],
 };
 
+// A tela abre sem ativo escolhido (o "Carregar gráfico" nasce
+// desabilitado), então o caminho do teste é o mesmo da pessoa: abrir o
+// seletor, escolher um ativo, e só então carregar.
+async function escolherAtivo(user, simbolo = 'PETR4') {
+  await user.click(document.querySelector('.admin-picker-btn'));
+  const item = await waitFor(() => {
+    const el = [...document.querySelectorAll('.admin-picker-item')]
+      .find((d) => d.textContent.includes(simbolo));
+    expect(el).not.toBeUndefined();
+    return el;
+  }, { timeout: 4000 });
+  await user.click(item);
+}
+
 async function abrirMarcacao(rota) {
   localStorage.setItem('admin_token', 'token-de-teste');
   const user = userEvent.setup();
   renderApp(rota);
   await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
+  await escolherAtivo(user);
   await user.click(screen.getByRole('button', { name: 'Carregar gráfico' }));
   await waitFor(() => expect(document.querySelectorAll('.admin-chip').length).toBe(8));
   return [...document.querySelectorAll('.admin-chip')].map((c) => c.textContent);
@@ -93,6 +109,36 @@ describe('Admin — marcação dos padrões de continuação', () => {
 
     const anotacao = screen.getByPlaceholderText(/o que chamou atenção nesse padrão/i);
     expect(anotacao.tagName).toBe('TEXTAREA');
+  });
+});
+
+describe('Admin — escolha do ativo', () => {
+  // O ativo escolhido vive num módulo (estadoGrafico), pra sobreviver à
+  // troca de padrão — é justamente o que estes testes NÃO querem herdar
+  // dos testes de cima, que escolhem um ativo.
+  beforeEach(() => guardarGrafico({ ticker: '', candles: null }));
+
+  // Abrir já no PETR4 fazia carregar um gráfico que ninguém pediu — e
+  // dava pra marcar no ativo errado sem perceber.
+  it('abre sem ativo escolhido e com o Carregar gráfico desabilitado', async () => {
+    localStorage.setItem('admin_token', 'token-de-teste');
+    renderApp('/admin/templates/bandeira-alta');
+    await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
+
+    expect(document.querySelector('.admin-picker-btn')).toHaveTextContent('Selecionar ativo');
+    expect(screen.getByRole('button', { name: 'Carregar gráfico' })).toBeDisabled();
+  });
+
+  it('escolhido o ativo, o botão libera', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('admin_token', 'token-de-teste');
+    renderApp('/admin/templates/bandeira-alta');
+    await screen.findByText('Nova marcação', undefined, { timeout: 5000 });
+
+    await escolherAtivo(user, 'VALE3');
+
+    expect(document.querySelector('.admin-picker-btn')).toHaveTextContent('VALE3');
+    expect(screen.getByRole('button', { name: 'Carregar gráfico' })).not.toBeDisabled();
   });
 });
 

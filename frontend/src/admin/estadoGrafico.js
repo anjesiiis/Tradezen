@@ -18,7 +18,13 @@
 import { PERIODO_PADRAO } from "../lib/periodosGrafico.js";
 
 let estado = {
-  ticker: "PETR4.SA",
+  // Começa VAZIO: o ativo é escolha de quem vai marcar, e abrir já no
+  // PETR4 fazia carregar um gráfico que ninguém pediu — e dava pra marcar
+  // no ativo errado sem perceber. Com vazio, o "Carregar gráfico" nasce
+  // desabilitado (ver as telas de marcação) até escolherem um.
+  // Depois da primeira escolha ela persiste entre as telas, que é o
+  // motivo deste módulo existir.
+  ticker: "",
   periodo: PERIODO_PADRAO,   // 1A (ver periodosGrafico.js)
   intervalo: "1d",
   candles: null,

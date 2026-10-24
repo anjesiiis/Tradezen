@@ -53,12 +53,22 @@ export const USUARIOS_FAKE = [
   { id: 'u-2', email: 'free@teste.com', nome: 'Quem Nao Assinou', plano: 'free', criado_em: '2026-09-01T12:00:00Z', sem_perfil: false },
 ];
 
+// Catálogo mínimo do seletor de ativo: um de cada mercado é suficiente
+// pra ele agrupar e numerar como faz com os 282 de verdade.
+export const ATIVOS_FAKE = [
+  { ticker: 'PETR4.SA', simbolo: 'PETR4', nome: 'Petrobras', mercado: 'B3' },
+  { ticker: 'VALE3.SA', simbolo: 'VALE3', nome: 'Vale', mercado: 'B3' },
+  { ticker: 'BTCUSDT', simbolo: 'BTC', nome: 'Bitcoin', mercado: 'CRIPTO' },
+];
+
 export async function respostaFake(url) {
   const u = String(url);
   if (/\/mercado(\?|$)/.test(u)) return json({ dados: MERCADO_FAKE });
   if (u.includes('/mercado/visao-geral')) return json({});
   if (u.includes('/ativos/batch')) return json({ resultados: [] });
   if (u.includes('/ativos/buscar')) return json({ resultados: [] });
+  // catálogo do seletor de ativo das telas de marcação (AtivoPicker)
+  if (/\/ativos(\?|$)/.test(u)) return json({ ativos: ATIVOS_FAKE });
   if (u.includes('/padroes-marcados/')) return json({ padroes: [], niveis: [], plano: 'free' });
   if (/\/eu(\?|$)/.test(u)) return json({ plano: 'free', admin: false, acesso: false });
   if (u.includes('/admin/usuarios')) return json({ usuarios: USUARIOS_FAKE, usuario: USUARIOS_FAKE[0] });

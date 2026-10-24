@@ -6,9 +6,14 @@
 //
 // `key` é a chave que cada tela passa como `active`; `id` é o id do
 // padrão (serve pro emoji); `href` é a rota, que NÃO muda.
+//
+// `oculto: true` tira da navegação SEM apagar nada: a rota, a tela, a
+// tabela e os templates já marcados continuam todos de pé, e voltar é
+// trocar uma palavra. É assim que reversão e os neutros saíram de cena
+// enquanto o foco é continuação, canais e as bandeiras de falha.
 export const GRUPOS_DE_PADRAO = [
   {
-    id: "reversao", nome: "Reversão", emoji: "🔴🟢",
+    id: "reversao", nome: "Reversão", emoji: "🔴🟢", oculto: true,
     itens: [
       { key: "topo-duplo", id: "topo_duplo", label: "Topo Duplo", href: "/admin/templates/topo-duplo" },
       { key: "fundo-duplo", id: "fundo_duplo", label: "Fundo Duplo", href: "/admin/templates/fundo-duplo" },
@@ -40,9 +45,12 @@ export const GRUPOS_DE_PADRAO = [
     ],
   },
   {
-    id: "neutros", nome: "Neutros", emoji: "⬜💡",
+    // Era "Neutros" e tinha retângulo + suporte/resistência. O retângulo
+    // saiu junto com os outros neutros; o que sobrou é só suporte e
+    // resistência, então o grupo passou a se chamar o que ele é.
+    id: "neutros", nome: "Suporte e Resistência", emoji: "🔴🟢",
     itens: [
-      { key: "retangulo", id: "retangulo", label: "Retângulo", href: "/admin/templates/retangulo" },
+      { key: "retangulo", id: "retangulo", label: "Retângulo", href: "/admin/templates/retangulo", oculto: true },
       { key: "niveis", id: "niveis", label: "Suporte/Resistência", href: "/admin/templates/niveis" },
     ],
   },

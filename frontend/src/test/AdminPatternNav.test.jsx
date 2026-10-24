@@ -18,11 +18,31 @@ const grupos = () => [...document.querySelectorAll('.admin-nav-grupo-titulo')];
 const itens = () => document.querySelectorAll('.admin-nav-itens a');
 
 describe('Menu lateral de padrões do admin', () => {
-  it('tem os cinco grupos, nessa ordem', () => {
+  // Reversão e os neutros estão ocultos enquanto o foco é continuação,
+  // canais e as bandeiras de falha. Continuam no código, com rota, tela e
+  // templates salvos — só não aparecem (ver `oculto` em gruposDePadrao).
+  it('mostra só os grupos em uso, nessa ordem', () => {
     montar();
     expect(grupos().map((g) => g.textContent.replace(/[▾▸]/g, '').trim())).toEqual([
-      '🔴🟢Reversão', '🔵🟡Continuação', '🔵Canais e Triângulos', '⬜💡Neutros', '🏴Bandeiras de falha',
+      '🔵🟡Continuação', '🔵Canais e Triângulos', '🔴🟢Suporte e Resistência', '🏴Bandeiras de falha',
     ]);
+  });
+
+  it('o grupo de reversão existe no dado, mas não é renderizado', () => {
+    montar();
+    expect(GRUPOS_DE_PADRAO.find((g) => g.id === 'reversao').oculto).toBe(true);
+    expect(screen.queryByText(/Reversão/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Topo Duplo')).not.toBeInTheDocument();
+  });
+
+  it('suporte e resistência continua visível; o retângulo não', async () => {
+    const user = userEvent.setup();
+    montar();
+
+    await user.click(grupos().find((g) => g.textContent.includes('Suporte e Resistência')));
+
+    expect(screen.getByText('Suporte/Resistência')).toBeInTheDocument();
+    expect(screen.queryByText('Retângulo')).not.toBeInTheDocument();
   });
 
   it('o grupo do que deu errado vem destacado em vermelho', () => {
@@ -39,8 +59,9 @@ describe('Menu lateral de padrões do admin', () => {
     expect(todos).toHaveLength(22);
     expect(new Set(todos).size).toBe(22);
     // as rotas não mudaram
-    expect(GRUPOS_DE_PADRAO[0].itens.find((i) => i.key === 'oco').href).toBe('/admin/templates');
-    expect(GRUPOS_DE_PADRAO[3].itens.find((i) => i.key === 'niveis').href).toBe('/admin/templates/niveis');
+    const item = (chave) => GRUPOS_DE_PADRAO.flatMap((g) => g.itens).find((i) => i.key === chave);
+    expect(item('oco').href).toBe('/admin/templates');
+    expect(item('niveis').href).toBe('/admin/templates/niveis');
     for (const g of GRUPOS_DE_PADRAO) {
       for (const i of g.itens) {
         // a revisão é a única que não é tela de marcação
@@ -72,13 +93,13 @@ describe('Menu lateral de padrões do admin', () => {
   it('clicar no título abre e fecha o grupo', async () => {
     const user = userEvent.setup();
     montar('canal-alta');
-    const reversao = grupos().find((g) => g.textContent.includes('Reversão'));
+    const continuacao = grupos().find((g) => g.textContent.includes('Continuação'));
 
-    await user.click(reversao);
-    expect(itens()).toHaveLength(11);      // 5 de canais + 6 de reversão
-    expect(within(document.querySelector('.admin-nav-grupos')).getByText('OCO Invertido')).toBeInTheDocument();
+    await user.click(continuacao);
+    expect(itens()).toHaveLength(11);      // 5 de canais + 6 de continuação
+    expect(within(document.querySelector('.admin-nav-grupos')).getByText('Cunha de Alta')).toBeInTheDocument();
 
-    await user.click(reversao);
+    await user.click(continuacao);
     expect(itens()).toHaveLength(5);
   });
 
