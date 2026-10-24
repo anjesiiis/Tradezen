@@ -10,6 +10,12 @@ import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../l
 // ── Gráfico de Candlestick — Página de Análise ───────────────
 export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco}){
   const isMobile = useIsMobile();
+  // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
+  // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
+  // gráfico recriado nasce vazio, porque `candles` não mudou e o efeito
+  // que faz setData não roda de novo. Era exatamente esse o bug da tela
+  // preta ao estreitar a janela — ver o comentário na criação.
+  const [geracao, setGeracao] = useState(0);
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
@@ -284,7 +290,29 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       try { chartRef.current?.remove(); } catch {}
       chartRef.current = null;
     };
-  },[showVolume, isMobile]);
+    // setState dentro do efeito, de propósito: é o aviso de que existe um
+    // gráfico NOVO, e quem alimenta precisa rodar outra vez.
+    setGeracao((g) => g + 1);
+  // `isMobile` NÃO entra aqui. Ele só muda margem de escala, e recriar o
+  // gráfico por causa disso é o que deixava a tela preta: ao cruzar os
+  // 768px o gráfico era destruído e recriado, mas os efeitos que fazem
+  // setData dependem de `candles` — que não mudou — e nunca rodavam.
+  // O gráfico novo ficava sem dado nenhum, só o fundo, até um F5.
+  // A margem agora é aplicada em quente, no efeito logo abaixo.
+  },[showVolume]);
+
+  // Margem das escalas conforme a largura (no celular o volume ocupa mais
+  // espaço embaixo). Aplicada em quente — trocar isso não justifica
+  // recriar o gráfico.
+  useEffect(()=>{
+    if(!candleRef.current) return;
+    try {
+      candleRef.current.priceScale().applyOptions({
+        scaleMargins: showVolume ? { top:0.05, bottom: isMobile ? 0.25 : 0.2 } : { top:0.08, bottom:0.08 },
+      });
+      volRef.current?.priceScale().applyOptions({ scaleMargins:{ top: isMobile ? 0.75 : 0.8, bottom:0 } });
+    } catch { /* gráfico ainda não montado */ }
+  },[isMobile, showVolume, geracao]);
 
   // Troca de tema depois de montado: só reestiliza (applyOptions), nunca
   // recria o chart — recriar perderia todos os dados já plotados, porque
@@ -372,7 +400,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       from,
       to: totalCandles + 5,
     });
-  },[candles]);
+  },[candles, geracao]);
 
   // SMAs
   useEffect(()=>{
@@ -460,7 +488,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     } else {
       safeRemove(volMaRef);
     }
-  },[candles, activeTools]);
+  },[candles, activeTools, geracao]);
 
   // Osciladores (RSI, Estocástico, ATR, OBV) — cada um no seu próprio pane,
   // abaixo do preço/volume. Mais simples reconstruir tudo a cada mudança do
@@ -533,7 +561,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       oscilRef.current[def.id] = { paneIndex: proximoPane, series };
       proximoPane++;
     });
-  },[candles, activeTools]);
+  },[candles, activeTools, geracao]);
 
   // Limpa markers do Lightweight Charts (emoji é desenhado no canvas)
   useEffect(()=>{
@@ -545,7 +573,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         markersRef.current.setMarkers([]);
       }
     } catch {}
-  },[candles]);
+  },[candles, geracao]);
 
   // Clique → seleciona padrão mais próximo
   const selPatRef = useRef(selPat);
@@ -937,7 +965,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       return { nivel, priceLine };
     });
     setNivelSel(null);
-  },[niveis, activeTools]);
+  },[niveis, activeTools, geracao]);
 
   // Clique → realça um nível de suporte/resistência (clique de novo pra desfazer)
   useEffect(()=>{
@@ -961,7 +989,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     };
     chartRef.current.subscribeClick(handler);
     return () => { try{ chartRef.current?.unsubscribeClick(handler); }catch{} };
-  },[niveis]);
+  },[niveis, geracao]);
 
   // Reestiliza as linhas quando a seleção muda
   useEffect(()=>{
