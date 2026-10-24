@@ -94,9 +94,19 @@ describe('Canal paralelo', () => {
     expect(pontoDaParalela({ logical: 0, preco: 38 }, { logical: 10, preco: 38 }, comHighLow)).toBeNull();
   });
 
-  it('são 2 cliques: a linha base. O 3º ponto não é mais pedido', () => {
+  it('são 2 pontos: a linha base. O 3º ponto não é mais pedido', () => {
     expect(FERRAMENTA_INFO.canal.npontos).toBe(2);
     expect(FERRAMENTA_INFO.canal.hints).toHaveLength(2);
+  });
+
+  // `arrasta` é o que liga o desenho por segurar-e-puxar no CandleChart
+  // (o gesto que funciona de dedo). As outras ferramentas seguem só no
+  // clique — ligar arraste nelas mudaria o jeito de usar sem pedido.
+  it('o canal aceita arraste; as outras ferramentas, não', () => {
+    expect(FERRAMENTA_INFO.canal.arrasta).toBe(true);
+    for (const id of ['trend', 'horizontal', 'retangulo_desenho', 'texto', 'fibo']) {
+      expect(FERRAMENTA_INFO[id].arrasta, id).toBeUndefined();
+    }
   });
 
   it('a paralela passa pelo maior pico entre os dois cliques', () => {

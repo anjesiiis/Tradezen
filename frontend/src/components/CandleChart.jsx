@@ -67,6 +67,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const arrastandoRef = useRef(null); // {desenhoId, pontoIndex} | null
   const cliqueInicioRef = useRef(null); // {x,y} em coords de tela — onde o mousedown começou, pra distinguir clique de arraste
   const previewPontoRef = useRef(null); // {logical,preco} do mouse, só enquanto uma ferramenta de 2+ pontos está no meio da colocação
+  // Âncora do desenho feito ARRASTANDO (segurar e puxar, sem soltar) —
+  // {logical,preco,x,y} do ponto onde o dedo/botão desceu. É o gesto que
+  // funciona no celular, onde acertar dois toques num ponto do gráfico é
+  // difícil. Null quando ninguém está arrastando.
+  const arrastoNovoRef = useRef(null);
   const [menuCtx, setMenuCtx] = useState(null); // {x,y,desenhoId} em coords de tela
   const [textoEditando, setTextoEditando] = useState(null); // {x,y,logical,preco} — input flutuante da ferramenta Texto, só enquanto o usuário está digitando
   const [valorTextoNovo, setValorTextoNovo] = useState("");
@@ -89,7 +94,12 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const cancelarTexto = () => { setTextoEditando(null); setValorTextoNovo(""); };
 
   // Trocou de ferramenta (ou desarmou) → começa a contagem de pontos do zero
-  useEffect(()=>{ setPontosProgresso([]); previewPontoRef.current = null; redrawRef.current?.(); },[ferramentaAtiva]);
+  useEffect(()=>{
+    setPontosProgresso([]);
+    previewPontoRef.current = null;
+    arrastoNovoRef.current = null;
+    redrawRef.current?.();
+  },[ferramentaAtiva]);
 
   // Cursor crosshair enquanto uma ferramenta está esperando clique; volta
   // ao normal quando nenhuma está armada (o próprio
@@ -611,6 +621,16 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       return null;
     };
 
+    // Pontos definitivos do desenho. Hoje só o canal acrescenta algo: a
+    // paralela, calculada do maior desvio entre os dois pontos. Este é o
+    // único lugar com os candles na mão, e vale tanto pro desenho feito
+    // em dois cliques quanto pro feito arrastando.
+    const pontosDoDesenho = (ferramenta, pontos) => {
+      if(ferramenta !== "canal" || pontos.length < 2) return pontos;
+      const paralela = pontoDaParalela(pontos[0], pontos[1], candlesRef.current);
+      return paralela ? [...pontos, paralela] : pontos;   // sem candle entre eles: só a base
+    };
+
     const onMouseMove = (e) => {
       // Passou perto de um ícone de padrão já marcado? Mostra o que é e
       // de quando é.
@@ -625,7 +645,8 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // Ferramenta armada e já tem pelo menos 1 ponto colocado — mostra o
         // desenho "se formando" seguindo o mouse até o clique que confirma
         // o próximo ponto (ex: retângulo entre o 1º canto e o cursor).
-        if(pontosProgressoRef.current.length > 0){
+        // Arrastando conta como "um ponto colocado": a âncora.
+        if(pontosProgressoRef.current.length > 0 || arrastoNovoRef.current){
           const chart = chartRef.current, series = candleRef.current;
           if(chart && series){
             const rect = container.getBoundingClientRect();
@@ -686,6 +707,19 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // engole o 2º/3º clique quando chegam rápido um atrás do outro
         // (trata como duplo-clique) — clique-a-clique nosso, sem esse limite.
         cliqueInicioRef.current = {x:e.clientX, y:e.clientY};
+        // Ferramenta que aceita arraste e ainda sem ponto nenhum: este
+        // é o ponto A. Se o ponteiro andar, vira desenho por arraste; se
+        // não andar, o mouseup trata como clique e o fluxo antigo segue.
+        const infoFerr = FERRAMENTA_INFO[ferramentaAtivaRef.current];
+        if(infoFerr?.arrasta && pontosProgressoRef.current.length === 0){
+          const chart = chartRef.current, series = candleRef.current;
+          const rect0 = container.getBoundingClientRect();
+          const logical = chart?.timeScale().coordinateToLogical(e.clientX-rect0.left);
+          const preco = series?.coordinateToPrice(e.clientY-rect0.top);
+          if(logical!=null && preco!=null){
+            arrastoNovoRef.current = {logical, preco, x:e.clientX, y:e.clientY};
+          }
+        }
         return;
       }
       const rect = container.getBoundingClientRect();
@@ -724,8 +758,34 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       }
       const inicio = cliqueInicioRef.current;
       cliqueInicioRef.current = null;
+      const ancora = arrastoNovoRef.current;
+      arrastoNovoRef.current = null;
       if(!ferramentaAtivaRef.current || !inicio) return;
-      if(Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y) > 5) return; // foi arraste/pan, não clique
+
+      const andou = Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y);
+
+      // ── Desenho por ARRASTE: desceu num ponto, soltou noutro ──
+      // 8px e não 5: num celular o dedo treme, e tremor não é arraste.
+      // Abaixo disso cai no fluxo de cliques logo adiante.
+      if(ancora && andou > 8){
+        const chart = chartRef.current, series = candleRef.current;
+        if(!chart || !series) return;
+        const rect = container.getBoundingClientRect();
+        const logical = chart.timeScale().coordinateToLogical(e.clientX-rect.left);
+        const preco = series.coordinateToPrice(e.clientY-rect.top);
+        if(logical == null || preco == null) return;
+        const pontos = pontosDoDesenho(ferramentaAtivaRef.current, [ancora, {logical, preco}]);
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramentaAtivaRef.current, pontos };
+        previewPontoRef.current = null;
+        queueMicrotask(()=>{
+          registrarHistorico?.();
+          setDesenhos?.(atual=>[...atual, novoDesenho]);
+          setFerramentaAtiva?.(null);
+        });
+        return;
+      }
+
+      if(andou > 5) return; // foi arraste/pan, não clique
 
       const chart = chartRef.current, series = candleRef.current;
       if(!chart || !series) return;
@@ -762,17 +822,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           });
           return;
         }
-        // O canal é marcado com 2 cliques (a linha base) e a paralela sai
-        // calculada do maior desvio entre eles — aqui é o único lugar com
-        // os candles na mão, então é aqui que o 3º ponto nasce. Sem candle
-        // entre os dois cliques, pontoDaParalela devolve null e o canal
-        // fica só com a base.
-        let pontosFinais = novo;
-        if(ferramenta === "canal"){
-          const paralela = pontoDaParalela(novo[0], novo[1], candlesRef.current);
-          if(paralela) pontosFinais = [...novo, paralela];
-        }
-        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosFinais };
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosDoDesenho(ferramenta, novo) };
         // setDesenhos/setFerramentaAtiva são do pai (ChartPane) — chamar
         // direto aqui (ainda dentro do listener de mouseup nativo) disparava
         // "Cannot update a component while rendering a different component"
@@ -929,8 +979,22 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // 1+ ponto clicado) e o mouse se moveu desde então: desenha como se o
       // cursor fosse o próximo ponto, tracejado, pra dar o feedback visual
       // de "o retângulo/linha/canal se formando" antes do clique final.
-      if(ferramentaAtiva && pontosProgresso.length>0 && previewPontoRef.current){
-        const desenhoPreview = { tipo: ferramentaAtiva, pontos: [...pontosProgresso, previewPontoRef.current] };
+      // A âncora do arraste conta como ponto colocado: quem está puxando
+      // o canal vê ele se formando a cada pixel, igual a quem clicou.
+      const inicioPreview = arrastoNovoRef.current
+        ? [{ logical: arrastoNovoRef.current.logical, preco: arrastoNovoRef.current.preco }]
+        : pontosProgresso;
+      if(ferramentaAtiva && inicioPreview.length>0 && previewPontoRef.current){
+        let pontosPreview = [...inicioPreview, previewPontoRef.current];
+        // O canal só fica legível em preview se a paralela vier junto —
+        // com uma linha só não dá pra ver se a largura está boa. Recalcula
+        // a cada movimento, que é o que faz o canal "respirar" junto com
+        // o cursor.
+        if(ferramentaAtiva === "canal" && pontosPreview.length === 2){
+          const paralela = pontoDaParalela(pontosPreview[0], pontosPreview[1], candles);
+          if(paralela) pontosPreview = [...pontosPreview, paralela];
+        }
+        const desenhoPreview = { tipo: ferramentaAtiva, pontos: pontosPreview };
         _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true, canvas.height);
       }
 

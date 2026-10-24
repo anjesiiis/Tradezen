@@ -570,9 +570,14 @@ export const FERRAMENTA_INFO = {
   // do maior desvio entre eles (ver larguraDoCanal) — pedir um 3º clique
   // pra "definir a largura" era trabalho que o próprio gráfico já sabe
   // fazer, e o usuário clicava no lugar errado.
+  // `arrasta`: dá pra desenhar segurando e puxando, sem soltar — é o
+  // gesto natural no celular, onde tocar duas vezes no lugar certo é
+  // difícil. Os dois cliques continuam valendo pra quem prefere: o
+  // mouseup decide qual foi pela distância percorrida.
   canal: {
     npontos: 2,
-    hints: ["Canal Paralelo: clique no 1º ponto da linha base", "Canal Paralelo: clique no 2º ponto da linha base"],
+    arrasta: true,
+    hints: ["Canal Paralelo: arraste de um ponto ao outro (ou clique nos dois)", "Canal Paralelo: clique no 2º ponto da linha base"],
   },
   fibo: {
     npontos: 2,
