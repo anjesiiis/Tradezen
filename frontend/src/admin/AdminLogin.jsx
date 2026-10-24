@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminShell from "./theme.jsx";
+import { consumirAvisoDeExpiracao } from "./sessaoAdmin.js";
 import { requestMagicLink } from "./adminApi";
 
 const COOLDOWN_SEGUNDOS = 60;
@@ -9,6 +10,9 @@ export default function AdminLogin() {
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [erro, setErro] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  // Lido uma vez: quem chegou aqui expulso pelas 12 horas merece saber o
+  // motivo, em vez de achar que o link de acesso simplesmente falhou.
+  const [expirou] = useState(consumirAvisoDeExpiracao);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -47,6 +51,13 @@ export default function AdminLogin() {
         <div className="admin-card" style={{ width: "100%", maxWidth: 360 }}>
           <h1>Admin</h1>
           <p className="hint">Acesso restrito. Informe seu email para receber o link de acesso.</p>
+
+          {expirou && status !== "sent" && (
+            <div className="admin-msg admin-msg-aviso" style={{ marginBottom: 14 }}>
+              Sua sessão foi encerrada por <strong>12 horas sem uso</strong>. É
+              proteção do painel — peça um link novo pra entrar.
+            </div>
+          )}
 
           {status === "sent" && (
             <div className="admin-msg admin-msg-ok" style={{ marginBottom: 14 }}>

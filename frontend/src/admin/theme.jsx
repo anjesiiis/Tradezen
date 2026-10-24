@@ -53,6 +53,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-btn-ghost:hover{color:var(--text)}
 
 .admin-msg{font-size:13px;padding:10px 14px;border-radius:8px;border:1px solid}
+/* Aviso neutro (sessão expirada): não é erro — o painel fez o que devia. */
+.admin-msg-aviso{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.28);color:var(--gold)}
 /* Toast — avisos de validação da marcação (ex: pontos fora de ordem). Fica
    flutuando no canto pra não empurrar o gráfico pra baixo enquanto o
    usuário corrige os pontos. */
