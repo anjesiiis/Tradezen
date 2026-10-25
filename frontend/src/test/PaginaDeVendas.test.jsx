@@ -77,6 +77,39 @@ describe('Página de vendas — o botão que estava apagado', () => {
   });
 });
 
+describe('Página de vendas — fundo preenchendo a tela', () => {
+  // O app vive num quadro: #root tem 1126px fixos, centralizado e com
+  // borda. Numa tela larga isso deixava duas faixas do fundo do html
+  // aparecendo dos lados — a barra cinza que quebrava o visual.
+  it('marca o documento enquanto está aberta', async () => {
+    await abrir();
+
+    expect(document.documentElement).toHaveClass('lp-tela-cheia');
+  });
+
+  it('solta o quadro do #root e pinta html e body', () => {
+    expect(VENDAS_CSS).toContain('html.lp-tela-cheia,html.lp-tela-cheia body{background:#05060A}');
+    expect(VENDAS_CSS).toContain('html.lp-tela-cheia #root{width:100%;max-width:none;margin:0;border-inline:none}');
+  });
+
+  // sair da página tem que devolver o quadro — senão o resto do site
+  // perde a moldura dele
+  it('ao sair, a marca some', async () => {
+    const user = userEvent.setup();
+    await abrir();
+    expect(document.documentElement).toHaveClass('lp-tela-cheia');
+
+    await user.click(screen.getByRole('link', { name: 'Começar grátis' }));
+
+    await waitFor(() => expect(document.documentElement).not.toHaveClass('lp-tela-cheia'));
+  });
+
+  // o pedido foi só o fundo: mexer no alinhamento moveria o texto
+  it('não mexe no alinhamento do texto', () => {
+    expect(VENDAS_CSS).not.toMatch(/lp-tela-cheia[^{]*\{[^}]*text-align/);
+  });
+});
+
 describe('Página de vendas — a cor dos títulos', () => {
   // O index.css tem `h1,h2{color:var(--text-h)}`, e regra de elemento
   // vence herança: sem a regra abaixo o título do hero saía quase preto

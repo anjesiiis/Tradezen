@@ -172,6 +172,14 @@ export default function PaginaDeVendas() {
   const fundoRef = useRef(null);
   useFundoAnimado(fundoRef);
 
+  // Marca o documento enquanto esta página está na tela: é o que solta o
+  // quadro de 1126px do #root e pinta html/body com o fundo daqui (ver
+  // vendasCss). Sai na desmontagem, pra não vazar pro resto do site.
+  useEffect(() => {
+    document.documentElement.classList.add("lp-tela-cheia");
+    return () => document.documentElement.classList.remove("lp-tela-cheia");
+  }, []);
+
   const paraCadastro = (e) => { e.preventDefault(); navigate("/cadastro"); };
   const paraLogin = (e) => { e.preventDefault(); navigate("/login"); };
 

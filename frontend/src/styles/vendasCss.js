@@ -33,6 +33,21 @@ export const VENDAS_CSS = `
 .lp .lp-destaque{color:transparent}
 .lp-wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
 
+/* ── Tela cheia enquanto esta página está aberta ──
+   O app vive num "quadro": #root tem largura fixa de 1126px, centralizado
+   e com borda nas laterais (index.css). Numa tela de 1600px isso deixava
+   duas faixas do fundo do html aparecendo dos lados — a barra cinza que
+   quebrava o visual.
+   A classe é posta no <html> pela própria página e retirada ao sair, então
+   NADA disso alcança o resto do site. html e body também recebem o fundo:
+   é o que cobre o espaço de "borracha" do rolar no celular, onde o fundo
+   do documento aparece por baixo.
+   O text-align fica como está de propósito: mexer nele moveria o texto, e
+   o pedido foi só preencher o fundo. */
+html.lp-tela-cheia,html.lp-tela-cheia body{background:#05060A}
+html.lp-tela-cheia #root{width:100%;max-width:none;margin:0;border-inline:none}
+
+
 /* ── cabeçalho ── */
 .lp-header{position:sticky;top:0;z-index:50;background:rgba(5,6,10,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--borda)}
 .lp-header-inner{display:flex;align-items:center;justify-content:space-between;padding:16px 0;gap:12px}
