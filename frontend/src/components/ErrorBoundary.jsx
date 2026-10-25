@@ -37,7 +37,16 @@ let recargaEmAndamento = false;
 
 function ehChunkQueFaltou(erro) {
   const texto = `${erro?.name || ""} ${erro?.message || ""}`.toLowerCase();
-  return /dynamically imported module|importing a module script failed|error loading dynamically|failed to fetch|chunkloaderror|module script/.test(texto);
+  return (
+    // cada navegador descreve a mesma falha com outras palavras
+    /dynamically imported module|importing a module script failed|error loading dynamically|failed to fetch|chunkloaderror|module script/.test(texto) ||
+    // "text/html is not a valid JavaScript MIME type" (Safari/Firefox) e
+    // "Expected a JavaScript module script but the server responded with
+    // a MIME type of text/html" (Chrome): é o servidor devolvendo a
+    // página no lugar do arquivo que sumiu. Faltava no teste, e por isso
+    // a tela de erro aparecia em vez de a recuperação rodar.
+    /mime type|text\/html/.test(texto)
+  );
 }
 
 /** Recarrega uma vez só, furando o cache. Devolve true se vai recarregar. */

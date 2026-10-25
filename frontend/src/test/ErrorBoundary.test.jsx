@@ -9,6 +9,18 @@ function QuebraPorChunk() {
   throw new TypeError('Failed to fetch dynamically imported module: /assets/Admin-x1.js');
 }
 
+// Cada navegador descreve a mesma falha com outras palavras. A lista
+// anterior não cobria as de MIME, e aí a tela de erro aparecia no lugar
+// da recuperação — foi o que aconteceu no "Acesse agora" em produção.
+const MENSAGENS_DE_CHUNK = [
+  'Failed to fetch dynamically imported module: /assets/Cadastro-a1.js',
+  "'text/html' is not a valid JavaScript MIME type.",
+  'Expected a JavaScript module script but the server responded with a MIME type of "text/html".',
+  'Importing a module script failed.',
+  'error loading dynamically imported module',
+  'ChunkLoadError: Loading chunk 12 failed.',
+];
+
 describe('ErrorBoundary', () => {
   // o React escreve o erro no console mesmo quando o boundary trata; sem
   // silenciar, a saída do teste fica ilegível
@@ -93,6 +105,18 @@ describe('ErrorBoundary — versão velha no cache', () => {
 
     expect(replace).not.toHaveBeenCalled();
     expect(screen.getByText(/Algo quebrou ao abrir esta tela/)).toBeInTheDocument();
+  });
+
+  it.each(MENSAGENS_DE_CHUNK)('reconhece: %s', async (mensagem) => {
+    function Quebra404() { throw new TypeError(mensagem); }
+    vi.resetModules();
+    sessionStorage.clear();
+    const { default: Boundary } = await import('../components/ErrorBoundary.jsx');
+
+    render(<Boundary><Quebra404/></Boundary>);
+
+    expect(replace, mensagem).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Atualizando o site…')).toBeInTheDocument();
   });
 
   it('erro comum de render não vira recarga', async () => {
