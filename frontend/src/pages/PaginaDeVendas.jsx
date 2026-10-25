@@ -123,50 +123,6 @@ function useFundoAnimado(ref) {
   }, [ref]);
 }
 
-/** Candles decorativos — desenho estático, nada de dado real. */
-function MiniCandles({ largura = 180, altura = 48, opacidade = 0.25, tendencia = 0, estilo }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width = largura * 2;      // retina
-    canvas.height = altura * 2;
-    ctx.setTransform(2, 0, 0, 2, 0, 0);
-    ctx.clearRect(0, 0, largura, altura);
-
-    const quantos = 28, passo = largura / quantos;
-    let preco = altura / 2;
-    for (let i = 0; i < quantos; i++) {
-      const variacao = (Math.random() - 0.5 + tendencia * 0.3) * 8;
-      const abertura = preco, fechamento = preco + variacao;
-      const topo = Math.max(abertura, fechamento) + Math.random() * 4;
-      const fundo = Math.min(abertura, fechamento) - Math.random() * 4;
-      const subiu = fechamento < abertura;   // y invertido: menor = mais alto
-      ctx.strokeStyle = ctx.fillStyle = subiu ? "#26C77B" : "#E85D5D";
-      ctx.lineWidth = 1;
-      const limitar = (v) => Math.max(2, Math.min(altura - 2, v));
-      ctx.beginPath();
-      ctx.moveTo(i * passo + passo / 2, limitar(fundo));
-      ctx.lineTo(i * passo + passo / 2, limitar(topo));
-      ctx.stroke();
-      const corpo = Math.max(1, Math.abs(fechamento - abertura));
-      ctx.fillRect(i * passo + 1, limitar(Math.min(abertura, fechamento)), passo - 2, Math.min(corpo, altura - 4));
-      preco = Math.max(10, Math.min(altura - 10, fechamento));
-    }
-  }, [largura, altura, tendencia]);
-
-  return (
-    <canvas
-      ref={ref}
-      aria-hidden="true"
-      style={{ width: largura, height: altura, opacity: opacidade, pointerEvents: "none", position: "absolute", top: -20, right: -20, zIndex: 0, ...estilo }}
-    />
-  );
-}
-
 export default function PaginaDeVendas() {
   const navigate = useNavigate();
   const fundoRef = useRef(null);
@@ -203,7 +159,6 @@ export default function PaginaDeVendas() {
         <main>
           <section className="lp-hero">
             <div className="lp-wrap lp-hero-content">
-              <MiniCandles />
               <div className="lp-badge"><i /> Monitoramento ativo em mais de 500 ativos</div>
               <h1>
                 Pare de garimpar padrões manualmente.<br />
@@ -244,7 +199,6 @@ export default function PaginaDeVendas() {
 
           <section className="lp-premium">
             <div className="lp-wrap lp-premium-content">
-              <MiniCandles largura={160} altura={42} opacidade={0.3} tendencia={0.4} />
               <div className="lp-eyebrow">Plano premium</div>
               <h2 className="lp-titulo">A vantagem operacional que faltava no seu arsenal.</h2>
               <p className="lp-lead">
@@ -352,7 +306,6 @@ export default function PaginaDeVendas() {
 
           <section className="lp-final">
             <div className="lp-wrap lp-final-content">
-              <MiniCandles largura={240} altura={56} opacidade={0.2} tendencia={0.5} />
               <h2>Pronto para operar com estatística do seu lado?</h2>
               <p>Teste grátis por 7 dias. Sem cartão. Sem compromisso.</p>
               <a href="/cadastro" onClick={paraCadastro} className="lp-btn lp-btn-primary lp-btn-lg">Começar grátis agora</a>
