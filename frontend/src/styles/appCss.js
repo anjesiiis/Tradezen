@@ -134,18 +134,22 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* ── Página de configurações ── */
 .cfg{min-height:100vh;background:var(--bg);color:var(--text);text-align:left}
+/* O index.css tem h1,h2{color:var(--text-h)}, e regra de ELEMENTO vence
+   herança: sem isto os títulos desta tela saem na cor do tema do app e,
+   no claro, ficam quase pretos sobre o fundo escuro. */
+.cfg h1,.cfg h2{color:var(--text)}
 .cfg-topo{display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border)}
-.cfg-topo h1{font-size:18px;font-weight:700;margin:0}
+.cfg-topo h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.02em}
 .cfg-voltar{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px}
-.cfg-corpo{display:flex;gap:28px;max-width:1000px;margin:0 auto;padding:24px}
-.cfg-abas{display:flex;flex-direction:column;gap:2px;width:210px;flex-shrink:0}
+.cfg-corpo{display:flex;gap:32px;max-width:1100px;margin:0 auto;padding:32px 24px}
+.cfg-abas{display:flex;flex-direction:column;gap:2px;width:240px;flex-shrink:0}
 .cfg-aba{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:8px;background:none;border:none;color:var(--text2);font:inherit;font-size:13px;cursor:pointer;text-align:left}
 .cfg-aba:hover{background:var(--s2);color:var(--text)}
 .cfg-aba.ativa{background:var(--s2);color:var(--text);box-shadow:inset 2px 0 0 var(--accent)}
 .cfg-conteudo{flex:1;min-width:0}
 .cfg-form{display:flex;flex-direction:column;gap:18px}
-.cfg-bloco{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
-.cfg-bloco h2{font-size:14px;font-weight:700;margin:0}
+.cfg-bloco{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px}
+.cfg-bloco h2{font-size:16px;font-weight:600;margin:0}
 .cfg-avatar-linha{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .cfg-avatar{border-radius:50%;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
 .cfg-avatar img{width:100%;height:100%;object-fit:cover}
@@ -155,10 +159,12 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cfg-emoji{font-size:22px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:8px 0;cursor:pointer;transition:border-color .15s,background .15s}
 .cfg-emoji:hover{border-color:var(--accent)}
 .cfg-emoji.ativo{border-color:var(--accent);background:rgba(61,126,255,.12)}
-.cfg-campo{display:flex;flex-direction:column;gap:6px}
+.cfg-campo{display:flex;flex-direction:column;gap:6px;max-width:460px}
 .cfg-campo>span{font-size:12px;font-weight:600;color:var(--text2)}
 .cfg-campo>span i{font-style:normal;font-weight:400;color:var(--text3)}
-.cfg-campo small{font-size:11px;color:var(--text3)}
+.cfg-campo small{font-size:11.5px;color:var(--text3)}
+.cfg-campo-linha{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cfg-contador{font-size:11.5px;color:var(--text3);flex-shrink:0;font-family:var(--font-m)}
 .cfg-input{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font:inherit;font-size:14px;outline:none;width:100%;max-width:420px}
 .cfg-input:focus{border-color:var(--accent)}
 .cfg-input:disabled{color:var(--text3);cursor:not-allowed}
@@ -167,7 +173,9 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .cfg-btn-secundario{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 16px;font:inherit;font-size:13px;cursor:pointer}
 .cfg-btn-secundario:hover{border-color:var(--accent)}
 .cfg-btn-texto{background:none;border:none;color:var(--text2);font:inherit;font-size:12px;cursor:pointer;padding:0;text-decoration:underline}
-.cfg-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* A linha de cima separa preencher de confirmar: sem ela o botão fica
+   solto no meio dos campos, como se fosse mais um deles. */
+.cfg-rodape{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;padding-top:20px;border-top:1px solid var(--border)}
 .cfg-ok{font-size:13px;color:var(--up);font-weight:600}
 .cfg-dica{font-size:12px;color:var(--text3);margin:0}
 .cfg-erro{color:var(--down)}

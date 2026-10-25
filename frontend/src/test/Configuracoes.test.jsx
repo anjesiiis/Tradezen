@@ -87,6 +87,19 @@ describe('Configurações — logado', () => {
     return screen.findByRole('heading', { name: 'Configurações' }, { timeout: 5000 });
   };
 
+  // A página é aberta direto pela URL, sem passar por Landing nem
+  // Dashboard — que são quem injeta o CSS do app. Sem a injeção aqui, a
+  // tela vinha sem estilo nenhum, parecendo HTML cru.
+  it('injeta o CSS do app — senão a tela abre sem estilo', async () => {
+    await montar();
+
+    const estilos = [...document.querySelectorAll('style')].map((s) => s.textContent).join('');
+    expect(estilos).toContain('.cfg-bloco');
+    expect(estilos).toContain('.cfg-abas');
+    // e o estilo chega mesmo ao elemento
+    expect(getComputedStyle(document.querySelector('.cfg-bloco')).padding).not.toBe('');
+  });
+
   it('mostra as quatro seções', async () => {
     await montar();
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { CSS } from "../styles/appCss.js";
 import {
   EMOJIS, NOME_MAX, avatarDoPerfil, carregarPerfil, formatarTelefone,
   mudancas, nomeValido, salvarPerfil, telefoneValido,
@@ -132,7 +133,10 @@ function Perfil({ user }) {
         <h2>Seus dados</h2>
 
         <label className="cfg-campo">
-          <span>Nome de exibição</span>
+          <span className="cfg-campo-linha">
+            Nome de exibição
+            <i className="cfg-contador">{nome.trim().length}/{NOME_MAX}</i>
+          </span>
           <input
             className="cfg-input"
             value={nome}
@@ -140,9 +144,9 @@ function Perfil({ user }) {
             onChange={(e) => setNome(e.target.value)}
             placeholder="Como você quer ser chamado"
           />
-          <small className={nome.length && !nomeValido(nome) ? "cfg-erro" : ""}>
-            {nome.length && !nomeValido(nome) ? "Use de 2 a 40 caracteres." : `${nome.trim().length}/${NOME_MAX}`}
-          </small>
+          {nome.length > 0 && !nomeValido(nome) && (
+            <small className="cfg-erro">Use de 2 a 40 caracteres.</small>
+          )}
         </label>
 
         <label className="cfg-campo">
@@ -215,6 +219,10 @@ export default function Configuracoes() {
 
   return (
     <div className="cfg">
+      {/* Cada página do app injeta o CSS (ver Landing e Dashboard): quem
+          abre /configuracoes direto na URL não passa por nenhuma das duas,
+          e sem esta linha a tela vinha sem estilo nenhum — HTML cru. */}
+      <style>{CSS}</style>
       <div className="cfg-topo">
         <button className="cfg-voltar" onClick={() => navigate(-1)} aria-label="Voltar">←</button>
         <h1>Configurações</h1>
