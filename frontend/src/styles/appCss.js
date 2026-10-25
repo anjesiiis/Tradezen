@@ -72,7 +72,36 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .search-item{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s}
 .search-item:last-child{border-bottom:none}
 .search-item.hi,.search-item:hover{background:var(--s2)}
-.search-group-head{padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--s1)}
+.search-group-head{padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--s1);color:var(--text2)}
+/* ── Busca rica: filtros, logo, selo da categoria ── */
+.search-limpar{background:none;border:none;color:var(--text2);font-size:17px;line-height:1;cursor:pointer;padding:0 2px;flex-shrink:0}
+.search-limpar:hover{color:var(--text)}
+.search-filtros{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;position:sticky;top:0;background:var(--s1);z-index:1}
+.search-filtros::-webkit-scrollbar{display:none}
+.search-chip{padding:5px 13px;border-radius:999px;background:transparent;color:var(--text2);border:1px solid var(--border);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.search-chip:hover{color:var(--text);background:var(--s2)}
+.search-chip.ativo{background:var(--text);color:var(--s1);border-color:var(--text)}
+.search-logo{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* o #root do app centraliza o texto; aqui a leitura é em coluna, à esquerda */
+.search-texto{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left}
+.search-dd{text-align:left}
+.search-ticker{font-size:14px;font-weight:700;color:var(--text);font-family:var(--font-m)}
+.search-nome{font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.search-selo{font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase}
+.selo-acoes{background:rgba(0,214,143,.15);color:#00D68F}
+.selo-cripto{background:rgba(247,147,26,.15);color:#F7931A}
+.selo-forex{background:rgba(61,126,255,.15);color:#3D7EFF}
+.selo-commodities{background:rgba(245,166,35,.15);color:#F5A623}
+.selo-indices{background:rgba(139,148,158,.15);color:#8B949E}
+.search-mercado{font-size:10px;color:var(--text3);font-weight:700;font-family:var(--font-m)}
+.search-vazio{padding:22px 16px;text-align:center;font-size:12.5px;color:var(--text2)}
+.search-item{gap:11px}
+@media (max-width:640px){
+  .search-dd{max-height:70vh}
+  .search-nome{max-width:40vw}
+  .search-mercado{display:none}
+}
 .sbox{flex:1;max-width:440px;position:relative}
 .sw{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;transition:border-color .2s}
 .sw:focus-within{border-color:var(--accent)}
