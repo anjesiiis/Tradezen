@@ -57,8 +57,17 @@ export const USUARIOS_FAKE = [
 // pra ele agrupar e numerar como faz com os 282 de verdade.
 export const ATIVOS_FAKE = [
   { ticker: 'PETR4.SA', simbolo: 'PETR4', nome: 'Petrobras', mercado: 'B3' },
-  { ticker: 'VALE3.SA', simbolo: 'VALE3', nome: 'Vale', mercado: 'B3' },
-  { ticker: 'BTCUSDT', simbolo: 'BTC', nome: 'Bitcoin', mercado: 'CRIPTO' },
+  { ticker: 'VALE3.SA', simbolo: 'VALE3', nome: 'Vale ON', mercado: 'B3' },
+  { ticker: 'ITUB4.SA', simbolo: 'ITUB4', nome: 'Itaú Unibanco PN', mercado: 'B3' },
+  { ticker: 'AAPL', simbolo: 'AAPL', nome: 'Apple Inc.', mercado: 'NASDAQ' },
+  { ticker: 'JPM', simbolo: 'JPM', nome: 'JPMorgan Chase', mercado: 'NYSE' },
+  { ticker: 'BTC-USD', simbolo: 'BTC', nome: 'Bitcoin', mercado: 'CRIPTO' },
+  { ticker: 'ETH-USD', simbolo: 'ETH', nome: 'Ethereum', mercado: 'CRIPTO' },
+  { ticker: 'USDBRL=X', simbolo: 'USD/BRL', nome: 'USD/BRL', mercado: 'FOREX' },
+  { ticker: 'EURBRL=X', simbolo: 'EUR/BRL', nome: 'EUR/BRL', mercado: 'FOREX' },
+  { ticker: 'GC=F', simbolo: 'OURO', nome: 'Ouro (futuro)', mercado: 'COMMODITY' },
+  { ticker: 'SI=F', simbolo: 'PRATA', nome: 'Prata (futuro)', mercado: 'COMMODITY' },
+  { ticker: '^BVSP', simbolo: 'IBOV', nome: 'Ibovespa', mercado: 'INDICE' },
 ];
 
 export async function respostaFake(url) {

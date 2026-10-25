@@ -13,23 +13,43 @@
  */
 
 // As categorias saem do que o catálogo REALMENTE tem (backend/ativos.py).
-// Não adianta oferecer "Fundos" ou "Futuros" como filtro: nenhum ativo
-// cairia neles e a pessoa clicaria numa pílula que só esvazia a lista.
+// "Fundos" não entra: não existe um único FII ou ETF cadastrado, e a
+// pílula só esvaziaria a lista.
+//
+// Ações viraram duas: quem procura PETR4 e quem procura AAPL quase nunca
+// é a mesma pessoa na mesma hora, e juntas as 190 ações afogavam o resto.
 export const CATEGORIAS = [
   { id: "todos", rotulo: "Todos", mercados: null },
-  { id: "acoes", rotulo: "Ações", mercados: ["B3", "NYSE", "NASDAQ"] },
-  { id: "cripto", rotulo: "Cripto", mercados: ["CRIPTO"] },
-  { id: "forex", rotulo: "Forex", mercados: ["FOREX"] },
-  { id: "commodities", rotulo: "Commodities", mercados: ["COMMODITY"] },
-  { id: "indices", rotulo: "Índices", mercados: ["INDICE"] },
+  { id: "acoes_br", rotulo: "Ações BR", mercados: ["B3"], selo: "Ação BR" },
+  { id: "acoes_eua", rotulo: "Ações EUA", mercados: ["NYSE", "NASDAQ"], selo: "Ação EUA" },
+  { id: "forex", rotulo: "Forex", mercados: ["FOREX"], selo: "Forex" },
+  { id: "cripto", rotulo: "Cripto", mercados: ["CRIPTO"], selo: "Cripto" },
+  { id: "commodities", rotulo: "Commodities", mercados: ["COMMODITY"], selo: "Commodity" },
+  { id: "indices", rotulo: "Índices", mercados: ["INDICE"], selo: "Índice" },
 ];
 
-// Cor do selo por categoria. São as do design system do app (index.css),
-// não cores novas.
+// Os "mais procurados" de cada categoria: é o que aparece ao escolher uma
+// pílula sem digitar nada. Antes a lista vinha das sugestões da home, que
+// só tinham UM forex e UMA commodity — daí a sensação de catálogo vazio.
+// Digitar continua procurando no catálogo inteiro, não só aqui.
+export const DESTAQUES = {
+  acoes_br: ["PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","BBAS3.SA","ABEV3.SA","WEGE3.SA",
+             "MGLU3.SA","B3SA3.SA","RENT3.SA","SUZB3.SA","LREN3.SA","PRIO3.SA"],
+  acoes_eua: ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","NFLX","AMD","INTC","JPM","V","MA","DIS","BA"],
+  forex: ["USDBRL=X","EURBRL=X","GBPBRL=X","EURUSD=X","GBPUSD=X","USDJPY=X","USDCHF=X",
+          "AUDUSD=X","USDCAD=X","NZDUSD=X","EURGBP=X","EURJPY=X"],
+  cripto: ["BTC-USD","ETH-USD","BNB-USD","SOL-USD","XRP-USD","ADA-USD","DOGE-USD","AVAX-USD",
+           "DOT-USD","LINK-USD","LTC-USD","TRX-USD","UNI7083-USD","SHIB-USD"],
+  commodities: ["GC=F","SI=F","CL=F","BZ=F","NG=F","HG=F","PL=F","PA=F","ZC=F","ZS=F","KC=F","SB=F"],
+  indices: ["^BVSP","^GSPC","^NDX","^IXIC","^DJI","^VIX","^GDAXI","^FTSE","^N225","^HSI"],
+};
+
+// Cor do selo por categoria — todas do design system do app.
 export const COR_DA_CATEGORIA = {
-  acoes: "#00D68F",
+  acoes_br: "#00D68F",
+  acoes_eua: "#3D7EFF",
+  forex: "#7BA9F0",
   cripto: "#F7931A",
-  forex: "#3D7EFF",
   commodities: "#F5A623",
   indices: "#8B949E",
 };
@@ -43,9 +63,29 @@ export function categoriaDoAtivo(ativo) {
   return "indices";   // sobra conhecida: índices e o que vier sem mercado
 }
 
-/** Rótulo curto do selo. */
+/** Rótulo curto do selo da linha (mais curto que o da pílula). */
 export function rotuloDaCategoria(id) {
-  return CATEGORIAS.find((c) => c.id === id)?.rotulo || "Outros";
+  const c = CATEGORIAS.find((x) => x.id === id);
+  return c?.selo || c?.rotulo || "Outros";
+}
+
+/**
+ * Os destaques da categoria, na ordem, a partir do catálogo.
+ *
+ * Ticker que não estiver no catálogo some em silêncio — melhor um card a
+ * menos do que uma linha que não abre gráfico nenhum.
+ */
+export function destaquesDaCategoria(catalogo = [], categoria = "todos") {
+  if (categoria === "todos") {
+    // mistura: os primeiros de cada categoria, pra dar uma visão geral
+    const porCategoria = Object.entries(DESTAQUES)
+      .map(([, tickers]) => tickers.slice(0, 3))
+      .flat();
+    return porCategoria.map((tk) => catalogo.find((a) => a.ticker === tk)).filter(Boolean);
+  }
+  return (DESTAQUES[categoria] || [])
+    .map((tk) => catalogo.find((a) => a.ticker === tk))
+    .filter(Boolean);
 }
 
 // Apelidos do jeito que a pessoa fala, não do jeito que o ticker é

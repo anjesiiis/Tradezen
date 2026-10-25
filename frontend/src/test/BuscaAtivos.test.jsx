@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { SearchBar } from '../components/SearchBar.jsx';
 import {
-  CATEGORIAS, categoriaDoAtivo, filtrarPorCategoria, ordenarPorRelevancia, sugestoesDoMercado,
+  CATEGORIAS, DESTAQUES, categoriaDoAtivo, destaquesDaCategoria, filtrarPorCategoria,
+  ordenarPorRelevancia, sugestoesDoMercado,
 } from '../lib/buscaAtivos.js';
 
 const ativo = (ticker, nome, simbolo, mercado) => ({ ticker, nome, simbolo, mercado });
@@ -13,6 +14,8 @@ const CATALOGO = [
   ativo('ITUB4.SA', 'Itaú Unibanco PN', 'ITUB4', 'B3'),
   ativo('BBDC4.SA', 'Bradesco PN', 'BBDC4', 'B3'),
   ativo('BBAS3.SA', 'Banco do Brasil ON', 'BBAS3', 'B3'),
+  ativo('AAPL', 'Apple Inc.', 'AAPL', 'NASDAQ'),
+  ativo('JPM', 'JPMorgan Chase', 'JPM', 'NYSE'),
   ativo('BTC-USD', 'Bitcoin', 'BTC', 'CRIPTO'),
   ativo('ETH-USD', 'Ethereum', 'ETH', 'CRIPTO'),
   ativo('SOL-USD', 'Solana', 'SOL', 'CRIPTO'),
@@ -32,8 +35,9 @@ describe('Busca — categorias', () => {
   });
 
   it('classifica cada ativo na categoria certa', () => {
-    expect(categoriaDoAtivo(ativo('VALE3.SA', '', '', 'B3'))).toBe('acoes');
-    expect(categoriaDoAtivo(ativo('AAPL', '', '', 'NASDAQ'))).toBe('acoes');
+    expect(categoriaDoAtivo(ativo('VALE3.SA', '', '', 'B3'))).toBe('acoes_br');
+    expect(categoriaDoAtivo(ativo('AAPL', '', '', 'NASDAQ'))).toBe('acoes_eua');
+    expect(categoriaDoAtivo(ativo('JPM', '', '', 'NYSE'))).toBe('acoes_eua');
     expect(categoriaDoAtivo(ativo('BTC-USD', '', '', 'CRIPTO'))).toBe('cripto');
     expect(categoriaDoAtivo(ativo('GC=F', '', '', 'COMMODITY'))).toBe('commodities');
     expect(categoriaDoAtivo(ativo('^BVSP', '', '', 'INDICE'))).toBe('indices');
@@ -44,6 +48,40 @@ describe('Busca — categorias', () => {
   it('filtrar por categoria devolve só aquela categoria', () => {
     expect(filtrarPorCategoria(CATALOGO, 'cripto').map((a) => a.simbolo)).toEqual(['BTC', 'ETH', 'SOL']);
     expect(filtrarPorCategoria(CATALOGO, 'todos')).toHaveLength(CATALOGO.length);
+  });
+});
+
+describe('Busca — destaques por categoria', () => {
+  // Era aqui o problema: a lista vinha das sugestões da home, que tinham
+  // UM forex e UMA commodity. Agora cada categoria tem os seus.
+  it('toda categoria tem pelo menos 10 destaques', () => {
+    for (const [cat, tickers] of Object.entries(DESTAQUES)) {
+      expect(tickers.length, cat).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('não repete ticker dentro da mesma categoria', () => {
+    for (const [cat, tickers] of Object.entries(DESTAQUES)) {
+      expect(new Set(tickers).size, cat).toBe(tickers.length);
+    }
+  });
+
+  it('os destaques saem na ordem pedida, a partir do catálogo', () => {
+    const d = destaquesDaCategoria(CATALOGO, 'cripto').map((a) => a.simbolo);
+    expect(d[0]).toBe('BTC');
+    expect(d).toContain('ETH');
+  });
+
+  // ticker que o catálogo não tem some em silêncio: melhor um card a
+  // menos do que uma linha que não abre gráfico nenhum
+  it('ticker fora do catálogo não vira linha quebrada', () => {
+    expect(destaquesDaCategoria([], 'forex')).toEqual([]);
+    expect(destaquesDaCategoria(CATALOGO, 'acoes_eua').every(Boolean)).toBe(true);
+  });
+
+  it('em Todos, mistura as categorias', () => {
+    const mix = destaquesDaCategoria(CATALOGO, 'todos').map((a) => a.mercado);
+    expect(new Set(mix).size).toBeGreaterThan(1);
   });
 });
 
@@ -115,7 +153,8 @@ describe('Busca — a tela', () => {
     await user.click(input);
 
     const chips = [...document.querySelectorAll('.search-chip')];
-    expect(chips.map((c) => c.textContent)).toEqual(['Todos', 'Ações', 'Cripto', 'Forex', 'Commodities', 'Índices']);
+    expect(chips.map((c) => c.textContent)).toEqual(
+      ['Todos', 'Ações BR', 'Ações EUA', 'Forex', 'Cripto', 'Commodities', 'Índices']);
     expect(chips[0]).toHaveClass('ativo');
   });
 
@@ -138,7 +177,7 @@ describe('Busca — a tela', () => {
     const linha = [...document.querySelectorAll('.search-item')].find((l) => l.textContent.includes('VALE3'));
     expect(within(linha).getByText('VALE3')).toBeInTheDocument();
     expect(within(linha).getByText('Vale ON')).toBeInTheDocument();
-    expect(within(linha).getByText('Ações')).toBeInTheDocument();
+    expect(within(linha).getByText('Ação BR')).toBeInTheDocument();
     expect(within(linha).getByText('B3')).toBeInTheDocument();
   });
 
@@ -147,10 +186,13 @@ describe('Busca — a tela', () => {
     const { onSelect, input } = montar();
     await user.click(input);
 
+    // lido ANTES do Enter: escolher fecha o dropdown e some com a lista
+    const segundo = [...document.querySelectorAll('.search-ticker')][1].textContent;
+
     await user.keyboard('{ArrowDown}{Enter}');
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect.mock.calls[0][0].simbolo).toBe('PETR4');   // o segundo da lista
+    expect(onSelect.mock.calls[0][0].simbolo).toBe(segundo);
   });
 
   it('Esc fecha', async () => {

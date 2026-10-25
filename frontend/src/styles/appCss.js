@@ -89,7 +89,8 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 .search-nome{font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .search-selo{font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase}
-.selo-acoes{background:rgba(0,214,143,.15);color:#00D68F}
+.selo-acoes_br{background:rgba(0,214,143,.15);color:#00D68F}
+.selo-acoes_eua{background:rgba(61,126,255,.15);color:#3D7EFF}
 .selo-cripto{background:rgba(247,147,26,.15);color:#F7931A}
 .selo-forex{background:rgba(61,126,255,.15);color:#3D7EFF}
 .selo-commodities{background:rgba(245,166,35,.15);color:#F5A623}

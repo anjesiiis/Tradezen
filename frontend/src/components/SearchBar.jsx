@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { API } from "../lib/api.js";
 import { IconeAtivo } from "./IconeAtivo.jsx";
 import {
-  CATEGORIAS, COR_DA_CATEGORIA, categoriaDoAtivo, filtrarPorCategoria,
-  iniciaisDoAtivo, ordenarPorRelevancia, rotuloDaCategoria, sugestoesDoMercado,
+  CATEGORIAS, COR_DA_CATEGORIA, categoriaDoAtivo, destaquesDaCategoria,
+  filtrarPorCategoria, iniciaisDoAtivo, ordenarPorRelevancia, rotuloDaCategoria,
 } from "../lib/buscaAtivos.js";
 
 // Uma linha de resultado: logo, ticker grande, nome embaixo, e à direita
@@ -44,8 +44,20 @@ export function SearchBar({ onSelect, mercado = [] }) {
   const [categoria, setCategoria] = useState("todos");
   const boxRef = useRef(null);
   const inputRef = useRef(null);
+  // O catálogo inteiro (283 ativos). A home só carrega os ~69 do resumo,
+  // e era por isso que "Forex" mostrava um par só: não havia mais nada
+  // pra mostrar do lado de cá. Buscado uma vez, na primeira abertura.
+  const [catalogo, setCatalogo] = useState([]);
 
   const buscando = q.trim().length > 0;
+
+  useEffect(() => {
+    if (!open || catalogo.length) return;
+    fetch(`${API}/ativos`)
+      .then((r) => r.json())
+      .then((d) => setCatalogo(d.ativos || []))
+      .catch(() => setCatalogo([]));
+  }, [open, catalogo.length]);
 
   useEffect(() => {
     if (!q.trim()) { setRes([]); return; }
@@ -62,17 +74,19 @@ export function SearchBar({ onSelect, mercado = [] }) {
   // ninguém digitou nada ainda. Nos dois casos passa pelo filtro de
   // categoria e pela ordem de relevância.
   const lista = useMemo(() => {
-    if (!buscando) return filtrarPorCategoria(sugestoesDoMercado(mercado), categoria);
+    const base = catalogo.length ? catalogo : mercado;
+    // Sem texto: os destaques da categoria. Com texto: o catálogo todo.
+    if (!buscando) return destaquesDaCategoria(base, categoria);
     // O servidor casa só ticker e nome, então "dolar" e "ouro" não
     // achavam nada por lá. O catálogo que a página já carregou é
     // vasculhado junto, e é nele que os apelidos pegam. Os dois se
     // juntam sem repetir ninguém.
     const porTicker = new Map();
-    for (const a of [...res, ...mercado]) {
+    for (const a of [...res, ...catalogo, ...mercado]) {
       if (!porTicker.has(a.ticker)) porTicker.set(a.ticker, a);
     }
     return ordenarPorRelevancia(filtrarPorCategoria([...porTicker.values()], categoria), q);
-  }, [buscando, res, mercado, categoria, q]);
+  }, [buscando, res, mercado, catalogo, categoria, q]);
 
   // Agrupar por mercado só faz sentido em "Todos": dentro de uma
   // categoria todos os itens teriam o mesmo cabeçalho.
