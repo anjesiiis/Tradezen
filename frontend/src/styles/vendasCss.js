@@ -130,9 +130,20 @@ html.lp-tela-cheia #root{width:100%;max-width:none;margin:0;border-inline:none}
 .lp-passo p{font-size:14px;color:var(--fg-muted)}
 
 /* ── preço ── */
-.lp-preco-card{max-width:480px;margin:40px auto 0;background:linear-gradient(180deg,var(--bg-card) 0%,var(--bg-elevated) 100%);border:1px solid var(--borda-forte);border-radius:var(--r-lg);padding:36px;position:relative;overflow:hidden;text-align:left}
+/* Dois planos lado a lado: o grátis à esquerda, discreto, e o premium à
+   direita com borda azul e brilho. Ver o free ao lado do pago é o que
+   mostra o que se ganha — um card sozinho não compara com nada.
+   O align-items:start evita o card mais curto esticar junto com o
+   outro e ficar com um vão no fim. */
+.lp-precos-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:920px;margin:40px auto 0;text-align:left;align-items:start}
+.lp-preco-card{width:100%;margin:0;background:linear-gradient(180deg,var(--bg-card) 0%,var(--bg-elevated) 100%);border:1px solid var(--borda-forte);border-radius:var(--r-lg);padding:36px;position:relative;overflow:hidden;text-align:left}
 .lp-preco-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--azul),transparent)}
+.lp-preco-gratis{background:var(--bg-elevated);border-color:var(--borda)}
+/* sem a listra azul no topo: ela é a marca do plano em destaque */
+.lp-preco-gratis::before{display:none}
+.lp-preco-premium{border-color:var(--azul);box-shadow:0 0 40px rgba(123,169,240,.12)}
 .lp-preco-selo{display:inline-block;padding:4px 12px;background:var(--azul-brilho);color:var(--azul);font-size:12px;font-weight:600;border-radius:100px;margin-bottom:16px}
+.lp-preco-selo-gratis{background:var(--bg-card);color:var(--fg-muted)}
 .lp-preco-nome{font-size:22px;font-weight:700;margin-bottom:8px}
 .lp-preco-linha{display:flex;align-items:baseline;gap:6px;margin:20px 0 8px}
 .lp-preco-moeda{font-size:20px;color:var(--fg-muted)}
@@ -166,6 +177,9 @@ html.lp-tela-cheia #root{width:100%;max-width:none;margin:0;border-inline:none}
 
 @media (max-width:820px){ .lp-premium-grid{grid-template-columns:1fr;gap:32px} }
 @media (max-width:720px){ .lp-passos{grid-template-columns:1fr} }
+/* No celular os planos empilham: grátis em cima, premium embaixo — quem
+   rola chega no pago depois de ver o que o grátis já dá. */
+@media (max-width:768px){ .lp-precos-grid{grid-template-columns:1fr;gap:16px} .lp-preco-card{padding:28px} }
 @media (max-width:560px){
   .lp-header-inner{gap:8px}
   .lp-nav{gap:8px}

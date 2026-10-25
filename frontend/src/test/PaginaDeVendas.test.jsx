@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './helpers.jsx';
 import { VENDAS_CSS } from '../styles/vendasCss.js';
@@ -15,7 +15,7 @@ describe('Página de vendas', () => {
     expect(screen.getByText('Sua central de análise técnica, do seu jeito.')).toBeInTheDocument();
     expect(screen.getByText('A vantagem operacional que faltava no seu arsenal.')).toBeInTheDocument();
     expect(screen.getByText('Três passos simples.')).toBeInTheDocument();
-    expect(screen.getByText('Vantagem operacional por menos de R$ 2 por dia.')).toBeInTheDocument();
+    expect(screen.getByText('Escolha seu plano.')).toBeInTheDocument();
     expect(screen.getByText('49')).toBeInTheDocument();
   });
 
@@ -74,6 +74,52 @@ describe('Página de vendas — o botão que estava apagado', () => {
     expect(botao).toHaveClass('lp-btn', 'lp-btn-primary');
     // a classe do menu não deve estar aplicada a ele
     expect(botao.className).not.toContain('lp-so-desktop');
+  });
+});
+
+describe('Página de vendas — os dois planos', () => {
+  it('mostra grátis e premium lado a lado, nessa ordem', async () => {
+    await abrir();
+
+    const cards = document.querySelectorAll('.lp-preco-card');
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveClass('lp-preco-gratis');
+    expect(cards[1]).toHaveClass('lp-preco-premium');
+    expect(within(cards[0]).getByText('0')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('49')).toBeInTheDocument();
+  });
+
+  it('o destaque é do premium: selo, borda azul e botão principal', async () => {
+    await abrir();
+    const [gratis, premium] = document.querySelectorAll('.lp-preco-card');
+
+    expect(within(premium).getByText('RECOMENDADO')).toBeInTheDocument();
+    expect(within(gratis).getByText('GRÁTIS')).toBeInTheDocument();
+    // o CTA principal é do pago; o grátis fica secundário
+    expect(within(premium).getByRole('link')).toHaveClass('lp-btn-primary');
+    expect(within(gratis).getByRole('link')).toHaveClass('lp-btn-ghost');
+    expect(VENDAS_CSS).toContain('.lp-preco-premium{border-color:var(--azul)');
+  });
+
+  it('cada botão leva pro cadastro com o plano escolhido', async () => {
+    await abrir();
+    const [gratis, premium] = document.querySelectorAll('.lp-preco-card');
+
+    expect(within(gratis).getByRole('link')).toHaveAttribute('href', '/cadastro');
+    expect(within(premium).getByRole('link')).toHaveAttribute('href', '/cadastro?plano=premium');
+  });
+
+  it('o grátis mostra 2 telas e o premium 4 — é a comparação que vende', async () => {
+    await abrir();
+    const [gratis, premium] = document.querySelectorAll('.lp-preco-card');
+
+    expect(within(gratis).getByText('2 telas simultâneas')).toBeInTheDocument();
+    expect(within(premium).getByText('4 telas simultâneas (o dobro do grátis)')).toBeInTheDocument();
+  });
+
+  // no celular empilham: grátis em cima, premium embaixo
+  it('empilha no celular', () => {
+    expect(VENDAS_CSS).toContain('@media (max-width:768px){ .lp-precos-grid{grid-template-columns:1fr');
   });
 });
 

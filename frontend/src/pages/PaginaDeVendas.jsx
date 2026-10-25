@@ -43,14 +43,50 @@ const PASSOS = [
   { titulo: "Receba o alerta", texto: "Push no celular, email ou WhatsApp — na hora que o padrão aparecer, você fica sabendo." },
 ];
 
-const ITENS_DO_PLANO = [
-  "Tudo do plano base",
-  "Detecção automática de padrões via Machine Learning",
-  "4 telas simultâneas (o dobro do plano grátis) para monitorar vários ativos ao mesmo tempo",
-  "Alertas em 3 estágios: formação, desenvolvimento e confirmação",
-  "Notificações por push, email e WhatsApp",
-  "Até 50 ativos na watchlist",
-  "Suporte prioritário em português",
+// Os dois planos, lado a lado. O grátis primeiro: é o que a pessoa já
+// pode ter hoje, e o premium só faz sentido comparado com ele.
+const PLANOS = [
+  {
+    id: "gratis",
+    selo: "GRÁTIS",
+    nome: "Começar",
+    valor: "0",
+    periodo: ",00/mês",
+    compara: "Perfeito pra começar a usar hoje",
+    itens: [
+      "2 telas simultâneas",
+      "Acesso a ativos da B3, cripto e mercados globais",
+      "Indicadores e timeframes personalizáveis",
+      "Ferramentas de desenho (linhas, Fibonacci, canais)",
+      "Até 10 ativos na watchlist",
+      "Notificação diária por email",
+    ],
+    botao: "Criar conta grátis",
+    destino: "/cadastro",
+    rodape: "Sem cartão · Para sempre grátis",
+  },
+  {
+    id: "premium",
+    selo: "RECOMENDADO",
+    nome: "TradeZen Premium",
+    valor: "49",
+    periodo: ",90/mês",
+    compara: "Equivale a menos de R$ 1,70 por dia",
+    itens: [
+      "Tudo do plano grátis",
+      "4 telas simultâneas (o dobro do grátis)",
+      "Detecção automática de padrões via Machine Learning",
+      "Alertas em 3 estágios: formação, desenvolvimento e confirmação",
+      "Notificações por push, email e WhatsApp",
+      "Até 50 ativos na watchlist",
+      "Suporte prioritário em português",
+    ],
+    botao: "Começar grátis por 7 dias",
+    // o ?plano=premium diz ao cadastro qual plano a pessoa escolheu
+    destino: "/cadastro?plano=premium",
+    rodape: "7 dias grátis · Cancele quando quiser · Sem fidelidade",
+    destaque: true,
+  },
 ];
 
 /**
@@ -263,29 +299,41 @@ export default function PaginaDeVendas() {
           <section id="precos">
             <div className="lp-wrap" style={{ textAlign: "center" }}>
               <div className="lp-eyebrow">Preços</div>
-              <h2 className="lp-titulo">Vantagem operacional por menos de R$ 2 por dia.</h2>
+              <h2 className="lp-titulo">Escolha seu plano.</h2>
               <p className="lp-lead" style={{ marginInline: "auto" }}>
-                Um plano simples e direto. Sem letra miúda, sem fidelidade, sem complicação.
+                Comece grátis sem cartão. Faça upgrade quando quiser.
               </p>
 
-              <div className="lp-preco-card">
-                <div className="lp-preco-selo">PREMIUM</div>
-                <div className="lp-preco-nome">TradeZen Premium</div>
-                <div className="lp-preco-linha">
-                  <span className="lp-preco-moeda">R$</span>
-                  <span className="lp-preco-valor">49</span>
-                  <span className="lp-preco-periodo">,90/mês</span>
-                </div>
-                <div className="lp-preco-compara">
-                  Equivale a menos de <strong style={{ color: "var(--fg)" }}>R$ 1,70 por dia</strong>
-                </div>
-                <ul className="lp-preco-itens">
-                  {ITENS_DO_PLANO.map((item) => (
-                    <li key={item}><span className="lp-check">✓</span>{item}</li>
-                  ))}
-                </ul>
-                <a href="/cadastro" onClick={paraCadastro} className="lp-btn lp-btn-primary lp-btn-lg">Acesse agora</a>
-                <p className="lp-preco-rodape">7 dias grátis · Cancele quando quiser · Sem fidelidade</p>
+              <div className="lp-precos-grid">
+                {PLANOS.map((plano) => (
+                  <div
+                    className={`lp-preco-card ${plano.destaque ? "lp-preco-premium" : "lp-preco-gratis"}`}
+                    key={plano.id}
+                  >
+                    <div className={`lp-preco-selo ${plano.destaque ? "" : "lp-preco-selo-gratis"}`}>{plano.selo}</div>
+                    <div className="lp-preco-nome">{plano.nome}</div>
+                    <div className="lp-preco-linha">
+                      <span className="lp-preco-moeda">R$</span>
+                      <span className="lp-preco-valor">{plano.valor}</span>
+                      <span className="lp-preco-periodo">{plano.periodo}</span>
+                    </div>
+                    <div className="lp-preco-compara">{plano.compara}</div>
+                    <ul className="lp-preco-itens">
+                      {plano.itens.map((item) => (
+                        <li key={item}><span className="lp-check">✓</span>{item}</li>
+                      ))}
+                    </ul>
+                    <a
+                      href={plano.destino}
+                      onClick={(e) => { e.preventDefault(); navigate(plano.destino); }}
+                      className={`lp-btn lp-btn-lg ${plano.destaque ? "lp-btn-primary" : "lp-btn-ghost"}`}
+                      style={{ width: "100%" }}
+                    >
+                      {plano.botao}
+                    </a>
+                    <p className="lp-preco-rodape">{plano.rodape}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
