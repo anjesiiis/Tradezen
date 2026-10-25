@@ -10,6 +10,9 @@ import { SkeletonPagina } from "./components/Skeleton.jsx";
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Cadastro = lazy(() => import("./pages/Cadastro.jsx"));
+// Página de vendas: pública, sem header nem sidebar do app — quem chega
+// por anúncio não precisa da navegação do produto, precisa da oferta.
+const PaginaDeVendas = lazy(() => import("./pages/PaginaDeVendas.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const RecuperarSenha = lazy(() => import("./auth/RecuperarSenha.jsx"));
@@ -64,6 +67,7 @@ function Router(){
 
   if (location.pathname === "/login") return <Login/>;
   if (location.pathname === "/cadastro") return <Cadastro/>;
+  if (location.pathname === "/pagina-de-vendas") return <PaginaDeVendas/>;
   if (location.pathname === "/recuperar-senha") return <RecuperarSenha/>;
   if (location.pathname === "/redefinir-senha") return <RedefinirSenha/>;
   if (location.pathname === "/auth/callback") return <AuthCallback/>;
