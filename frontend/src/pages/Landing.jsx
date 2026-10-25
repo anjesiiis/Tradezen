@@ -9,15 +9,15 @@ import { CSS } from "../styles/appCss.js";
 // tamanhos, no CSS (.abm* + o bloco @media (min-width:768px)) — antes o
 // computador tinha uma landing própria, com malha animada em canvas e
 // outro texto.
-const ABM_OVERLAY = "linear-gradient(180deg,rgba(11,14,20,.4) 0%,rgba(11,14,20,.2) 50%,rgba(11,14,20,.6) 100%)";
-
 function Abertura(){
   const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   const ir = (rota) => { setMenuAberto(false); navigate(rota); };
 
   return (
-    <div className="abm" style={{backgroundImage:`${ABM_OVERLAY}, url(${heroBg})`}}>
+    // A foto entra por variável: o véu que vai por cima dela muda com a
+    // largura da tela, e isso é decisão de CSS (ver .abm em appCss).
+    <div className="abm" style={{"--hero":`url(${heroBg})`}}>
       <header className="abm-head">
         <div className="abm-logo notranslate">
           <svg viewBox="0 0 28 24" aria-hidden="true">
@@ -48,12 +48,20 @@ function Abertura(){
 
       <main className="abm-conteudo" onClick={()=>menuAberto && setMenuAberto(false)}>
         <p className="abm-tags">Análise<i>·</i>Gráficos<i>·</i>Mercado</p>
-        <h1 className="abm-titulo">Mercado<br/>com mais<br/><span>clareza.</span></h1>
-        <p className="abm-sub">Explore padrões, visualize movimentos e entenda o comportamento dos ativos.</p>
-        <button className="abm-cta" onClick={()=>ir("/mercados")}>
-          Explorar TradeZen
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
+        <h1 className="abm-titulo">Vantagem operacional em <span>análise técnica.</span></h1>
+        <p className="abm-sub">
+          Receba avisos de padrões se formando em tempo real. Explore ativos, faça
+          seus próprios estudos e análises do seu jeito — tudo de forma gratuita.
+        </p>
+        <div className="abm-ctas">
+          {/* Explorar segue sem pedir conta: é o que a frase acima promete.
+              Quem quiser os planos tem o segundo botão. */}
+          <button className="abm-cta" onClick={()=>ir("/mercados")}>
+            Explorar TradeZen
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button className="abm-cta-2" onClick={()=>ir("/pagina-de-vendas")}>Ver planos</button>
+        </div>
       </main>
     </div>
   );

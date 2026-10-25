@@ -21,7 +21,7 @@ export const VENDAS_CSS = `
   min-height:100vh; overflow-x:hidden; position:relative;
 }
 .lp *{box-sizing:border-box;margin:0;padding:0}
-/* O index.css tem \`h1,h2{color:var(--text-h)}\`, e regra de ELEMENTO vence
+/* O index.css tem a regra h1,h2{color:var(--text-h)}, e regra de ELEMENTO vence
    herança: sem isto os títulos daqui pegavam a cor do tema do app e, no
    claro, saíam quase pretos sobre o fundo escuro desta página — o título
    do hero ficava invisível.

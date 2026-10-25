@@ -434,12 +434,22 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
    tema claro — senão fica escuro sobre escuro, o mesmo bug que já aconteceu
    no dashboard. Os tamanhos abaixo são os do celular; o bloco
    @media (min-width:768px) logo depois amplia tudo pro computador. */
+/* A foto é vertical (720x1280) e o assunto — o celular com os candles —
+   fica à direita do quadro. Numa tela larga o cover preenche tudo, mas
+   a metade esquerda cai no escuro da própria foto e parece buraco.
+   O véu em diagonal resolve: escurece forte onde o texto fica e abre no
+   canto de baixo à direita, onde está o desenho. Assim o escuro vira
+   composição, não falta de imagem.
+   A imagem entra por variável (--hero, posta no componente) pra o CSS
+   poder trocar só o véu em cada largura sem reescrever a URL. */
 .abm{
   position:fixed;inset:0;z-index:1000;overflow-y:auto;
   min-height:100vh;min-height:100dvh;
   display:flex;flex-direction:column;
-  background-color:#0b0e14;background-size:cover;
-  background-position:right center;background-repeat:no-repeat;
+  background-color:#0b0e14;
+  background-image:linear-gradient(180deg,rgba(11,14,20,.55) 0%,rgba(11,14,20,.35) 45%,rgba(11,14,20,.75) 100%),var(--hero);
+  background-size:cover;
+  background-position:center 40%;background-repeat:no-repeat;
   font-family:var(--font-b);color:#fff;
 }
 .abm-head{position:relative;z-index:2;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
@@ -454,6 +464,11 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* letter-spacing soma espaço depois da última letra também; o padding
    à esquerda devolve o texto pro centro visual */
 .abm-tags{font-family:var(--font-m);font-size:12px;letter-spacing:3px;padding-left:3px;color:#a0a4ad;text-transform:uppercase;margin:0}
+/* Dois botões: o azul leva pro produto, o de borda pros planos. Empilham
+   no celular, onde lado a lado ficariam estreitos demais pra o dedo. */
+.abm-ctas{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.abm-cta-2{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;font-family:var(--font-b);font-size:15px;font-weight:600;border-radius:28px;padding:14px 32px;cursor:pointer;transition:border-color .15s,background .15s}
+.abm-cta-2:hover{border-color:#fff;background:rgba(255,255,255,.08)}
 .abm-tags i{font-style:normal;margin:0 8px}
 .abm-titulo{font-family:var(--font-b);font-size:48px;font-weight:400;line-height:1.1;color:#fff;margin:24px 0 0;letter-spacing:-.5px}
 .abm-titulo span{color:#4d8bff}
@@ -469,7 +484,14 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 
 /* Landing no computador — mesma tela do celular, em tamanho de monitor */
 @media (min-width:768px){
-  .abm{background-position:center 40%}
+  /* Desktop: o véu vira diagonal — pesado em cima à esquerda, onde mora
+     o texto, e leve embaixo à direita, onde está o celular da foto. */
+  .abm{
+    background-image:linear-gradient(135deg,rgba(11,14,20,.92) 0%,rgba(11,14,20,.72) 38%,rgba(11,14,20,.45) 62%,rgba(11,14,20,.25) 100%),var(--hero);
+    background-position:right center;
+  }
+  .abm-ctas{flex-direction:row;justify-content:center;gap:14px;width:auto}
+  .abm-cta-2{font-size:16px;padding:16px 36px}
   .abm-head{padding:24px 48px}
   .abm-logo{font-size:22px;letter-spacing:5px;gap:12px}
   .abm-logo svg{width:34px;height:29px}

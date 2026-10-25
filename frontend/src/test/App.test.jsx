@@ -12,9 +12,11 @@ describe('App', () => {
       return el;
     });
     const nela = within(abertura);
-    expect(nela.getByRole('heading', { name: /Mercado\s*com mais\s*clareza\./ })).toBeInTheDocument();
+    expect(nela.getByRole('heading', { name: /Vantagem operacional em\s*análise técnica\./ })).toBeInTheDocument();
     expect(abertura.querySelector('.abm-tags')).toHaveTextContent('Análise·Gráficos·Mercado');
     expect(nela.getByRole('button', { name: /Explorar TradeZen/ })).toBeInTheDocument();
+    // o segundo botão leva pros planos, sem passar pelo cadastro
+    expect(nela.getByRole('button', { name: 'Ver planos' })).toBeInTheDocument();
     expect(nela.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
     // usa a mesma foto de fundo do celular
     expect(abertura.getAttribute('style')).toMatch(/hero-bg/);
@@ -46,7 +48,7 @@ describe('App', () => {
   it('renderiza a landing mobile com título e CTA', async () => {
     renderApp('/', { mobile: true });
 
-    expect(await screen.findByRole('heading', { name: /Mercado\s*com mais\s*clareza\./ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Vantagem operacional em\s*análise técnica\./ })).toBeInTheDocument();
     // As tags vêm separadas por <i>·</i>, então confere o texto do bloco todo
     expect(document.querySelector('.abm-tags')).toHaveTextContent('Análise·Gráficos·Mercado');
     expect(screen.getByRole('button', { name: /Explorar TradeZen/ })).toBeInTheDocument();
@@ -77,5 +79,26 @@ describe('App', () => {
   it('rotas de auth renderizam a tela certa', async () => {
     renderApp('/login');
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
+  });
+});
+
+describe('Abertura — os dois caminhos da hero', () => {
+  it('"Ver planos" leva pra página de vendas', async () => {
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await user.click(await screen.findByRole('button', { name: 'Ver planos' }, { timeout: 5000 }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/pagina-de-vendas'));
+  });
+
+  // explorar não pede conta: é o que a própria frase da hero promete
+  it('"Explorar TradeZen" abre o produto sem exigir login', async () => {
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await user.click(await screen.findByRole('button', { name: /Explorar TradeZen/ }, { timeout: 5000 }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/mercados'));
   });
 });
