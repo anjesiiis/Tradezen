@@ -25,9 +25,33 @@ export function MaisAtivos({ mercado = [], abrirAtivo }) {
     return () => faixa.removeEventListener("wheel", naRoda);
   }, []);
 
+  // Uma "página" de rolagem = a largura visível menos um card, pra sobrar
+  // uma pista do que vinha antes e não dar a sensação de ter pulado algo.
+  const rolar = (direcao) => {
+    const faixa = faixaRef.current;
+    if (!faixa) return;
+    const card = faixa.querySelector(".mais-ativos-card");
+    const passo = card ? card.getBoundingClientRect().width + 16 : 260;
+    const quantos = Math.max(1, Math.floor(faixa.clientWidth / passo) - 1);
+    faixa.scrollBy({ left: passo * quantos * direcao, behavior: "smooth" });
+  };
+
   return (
     <section className="mais-ativos">
-      <span className="mais-ativos-titulo">Mais Ativos</span>
+      <div className="mais-ativos-topo">
+        <span className="mais-ativos-titulo">Mais Ativos</span>
+        {/* As setas ficam no cabeçalho, à direita — sobre os cards elas
+            tapariam preço e variação justamente de quem está olhando.
+            No celular somem: lá o dedo arrasta a faixa direto. */}
+        <div className="mais-ativos-setas">
+          <button type="button" className="mais-ativos-seta" aria-label="Ativos anteriores" onClick={() => rolar(-1)}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button type="button" className="mais-ativos-seta" aria-label="Próximos ativos" onClick={() => rolar(1)}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
       <div className="mais-ativos-faixa" ref={faixaRef}>
         {ativos.map((a) => (
           <article

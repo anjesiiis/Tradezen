@@ -581,7 +581,13 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 @media (max-width:1100px){.home-principal{grid-template-columns:1fr}}
 
 .mais-ativos{display:flex;flex-direction:column;gap:10px;margin-top:16px;min-width:0}
+.mais-ativos-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mais-ativos-titulo{font-size:13px;font-weight:700;color:var(--text)}
+.mais-ativos-setas{display:flex;gap:6px;flex-shrink:0}
+.mais-ativos-seta{width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,color .15s}
+.mais-ativos-seta:hover{background:var(--s2);border-color:var(--accent);color:var(--accent)}
+/* No celular o dedo já arrasta a faixa: as setas só ocupariam espaço. */
+@media (max-width:767px){.mais-ativos-setas{display:none}}
 /* Rola de lado: a roda do mouse é tratada no componente (listener nativo,
    senão o preventDefault não vale e a página rolaria junto). */
 .mais-ativos-faixa{display:flex;flex-direction:row;flex-wrap:nowrap;gap:16px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}

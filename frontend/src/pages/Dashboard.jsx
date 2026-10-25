@@ -287,7 +287,7 @@ function AppInner(){
           {secao==="inicio" && (
           <div className="home">
           {/* CELULAR — globo compacto e os 20 mais acompanhados. O layout
-              de desktop (cards + Estudo de Mercado + globo) fica escondido
+              de desktop (cards + gráfico do IBOV + globo) fica escondido
               por .dash-so-desktop. */}
           {isMobile && (
             <>
@@ -301,12 +301,12 @@ function AppInner(){
             </div>
           )}
 
-          {/* ÁREA PRINCIPAL — Estudo de Mercado (55%) + globo (45%) */}
+          {/* ÁREA PRINCIPAL — gráfico do IBOV (55%) + globo (45%) */}
           <div className="home-principal dash-so-desktop">
             <div className="card" style={{padding:20,display:"flex",flexDirection:"column"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",rowGap:6}}>
-                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)",whiteSpace:"nowrap"}}>Estudo de Mercado</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)",whiteSpace:"nowrap"}}>IBOV</span>
                   <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,letterSpacing:.4,textTransform:"uppercase",color:"#009C3B",background:"rgba(0,156,60,.12)",padding:"4px 10px",borderRadius:999,whiteSpace:"nowrap",flexShrink:0}}>
                     <span style={{width:6,height:6,borderRadius:"50%",background:"#009C3B",flexShrink:0}}/>
                     Bolsa Brasileira

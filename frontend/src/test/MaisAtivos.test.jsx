@@ -72,14 +72,58 @@ describe('Mais Ativos', () => {
   });
 });
 
+describe('MaisAtivos — setas do carrossel', () => {
+  const montar = () => render(<MaisAtivos mercado={[]} abrirAtivo={() => {}} />);
+
+  it('tem as duas setas, no cabeçalho e não sobre os cards', () => {
+    montar();
+
+    const topo = document.querySelector('.mais-ativos-topo');
+    expect(within(topo).getByLabelText('Ativos anteriores')).toBeInTheDocument();
+    expect(within(topo).getByLabelText('Próximos ativos')).toBeInTheDocument();
+    // as setas são irmãs do título, não filhas da faixa de cards
+    expect(document.querySelector('.mais-ativos-faixa .mais-ativos-seta')).toBeNull();
+  });
+
+  it('clicar na seta rola a faixa pro lado', async () => {
+    const user = userEvent.setup();
+    montar();
+    const faixa = document.querySelector('.mais-ativos-faixa');
+    const rolagens = [];
+    faixa.scrollBy = (opcoes) => rolagens.push(opcoes);
+
+    await user.click(screen.getByLabelText('Próximos ativos'));
+    await user.click(screen.getByLabelText('Ativos anteriores'));
+
+    expect(rolagens).toHaveLength(2);
+    expect(rolagens[0].left).toBeGreaterThan(0);
+    expect(rolagens[1].left).toBeLessThan(0);
+    expect(rolagens.every((r) => r.behavior === 'smooth')).toBe(true);
+  });
+});
+
 describe('escolherAtivos', () => {
   it('cai no substituto quando o preferido não veio', () => {
-    const escolhidos = escolherAtivos([ativo('SOL-USD', 'Solana', 'SOL')]);
+    // o primeiro slot é a VALE, que tem CSNA3 como reserva
+    const escolhidos = escolherAtivos([ativo('CSNA3.SA', 'CSN', 'CSNA3')]);
 
-    // o slot do Ethereum tem SOL como reserva
-    expect(escolhidos[0].ticker).toBe('SOL-USD');
-    // e o slot da Solana não repete o mesmo ativo
-    expect(escolhidos[2].semDados).toBe(true);
+    expect(escolhidos[0].ticker).toBe('CSNA3.SA');
+    // e nenhum outro slot repete o mesmo ativo
+    expect(escolhidos.filter((a) => a.ticker === 'CSNA3.SA')).toHaveLength(1);
+  });
+
+  // a ordem é o pedido: os mais procurados por quem está começando
+  it('a ordem dos slots é VALE, PETR, OURO, DÓLAR, BITCOIN...', () => {
+    expect(MAIS_ATIVOS.map((a) => a.simbolo)).toEqual([
+      'VALE3', 'PETR4', 'OURO', 'USD/BRL', 'BTC', 'IBOV', 'ITUB4', 'BBDC4', 'MGLU3', 'WEGE3',
+    ]);
+  });
+
+  it('cada slot tem reserva, pra nunca ficar um card vazio', () => {
+    for (const a of MAIS_ATIVOS) {
+      expect(a.reservas.length, a.simbolo).toBeGreaterThan(0);
+      expect(a.reservas, a.simbolo).not.toContain(a.ticker);
+    }
   });
 
   it('sem mercado nenhum, ninguém fica marcado como "sem dados"', () => {
