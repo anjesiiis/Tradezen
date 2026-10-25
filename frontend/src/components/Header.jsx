@@ -4,6 +4,16 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { SearchBar } from "./SearchBar.jsx";
 import { SB_ITENS } from "./Sidebar.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
+import { iniciaisDoNome } from "../lib/perfil.js";
+
+// Destinos do menu da conta. Perfil já existe; as outras três abrem a
+// página de configurações na aba certa, que diz o que vem.
+const ITENS_DA_CONTA = [
+  { icone:"👤", rotulo:"Minha conta",      rota:"/configuracoes" },
+  { icone:"🔒", rotulo:"Segurança",        rota:"/configuracoes/seguranca" },
+  { icone:"💳", rotulo:"Plano e cobrança", rota:"/configuracoes/plano" },
+  { icone:"🔔", rotulo:"Notificações",     rota:"/configuracoes/notificacoes" },
+];
 
 // Header fixo + drawer do mobile (hambúrguer). `drawerAberto` vem de fora
 // porque a aba "Menu" da barra inferior também abre esse mesmo drawer.
@@ -28,21 +38,43 @@ export default function Header({ mercado, abrirAtivo, tema, alternarTema, secao,
   // CSS alterna. O botão nunca sai do header em nenhuma largura — logado
   // ele só aparecia no desktop, e no celular quem tinha conta ficava sem
   // nada (só o tema), com a conta enterrada no menu hambúrguer.
+  const nomeDoUsuario = user?.user_metadata?.nome?.trim() || "";
+  const primeiroNome = (nomeDoUsuario.split(" ")[0] || user?.email?.split("@")[0] || "").toUpperCase();
+  const iniciais = iniciaisDoNome(nomeDoUsuario, user?.email || "");
+
   const botaoConta = (slot, classeExtra = "") => (
     user
       ? <div className={`conta-wrap ${classeExtra}`} style={{position:"relative"}}>
           <button className="btn-in btn-conta" onClick={()=>setContaAberta(a=>a===slot?null:slot)}>
-            <span className="btn-conta-nome">
-              {(user.user_metadata?.nome?.trim().split(" ")[0] || user.email.split("@")[0]).toUpperCase()}
-            </span>
+            <span className="btn-conta-nome">{primeiroNome}</span>
             <span style={{fontSize:9}}>▾</span>
           </button>
           {contaAberta===slot && (
             <>
               <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setContaAberta(null)}/>
-              <div className="ind-drop" style={{left:"auto",right:0,minWidth:180}}>
-                <div style={{padding:"6px 10px 8px",fontSize:11,color:"var(--text3)",borderBottom:"1px solid var(--border)",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
+              <div className="ind-drop conta-menu" style={{left:"auto",right:0}}>
+                {/* Cabeçalho com quem está logado: o email sozinho não
+                    dizia nada sobre a conta. */}
+                <div className="conta-menu-topo">
+                  <span className="conta-menu-avatar">{iniciais}</span>
+                  <span className="conta-menu-quem">
+                    <strong>{primeiroNome}</strong>
+                    <span>{user.email}</span>
+                  </span>
+                </div>
+                {ITENS_DA_CONTA.map((it)=>(
+                  <div
+                    key={it.rota}
+                    className="ind-item"
+                    onClick={()=>{ setContaAberta(null); navigate(it.rota); }}
+                  >
+                    <span aria-hidden="true" className="conta-menu-icone">{it.icone}</span>
+                    <span className="ind-label">{it.rotulo}</span>
+                  </div>
+                ))}
+                <div className="conta-menu-risco"/>
                 <div className="ind-item" onClick={()=>{ setContaAberta(null); logout(); navigate("/"); }}>
+                  <span aria-hidden="true" className="conta-menu-icone">🚪</span>
                   <span className="ind-label" style={{color:"var(--down)"}}>Sair</span>
                 </div>
               </div>
