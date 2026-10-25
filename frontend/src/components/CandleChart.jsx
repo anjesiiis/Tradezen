@@ -121,7 +121,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   useEffect(()=>{
     if(!containerRef.current) return;
     const armado = !!ferramentaAtiva;
-    containerRef.current.style.cursor = armado ? "crosshair" : "default";
+    // A classe (e não o style) é o que deixa o CSS trocar pra "grabbing"
+    // enquanto o botão está pressionado — regra de :active não vence
+    // style inline.
+    containerRef.current.classList.toggle("ferramenta-armada", armado);
     // touch-action:none trava o navegador de tentar fazer pan/zoom nativo
     // com o dedo enquanto uma ferramenta está armada — sem isso, mesmo com
     // handleScroll/handleScale desligados no chart, o navegador ainda podia
@@ -173,11 +176,33 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         timeVisible: true,
         secondsVisible: false,
         barSpacing: 8,
-        rightOffset: 8,
-        fixRightEdge: true,
+        // Espaço vazio à direita do último candle: é onde se projeta uma
+        // linha de tendência pra frente, e é o que dá a sensação de que
+        // o gráfico "continua".
+        rightOffset: 12,
+        // fixRightEdge travava o gráfico no último candle: arrastar pra
+        // esquerda a partir da visão inicial simplesmente não fazia nada,
+        // e parecia que o arrastar não funcionava. Solto, o gráfico anda
+        // pros dois lados.
+        fixRightEdge: false,
+        fixLeftEdge: false,
       },
-      handleScroll: true,
-      handleScale:  true,
+      // Escrito item a item, e não `true`, porque é a lista do que o
+      // gesto de arrastar faz: segurar e puxar dentro do gráfico
+      // (pressedMouseMove) é o pan; os dois touchDrag são o mesmo gesto
+      // com o dedo.
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: { time: true, price: true },
+        axisDoubleClickReset: { time: true, price: true },
+      },
     });
 
     // Candlestick series
@@ -766,7 +791,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         return;
       }
 
-      container.style.cursor = acharHandleProximo(mx,my) ? "move" : "default";
+      // "" (e não "default") devolve a decisão ao CSS: é ele que mantém a
+      // mão aberta do pan. Escrever "default" aqui apagava o grab pra
+      // sempre, no primeiro movimento do mouse sobre o gráfico.
+      container.style.cursor = acharHandleProximo(mx,my) ? "move" : "";
     };
 
     const onMouseDown = (e) => {
@@ -1143,7 +1171,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   },[candles, padroes, activeTools, selPat, desenhos, ferramentaAtiva, pontosProgresso, reguaFinalizada]);
 
   return(
-    <div ref={containerRef} style={{position:"absolute",inset:0}}>
+    <div ref={containerRef} className="chart-container" style={{position:"absolute",inset:0}}>
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}/>
 
       {/* Dica do ícone de padrão já marcado — div solto, sem pointer-events,

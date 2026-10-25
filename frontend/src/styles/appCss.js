@@ -253,6 +253,13 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* o mercado dentro do seletor de ativo, em vez de solto na barra */
 .atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* A mão aberta diz que dá pra arrastar o gráfico de qualquer ponto, e a
+   fechada confirma que está arrastando. Sem isso nada no gráfico sugere
+   que ele se move — era preciso adivinhar. Com ferramenta armada vira
+   mira, porque ali o arrastar desenha. */
+.chart-container{cursor:grab}
+.chart-container:active{cursor:grabbing}
+.chart-container.ferramenta-armada,.chart-container.ferramenta-armada:active{cursor:crosshair}
 
 /* RIGHT PANEL */
 .rpanel{width:208px;border-left:1px solid var(--border);background:var(--s1);display:flex;flex-direction:column;overflow:hidden;position:relative;padding-top:4px}
