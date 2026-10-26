@@ -42,6 +42,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // o que havia antes da última troca de candles — serve pra saber se o
   // array CRESCEU PELO COMEÇO (lazy loading) e segurar a tela no lugar
   const anteriorRef = useRef({primeiro:null, total:0});
+  // A escala de preço nasce automática (enquadra os candles sozinha) e é
+  // SOLTA no primeiro arrasto dentro do gráfico. Enquanto está automática
+  // ela reenquadra a cada quadro, e o arrastar pra cima/baixo não sai do
+  // lugar — era esse o motivo de só o eixo da direita mover o preço.
+  const escalaSoltaRef = useRef(false);
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
 
@@ -381,6 +386,15 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         from: faixaAntes.from + deslocou,
         to:   faixaAntes.to + deslocou,
       });
+    }
+    // Ativo (ou timeframe) novo — o pai zera os candles antes de buscar,
+    // então `total === 0` é a marca de carga nova. A escala volta ao
+    // automático pra enquadrar o preço do ativo novo; sem isso o gráfico
+    // abriria preso na faixa de preço do ativo anterior, que pode nem
+    // cruzar com a deste.
+    if(anterior.total === 0){
+      try { candleRef.current.priceScale().applyOptions({ autoScale: true }); } catch { /* ignora */ }
+      escalaSoltaRef.current = false;
     }
     anteriorRef.current = {primeiro: candles[0].timestamp, total: candles.length};
 
@@ -826,6 +840,15 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           }
         }
         return;
+      }
+      // Sem ferramenta armada, este pointerdown é o começo de um arrasto
+      // do gráfico. Solta a escala de preço aqui, e não na criação, pra o
+      // gráfico ainda abrir enquadrado: o automático serve até a pessoa
+      // decidir mexer. Duplo clique no eixo da direita devolve o
+      // automático (axisDoubleClickReset).
+      if(!escalaSoltaRef.current){
+        try { candleRef.current?.priceScale().applyOptions({ autoScale: false }); } catch { /* ignora */ }
+        escalaSoltaRef.current = true;
       }
       const rect = container.getBoundingClientRect();
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
