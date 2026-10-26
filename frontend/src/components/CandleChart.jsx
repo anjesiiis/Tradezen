@@ -47,6 +47,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // ela reenquadra a cada quadro, e o arrastar pra cima/baixo não sai do
   // lugar — era esse o motivo de só o eixo da direita mover o preço.
   const escalaSoltaRef = useRef(false);
+  // O ref decide o comportamento; este estado só existe pra mostrar o
+  // botao de resetar escala, que nao tem como ler um ref.
+  const [escalaSolta, setEscalaSolta] = useState(false);
   const nivelLinesRef = useRef([]);
   const [nivelSel, setNivelSel] = useState(null);
 
@@ -395,6 +398,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     if(anterior.total === 0){
       try { candleRef.current.priceScale().applyOptions({ autoScale: true }); } catch { /* ignora */ }
       escalaSoltaRef.current = false;
+      setEscalaSolta(false);
     }
     anteriorRef.current = {primeiro: candles[0].timestamp, total: candles.length};
 
@@ -849,6 +853,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       if(!escalaSoltaRef.current){
         try { candleRef.current?.priceScale().applyOptions({ autoScale: false }); } catch { /* ignora */ }
         escalaSoltaRef.current = true;
+        setEscalaSolta(true);
       }
       const rect = container.getBoundingClientRect();
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
@@ -1196,6 +1201,22 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   return(
     <div ref={containerRef} className="chart-container" style={{position:"absolute",inset:0}}>
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}/>
+
+      {/* So aparece depois que a escala foi solta: antes disso o grafico
+          ja esta enquadrado e o botao nao teria o que resetar. */}
+      {escalaSolta && (
+        <button
+          className="btn-reset-escala"
+          title="Resetar escala (voltar a enquadrar os candles)"
+          aria-label="Resetar escala"
+          onClick={()=>{
+            try { candleRef.current?.priceScale().applyOptions({ autoScale: true }); } catch { /* ignora */ }
+            chartRef.current?.timeScale().scrollToRealTime();
+            escalaSoltaRef.current = false;
+            setEscalaSolta(false);
+          }}
+        >&#10226;</button>
+      )}
 
       {/* Dica do ícone de padrão já marcado — div solto, sem pointer-events,
           pra não roubar o cursor do gráfico */}

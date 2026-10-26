@@ -321,6 +321,14 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* o mercado dentro do seletor de ativo, em vez de solto na barra */
 .atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* Botao de resetar a escala do grafico: so entra na tela depois que a
+   pessoa arrasta o preco pra fora do enquadramento automatico. */
+.btn-reset-escala{position:absolute;bottom:52px;right:64px;width:30px;height:30px;
+  background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--fg-muted);cursor:pointer;font-size:15px;line-height:1;z-index:12;
+  display:flex;align-items:center;justify-content:center;opacity:.55;transition:opacity .15s,color .15s}
+.btn-reset-escala:hover{opacity:1;color:var(--azul-primario,#2962ff)}
+@media(max-width:768px){.btn-reset-escala{bottom:44px;right:52px}}
 /* A mão aberta diz que dá pra arrastar o gráfico de qualquer ponto, e a
    fechada confirma que está arrastando. Sem isso nada no gráfico sugere
    que ele se move — era preciso adivinhar. Com ferramenta armada vira
