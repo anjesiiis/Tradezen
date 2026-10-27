@@ -17,6 +17,7 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const RecuperarSenha = lazy(() => import("./auth/RecuperarSenha.jsx"));
+const PopupCadastro = lazy(() => import("./components/PopupCadastro.jsx"));
 const RedefinirSenha = lazy(() => import("./auth/RedefinirSenha.jsx"));
 const AuthCallback = lazy(() => import("./auth/AuthCallback.jsx"));
 
@@ -107,6 +108,10 @@ export default function App(){
         <Suspense fallback={<SkeletonPagina/>}>
           <Router/>
         </Suspense>
+        {/* Fora do Suspense e do Router: o Router devolve cedo em várias
+            rotas, e lá dentro o convite só apareceria em algumas telas.
+            Ele mesmo decide onde não entra (ver ROTAS_SEM_POPUP). */}
+        <Suspense fallback={null}><PopupCadastro/></Suspense>
       </AuthProvider>
     </BrowserRouter>
   );

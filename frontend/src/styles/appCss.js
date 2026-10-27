@@ -316,6 +316,36 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* o mercado dentro do seletor de ativo, em vez de solto na barra */
 .atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* ── Convite pra criar conta (aparece após 2 min de uso) ────────── */
+.pc-fundo{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(5,6,10,.75);backdrop-filter:blur(8px);animation:pcEntra .25s ease-out}
+.pc-card{position:relative;width:100%;max-width:420px;background:var(--card);
+  border:1px solid var(--border);border-radius:16px;padding:34px 30px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pcSobe .35s ease-out}
+.pc-fechar{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text3);
+  font-size:15px;cursor:pointer;padding:7px;border-radius:6px;line-height:1}
+.pc-fechar:hover{background:var(--s2);color:var(--text)}
+.pc-icone{font-size:40px;text-align:center;margin-bottom:12px}
+.pc-titulo{font-size:22px;font-weight:600;text-align:center;margin:0 0 6px;color:var(--text);letter-spacing:-.01em}
+.pc-sub{color:var(--text2);text-align:center;margin:0 0 20px;font-size:14px}
+.pc-beneficios{list-style:none;padding:0;margin:0 0 18px;display:flex;flex-direction:column;gap:9px}
+.pc-beneficios li{display:flex;gap:9px;font-size:13.5px;color:var(--text);line-height:1.4}
+.pc-check{color:var(--up);font-weight:700;flex-shrink:0}
+.pc-rapido{text-align:center;font-size:12px;color:var(--text3);margin:0 0 18px}
+.pc-ctas{display:flex;gap:9px;margin-bottom:14px}
+.pc-btn{flex:1;border-radius:28px;padding:11px 16px;font-size:13.5px;font-weight:600;cursor:pointer;
+  font-family:inherit;border:1px solid transparent;transition:filter .15s}
+.pc-btn-pr{background:var(--accent);color:#fff}
+.pc-btn-pr:hover{filter:brightness(1.1)}
+.pc-btn-sec{background:transparent;border-color:var(--border);color:var(--text2)}
+.pc-btn-sec:hover{color:var(--text)}
+.pc-login{text-align:center;font-size:12.5px;color:var(--text2);margin:0}
+.pc-link{background:none;border:none;color:var(--accent);cursor:pointer;font-size:inherit;
+  font-family:inherit;padding:0;text-decoration:none}
+.pc-link:hover{text-decoration:underline}
+@keyframes pcEntra{from{opacity:0}to{opacity:1}}
+@keyframes pcSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){.pc-card{padding:28px 20px}.pc-titulo{font-size:19px}.pc-ctas{flex-direction:column}}
 /* ── Painel de personalização do desenho ──────────────────────────
    Flutua junto da barra de ferramentas, estreito de propósito: ele
    divide a tela com o gráfico e não pode comer o espaço dos candles. */
