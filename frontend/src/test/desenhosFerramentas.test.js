@@ -53,7 +53,10 @@ describe('Fibonacci', () => {
     ]);
   });
 
-  it('as linhas são horizontais e vão até a borda direita', () => {
+  // Este teste fixava o comportamento ANTIGO (ir até a borda do canvas).
+  // Foi mudado por pedido do dono: a medição vale no trecho marcado, e
+  // atravessar o gráfico inteiro tapava candles que não tinham nada a ver.
+  it('as linhas são horizontais e param no 2º ponto', () => {
     const ctx = ctxFalso();
     _desenharDesenhoUsuario(ctx, toX, toY, {
       tipo: 'fibo', pontos: [{ logical: 2, preco: 10 }, { logical: 8, preco: 20 }],
@@ -62,7 +65,7 @@ describe('Fibonacci', () => {
     for (const [x1, y1, x2, y2] of ctx.linhas) {
       expect(y1).toBe(y2);        // horizontal
       expect(x1).toBe(20);        // começa no ponto mais antigo (logical 2)
-      expect(x2).toBe(640);       // termina na borda
+      expect(x2).toBe(80);        // e termina no outro (logical 8)
     }
   });
 });
@@ -201,5 +204,35 @@ describe('Linha de tendência — comprimento', () => {
     }, false, 800);
 
     expect(ctx.linhas[0]).toEqual([0, 410, 800, -390]);
+  });
+});
+
+describe('Fibonacci — comprimento das linhas', () => {
+  // o bug: as linhas seguiam até a borda direita do canvas e tapavam todos
+  // os candles que vieram depois do movimento medido
+  it('as linhas param no 2º ponto, não na borda do gráfico', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'fibo', pontos: [{ logical: 2, preco: 100 }, { logical: 8, preco: 160 }],
+    }, false, 900);
+
+    // toX: logical*10 → o intervalo marcado vai de x=20 a x=80
+    expect(ctx.linhas.length).toBeGreaterThan(0);
+    ctx.linhas.forEach(([x0, , x1]) => {
+      expect(x0).toBe(20);
+      expect(x1).toBe(80);
+    });
+  });
+
+  it('marcar da direita pra esquerda dá o mesmo intervalo', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'fibo', pontos: [{ logical: 8, preco: 160 }, { logical: 2, preco: 100 }],
+    }, false, 900);
+
+    ctx.linhas.forEach(([x0, , x1]) => {
+      expect(x0).toBe(20);
+      expect(x1).toBe(80);
+    });
   });
 });

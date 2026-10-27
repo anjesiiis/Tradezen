@@ -459,7 +459,12 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
 
   const amplitude = b.preco - a.preco;   // sinal importa: define o sentido
   if(amplitude === 0) return;
+  // As linhas vão de um clique ao outro e PARAM. Antes seguiam até a
+  // borda direita do canvas: quem media um movimento no meio do gráfico
+  // via sete linhas atravessando tudo o que veio depois, tapando os
+  // candles que não tinham nada a ver com a medição.
   const xIni = Math.min(xA, xB);
+  const xFim = Math.max(xA, xB);
 
   ctx.save();
   ctx.font = "bold 9px 'JetBrains Mono',monospace";
@@ -482,7 +487,7 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
     ctx.setLineDash(nivel === 0 || nivel === 1 ? [] : [5,4]);
     ctx.beginPath();
     ctx.moveTo(xIni, y);
-    ctx.lineTo(canvasWidth, y);
+    ctx.lineTo(xFim, y);
     ctx.stroke();
 
     ctx.globalAlpha = 0.9;
