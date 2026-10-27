@@ -8,7 +8,7 @@ import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe}){
   const isMobile = useIsMobile();
   // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
   // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
@@ -17,6 +17,12 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // preta ao estreitar a janela — ver o comentário na criação.
   const [geracao, setGeracao] = useState(0);
   const containerRef = useRef(null);
+  // O estilo escolhido pra ferramenta, copiado pra dentro de cada desenho
+  // novo. Em ref porque os listeners de ponteiro são nativos e ficariam
+  // presos na primeira versão da função (ver o padrão dos outros refs).
+  const estiloDeRef = useRef(estiloDe);
+  estiloDeRef.current = estiloDe;
+  const estiloNovo = (ferramenta) => estiloDeRef.current?.(ferramenta);
   const chartRef     = useRef(null);
   const candleRef    = useRef(null);
   const volRef       = useRef(null);
@@ -106,7 +112,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     setValorTextoNovo("");
     if(valor){
       registrarHistorico?.();
-      const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:"texto", pontos:[{logical:pos.logical, preco:pos.preco}], texto:valor };
+      const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:"texto", pontos:[{logical:pos.logical, preco:pos.preco}], texto:valor, estilo:estiloNovo("texto") };
       setDesenhos?.(atual=>[...atual, novoDesenho]);
     }
   };
@@ -929,7 +935,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         const preco = series.coordinateToPrice(e.clientY-rect.top);
         if(logical == null || preco == null) return;
         const pontos = pontosDoDesenho(ferramentaAtivaRef.current, [ancora, {logical, preco}]);
-        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramentaAtivaRef.current, pontos };
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramentaAtivaRef.current, pontos, estilo:estiloNovo(ferramentaAtivaRef.current) };
         previewPontoRef.current = null;
         queueMicrotask(()=>{
           registrarHistorico?.();
@@ -976,7 +982,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           });
           return;
         }
-        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosDoDesenho(ferramenta, novo) };
+        const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosDoDesenho(ferramenta, novo), estilo:estiloNovo(ferramenta) };
         // setDesenhos/setFerramentaAtiva são do pai (ChartPane) — chamar
         // direto aqui (ainda dentro do listener de mouseup nativo) disparava
         // "Cannot update a component while rendering a different component"
@@ -1177,7 +1183,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           const paralela = pontoDaParalela(pontosPreview[0], pontosPreview[1], candles);
           if(paralela) pontosPreview = [...pontosPreview, paralela];
         }
-        const desenhoPreview = { tipo: ferramentaAtiva, pontos: pontosPreview };
+        const desenhoPreview = { tipo: ferramentaAtiva, pontos: pontosPreview, estilo: estiloNovo(ferramentaAtiva) };
         _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true, canvas.height);
       }
 

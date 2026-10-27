@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
 import LeftToolbar from "../components/chart/LeftToolbar.jsx";
 import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferramentasGrafico.js";
+import PainelPersonalizacao from "../components/chart/PainelPersonalizacao.jsx";
+import { usePreferenciasDesenho } from "../hooks/usePreferenciasDesenho.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
@@ -32,6 +34,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // gancho pra quando o aviso voltar em outro formato.
   // eslint-disable-next-line no-unused-vars
   const [planoDetec,setPlanoDetec] = useState(null);
+  // Cor/espessura/traço de cada ferramenta. Sem conta, valem neste
+  // navegador; com conta, acompanham a pessoa (ver usePreferenciasDesenho).
+  const { prefs, definirEstilo, estiloDe } = usePreferenciasDesenho();
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
   const [selPat,setSelPat]    = useState(null);
@@ -448,6 +453,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
+          {/* Só com ferramenta armada: fora disso é um painel ocupando
+              canto de gráfico sem ter o que configurar. */}
+          {ferramentaAtiva&&prefs[ferramentaAtiva]&&(
+            <PainelPersonalizacao
+              ferramenta={ferramentaAtiva}
+              estilo={prefs[ferramentaAtiva]}
+              aoMudar={mudanca=>definirEstilo(ferramentaAtiva, mudanca)}
+            />
+          )}
           {carregandoMais&&(
             <div className="chart-carregando-mais">Carregando histórico…</div>
           )}
@@ -468,6 +482,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               setDesenhos={setDesenhos}
               registrarHistorico={registrarHistorico}
               aoChegarNoComeco={carregarMaisCandles}
+              estiloDe={estiloDe}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip

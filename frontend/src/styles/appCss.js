@@ -316,6 +316,52 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* o mercado dentro do seletor de ativo, em vez de solto na barra */
 .atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* ── Painel de personalização do desenho ──────────────────────────
+   Flutua junto da barra de ferramentas, estreito de propósito: ele
+   divide a tela com o gráfico e não pode comer o espaço dos candles. */
+.pp{position:absolute;left:8px;top:8px;z-index:22;width:214px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:11px;color:var(--text2);overflow:hidden}
+.pp-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:7px 10px;border-bottom:1px solid var(--border);background:var(--s2)}
+.pp-topo strong{color:var(--text);font-size:11px;font-weight:600;letter-spacing:.01em}
+.pp-recolher{background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:2px 4px;line-height:1}
+.pp-corpo{padding:9px 10px;display:flex;flex-direction:column;gap:9px}
+.pp-linha{display:flex;align-items:center;gap:8px}
+.pp-linha-col{flex-direction:column;align-items:flex-start;gap:5px}
+.pp-rotulo{flex:0 0 58px;color:var(--text2)}
+.pp-cores{display:flex;flex-wrap:wrap;gap:4px}
+.pp-cor{width:16px;height:16px;border-radius:50%;border:1.5px solid transparent;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;position:relative}
+.pp-cor.ativa{border-color:var(--text);box-shadow:0 0 0 1.5px var(--card) inset}
+.pp-cor-custom{background:var(--s2);border:1.5px dashed var(--border);color:var(--text2);font-size:11px}
+.pp-cor-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:none}
+.pp-grupo{display:flex;gap:4px}
+.pp-esp{width:26px;height:20px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.pp-esp i{display:block;width:14px;background:var(--text2);border-radius:2px}
+.pp-esp.ativo{border-color:var(--blue)}
+.pp-esp.ativo i{background:var(--blue)}
+.pp-traco{height:20px;padding:0 7px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  color:var(--text2);cursor:pointer;font-size:10px;letter-spacing:-.04em}
+.pp-traco.ativo{border-color:var(--blue);color:var(--blue)}
+.pp-select{flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  color:var(--text);font-size:11px;padding:3px 5px;font-family:inherit}
+.pp-select-curto{flex:0 0 62px}
+.pp-bi{width:22px;height:22px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  color:var(--text2);cursor:pointer;font-size:11px;padding:0}
+.pp-bi.ativo{border-color:var(--blue);color:var(--blue)}
+.pp-niveis{display:flex;flex-wrap:wrap;gap:4px}
+.pp-nivel{padding:2px 6px;background:var(--s2);border:1px solid var(--border);border-radius:999px;
+  color:var(--text2);cursor:pointer;font-size:10px;font-variant-numeric:tabular-nums}
+.pp-nivel.ativo{border-color:var(--blue);color:var(--blue)}
+.pp-nivel.fixo{opacity:.55;cursor:default}
+/* No celular ele vai pro rodapé: à esquerda cobriria metade dos candles. */
+@media(max-width:767px){
+  .pp{left:8px;right:8px;top:auto;bottom:46px;width:auto}
+  .pp-corpo{flex-direction:row;flex-wrap:wrap;gap:8px 14px}
+  .pp-rotulo{flex:0 0 auto}
+}
 /* Botao de resetar a escala do grafico: so entra na tela depois que a
    pessoa arrasta o preco pra fora do enquadramento automatico. */
 .btn-reset-escala{position:absolute;bottom:52px;right:64px;width:30px;height:30px;
