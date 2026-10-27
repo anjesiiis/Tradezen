@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers } from "lightweight-charts";
 import { useIsMobile } from "../hooks/useIsMobile.js";
-import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
+import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
@@ -769,7 +769,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // único lugar com os candles na mão, e vale tanto pro desenho feito
     // em dois cliques quanto pro feito arrastando.
     const pontosDoDesenho = (ferramenta, pontos) => {
-      if(ferramenta !== "canal" || pontos.length < 2) return pontos;
+      // O canal agora pede os 3 pontos na mão (o 3º é a largura), então
+      // não há o que calcular. A conta automática ficou pro caminho do
+      // ARRASTE, que entrega só a base — ver onMouseUp.
+      if(ferramenta !== "canal" || pontos.length !== 2) return pontos;
       const paralela = pontoDaParalela(pontos[0], pontos[1], candlesRef.current);
       return paralela ? [...pontos, paralela] : pontos;   // sem candle entre eles: só a base
     };
@@ -829,6 +832,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
             if(logical==null) return d;
             const novosPontos = d.pontos.slice();
             novosPontos[pontoIndex] = {logical, preco};
+            // Mexer na base do canal GIRA o canal, não aperta: a paralela
+            // acompanha mantendo a largura (ver manterLarguraDoCanal).
+            if(d.tipo === "canal"){
+              return {...d, pontos: manterLarguraDoCanal(d.pontos, novosPontos, pontoIndex)};
+            }
             return {...d, pontos:novosPontos};
           }));
         });
@@ -960,6 +968,15 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         const logical = chart.timeScale().coordinateToLogical(e.clientX-rect.left);
         const preco = series.coordinateToPrice(e.clientY-rect.top);
         if(logical == null || preco == null) return;
+        // Canal: o arraste desenha a BASE e para por aí — falta a
+        // largura, que é o 3º clique. Sem isto o gesto do celular
+        // devolvia um canal de largura adivinhada, justamente o que o
+        // dono pediu pra sair.
+        if(ferramentaAtivaRef.current === "canal"){
+          previewPontoRef.current = null;
+          queueMicrotask(()=>setPontosProgresso([ancora, {logical, preco}]));
+          return;
+        }
         const pontos = pontosDoDesenho(ferramentaAtivaRef.current, [ancora, {logical, preco}]);
         const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramentaAtivaRef.current, pontos, estilo:estiloNovo(ferramentaAtivaRef.current) };
         previewPontoRef.current = null;
@@ -1205,10 +1222,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // com uma linha só não dá pra ver se a largura está boa. Recalcula
         // a cada movimento, que é o que faz o canal "respirar" junto com
         // o cursor.
-        if(ferramentaAtiva === "canal" && pontosPreview.length === 2){
-          const paralela = pontoDaParalela(pontosPreview[0], pontosPreview[1], candles);
-          if(paralela) pontosPreview = [...pontosPreview, paralela];
-        }
+        // No canal, o cursor VIRA o 3º ponto depois do 2º clique: a
+        // paralela e a mediana acompanham o movimento, que é o que deixa
+        // escolher a largura olhando. Com 2 pontos no preview (1 clicado
+        // + cursor) ainda é a linha base se formando.
+
         const desenhoPreview = { tipo: ferramentaAtiva, pontos: pontosPreview, estilo: estiloNovo(ferramentaAtiva) };
         _desenharDesenhoUsuario(ctx, toLogX, toY, desenhoPreview, false, canvas.width, true, canvas.height);
       }

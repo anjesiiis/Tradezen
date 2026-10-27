@@ -617,10 +617,21 @@ export const FERRAMENTA_INFO = {
   // gesto natural no celular, onde tocar duas vezes no lugar certo é
   // difícil. Os dois cliques continuam valendo pra quem prefere: o
   // mouseup decide qual foi pela distância percorrida.
+  // 3 cliques, como no TradingView: os dois primeiros são a linha base e
+  // o terceiro diz ONDE a paralela fica — acima ou abaixo, e a que
+  // distância. Era 2 cliques, com a largura saída do maior desvio dos
+  // candles; o dono preferiu escolher a largura na mão, que é o gesto que
+  // quem vem de outra plataforma já tem no dedo.
+  // `arrasta`: puxar de um ponto ao outro desenha a base sem soltar o
+  // dedo (gesto do celular) e deixa o 3º clique pra largura.
   canal: {
-    npontos: 2,
+    npontos: 3,
     arrasta: true,
-    hints: ["Canal Paralelo: arraste de um ponto ao outro (ou clique nos dois)", "Canal Paralelo: clique no 2º ponto da linha base"],
+    hints: [
+      "Canal: arraste de um ponto ao outro (ou clique nos dois)",
+      "Canal: clique no 2º ponto da linha base",
+      "Canal: mova pra cima ou pra baixo e clique pra fixar a largura",
+    ],
   },
   fibo: {
     npontos: 2,
@@ -839,6 +850,34 @@ function _desenharRetanguloDesenho(ctx, toX, toY, pontos, isSel){
   _desenharHandle(ctx,x2,y2,_cor());
 }
 
+/**
+ * Mantém a largura do canal quando a linha base é mexida.
+ *
+ * O 3º ponto é uma posição absoluta no gráfico, não uma distância. Sem
+ * isto, arrastar o ponto A inclinava a base por baixo da paralela e o
+ * canal apertava ou abria sozinho — no TradingView ele mantém a forma e
+ * só gira.
+ *
+ * A conta é em PREÇO, não em pixel: assim a largura sobrevive ao zoom.
+ * Devolve os pontos inalterados quando não há o que preservar.
+ */
+export function manterLarguraDoCanal(antes, depois, pontoIndex){
+  if(pontoIndex > 1) return depois;                 // mexeram na própria largura
+  if(!antes || antes.length < 3 || !depois || depois.length < 3) return depois;
+
+  const precoNaBase = (pontos, logical) => {
+    const [a, b] = pontos;
+    if(b.logical === a.logical) return a.preco;
+    return a.preco + (b.preco - a.preco) * (logical - a.logical) / (b.logical - a.logical);
+  };
+
+  const c = antes[2];
+  const larguraEmPreco = c.preco - precoNaBase(antes, c.logical);
+  const saida = depois.slice();
+  saida[2] = { logical: c.logical, preco: precoNaBase(depois, c.logical) + larguraEmPreco };
+  return saida;
+}
+
 function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   if(pontos.length<2) return;
   const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
@@ -885,12 +924,28 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
 
   ctx.strokeStyle = _cor();
   ctx.lineWidth = _lw(isSel);
+  ctx.setLineDash(_dash());
   ctx.beginPath(); ctx.moveTo(xL,yL); ctx.lineTo(xEnd,yBaseEnd); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(xL,yL+offset); ctx.lineTo(xEnd,yBaseEnd+offset); ctx.stroke();
+
+  // Mediana: o meio do canal, onde o preço costuma voltar quando o canal
+  // está valendo. Pontilhada, fina e apagada de propósito — é referência,
+  // não é uma das bordas.
+  ctx.strokeStyle = _corFill(0.55);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.moveTo(xL, yL+offset/2);
+  ctx.lineTo(xEnd, yBaseEnd+offset/2);
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 
   _desenharHandle(ctx,x1,y1,_cor());
   _desenharHandle(ctx,x2,y2,_cor());
+  // A 3ª âncora é a que ajusta a largura: fica na paralela, em cima do
+  // ponto onde ela foi fixada.
+  _desenharHandle(ctx,x3,y3,_cor());
 }
 
 /**

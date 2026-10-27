@@ -1,4 +1,4 @@
-import { FERRAMENTA_INFO, pontoDaParalela, _desenharDesenhoUsuario } from '../lib/grafico/desenhos.js';
+import { FERRAMENTA_INFO, manterLarguraDoCanal, pontoDaParalela, _desenharDesenhoUsuario } from '../lib/grafico/desenhos.js';
 import { toLWCandles } from '../lib/grafico/indicadores.js';
 import { CANDLES_FAKE } from './dadosFake.js';
 
@@ -97,9 +97,12 @@ describe('Canal paralelo', () => {
     expect(pontoDaParalela({ logical: 0, preco: 38 }, { logical: 10, preco: 38 }, comHighLow)).toBeNull();
   });
 
-  it('são 2 pontos: a linha base. O 3º ponto não é mais pedido', () => {
-    expect(FERRAMENTA_INFO.canal.npontos).toBe(2);
-    expect(FERRAMENTA_INFO.canal.hints).toHaveLength(2);
+  // Voltou a ser 3 por pedido do dono: os dois primeiros cliques são a
+  // base e o terceiro escolhe a largura, como no TradingView. Antes a
+  // largura saía do maior desvio dos candles.
+  it('são 3 cliques: a base e a largura', () => {
+    expect(FERRAMENTA_INFO.canal.npontos).toBe(3);
+    expect(FERRAMENTA_INFO.canal.hints).toHaveLength(3);
   });
 
   // `arrasta` é o que liga o desenho por segurar-e-puxar no CandleChart
@@ -152,11 +155,16 @@ describe('Canal paralelo', () => {
       pontos: [{ logical: 0, preco: 10 }, { logical: 4, preco: 14 }, { logical: 2, preco: 30 }],
     }, false, 800);
 
-    expect(ctx.linhas).toHaveLength(2);
-    const [base, paralela] = ctx.linhas;
-    // mesma inclinação nas duas: é o que faz delas paralelas
-    expect((base[3] - base[1]) / (base[2] - base[0]))
-      .toBeCloseTo((paralela[3] - paralela[1]) / (paralela[2] - paralela[0]), 10);
+    // base, paralela e a mediana pontilhada no meio
+    expect(ctx.linhas).toHaveLength(3);
+    const [base, paralela, mediana] = ctx.linhas;
+    // mesma inclinação nas três: é o que faz delas paralelas
+    const incl = ([x0, y0, x1, y1]) => (y1 - y0) / (x1 - x0);
+    expect(incl(base)).toBeCloseTo(incl(paralela), 10);
+    expect(incl(base)).toBeCloseTo(incl(mediana), 10);
+    // e a mediana fica exatamente no meio das duas
+    expect(mediana[1]).toBeCloseTo((base[1] + paralela[1]) / 2, 10);
+    expect(mediana[3]).toBeCloseTo((base[3] + paralela[3]) / 2, 10);
   });
 });
 
@@ -250,7 +258,7 @@ describe('Canal paralelo — comprimento', () => {
       tipo: 'canal', pontos: [...base, paralela],
     }, false, 900);
 
-    expect(ctx.linhas.length).toBe(2);          // a base e a paralela
+    expect(ctx.linhas.length).toBe(3);          // base, paralela e mediana
     ctx.linhas.forEach(([x0, , x1]) => {
       expect(x0).toBe(20);
       expect(x1).toBe(70);
@@ -287,5 +295,66 @@ describe('Canal paralelo — comprimento', () => {
     const [[, yBase0, , yBase1], [, yPar0, , yPar1]] = ctx.linhas;
     expect(yBase1 - yBase0).toBe(yPar1 - yPar0);
     expect(yPar0).not.toBe(yBase0);              // e é outra linha, não a mesma
+  });
+});
+
+describe('Canal — largura ao girar a base', () => {
+  // base reta no preço 100, paralela 20 acima
+  const canal = [
+    { logical: 0, preco: 100 },
+    { logical: 10, preco: 100 },
+    { logical: 5, preco: 120 },
+  ];
+  const larguraEm = (pontos, logical) => {
+    const [a, b, c] = pontos;
+    const naBase = a.preco + (b.preco - a.preco) * (logical - a.logical) / (b.logical - a.logical);
+    return c.preco - naBase;
+  };
+
+  // o bug que isto evita: o 3º ponto é posição absoluta, então inclinar a
+  // base por baixo dele apertava ou abria o canal sozinho
+  it('arrastar o ponto A gira o canal sem mudar a largura', () => {
+    const depois = canal.slice();
+    depois[0] = { logical: 0, preco: 60 };      // A desceu 40
+
+    const r = manterLarguraDoCanal(canal, depois, 0);
+
+    expect(larguraEm(r, r[2].logical)).toBeCloseTo(20, 10);
+    expect(r[0]).toEqual(depois[0]);            // A foi pra onde foi solto
+    expect(r[2].logical).toBe(canal[2].logical);
+  });
+
+  it('arrastar o ponto B também mantém a largura', () => {
+    const depois = canal.slice();
+    depois[1] = { logical: 10, preco: 180 };
+
+    const r = manterLarguraDoCanal(canal, depois, 1);
+
+    expect(larguraEm(r, r[2].logical)).toBeCloseTo(20, 10);
+  });
+
+  // mexer na própria largura é o ponto 2: aí o que a pessoa escolheu vale
+  it('arrastar o 3º ponto muda a largura, como deve', () => {
+    const depois = canal.slice();
+    depois[2] = { logical: 5, preco: 150 };
+
+    const r = manterLarguraDoCanal(canal, depois, 2);
+
+    expect(r).toEqual(depois);
+    expect(larguraEm(r, r[2].logical)).toBeCloseTo(50, 10);
+  });
+
+  it('canal antigo, só com a base, passa batido', () => {
+    const soBase = [canal[0], canal[1]];
+    expect(manterLarguraDoCanal(soBase, soBase, 0)).toEqual(soBase);
+  });
+
+  it('base vertical (os dois cliques no mesmo ponto) não quebra', () => {
+    const vertical = [{ logical: 3, preco: 100 }, { logical: 3, preco: 140 }, { logical: 3, preco: 160 }];
+    const depois = vertical.slice();
+    depois[0] = { logical: 3, preco: 90 };
+
+    const r = manterLarguraDoCanal(vertical, depois, 0);
+    expect(Number.isFinite(r[2].preco)).toBe(true);
   });
 });
