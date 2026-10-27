@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { AssetCard, SkeletonCard } from "../components/AssetCard.jsx";
@@ -13,6 +13,7 @@ import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../component
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
+import { carregarDaConta, faltandoNaConta, gravarLocal, juntar, lerLocal, salvarNaConta } from "../lib/graficosSalvos.js";
 
 // Seções carregadas sob demanda (code splitting): cada uma vira um chunk
 // próprio e só é baixada quando o usuário abre a tela. O gráfico de
@@ -111,16 +112,46 @@ function AppInner(){
   // quem tem conta (ver gate em ChartPane, no effect que salva a cada
   // mudança de tools/desenhos). Chave nova (tradezen-ativo-config) porque
   // o modelo mudou: antes só favoritava salvava, agora qualquer ativo salva.
-  const [ativoConfig,setAtivoConfig] = useState(()=>{
-    try{ return JSON.parse(localStorage.getItem("tradezen-ativo-config")||"{}"); }
-    catch{ return {}; }
-  });
+  const [ativoConfig,setAtivoConfig] = useState(lerLocal);
+
+  // Entrou na conta: busca o que ela tem guardado e junta com o que havia
+  // neste navegador. O que estava só aqui SOBE — é o caso de quem
+  // desenhou antes de se cadastrar e não pode perder o trabalho ao criar
+  // a conta. Ver lib/graficosSalvos.js.
+  useEffect(()=>{
+    if(!user?.id) return;
+    let vivo = true;
+    carregarDaConta(user.id).then(daConta=>{
+      if(!vivo || !daConta) return;
+      setAtivoConfig(local=>{
+        const juntos = juntar(daConta, local);
+        gravarLocal(juntos);
+        for(const ticker of faltandoNaConta(daConta, local)){
+          salvarNaConta(user.id, ticker, juntos[ticker]);
+        }
+        return juntos;
+      });
+    });
+    return ()=>{ vivo = false; };
+  },[user?.id]);
+
+  // Gravar a cada mudança encheria o banco de UPDATE: arrastar um ponto
+  // de desenho dispara uma mudança por quadro. O navegador recebe na
+  // hora (é ele que pinta a tela); a conta recebe quando a mão para.
+  const gravacaoPendente = useRef({});
+  useEffect(()=>()=>{ for(const t of Object.values(gravacaoPendente.current)) clearTimeout(t); },[]);
+
   const salvarConfigAtivo = (ticker, config) => {
     setAtivoConfig(prev=>{
       const next = {...prev, [ticker]: config};
-      localStorage.setItem("tradezen-ativo-config", JSON.stringify(next));
+      gravarLocal(next);
       return next;
     });
+    if(!user?.id) return;
+    clearTimeout(gravacaoPendente.current[ticker]);
+    gravacaoPendente.current[ticker] = setTimeout(()=>{
+      salvarNaConta(user.id, ticker, config);
+    }, 1200);
   };
 
   // Multitelas: até 4 telas no total (1 principal + até 3 extras). A
