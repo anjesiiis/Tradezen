@@ -888,21 +888,46 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   _desenharHandle(ctx,x2,y2,_cor());
 }
 
+/**
+ * A caixa escura atrás do texto, em pixels.
+ *
+ * Exportada porque quem DESENHA e quem testa o clique precisam concordar
+ * sobre onde ela está: a etiqueta inteira é arrastável, e não só o
+ * pontinho de 8px da âncora — pegar aquele ponto era quase impossível, e
+ * o texto parecia pregado no lugar.
+ *
+ * Mede com a fonte do próprio desenho: etiqueta em 32px tem caixa bem
+ * maior que uma em 12px.
+ */
+export function _caixaDoTexto(ctx, x, y, texto, estilo){
+  const e = normalizarEstilo("texto", estilo);
+  ctx.save();
+  ctx.font = fonteDoCanvas(e);
+  const largura = ctx.measureText(texto || "").width;
+  ctx.restore();
+  const padX = 7, padY = 5;
+  return { x: x-padX, y: y-e.tamanho/2-padY, w: largura+padX*2, h: e.tamanho+4+padY*2 };
+}
+
+/** O ponto está dentro da etiqueta? (com uma folga pro dedo no celular) */
+export function _dentroDaCaixa(caixa, mx, my, folga=0){
+  return mx >= caixa.x-folga && mx <= caixa.x+caixa.w+folga
+      && my >= caixa.y-folga && my <= caixa.y+caixa.h+folga;
+}
+
 function _desenharTexto(ctx, toX, toY, pontos, texto, isSel){
   if(pontos.length<1 || !texto) return;
   const x=toX(pontos[0].logical), y=toY(pontos[0].preco);
   if(x==null || y==null) return;
   ctx.save();
   // Fonte, tamanho, negrito e itálico saem do estilo do desenho; a caixa
-  // escura atrás se ajusta sozinha porque é medida DEPOIS de trocar a
-  // fonte (measureText abaixo).
+  // escura atrás se ajusta sozinha porque é medida com a MESMA conta do
+  // teste de clique (_caixaDoTexto), pra não haver etiqueta que se vê num
+  // lugar e se pega noutro.
   ctx.font = fonteDoCanvas(_estilo);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  const largura = ctx.measureText(texto).width;
-  const alturaTexto = _estilo?.tamanho ?? 14;
-  const padX = 7, padY = 5;
-  const bx = x-padX, by = y-alturaTexto/2-padY, bw = largura+padX*2, bh = alturaTexto+4+padY*2;
+  const { x:bx, y:by, w:bw, h:bh } = _caixaDoTexto(ctx, x, y, texto, _estilo);
   ctx.beginPath();
   if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
   ctx.fillStyle = "rgba(6,8,15,.78)";

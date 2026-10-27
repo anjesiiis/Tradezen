@@ -156,3 +156,44 @@ describe('Estilo aplicado no canvas', () => {
     expect(ctx.riscos.every(r => r.cor !== '#FF6B9D')).toBe(true);
   });
 });
+
+// ── a etiqueta de texto se pega pelo corpo ───────────────────────────
+import { _caixaDoTexto, _dentroDaCaixa } from '../lib/grafico/desenhos.js';
+
+describe('Caixa da etiqueta de texto', () => {
+  // ctx mínimo: measureText é o que importa aqui
+  const ctxMede = (larguraPorLetra = 8) => ({
+    save(){}, restore(){}, font: null,
+    measureText(t){ return { width: (t || '').length * larguraPorLetra }; },
+  });
+
+  it('a caixa envolve o texto, à direita e em volta da âncora', () => {
+    const c = _caixaDoTexto(ctxMede(), 100, 200, 'suporte', { tamanho: 14 });
+    expect(c.x).toBe(93);                 // 100 - padding
+    expect(c.w).toBe(7 * 8 + 14);         // 7 letras + padding dos dois lados
+    expect(c.y).toBe(200 - 7 - 5);        // meia altura + padding
+    expect(c.h).toBe(14 + 4 + 10);
+  });
+
+  // etiqueta em 32px tem caixa bem maior que uma em 12px
+  it('o tamanho da fonte muda a altura da caixa', () => {
+    const pequena = _caixaDoTexto(ctxMede(), 0, 0, 'oi', { tamanho: 12 });
+    const grande  = _caixaDoTexto(ctxMede(), 0, 0, 'oi', { tamanho: 32 });
+    expect(grande.h).toBeGreaterThan(pequena.h);
+  });
+
+  it('clique dentro da etiqueta conta; longe dela, não', () => {
+    const c = _caixaDoTexto(ctxMede(), 100, 200, 'suporte', { tamanho: 14 });
+    expect(_dentroDaCaixa(c, 120, 200)).toBe(true);   // em cima do texto
+    expect(_dentroDaCaixa(c, 100, 200)).toBe(true);   // na âncora
+    expect(_dentroDaCaixa(c, 400, 200)).toBe(false);  // depois do fim
+    expect(_dentroDaCaixa(c, 120, 400)).toBe(false);  // bem abaixo
+  });
+
+  it('a folga do dedo amplia a área de toque', () => {
+    const c = _caixaDoTexto(ctxMede(), 100, 200, 'oi', { tamanho: 14 });
+    const foraPorPouco = c.x + c.w + 3;
+    expect(_dentroDaCaixa(c, foraPorPouco, 200)).toBe(false);
+    expect(_dentroDaCaixa(c, foraPorPouco, 200, 6)).toBe(true);
+  });
+});

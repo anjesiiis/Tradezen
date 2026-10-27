@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers } from "lightweight-charts";
 import { useIsMobile } from "../hooks/useIsMobile.js";
-import { FERRAMENTA_INFO, _anchorFechar, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
+import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
@@ -692,6 +692,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
 
     const acharHandleProximo = (mx,my) => {
       for(const d of desenhosRef.current){
+        // A etiqueta de texto se pega pelo corpo, não pelo pontinho da
+        // âncora: ela fica À DIREITA do ponto, então mirar os 8px do
+        // handle era adivinhação — o texto parecia pregado no gráfico.
+        if(d.tipo==="texto"){
+          const ctx2d = canvasRef.current?.getContext("2d");
+          const pp = pontosPixel(d)[0];
+          if(ctx2d && pp){
+            const caixa = _caixaDoTexto(ctx2d, pp.x, pp.y, d.texto, d.estilo);
+            if(_dentroDaCaixa(caixa, mx, my, 2)) return {desenhoId:d.id, pontoIndex:0};
+          }
+          continue;
+        }
         for(const pp of pontosPixel(d)){
           if(pp.x==null){ // horizontal — a linha inteira é arrastável, não só um ponto
             if(Math.abs(my-pp.y) <= RAIO_HANDLE) return {desenhoId:d.id, pontoIndex:0};
@@ -796,12 +808,15 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
 
       if(arrastandoRef.current){
-        const { desenhoId, pontoIndex } = arrastandoRef.current;
+        const { desenhoId, pontoIndex, ox=0, oy=0 } = arrastandoRef.current;
         const series = candleRef.current, chart = chartRef.current;
         if(!series || !chart) return;
-        const preco = series.coordinateToPrice(my);
+        // Desconta onde a pessoa pegou: o desenho acompanha o cursor sem
+        // saltar pra ficar centrado nele.
+        const mxA = mx-ox, myA = my-oy;
+        const preco = series.coordinateToPrice(myA);
         if(preco==null) return;
-        const logicalArraste = d_tipo => d_tipo==="horizontal" ? null : chart.timeScale().coordinateToLogical(mx);
+        const logicalArraste = d_tipo => d_tipo==="horizontal" ? null : chart.timeScale().coordinateToLogical(mxA);
         // setDesenhos é do pai (ChartPane) — adiado por microtask pelo mesmo
         // motivo do handler de clique acima (evita "update durante o render
         // de outro componente", já que subscribeCrosshairMove do LWC também
@@ -881,7 +896,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       }
       const proximo = acharHandleProximo(mx,my);
       if(proximo){
-        arrastandoRef.current = {...proximo, x0:e.clientX, y0:e.clientY};
+        // Só no texto: onde a pessoa pegou, em relação à âncora. Sem isto a
+        // etiqueta pula pra alinhar a âncora embaixo do cursor, e quem
+        // pega o fim de um texto longo vê ele saltar pra esquerda. Numa
+        // alça de linha não se aplica — ali grudar no cursor é o certo, e
+        // o clique já tem que cair a 8px dela.
+        const alvoArraste = desenhosRef.current.find(x=>x.id===proximo.desenhoId);
+        const ancoraPx = alvoArraste?.tipo==="texto" ? pontosPixel(alvoArraste)[0] : null;
+        arrastandoRef.current = {
+          ...proximo, x0:e.clientX, y0:e.clientY,
+          ox: ancoraPx ? mx-ancoraPx.x : 0,
+          oy: ancoraPx ? my-ancoraPx.y : 0,
+        };
         // Mesma dupla trava de "toque não pode vazar pro navegador" do
         // effect que arma uma ferramenta nova (handleScroll/handleScale do
         // chart + touch-action do container) — sem o touch-action aqui, o
