@@ -1,4 +1,5 @@
 import { FIBO_NIVEIS } from "./padroes.js";
+import { FERRAMENTAS_PERSONALIZAVEIS, TRACOS, fonteDoCanvas, normalizarEstilo } from "./estiloDesenho.js";
 import { fmtP } from "../mercado.js";
 
 // Marcador de resultado do padrão — bolinha colorida com um ícone
@@ -465,15 +466,19 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
 
-  FIBO_NIVEIS.forEach(nivel => {
+  // Quais níveis aparecem é escolha de quem usa (ver estiloDesenho). Quem
+  // só quer 50% e 61,8% desliga o resto, e o desenho para de virar sete
+  // linhas em cima dos candles. 0% e 100% ficam sempre.
+  const niveis = _estilo?.niveis || FIBO_NIVEIS;
+  niveis.forEach(nivel => {
     const preco = a.preco + amplitude*nivel;
     const y = toY(preco);
     if(y == null) return;
 
     const destaque = nivel === 0 || nivel === 1 || nivel === 0.5;
     ctx.globalAlpha = destaque ? 0.85 : 0.55;
-    ctx.strokeStyle = FIBO_COR;
-    ctx.lineWidth = (destaque ? 1.3 : 1) * (isSel ? 2 : 1);
+    ctx.strokeStyle = _cor(FIBO_COR);
+    ctx.lineWidth = (_estilo?.espessura ?? 1) * (destaque ? 1.3 : 1) * (isSel ? 2 : 1);
     ctx.setLineDash(nivel === 0 || nivel === 1 ? [] : [5,4]);
     ctx.beginPath();
     ctx.moveTo(xIni, y);
@@ -481,14 +486,14 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
     ctx.stroke();
 
     ctx.globalAlpha = 0.9;
-    ctx.fillStyle = FIBO_COR;
+    ctx.fillStyle = _cor(FIBO_COR);
     ctx.fillText(`${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`, xIni + 6, y - 8);
   });
 
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
-  _desenharHandle(ctx, xA, toY(a.preco), FIBO_COR);
-  _desenharHandle(ctx, xB, toY(b.preco), FIBO_COR);
+  _desenharHandle(ctx, xA, toY(a.preco), _cor(FIBO_COR));
+  _desenharHandle(ctx, xB, toY(b.preco), _cor(FIBO_COR));
   ctx.restore();
 }
 
@@ -542,6 +547,39 @@ export function pontoDaParalela(a, b, candles){
 const DESENHO_COR  = "#2962ff";
 const FIBO_COR     = "#F5A623";
 const DESENHO_FILL = "rgba(41,98,255,0.1)";
+
+// ── Estilo do desenho que está sendo pintado agora ──────────────────
+//
+// Mora no módulo, e não num parâmetro, porque são doze funções de desenho
+// e passar um objeto de config por todas elas só pra ler a cor encheria
+// cada assinatura de ruído. `_desenharDesenhoUsuario` liga antes e desliga
+// depois — nenhuma delas é chamada de fora dele.
+let _estilo = null;
+
+/** A cor do desenho atual, ou o azul de sempre quando não há estilo. */
+function _cor(padrao = DESENHO_COR){ return _estilo?.cor || padrao; }
+
+/** A espessura escolhida; selecionado fica 1px mais grosso. */
+function _lw(isSel, padrao = 2){
+  const base = _estilo?.espessura ?? padrao;
+  return isSel ? base + 1 : base;
+}
+
+/** O traço escolhido (sólido/tracejado/pontilhado). */
+function _dash(padrao = []){
+  const t = _estilo?.traco;
+  return t && TRACOS[t] ? TRACOS[t] : padrao;
+}
+
+/** Mesma cor, com transparência — o preenchimento do retângulo. */
+function _corFill(alpha = 0.1, padrao = DESENHO_FILL){
+  const c = _estilo?.cor;
+  if(!c) return padrao;
+  const hex = c.replace("#","");
+  if(hex.length !== 6) return padrao;
+  const n = parseInt(hex, 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`;
+}
 
 // Metadados de cada ferramenta de desenho por clique (quantos pontos precisa
 // e o texto de dica mostrado enquanto o usuário ainda não terminou de
@@ -660,8 +698,9 @@ function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth, continua=fals
   if([x1,y1,x2,y2].some(v=>v==null)) return;
 
   ctx.save();
-  ctx.strokeStyle = DESENHO_COR;
-  ctx.lineWidth = isSel?3:2;
+  ctx.strokeStyle = _cor();
+  ctx.lineWidth = _lw(isSel);
+  ctx.setLineDash(_dash());
   ctx.beginPath();
   if(continua){
     const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
@@ -671,7 +710,7 @@ function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth, continua=fals
     ctx.moveTo(0, yIni);
     ctx.lineTo(canvasWidth, yFim);
     ctx.stroke();
-    ctx.lineWidth = isSel?3:2;
+    ctx.lineWidth = _lw(isSel);
     _setaNaPonta(ctx, 0, yIni, -canvasWidth, yIni-yFim);
     _setaNaPonta(ctx, canvasWidth, yFim, canvasWidth, yFim-yIni);
   } else {
@@ -680,8 +719,8 @@ function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth, continua=fals
     ctx.stroke();
   }
   ctx.restore();
-  _desenharHandle(ctx,x1,y1,DESENHO_COR);
-  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+  _desenharHandle(ctx,x1,y1,_cor());
+  _desenharHandle(ctx,x2,y2,_cor());
 }
 
 function _desenharHorizontal(ctx, toY, pontos, isSel, canvasWidth){
@@ -689,14 +728,15 @@ function _desenharHorizontal(ctx, toY, pontos, isSel, canvasWidth){
   const y = toY(pontos[0].preco);
   if(y==null) return;
   ctx.save();
-  ctx.strokeStyle = DESENHO_COR;
-  ctx.lineWidth = isSel?3:2;
+  ctx.strokeStyle = _cor();
+  ctx.lineWidth = _lw(isSel);
+  ctx.setLineDash(_dash());
   ctx.beginPath();
   ctx.moveTo(0,y);
   ctx.lineTo(canvasWidth,y);
   ctx.stroke();
   ctx.font = "bold 10px 'JetBrains Mono',monospace";
-  ctx.fillStyle = DESENHO_COR;
+  ctx.fillStyle = _cor();
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
   ctx.fillText(fmtP(pontos[0].preco), canvasWidth-6, y-4);
@@ -710,8 +750,8 @@ function _desenharVertical(ctx, toX, pontos, isSel, canvasHeight){
   const x = toX(pontos[0].logical);
   if(x==null) return;
   ctx.save();
-  ctx.strokeStyle = DESENHO_COR;
-  ctx.lineWidth = isSel?3:2;
+  ctx.strokeStyle = _cor();
+  ctx.lineWidth = _lw(isSel);
   ctx.beginPath();
   ctx.moveTo(x,0);
   ctx.lineTo(x,canvasHeight);
@@ -729,7 +769,7 @@ function _desenharTrianguloDesenho(ctx, toX, toY, pontos, isSel){
   for(const c of cantos.slice(1)) ctx.lineTo(c.x, c.y);
   if(cantos.length>2) ctx.closePath();
   if(cantos.length>2){ ctx.fillStyle = DESENHO_FILL; ctx.fill(); }
-  ctx.strokeStyle = DESENHO_COR;
+  ctx.strokeStyle = _cor();
   ctx.lineWidth = isSel?2.5:1.5;
   ctx.stroke();
   ctx.restore();
@@ -754,14 +794,14 @@ function _desenharFiboExtensao(ctx, toX, toY, pontos, isSel, canvasWidth){
     const preco = c.preco + altura*nivel;
     const y = toY(preco);
     if(y==null) continue;
-    ctx.strokeStyle = DESENHO_COR;
+    ctx.strokeStyle = _cor();
     ctx.globalAlpha = nivel===1 ? 0.9 : 0.55;
     ctx.beginPath();
     ctx.moveTo(xBase, y);
     ctx.lineTo(canvasWidth, y);
     ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = DESENHO_COR;
+    ctx.fillStyle = _cor();
     ctx.fillText(`${(nivel*100).toFixed(1)}%  ${fmtP(preco)}`, xBase+4, y-3);
   }
   // o movimento que gerou a projeção, tracejado
@@ -783,14 +823,15 @@ function _desenharRetanguloDesenho(ctx, toX, toY, pontos, isSel){
   if([x1,y1,x2,y2].some(v=>v==null)) return;
   const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
   ctx.save();
-  ctx.fillStyle = DESENHO_FILL;
+  ctx.fillStyle = _corFill();
   ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle = DESENHO_COR;
-  ctx.lineWidth = isSel?2.5:1.5;
+  ctx.strokeStyle = _cor();
+  ctx.lineWidth = _lw(isSel, 1.5);
+  ctx.setLineDash(_dash());
   ctx.strokeRect(x,y,w,h);
   ctx.restore();
-  _desenharHandle(ctx,x1,y1,DESENHO_COR);
-  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+  _desenharHandle(ctx,x1,y1,_cor());
+  _desenharHandle(ctx,x2,y2,_cor());
 }
 
 function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
@@ -807,12 +848,13 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   // havia candle nenhum entre os dois pontos pra tirar a largura.
   if(pontos.length<3){
     ctx.save();
-    ctx.strokeStyle = DESENHO_COR;
-    ctx.lineWidth = isSel?3:2;
+    ctx.strokeStyle = _cor();
+    ctx.lineWidth = _lw(isSel);
+    ctx.setLineDash(_dash());
     ctx.beginPath(); ctx.moveTo(xL,yL); ctx.lineTo(xEnd,yBaseEnd); ctx.stroke();
     ctx.restore();
-    _desenharHandle(ctx,x1,y1,DESENHO_COR);
-    _desenharHandle(ctx,x2,y2,DESENHO_COR);
+    _desenharHandle(ctx,x1,y1,_cor());
+    _desenharHandle(ctx,x2,y2,_cor());
     return;
   }
 
@@ -822,7 +864,7 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   const offset = y3 - yBaseAtX3;
 
   ctx.save();
-  ctx.fillStyle = DESENHO_FILL;
+  ctx.fillStyle = _corFill();
   ctx.beginPath();
   ctx.moveTo(xL,yL);
   ctx.lineTo(xEnd,yBaseEnd);
@@ -831,14 +873,14 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = DESENHO_COR;
-  ctx.lineWidth = isSel?3:2;
+  ctx.strokeStyle = _cor();
+  ctx.lineWidth = _lw(isSel);
   ctx.beginPath(); ctx.moveTo(xL,yL); ctx.lineTo(xEnd,yBaseEnd); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(xL,yL+offset); ctx.lineTo(xEnd,yBaseEnd+offset); ctx.stroke();
   ctx.restore();
 
-  _desenharHandle(ctx,x1,y1,DESENHO_COR);
-  _desenharHandle(ctx,x2,y2,DESENHO_COR);
+  _desenharHandle(ctx,x1,y1,_cor());
+  _desenharHandle(ctx,x2,y2,_cor());
 }
 
 function _desenharTexto(ctx, toX, toY, pontos, texto, isSel){
@@ -846,21 +888,25 @@ function _desenharTexto(ctx, toX, toY, pontos, texto, isSel){
   const x=toX(pontos[0].logical), y=toY(pontos[0].preco);
   if(x==null || y==null) return;
   ctx.save();
-  ctx.font = "600 13px 'DM Sans',sans-serif";
+  // Fonte, tamanho, negrito e itálico saem do estilo do desenho; a caixa
+  // escura atrás se ajusta sozinha porque é medida DEPOIS de trocar a
+  // fonte (measureText abaixo).
+  ctx.font = fonteDoCanvas(_estilo);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   const largura = ctx.measureText(texto).width;
+  const alturaTexto = _estilo?.tamanho ?? 14;
   const padX = 7, padY = 5;
-  const bx = x-padX, by = y-9-padY, bw = largura+padX*2, bh = 18+padY*2;
+  const bx = x-padX, by = y-alturaTexto/2-padY, bw = largura+padX*2, bh = alturaTexto+4+padY*2;
   ctx.beginPath();
   if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
   ctx.fillStyle = "rgba(6,8,15,.78)";
   ctx.fill();
-  if(isSel){ ctx.strokeStyle = DESENHO_COR; ctx.lineWidth = 1.5; ctx.stroke(); }
-  ctx.fillStyle = "#fff";
+  if(isSel){ ctx.strokeStyle = _cor(); ctx.lineWidth = 1.5; ctx.stroke(); }
+  ctx.fillStyle = _cor("#fff");
   ctx.fillText(texto, x, y);
   ctx.restore();
-  _desenharHandle(ctx,x,y,DESENHO_COR);
+  _desenharHandle(ctx,x,y,_cor());
 }
 
 // Régua/medição — estilo TradingView: mede a distância entre 2 pontos e
@@ -970,6 +1016,11 @@ export function _desenharBotaoFechar(ctx, x, y){
 // clique final (ver comentário no redraw() do CandleChart) — desenha
 // tracejado/translúcido pra distinguir do desenho já confirmado.
 export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth, preview=false, canvasHeight=0){
+  // O estilo do desenho vale só durante esta pintura. Desenho antigo, sem
+  // `estilo` nenhum, cai no padrão da ferramenta — é como ele já era.
+  _estilo = FERRAMENTAS_PERSONALIZAVEIS.includes(d.tipo)
+    ? normalizarEstilo(d.tipo, d.estilo)
+    : null;
   if(preview){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
   if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth, d.continua);
   else if(d.tipo==="vertical") _desenharVertical(ctx, toLogX, d.pontos, isSel, canvasHeight);
@@ -982,4 +1033,5 @@ export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasW
   else if(d.tipo==="texto")  _desenharTexto(ctx, toLogX, toPrecoY, d.pontos, d.texto, isSel);
   else if(d.tipo==="regua")  _desenharRegua(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   if(preview){ ctx.restore(); }
+  _estilo = null;
 }
