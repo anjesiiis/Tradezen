@@ -846,8 +846,13 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
   if([x1,y1,x2,y2].some(v=>v==null)) return;
   const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
   const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
-  const xEnd = canvasWidth;
-  const yBaseEnd = yR + m*(xEnd-xR);
+  // O canal termina no 2º clique. Antes seguia até a borda direita do
+  // canvas: quem marcava uma consolidação de duas semanas via as duas
+  // linhas e a faixa sombreada atravessarem todo o resto do gráfico,
+  // como se o canal valesse pra sempre. A inclinação `m` continua sendo
+  // usada pra achar a paralela no 3º ponto.
+  const xEnd = xR;
+  const yBaseEnd = yR;
 
   // Só a linha base: é o preview depois do 1º clique, e o caso em que não
   // havia candle nenhum entre os dois pontos pra tirar a largura.

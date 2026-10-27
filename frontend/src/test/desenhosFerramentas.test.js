@@ -236,3 +236,56 @@ describe('Fibonacci — comprimento das linhas', () => {
     });
   });
 });
+
+describe('Canal paralelo — comprimento', () => {
+  // toX: logical*10 → o trecho marcado vai de x=20 a x=70
+  const base = [{ logical: 2, preco: 100 }, { logical: 7, preco: 130 }];
+  const paralela = { logical: 4, preco: 90 };
+
+  // o bug: as duas linhas e a faixa sombreada seguiam até a borda direita
+  // do canvas, como se o canal valesse pro gráfico inteiro
+  it('as duas linhas param no 2º clique', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'canal', pontos: [...base, paralela],
+    }, false, 900);
+
+    expect(ctx.linhas.length).toBe(2);          // a base e a paralela
+    ctx.linhas.forEach(([x0, , x1]) => {
+      expect(x0).toBe(20);
+      expect(x1).toBe(70);
+    });
+  });
+
+  it('com só a linha base (preview), também para no 2º ponto', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, { tipo: 'canal', pontos: base }, false, 900);
+
+    expect(ctx.linhas[0][0]).toBe(20);
+    expect(ctx.linhas[0][2]).toBe(70);
+  });
+
+  it('marcar da direita pra esquerda dá o mesmo trecho', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'canal', pontos: [base[1], base[0], paralela],
+    }, false, 900);
+
+    ctx.linhas.forEach(([x0, , x1]) => {
+      expect(x0).toBe(20);
+      expect(x1).toBe(70);
+    });
+  });
+
+  // a paralela nasce da inclinação da base: ela não pode virar horizontal
+  it('a paralela mantém a inclinação da linha base', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'canal', pontos: [...base, paralela],
+    }, false, 900);
+
+    const [[, yBase0, , yBase1], [, yPar0, , yPar1]] = ctx.linhas;
+    expect(yBase1 - yBase0).toBe(yPar1 - yPar0);
+    expect(yPar0).not.toBe(yBase0);              // e é outra linha, não a mesma
+  });
+});
