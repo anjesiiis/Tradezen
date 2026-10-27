@@ -156,3 +156,50 @@ describe('Canal paralelo', () => {
       .toBeCloseTo((paralela[3] - paralela[1]) / (paralela[2] - paralela[0]), 10);
   });
 });
+
+describe('Linha de tendência — comprimento', () => {
+  const pontos = [{ logical: 1, preco: 100 }, { logical: 5, preco: 140 }];
+  // toX: logical*10  → x1=10, x2=50
+  // toY: 500-preco   → y1=400, y2=360
+
+  // o bug: a linha ia sempre até a borda direita do canvas, então marcar um
+  // fundo e um topo desenhava uma reta que fugia do trecho marcado
+  it('sem modo contínuo, vai exatamente de um clique ao outro', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, { tipo: 'trend', pontos }, false, 800);
+
+    expect(ctx.linhas[0]).toEqual([10, 400, 50, 360]);
+  });
+
+  it('desenho antigo, salvo sem o campo, cai no modo limitado', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, { tipo: 'trend', pontos }, false, 800);
+    const semCampo = ctx.linhas[0];
+
+    const ctx2 = ctxFalso();
+    _desenharDesenhoUsuario(ctx2, toX, toY, { tipo: 'trend', pontos, continua: false }, false, 800);
+
+    expect(semCampo).toEqual(ctx2.linhas[0]);
+  });
+
+  it('com modo contínuo, atravessa o gráfico de borda a borda', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, { tipo: 'trend', pontos, continua: true }, false, 800);
+
+    // inclinação -1 por pixel de x: de (10,400) a (50,360)
+    const [x0, y0, x1, y1] = ctx.linhas[0];
+    expect(x0).toBe(0);
+    expect(x1).toBe(800);
+    expect(y0).toBe(410);    // 400 + (-1)*(0-10)
+    expect(y1).toBe(-390);   // 360 + (-1)*(800-50)
+  });
+
+  it('marcar da direita pra esquerda dá a mesma reta', () => {
+    const ctx = ctxFalso();
+    _desenharDesenhoUsuario(ctx, toX, toY, {
+      tipo: 'trend', pontos: [pontos[1], pontos[0]], continua: true,
+    }, false, 800);
+
+    expect(ctx.linhas[0]).toEqual([0, 410, 800, -390]);
+  });
+});

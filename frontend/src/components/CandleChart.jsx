@@ -80,6 +80,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   useEffect(()=>{ reguaFinalizadaRef.current = reguaFinalizada; },[reguaFinalizada]);
   const arrastandoRef = useRef(null); // {desenhoId, pontoIndex} | null
   const cliqueInicioRef = useRef(null); // {x,y} em coords de tela — onde o mousedown começou, pra distinguir clique de arraste
+  // Último toque num ponto de desenho: {desenhoId, pontoIndex, t}. É com
+  // ele que o celular reconhece o DUPLO toque — o navegador não emite
+  // "dblclick" de forma confiável em cima do gráfico (medido: zero em
+  // toque), porque o Lightweight Charts fica com o gesto antes disso.
+  const ultimoToqueRef = useRef(null);
   const previewPontoRef = useRef(null); // {logical,preco} do mouse, só enquanto uma ferramenta de 2+ pontos está no meio da colocação
   // Âncora do desenho feito ARRASTANDO (segurar e puxar, sem soltar) —
   // {logical,preco,x,y} do ponto onde o dedo/botão desceu. É o gesto que
@@ -870,7 +875,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       }
       const proximo = acharHandleProximo(mx,my);
       if(proximo){
-        arrastandoRef.current = proximo;
+        arrastandoRef.current = {...proximo, x0:e.clientX, y0:e.clientY};
         // Mesma dupla trava de "toque não pode vazar pro navegador" do
         // effect que arma uma ferramenta nova (handleScroll/handleScale do
         // chart + touch-action do container) — sem o touch-action aqui, o
@@ -884,9 +889,25 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
 
     const onMouseUp = (e) => {
       if(arrastandoRef.current){
+        const arr = arrastandoRef.current;
         arrastandoRef.current = null;
         chartRef.current?.applyOptions({ handleScroll:true, handleScale:true });
         container.style.touchAction = "auto";
+        // Encostou e soltou no mesmo lugar: foi toque, não arraste. Dois
+        // desses seguidos no 2º ponto de uma linha de tendência fazem o
+        // mesmo que o duplo clique do mouse (ver onDoubleClick).
+        // Só no toque: no mouse quem cuida disso é o "dblclick" do
+        // navegador (onDoubleClick). Deixar os dois caminhos ligados
+        // alternava duas vezes no mesmo duplo clique, e a linha voltava
+        // sozinha pro segmento.
+        if(e.pointerType === "touch" && Math.hypot(e.clientX-arr.x0, e.clientY-arr.y0) <= 10){
+          const ant = ultimoToqueRef.current;
+          const agora = Date.now();
+          const repetiu = ant && ant.desenhoId===arr.desenhoId
+            && ant.pontoIndex===arr.pontoIndex && agora-ant.t < 400;
+          ultimoToqueRef.current = repetiu ? null : {...arr, t:agora};
+          if(repetiu) alternarContinua(arr.desenhoId, arr.pontoIndex);
+        }
         return;
       }
       const inicio = cliqueInicioRef.current;
@@ -988,13 +1009,42 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // elemento também está de olho no toque, ex: o próprio Lightweight
     // Charts cuidando de pan/zoom) — era por isso que colocar ponto de
     // desenho não funcionava de verdade no celular.
+    // Alterna a linha de tendência entre o segmento (o padrão — vai de um
+    // clique ao outro e para) e a reta projetada pros dois lados. Só no
+    // 2º ponto: é o "ponto final" que a pessoa quer prolongar.
+    const alternarContinua = (desenhoId, pontoIndex) => {
+      if(pontoIndex !== 1) return false;
+      const alvoD = desenhosRef.current.find(x=>x.id===desenhoId);
+      if(!alvoD || alvoD.tipo !== "trend") return false;
+      queueMicrotask(()=>{
+        registrarHistorico?.();
+        setDesenhos?.(atual=>atual.map(x=>
+          x.id===desenhoId ? {...x, continua: !x.continua} : x
+        ));
+      });
+      return true;
+    };
+
+    // Duplo clique do mouse. Funciona tanto na hora de desenhar (o 1º
+    // clique do duplo já fecha a linha, o 2º cai aqui) quanto numa linha
+    // desenhada ontem, que é o caso de quem só depois decidiu prolongar a
+    // tendência.
+    const onDoubleClick = (e) => {
+      const rect = container.getBoundingClientRect();
+      const alvo = acharHandleProximo(e.clientX-rect.left, e.clientY-rect.top);
+      if(!alvo) return;
+      if(alternarContinua(alvo.desenhoId, alvo.pontoIndex)) e.preventDefault();
+    };
+
     container.addEventListener("pointermove", onMouseMove);
     container.addEventListener("pointerdown", onMouseDown);
     window.addEventListener("pointerup", onMouseUp);
+    container.addEventListener("dblclick", onDoubleClick);
     container.addEventListener("contextmenu", onContextMenu);
     return () => {
       container.removeEventListener("pointermove", onMouseMove);
       container.removeEventListener("pointerdown", onMouseDown);
+      container.removeEventListener("dblclick", onDoubleClick);
       window.removeEventListener("pointerup", onMouseUp);
       container.removeEventListener("contextmenu", onContextMenu);
     };

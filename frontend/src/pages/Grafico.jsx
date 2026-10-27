@@ -26,6 +26,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [niveis,setNiveis]    = useState([]);
   // plano que o backend informou na resposta das detecções ("free" quando
   // veio vazio por causa do gate). null = ainda não respondeu.
+  // O selo "Premium" que ficava sobre o gráfico saiu da tela por pedido do
+  // dono. A leitura do plano CONTINUA: é ela que diz se a lista de padrões
+  // veio vazia por falta de plano ou por não haver padrão marcado, e é o
+  // gancho pra quando o aviso voltar em outro formato.
+  // eslint-disable-next-line no-unused-vars
   const [planoDetec,setPlanoDetec] = useState(null);
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
@@ -445,15 +450,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           {loading&&<SkeletonGraficoArea/>}
           {carregandoMais&&(
             <div className="chart-carregando-mais">Carregando histórico…</div>
-          )}
-          {/* Só aparece quando o backend confirmou que o vazio é por causa
-              do plano — assim ninguém vê "premium" num ativo que de fato
-              não tem padrão marcado nenhum. */}
-          {planoDetec==="free"&&!loading&&(
-            <div className="chart-premium-aviso">
-              <span aria-hidden="true">🔒</span>
-              <span><strong>Premium</strong> — padrões marcados por analista</span>
-            </div>
           )}
           {!loading&&candles.length>0&&(
             <CandleChart

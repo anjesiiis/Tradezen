@@ -626,23 +626,59 @@ export function _distPontoSegmento(px, py, x1, y1, x2, y2){
   return Math.hypot(px-projX, py-projY);
 }
 
-function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth){
+// Pontinhas de seta das duas extremidades da linha contínua. É o que
+// diferencia, de relance, a reta projetada do segmento entre dois cliques
+// — sem elas as duas linhas ficam iguais e ninguém lembra qual é qual.
+function _setaNaPonta(ctx, x, y, dx, dy){
+  const n = Math.hypot(dx,dy);
+  if(!n) return;
+  const ux = dx/n, uy = dy/n, tam = 9, abre = 0.42;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - tam*(ux*Math.cos(abre) - uy*Math.sin(abre)), y - tam*(ux*Math.sin(abre) + uy*Math.cos(abre)));
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - tam*(ux*Math.cos(-abre) - uy*Math.sin(-abre)), y - tam*(ux*Math.sin(-abre) + uy*Math.cos(-abre)));
+  ctx.stroke();
+}
+
+/**
+ * Linha de tendência.
+ *
+ * Por padrão vai EXATAMENTE de um clique ao outro: quem marcou um fundo e
+ * um topo quer a reta entre os dois, não uma projeção que sobe até sumir
+ * pela borda. Antes ela se estendia sempre até a direita do canvas, e era
+ * isso que fazia a linha "fugir" do trecho marcado.
+ *
+ * `continua` (duplo clique no 2º ponto) devolve a projeção, agora pros
+ * DOIS lados — é a reta de tendência que o trader quer prolongar. Desenho
+ * antigo salvo sem o campo cai no padrão limitado.
+ */
+function _desenharTrend(ctx, toX, toY, pontos, isSel, canvasWidth, continua=false){
   if(pontos.length<2) return;
   const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
   const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
   if([x1,y1,x2,y2].some(v=>v==null)) return;
-  const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
-  const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
-  const xEnd = canvasWidth;
-  const yEnd = yR + m*(xEnd-xR);
 
   ctx.save();
   ctx.strokeStyle = DESENHO_COR;
   ctx.lineWidth = isSel?3:2;
   ctx.beginPath();
-  ctx.moveTo(xL,yL);
-  ctx.lineTo(xEnd,yEnd);
-  ctx.stroke();
+  if(continua){
+    const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
+    const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
+    const yIni = yL + m*(0-xL);
+    const yFim = yR + m*(canvasWidth-xR);
+    ctx.moveTo(0, yIni);
+    ctx.lineTo(canvasWidth, yFim);
+    ctx.stroke();
+    ctx.lineWidth = isSel?3:2;
+    _setaNaPonta(ctx, 0, yIni, -canvasWidth, yIni-yFim);
+    _setaNaPonta(ctx, canvasWidth, yFim, canvasWidth, yFim-yIni);
+  } else {
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+  }
   ctx.restore();
   _desenharHandle(ctx,x1,y1,DESENHO_COR);
   _desenharHandle(ctx,x2,y2,DESENHO_COR);
@@ -935,7 +971,7 @@ export function _desenharBotaoFechar(ctx, x, y){
 // tracejado/translúcido pra distinguir do desenho já confirmado.
 export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasWidth, preview=false, canvasHeight=0){
   if(preview){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
-  if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth, d.continua);
   else if(d.tipo==="vertical") _desenharVertical(ctx, toLogX, d.pontos, isSel, canvasHeight);
   else if(d.tipo==="triangulo_desenho") _desenharTrianguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
   else if(d.tipo==="fibo_extensao") _desenharFiboExtensao(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);

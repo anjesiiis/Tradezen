@@ -302,11 +302,6 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* Aviso de conteúdo premium: fica no canto, não cobre o gráfico. O free
    continua com candles, indicadores e desenhos — só as lâmpadas dos
    padrões marcados é que não vêm. */
-.chart-premium-aviso{position:absolute;top:8px;right:8px;z-index:20;display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:11px;color:var(--text2)}
-.chart-premium-aviso strong{color:var(--text);font-weight:600}
-.chart-premium-aviso a{color:var(--blue);text-decoration:none;font-weight:600}
-.chart-premium-aviso a:hover{text-decoration:underline}
-@media (max-width:767px){.chart-premium-aviso{font-size:10px;padding:4px 10px;gap:4px}}
 .chart-toolbar{width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
 .chart-toolbar::-webkit-scrollbar{display:none}
 .chart-toolbar-grupo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
