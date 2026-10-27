@@ -1,33 +1,29 @@
 import { clearAdminToken } from "./adminApi";
 
 /**
- * TRADEZEN — EXPIRAÇÃO DO ADMIN POR INATIVIDADE
- * ==============================================
+ * TRADEZEN — LOGOUT AUTOMÁTICO DO ADMIN POR INATIVIDADE
+ * =====================================================
  *
- * O painel sai do ar sozinho depois de 12 horas sem uso, e voltar exige
- * um link de acesso novo por email.
+ * Enquanto a aba do painel está ABERTA, 12 horas sem ninguém tocar nela
+ * encerram a sessão sozinhas. É a proteção do notebook esquecido aberto.
  *
- * Por que isso é preciso: a sessão do Supabase se renova sozinha pelo
- * refresh token, então quem entrou uma vez ficava dentro do admin
- * praticamente para sempre — inclusive num computador emprestado, num
- * navegador esquecido aberto, ou num celular perdido.
+ * O que isto NÃO faz: barrar quem está voltando. Pedir um link de acesso
+ * novo por email dá entrada imediata, sempre — o próprio link é a camada
+ * de segurança da entrada, e somar um bloqueio em cima dele só castigava
+ * quem passou um dia fora.
  *
- * É inatividade, não tempo de sessão: usar o painel adia o prazo. Quem
- * passa a tarde marcando padrões não é interrompido no meio.
+ * A versão anterior guardava a hora do último uso no localStorage e
+ * conferia essa marca na ENTRADA do painel. O estrago era concreto: quem
+ * clicava num link novo depois de um dia parado era expulso no primeiro
+ * instante, e o link — que é de uso único — ia junto. Na segunda tentativa
+ * entrava, mas aí já tinha queimado um email do limite do Supabase.
+ * Por isso o relógio agora vive na memória da aba: fechou a aba, acabou.
  */
 
-const CHAVE_ATIVIDADE = "admin_ultima_atividade";
 const CHAVE_EXPIROU = "admin_expirou_por_inatividade";
 
 export const JANELA_MS = 12 * 60 * 60 * 1000;   // 12 horas
 
-// Gravar a cada clique encheria o localStorage de escrita à toa. Um
-// minuto de resolução é mais que suficiente para uma janela de 12 horas.
-const INTERVALO_DE_GRAVACAO_MS = 60 * 1000;
-
-function ler(chave) {
-  try { return localStorage.getItem(chave); } catch { return null; }
-}
 function gravar(chave, valor) {
   try { localStorage.setItem(chave, valor); } catch { /* storage bloqueado */ }
 }
@@ -35,31 +31,26 @@ function apagar(chave) {
   try { localStorage.removeItem(chave); } catch { /* idem */ }
 }
 
-/** Marca que o admin está sendo usado agora. */
-export function marcarAtividade(agora = Date.now()) {
-  const anterior = Number(ler(CHAVE_ATIVIDADE)) || 0;
-  if (agora - anterior < INTERVALO_DE_GRAVACAO_MS) return;
-  gravar(CHAVE_ATIVIDADE, String(agora));
-}
-
 /**
- * Passou das 12 horas sem uso?
+ * O relógio de inatividade de UMA aba aberta.
  *
- * Sem marca nenhuma, NÃO expira: é a primeira vez nesta máquina (ou o
- * storage está bloqueado), e expulsar quem acabou de entrar seria pior
- * que o problema que isto resolve.
+ * `tocar()` adia o prazo (foi usado agora). `pausar()` segura o relógio
+ * enquanto a aba está em segundo plano: quem deixou o painel numa aba
+ * atrás das outras não está com ele exposto na tela, que é o risco que
+ * isto protege. `parar()` encerra de vez, no cleanup do componente.
  */
-export function sessaoExpirou(agora = Date.now()) {
-  const marca = Number(ler(CHAVE_ATIVIDADE));
-  if (!marca) return false;
-  return agora - marca > JANELA_MS;
-}
-
-/** Quanto falta, em ms, para expirar. Null quando não há marca. */
-export function tempoRestante(agora = Date.now()) {
-  const marca = Number(ler(CHAVE_ATIVIDADE));
-  if (!marca) return null;
-  return Math.max(0, marca + JANELA_MS - agora);
+export function criarVigiaDeInatividade({ janelaMs = JANELA_MS, aoExpirar } = {}) {
+  let id = null;
+  const limpar = () => { if (id !== null) { clearTimeout(id); id = null; } };
+  return {
+    tocar() {
+      limpar();
+      id = setTimeout(() => { id = null; aoExpirar?.(); }, janelaMs);
+    },
+    pausar: limpar,
+    parar: limpar,
+    get ativo() { return id !== null; },
+  };
 }
 
 /**
@@ -68,11 +59,10 @@ export function tempoRestante(agora = Date.now()) {
  * Não basta apagar o token guardado: a sessão do Supabase continuaria
  * viva e o próprio app pegaria um token novo dela no próximo acesso
  * (ver sincronizarTokenAdmin). Por isso o signOut — é ele que invalida o
- * refresh token e obriga um link de acesso novo.
+ * refresh token.
  */
 export async function encerrarPorInatividade() {
   clearAdminToken();
-  apagar(CHAVE_ATIVIDADE);
   gravar(CHAVE_EXPIROU, "1");
   try {
     const { supabase } = await import("../lib/supabaseClient.js");
@@ -82,7 +72,7 @@ export async function encerrarPorInatividade() {
 
 /** A tela de login lê isto uma vez, pra explicar por que caiu aqui. */
 export function consumirAvisoDeExpiracao() {
-  const expirou = ler(CHAVE_EXPIROU) === "1";
-  if (expirou) apagar(CHAVE_EXPIROU);
-  return expirou;
+  const lido = (() => { try { return localStorage.getItem(CHAVE_EXPIROU); } catch { return null; } })();
+  if (lido === "1") apagar(CHAVE_EXPIROU);
+  return lido === "1";
 }

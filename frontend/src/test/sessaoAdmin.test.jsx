@@ -1,56 +1,73 @@
 import { screen, waitFor } from '@testing-library/react';
 import { renderApp } from './helpers.jsx';
 import {
-  JANELA_MS, consumirAvisoDeExpiracao, marcarAtividade, sessaoExpirou, tempoRestante,
+  JANELA_MS, consumirAvisoDeExpiracao, criarVigiaDeInatividade,
 } from '../admin/sessaoAdmin.js';
 
 const HORA = 60 * 60 * 1000;
 
-describe('Sessão do admin — expiração por inatividade', () => {
-  beforeEach(() => localStorage.clear());
+describe('Sessão do admin — logout automático por inatividade', () => {
+  beforeEach(() => { localStorage.clear(); vi.useFakeTimers(); });
+  afterEach(() => vi.useRealTimers());
 
   it('a janela é de 12 horas', () => {
     expect(JANELA_MS).toBe(12 * HORA);
   });
 
-  // sem marca é primeiro acesso (ou storage bloqueado): expulsar quem
-  // acabou de entrar seria pior que o problema
-  it('sem marca de atividade, não expira', () => {
-    expect(sessaoExpirou()).toBe(false);
-    expect(tempoRestante()).toBeNull();
-  });
+  it('12h parado dispara o logout', () => {
+    const aoExpirar = vi.fn();
+    const vigia = criarVigiaDeInatividade({ aoExpirar });
+    vigia.tocar();
 
-  it('11h59 sem uso ainda vale; 12h01 não', () => {
-    const agora = Date.now();
-    marcarAtividade(agora);
+    vi.advanceTimersByTime(12 * HORA - 1000);
+    expect(aoExpirar).not.toHaveBeenCalled();
 
-    expect(sessaoExpirou(agora + 11 * HORA)).toBe(false);
-    expect(sessaoExpirou(agora + 12 * HORA - 60_000)).toBe(false);
-    expect(sessaoExpirou(agora + 12 * HORA + 60_000)).toBe(true);
+    vi.advanceTimersByTime(2000);
+    expect(aoExpirar).toHaveBeenCalledTimes(1);
   });
 
   // é inatividade, não tempo de sessão: usar o painel adia o prazo
   it('usar o painel adia o prazo', () => {
-    const agora = Date.now();
-    marcarAtividade(agora);
-    expect(sessaoExpirou(agora + 11 * HORA)).toBe(false);
+    const aoExpirar = vi.fn();
+    const vigia = criarVigiaDeInatividade({ aoExpirar });
+    vigia.tocar();
 
-    marcarAtividade(agora + 11 * HORA);   // mexeu no painel
+    vi.advanceTimersByTime(11 * HORA);
+    vigia.tocar();                        // mexeu no painel
 
-    expect(sessaoExpirou(agora + 13 * HORA)).toBe(false);   // 2h desde o último uso
-    expect(sessaoExpirou(agora + 24 * HORA)).toBe(true);    // 13h desde o último uso
+    vi.advanceTimersByTime(11 * HORA);    // 22h desde a entrada, 11h paradas
+    expect(aoExpirar).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(2 * HORA);
+    expect(aoExpirar).toHaveBeenCalledTimes(1);
   });
 
-  it('não grava a cada clique — um minuto de resolução basta', () => {
-    const agora = Date.now();
-    marcarAtividade(agora);
-    const marca = localStorage.getItem('admin_ultima_atividade');
+  // aba em segundo plano não está exposta na tela de ninguém
+  it('pausar segura o relógio enquanto a aba está atrás', () => {
+    const aoExpirar = vi.fn();
+    const vigia = criarVigiaDeInatividade({ aoExpirar });
+    vigia.tocar();
 
-    marcarAtividade(agora + 5_000);   // clique logo em seguida
-    expect(localStorage.getItem('admin_ultima_atividade')).toBe(marca);
+    vi.advanceTimersByTime(1 * HORA);
+    vigia.pausar();
+    vi.advanceTimersByTime(30 * HORA);
+    expect(aoExpirar).not.toHaveBeenCalled();
 
-    marcarAtividade(agora + 61_000);
-    expect(localStorage.getItem('admin_ultima_atividade')).not.toBe(marca);
+    vigia.tocar();                        // aba voltou
+    vi.advanceTimersByTime(11 * HORA);
+    expect(aoExpirar).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2 * HORA);
+    expect(aoExpirar).toHaveBeenCalledTimes(1);
+  });
+
+  it('parar desarma de vez', () => {
+    const aoExpirar = vi.fn();
+    const vigia = criarVigiaDeInatividade({ aoExpirar });
+    vigia.tocar();
+    vigia.parar();
+
+    vi.advanceTimersByTime(48 * HORA);
+    expect(aoExpirar).not.toHaveBeenCalled();
   });
 
   it('o aviso de expiração é lido uma vez só', () => {
@@ -64,25 +81,25 @@ describe('Sessão do admin — expiração por inatividade', () => {
 describe('Admin — o portão', () => {
   beforeEach(() => localStorage.clear());
 
-  it('com sessão recente, abre o painel', async () => {
+  it('com token, abre o painel', async () => {
     localStorage.setItem('admin_token', 'token-de-teste');
-    marcarAtividade(Date.now());
 
     renderApp('/admin/templates/bandeira-alta');
 
     expect(await screen.findByText('Nova marcação', undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it('depois de 12h paradas, o painel não abre', async () => {
+  // o bug que esta mudança conserta: antes, uma marca velha no
+  // localStorage expulsava quem acabava de entrar com um link novo — e o
+  // link, que é de uso único, ia junto
+  it('quem volta depois de dias fora entra na hora', async () => {
     localStorage.setItem('admin_token', 'token-de-teste');
-    marcarAtividade(Date.now() - 13 * HORA);
+    localStorage.setItem('admin_ultima_atividade', String(Date.now() - 72 * HORA));
 
     renderApp('/admin/templates/bandeira-alta');
 
-    // some o token e marca o aviso — o redirecionamento em si é do
-    // navegador (window.location.replace), que o jsdom não executa
-    await waitFor(() => expect(localStorage.getItem('admin_token')).toBeNull());
-    expect(localStorage.getItem('admin_expirou_por_inatividade')).toBe('1');
-    expect(screen.queryByText('Nova marcação')).not.toBeInTheDocument();
+    expect(await screen.findByText('Nova marcação', undefined, { timeout: 5000 })).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem('admin_token')).toBe('token-de-teste'));
+    expect(localStorage.getItem('admin_expirou_por_inatividade')).toBeNull();
   });
 });

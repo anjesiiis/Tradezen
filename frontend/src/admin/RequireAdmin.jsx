@@ -1,23 +1,19 @@
 import { useEffect, useState } from "react";
 import { SkeletonPagina } from "../components/Skeleton.jsx";
 import { getAdminToken, sincronizarTokenAdmin } from "./adminApi";
-import { encerrarPorInatividade, marcarAtividade, sessaoExpirou } from "./sessaoAdmin.js";
-
-// De quanto em quanto tempo olhar o relógio com a aba aberta. Um minuto
-// é fino o bastante pra uma janela de 12 horas e não pesa nada.
-const INTERVALO_DE_CHECAGEM_MS = 60 * 1000;
+import { criarVigiaDeInatividade, encerrarPorInatividade } from "./sessaoAdmin.js";
 
 // Com token guardado, entra direto. Sem token, ainda pode haver sessão do
 // Supabase viva (o token do magic link expira em 1 hora, a sessão não):
 // vale checar antes de jogar o admin na tela de pedir email.
 //
-// Por cima disso vem a expiração por inatividade: 12 horas sem mexer no
-// painel e a sessão é encerrada de verdade (ver sessaoAdmin.js).
+// Quem chega aqui ENTRA. Não há conferência de "quanto tempo você ficou
+// fora": o link de acesso do email já é a segurança da porta, e somar um
+// bloqueio em cima dele expulsava quem acabou de clicar num link novo,
+// queimando o link (é de uso único) no caminho. O prazo de 12 horas vale
+// só pra aba que fica aberta e parada — ver sessaoAdmin.js.
 export default function RequireAdmin({ children }) {
-  const [estado, setEstado] = useState(() => {
-    if (sessaoExpirou()) return "expirado";
-    return getAdminToken() ? "ok" : "checando";
-  });
+  const [estado, setEstado] = useState(() => (getAdminToken() ? "ok" : "checando"));
 
   useEffect(() => {
     if (estado !== "expirado") return;
@@ -35,34 +31,32 @@ export default function RequireAdmin({ children }) {
     return () => { vivo = false; };
   }, [estado]);
 
-  // Dentro do painel: cada uso adia o prazo, e o relógio é conferido tanto
-  // de minuto em minuto quanto na volta pra aba — quem deixou o navegador
-  // aberto e voltou no dia seguinte cai na checagem assim que olha a tela,
-  // sem esperar o próximo tique.
+  // Painel aberto: o relógio corre, e qualquer uso o zera. Clique, tecla e
+  // toque contam como uso; mexer o mouse sem clicar, não — um gato andando
+  // no teclado não é decisão de ninguém, e manteria a sessão viva pra
+  // sempre.
   useEffect(() => {
     if (estado !== "ok") return;
-    marcarAtividade();
 
-    const usou = () => marcarAtividade();
-    const conferir = () => { if (sessaoExpirou()) setEstado("expirado"); };
-    const aoVoltar = () => {
-      if (document.visibilityState !== "visible") return;
-      conferir();
-      marcarAtividade();
+    const vigia = criarVigiaDeInatividade({ aoExpirar: () => setEstado("expirado") });
+    vigia.tocar();
+
+    const usou = () => vigia.tocar();
+    const aoTrocarDeAba = () => {
+      // Em segundo plano o painel não está exposto na tela de ninguém, que
+      // é o risco que isto protege — o relógio espera a aba voltar.
+      if (document.visibilityState === "visible") vigia.tocar();
+      else vigia.pausar();
     };
 
-    for (const evento of ["pointerdown", "keydown", "wheel"]) {
-      window.addEventListener(evento, usou, { passive: true });
-    }
-    document.addEventListener("visibilitychange", aoVoltar);
-    const relogio = setInterval(conferir, INTERVALO_DE_CHECAGEM_MS);
+    const EVENTOS = ["pointerdown", "keydown", "touchstart"];
+    for (const evento of EVENTOS) window.addEventListener(evento, usou, { passive: true });
+    document.addEventListener("visibilitychange", aoTrocarDeAba);
 
     return () => {
-      for (const evento of ["pointerdown", "keydown", "wheel"]) {
-        window.removeEventListener(evento, usou);
-      }
-      document.removeEventListener("visibilitychange", aoVoltar);
-      clearInterval(relogio);
+      for (const evento of EVENTOS) window.removeEventListener(evento, usou);
+      document.removeEventListener("visibilitychange", aoTrocarDeAba);
+      vigia.parar();
     };
   }, [estado]);
 

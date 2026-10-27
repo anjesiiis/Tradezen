@@ -10,7 +10,7 @@ export default function AdminLogin() {
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [erro, setErro] = useState("");
   const [cooldown, setCooldown] = useState(0);
-  // Lido uma vez: quem chegou aqui expulso pelas 12 horas merece saber o
+  // Lido uma vez: quem chegou aqui pelo logout automatico merece saber o
   // motivo, em vez de achar que o link de acesso simplesmente falhou.
   const [expirou] = useState(consumirAvisoDeExpiracao);
 
@@ -54,8 +54,9 @@ export default function AdminLogin() {
 
           {expirou && status !== "sent" && (
             <div className="admin-msg admin-msg-aviso" style={{ marginBottom: 14 }}>
-              Sua sessão foi encerrada por <strong>12 horas sem uso</strong>. É
-              proteção do painel — peça um link novo pra entrar.
+              🔒 Sua sessão foi encerrada automaticamente após <strong>12h sem
+              atividade</strong> — proteção padrão do painel. Informe seu email
+              abaixo para receber um novo link de acesso.
             </div>
           )}
 
