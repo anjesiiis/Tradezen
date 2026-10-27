@@ -26,11 +26,18 @@ export const CORES_DESENHO = [
 
 export const ESPESSURAS = [1, 2, 3, 4];
 
-/** Traço → o padrão de risquinhos do canvas. */
+/**
+ * Traço → o padrão de risquinhos do canvas.
+ *
+ * `traco_ponto` é o risco longo seguido de um ponto: linha cheia o
+ * bastante pra se ler de longe, mas que ainda se distingue de uma linha
+ * sólida quando há várias no mesmo gráfico.
+ */
 export const TRACOS = {
   solido:      [],
   tracejado:   [6, 4],
   pontilhado:  [2, 4],
+  traco_ponto: [9, 4, 2, 4],
 };
 
 export const FONTES = [
@@ -61,7 +68,7 @@ export const FIBO_NIVEIS_FIXOS = [0, 1];
 export const ESTILO_PADRAO = {
   trend:               { cor: "#4F8AE8", espessura: 2, traco: "solido" },
   canal:               { cor: "#F5B14C", espessura: 2, traco: "solido" },
-  retangulo_desenho:   { cor: "#26C77B", espessura: 1, traco: "tracejado" },
+  retangulo_desenho:   { cor: "#26C77B", espessura: 2, traco: "solido" },
   fibo:                { cor: "#E8EBF2", espessura: 1, traco: "solido", niveis: FIBO_NIVEIS_DISPONIVEIS },
   horizontal:          { cor: "#E85D5D", espessura: 1, traco: "tracejado" },
   texto:               { cor: "#E8EBF2", fonte: "Inter, sans-serif", tamanho: 14, negrito: false, italico: false },

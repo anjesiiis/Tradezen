@@ -673,6 +673,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     const container = containerRef.current;
     if(!container) return;
     const RAIO_HANDLE = 8;
+    // "ponto" especial do arraste: em vez de mexer num canto, leva o
+    // desenho inteiro junto.
+    const INTEIRO = -1;
 
     const pontosPixel = (d) => {
       const chart = chartRef.current, series = candleRef.current;
@@ -701,6 +704,20 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           if(ctx2d && pp){
             const caixa = _caixaDoTexto(ctx2d, pp.x, pp.y, d.texto, d.estilo);
             if(_dentroDaCaixa(caixa, mx, my, 2)) return {desenhoId:d.id, pontoIndex:0};
+          }
+          continue;
+        }
+        // Retângulo: os cantos redimensionam, o MIOLO move a figura
+        // inteira. Sem isto só dava pra esticar — pra reposicionar era
+        // apagar e desenhar de novo.
+        if(d.tipo==="retangulo_desenho"){
+          const [p0,p1] = pontosPixel(d);
+          if(p0 && p1){
+            const perto = [p0,p1].find(pp=>Math.hypot(mx-pp.x, my-pp.y) <= RAIO_HANDLE);
+            if(perto) return {desenhoId:d.id, pontoIndex:perto.idx};
+            const dentro = mx >= Math.min(p0.x,p1.x) && mx <= Math.max(p0.x,p1.x)
+                        && my >= Math.min(p0.y,p1.y) && my <= Math.max(p0.y,p1.y);
+            if(dentro) return {desenhoId:d.id, pontoIndex:INTEIRO};
           }
           continue;
         }
@@ -811,7 +828,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
 
       if(arrastandoRef.current){
-        const { desenhoId, pontoIndex, ox=0, oy=0 } = arrastandoRef.current;
+        const { desenhoId, pontoIndex, ox=0, oy=0, partida } = arrastandoRef.current;
         const series = candleRef.current, chart = chartRef.current;
         if(!series || !chart) return;
         // Desconta onde a pessoa pegou: o desenho acompanha o cursor sem
@@ -830,6 +847,14 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
             if(d.tipo==="horizontal") return {...d, pontos:[{preco}]};
             const logical = logicalArraste(d.tipo);
             if(logical==null) return d;
+              // Figura inteira: soma a mesma diferença a todos os pontos,
+            // partindo de onde eles estavam quando o arrasto começou —
+            // somar quadro a quadro acumularia erro de arredondamento.
+            if(pontoIndex === INTEIRO){
+              if(!partida) return d;
+              const dl = logical - partida.logical, dp = preco - partida.preco;
+              return {...d, pontos: partida.pontos.map(pt=>({ logical: pt.logical+dl, preco: pt.preco+dp }))};
+            }
             const novosPontos = d.pontos.slice();
             novosPontos[pontoIndex] = {logical, preco};
             // Mexer na base do canal GIRA o canal, não aperta: a paralela
@@ -910,9 +935,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // alça de linha não se aplica — ali grudar no cursor é o certo, e
         // o clique já tem que cair a 8px dela.
         const alvoArraste = desenhosRef.current.find(x=>x.id===proximo.desenhoId);
+        // Mover a figura inteira é deslocamento, não "põe o ponto aqui":
+        // guarda os pontos de partida e de onde o arrasto começou, em
+        // coordenada do gráfico, pra somar a diferença a cada quadro.
+        let partida = null;
+        if(proximo.pontoIndex === INTEIRO && alvoArraste){
+          const l0 = chartRef.current?.timeScale().coordinateToLogical(mx);
+          const p0 = candleRef.current?.coordinateToPrice(my);
+          if(l0!=null && p0!=null) partida = { pontos: alvoArraste.pontos, logical: l0, preco: p0 };
+        }
         const ancoraPx = alvoArraste?.tipo==="texto" ? pontosPixel(alvoArraste)[0] : null;
         arrastandoRef.current = {
-          ...proximo, x0:e.clientX, y0:e.clientY,
+          ...proximo, x0:e.clientX, y0:e.clientY, partida,
           ox: ancoraPx ? mx-ancoraPx.x : 0,
           oy: ancoraPx ? my-ancoraPx.y : 0,
         };

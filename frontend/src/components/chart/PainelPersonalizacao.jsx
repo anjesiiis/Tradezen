@@ -20,6 +20,7 @@ import {
 
 const TRACOS_VISIVEIS = [
   { id: "solido", rotulo: "Sólido", risco: "———" },
+  { id: "traco_ponto", rotulo: "Traço e ponto", risco: "—·—·" },
   { id: "tracejado", rotulo: "Tracejado", risco: "– – –" },
   { id: "pontilhado", rotulo: "Pontilhado", risco: "· · ·" },
 ];
