@@ -35,7 +35,13 @@ from typing import Literal, Optional
 # Valores aceitos pelo yfinance de verdade — travar aqui em vez de "str"
 # solto rejeita input malformado direto no FastAPI (422), antes de gastar
 # uma chamada no Yahoo Finance com um período/intervalo inválido.
-PeriodoAtivo = Literal["1mo", "3mo", "6mo", "1y", "2y", "3y", "5y", "max"]
+# "5d" e "60d" são os tetos dos intraday (ver PERIODO_MAXIMO/_ESCALA em
+# ativos.py) — e justamente eles faltavam aqui. O frontend pedia
+# periodo=60d&intervalo=60m e levava 422: TODOS os tempos intraday (1m,
+# 5m, 15m, 60m) abriam o gráfico em branco, só o diário e o semanal
+# funcionavam. A regra do projeto sempre contou com os dois; era a lista
+# aceita pela rota que estava fora de sincronia com ela.
+PeriodoAtivo = Literal["5d", "1mo", "60d", "3mo", "6mo", "1y", "2y", "3y", "5y", "max"]
 IntervaloAtivo = Literal["1m", "5m", "15m", "60m", "1d", "1wk"]
 import uvicorn
 from slowapi import _rate_limit_exceeded_handler
@@ -269,7 +275,7 @@ def resumo_mercado(request: Request):
 def dados_ativo(
     request: Request,
     ticker: str,
-    periodo: PeriodoAtivo = Query("5y", description="1mo, 3mo, 6mo, 1y, 2y, 3y, 5y, max"),
+    periodo: PeriodoAtivo = Query("5y", description="5d, 1mo, 60d, 3mo, 6mo, 1y, 2y, 3y, 5y, max"),
     intervalo: IntervaloAtivo = Query("1d", description="1m, 5m, 15m, 60m, 1d, 1wk")
 ):
     """

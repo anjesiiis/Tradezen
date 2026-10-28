@@ -13,6 +13,7 @@ import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../component
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
+import ModalAdicionarGrafico from "../components/ModalAdicionarGrafico.jsx";
 import { carregarDaConta, faltandoNaConta, gravarLocal, juntar, lerLocal, salvarNaConta } from "../lib/graficosSalvos.js";
 
 // Seções carregadas sob demanda (code splitting): cada uma vira um chunk
@@ -167,7 +168,7 @@ function AppInner(){
     setTelasExtras(prev => prev.filter((_,i)=>i!==idx));
   };
   const trocarTela = (idx, novoTicker) => {
-    setTelasExtras(prev => prev.map((t,i)=> i===idx ? novoTicker : t));
+    setTelasExtras(prev => prev.map((t,i)=> i===idx ? {...t, ticker:novoTicker} : t));
   };
 
   // Multitelas no celular — estilo "trocar de mesa" de app de poker: em vez
@@ -177,11 +178,17 @@ function AppInner(){
   // lista combinada [principal, ...telasExtras] (0 = principal).
   const isMobile = useIsMobile();
   const [telaAtivaMobile, setTelaAtivaMobile] = useState(0);
-  const adicionarTelaEIrPara = (ticker) => {
+  // Cada mesa extra guarda o ticker e com que tempo ela abre: duas mesas
+  // do MESMO ativo só fazem sentido em tempos diferentes.
+  const adicionarTelaEIrPara = (ticker, tempo) => {
     if(telasExtras.length >= MAX_TELAS_EXTRAS) return;
-    setTelasExtras(prev => [...prev, ticker]);
+    setTelasExtras(prev => [...prev, { ticker, tempo }]);
     setTelaAtivaMobile(telasExtras.length + 1); // combinado: 0=principal, 1..N=extras
   };
+
+  // O "+" pergunta antes: mesmo ativo noutro tempo, ou outro ativo.
+  // Guarda o tempo da mesa que pediu, pra sugerir o degrau seguinte.
+  const [modalAdicionar,setModalAdicionar] = useState(null);   // { tempo } | null
   const fecharTelaMobile = (idx) => {
     fecharTela(idx);
     setTelaAtivaMobile(atual => {
@@ -476,13 +483,13 @@ function AppInner(){
                 className={`mesa-tab ${telaAtivaMobile===0 ? "active" : ""}`}
                 onClick={()=>setTelaAtivaMobile(0)}
               >{labelMesa(tickerUrl)}</button>
-              {telasExtras.map((tk,idx)=>(
+              {telasExtras.map((mesa,idx)=>(
                 <button
                   key={idx}
                   className={`mesa-tab ${telaAtivaMobile===idx+1 ? "active" : ""}`}
                   onClick={()=>setTelaAtivaMobile(idx+1)}
                 >
-                  {labelMesa(tk)}
+                  {labelMesa(mesa.ticker)}{mesa.tempo ? ` · ${mesa.tempo}` : ""}
                   <span
                     className="mesa-tab-x"
                     onClick={e=>{ e.stopPropagation(); fecharTelaMobile(idx); }}
@@ -490,7 +497,7 @@ function AppInner(){
                 </button>
               ))}
               {telasExtras.length<MAX_TELAS_EXTRAS && (
-                <button className="mesa-tab mesa-tab-add" onClick={()=>adicionarTelaEIrPara(tickerUrl)} title="Adicionar mesa">+</button>
+                <button className="mesa-tab mesa-tab-add" onClick={()=>setModalAdicionar({tempo:null})} title="Adicionar mesa">+</button>
               )}
             </div>
           )}
@@ -500,7 +507,7 @@ function AppInner(){
             mercado={mercado}
             ticker={tickerUrl}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
-            onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? ()=>adicionarTelaEIrPara(tickerUrl) : undefined}
+            onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? (tempo)=>setModalAdicionar({tempo}) : undefined}
             ocultoMobile={isMobile && telaAtivaMobile!==0}
             tema={tema}
             user={user}
@@ -509,11 +516,12 @@ function AppInner(){
             ativoConfig={ativoConfig}
             salvarConfigAtivo={salvarConfigAtivo}
           />
-          {telasExtras.map((tk,idx)=>(
+          {telasExtras.map((mesa,idx)=>(
             <ChartPane
               key={`extra-${idx}`}
               mercado={mercado}
-              ticker={tk}
+              ticker={mesa.ticker}
+              tempoInicial={mesa.tempo}
               onTickerChange={novo=>trocarTela(idx, novo)}
               onClose={()=>fecharTelaMobile(idx)}
               ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
@@ -526,6 +534,16 @@ function AppInner(){
             />
           ))}
           </div>
+          {modalAdicionar && (
+            <ModalAdicionarGrafico
+              ticker={tickerUrl}
+              simbolo={labelMesa(tickerUrl)}
+              tempoAtual={modalAdicionar.tempo}
+              mercado={mercado}
+              aoFechar={()=>setModalAdicionar(null)}
+              aoEscolher={({ticker, tempo})=>{ setModalAdicionar(null); adicionarTelaEIrPara(ticker, tempo); }}
+            />
+          )}
         </div>
       )}
 

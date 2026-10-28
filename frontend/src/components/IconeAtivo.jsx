@@ -84,6 +84,11 @@ export function IconeAtivo({ ticker, simbolo, corPadrao, tamanho=32 }){
         width={tamanho}
         height={tamanho}
         style={{width:tamanho,height:tamanho,borderRadius:"50%",objectFit:"cover",flexShrink:0,background:"#fff"}}
+        // lazy + async: a lista de busca mostra dezenas de linhas, e sem
+        // isto o navegador baixava todos os logos de uma vez ao abrir o
+        // dropdown. Quem não rolou até lá não paga por eles.
+        loading="lazy"
+        decoding="async"
         onError={()=>setErro(true)}
       />
     );

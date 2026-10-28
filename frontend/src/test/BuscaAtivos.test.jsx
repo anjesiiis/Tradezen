@@ -154,7 +154,7 @@ describe('Busca — a tela', () => {
 
     const chips = [...document.querySelectorAll('.search-chip')];
     expect(chips.map((c) => c.textContent)).toEqual(
-      ['Todos', 'Ações BR', 'Ações EUA', 'Forex', 'Cripto', 'Commodities', 'Índices']);
+      ['Todos', 'Ações BR', 'Ações EUA', 'Moedas', 'Cripto', 'Commodities', 'Índices']);
     expect(chips[0]).toHaveClass('ativo');
   });
 

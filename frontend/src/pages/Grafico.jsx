@@ -18,9 +18,11 @@ import { fmtP } from "../lib/mercado.js";
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial }){
   const navigate = useNavigate();
-  const [tf, setTf] = useState(TF_PADRAO);
+  // `tempoInicial` vem do modal do "+": a 2ª mesa do mesmo ativo abre num
+  // tempo diferente, que é a razão de existir duas mesas do mesmo papel.
+  const [tf, setTf] = useState(()=>TFS.find(t=>t.label===tempoInicial) || TF_PADRAO);
 
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
@@ -424,7 +426,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
-            <button className="pane-btn" onClick={onAddSplit} title="Adicionar mesa">+</button>
+            <button className="pane-btn" onClick={()=>onAddSplit(tf.label)} title="Adicionar mesa">+</button>
           )}
           {onClose && (
             <button className="pane-btn danger" onClick={onClose} title="Fechar esta tela">✕</button>

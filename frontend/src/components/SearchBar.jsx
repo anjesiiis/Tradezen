@@ -36,7 +36,7 @@ function ItemDaBusca({ a, destacado, aoPassar, aoClicar }) {
   );
 }
 
-export function SearchBar({ onSelect, mercado = [] }) {
+export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
   const [q, setQ] = useState("");
   const [res, setRes] = useState([]);
   const [open, setOpen] = useState(false);
@@ -99,6 +99,14 @@ export function SearchBar({ onSelect, mercado = [] }) {
     }
     return [...porMercado.entries()].map(([m, ativos]) => ({ mercado: m, ativos }));
   }, [lista, categoria]);
+
+  // Aberto dentro de um modal, o campo já nasce pronto pra digitar: o
+  // modal só existe porque a pessoa quer procurar alguma coisa.
+  useEffect(() => {
+    if (!autoFoco) return;
+    setOpen(true);
+    inputRef.current?.focus();
+  }, [autoFoco]);
 
   // Fecha ao clicar fora
   useEffect(() => {

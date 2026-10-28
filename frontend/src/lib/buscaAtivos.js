@@ -22,7 +22,9 @@ export const CATEGORIAS = [
   { id: "todos", rotulo: "Todos", mercados: null },
   { id: "acoes_br", rotulo: "Ações BR", mercados: ["B3"], selo: "Ação BR" },
   { id: "acoes_eua", rotulo: "Ações EUA", mercados: ["NYSE", "NASDAQ"], selo: "Ação EUA" },
-  { id: "forex", rotulo: "Forex", mercados: ["FOREX"], selo: "Forex" },
+  // Rótulo "Moedas", id "forex": o id vai pro estado e pros testes, e
+  // trocá-lo quebraria dado salvo sem melhorar nada pra quem lê a tela.
+  { id: "forex", rotulo: "Moedas", mercados: ["FOREX"], selo: "Moeda" },
   { id: "cripto", rotulo: "Cripto", mercados: ["CRIPTO"], selo: "Cripto" },
   { id: "commodities", rotulo: "Commodities", mercados: ["COMMODITY"], selo: "Commodity" },
   { id: "indices", rotulo: "Índices", mercados: ["INDICE"], selo: "Índice" },

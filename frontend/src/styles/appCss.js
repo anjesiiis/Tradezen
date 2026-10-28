@@ -316,6 +316,35 @@ html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);fo
 /* o mercado dentro do seletor de ativo, em vez de solto na barra */
 .atick-mercado{font-size:9px;font-family:var(--font-m);color:var(--text2);background:var(--s2);border-radius:4px;padding:1px 5px;margin:0 6px;vertical-align:middle;letter-spacing:.3px}
 .achart{flex:1;position:relative;background:var(--bg);overflow:hidden}
+/* ── Modal de adicionar mesa (botão +) ──────────────────────────── */
+.mag-fundo{position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(5,6,10,.7);backdrop-filter:blur(6px);animation:pcEntra .2s ease-out}
+.mag-card{position:relative;width:100%;max-width:520px;background:var(--card);
+  border:1px solid var(--border);border-radius:14px;padding:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pcSobe .28s ease-out}
+.mag-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.mag-topo h3{margin:0;font-size:16px;font-weight:600;color:var(--text)}
+.mag-fechar{background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;
+  padding:6px;border-radius:6px;line-height:1}
+.mag-fechar:hover{background:var(--s2);color:var(--text)}
+.mag-opcoes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mag-opcao{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+  background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;
+  cursor:pointer;font-family:inherit;transition:border-color .15s,transform .15s,background .15s}
+.mag-opcao:hover{background:var(--card);border-color:var(--accent);transform:translateY(-2px)}
+.mag-icone{font-size:26px;line-height:1;margin-bottom:2px}
+.mag-titulo{font-size:14.5px;font-weight:600;color:var(--text)}
+.mag-desc{font-size:12.5px;color:var(--text2);line-height:1.45;flex:1}
+.mag-desc strong{color:var(--text);font-weight:600}
+.mag-cta{margin-top:8px;color:var(--accent);font-size:12.5px;font-weight:600}
+/* Dentro do modal a busca ocupa a largura toda e já abre com o campo
+   focado — o dropdown dela desce normalmente por cima do card. */
+.mag-busca{position:relative}
+.mag-busca .search{width:100%}
+.mag-voltar{margin-top:12px;background:none;border:none;color:var(--text2);cursor:pointer;
+  font-size:12.5px;font-family:inherit;padding:4px 0}
+.mag-voltar:hover{color:var(--text)}
+@media(max-width:600px){.mag-opcoes{grid-template-columns:1fr}.mag-card{padding:16px}}
 /* ── Convite pra criar conta (aparece após 2 min de uso) ────────── */
 .pc-fundo{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;
   padding:20px;background:rgba(5,6,10,.75);backdrop-filter:blur(8px);animation:pcEntra .25s ease-out}
