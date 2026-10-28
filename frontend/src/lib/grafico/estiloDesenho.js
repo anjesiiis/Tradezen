@@ -59,6 +59,19 @@ export const FIBO_NIVEIS_DISPONIVEIS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
 export const FIBO_NIVEIS_FIXOS = [0, 1];
 
 /**
+ * De que lado das linhas do Fibonacci ficam as etiquetas de preço.
+ *
+ * `auto` escolhe o lado com espaço: Fibonacci na metade esquerda do
+ * gráfico joga as etiquetas pra direita, e vice-versa. É o que evita que
+ * elas caiam por cima do eixo de preço, que mora na borda direita.
+ */
+export const LADOS_ROTULO = [
+  { id: "esquerda", rotulo: "Esquerda", icone: "←" },
+  { id: "auto",     rotulo: "Automático", icone: "⇄" },
+  { id: "direita",  rotulo: "Direita", icone: "→" },
+];
+
+/**
  * O estilo com que cada ferramenta nasce.
  *
  * O Fibonacci nasce branco por pedido do dono: ele desenha SETE linhas de
@@ -69,7 +82,7 @@ export const ESTILO_PADRAO = {
   trend:               { cor: "#4F8AE8", espessura: 2, traco: "solido" },
   canal:               { cor: "#F5B14C", espessura: 2, traco: "solido" },
   retangulo_desenho:   { cor: "#26C77B", espessura: 2, traco: "solido" },
-  fibo:                { cor: "#E8EBF2", espessura: 1, traco: "solido", niveis: FIBO_NIVEIS_DISPONIVEIS },
+  fibo:                { cor: "#E8EBF2", espessura: 1, traco: "solido", niveis: FIBO_NIVEIS_DISPONIVEIS, ladoRotulos: "auto" },
   horizontal:          { cor: "#E85D5D", espessura: 1, traco: "tracejado" },
   texto:               { cor: "#E8EBF2", fonte: "Inter, sans-serif", tamanho: 14, negrito: false, italico: false },
 };
@@ -111,8 +124,28 @@ export function normalizarEstilo(tipo, bruto) {
     if (typeof e.italico === "boolean") saida.italico = e.italico;
   }
 
-  if (tipo === "fibo") saida.niveis = normalizarNiveisFibo(e.niveis);
+  if (tipo === "fibo") {
+    saida.niveis = normalizarNiveisFibo(e.niveis);
+    // Fibonacci salvo antes desta opção existir não tem o campo: cai no
+    // "auto", que é o comportamento mais parecido com o de antes sem
+    // reproduzir o defeito (etiqueta sempre à esquerda, por cima dos
+    // candles, mesmo quando havia espaço sobrando do outro lado).
+    saida.ladoRotulos = LADOS_ROTULO.some((l) => l.id === e.ladoRotulos) ? e.ladoRotulos : "auto";
+  }
   return saida;
+}
+
+/**
+ * O lado onde as etiquetas do Fibonacci cabem.
+ *
+ * Em `auto`, decide pelo centro do desenho: quem está na metade esquerda
+ * do gráfico tem espaço à direita, e quem está na metade direita tem
+ * espaço à esquerda — que é justamente o lado oposto ao eixo de preço.
+ */
+export function ladoDosRotulos(escolha, xA, xB, larguraCanvas) {
+  if (escolha === "esquerda" || escolha === "direita") return escolha;
+  if (!larguraCanvas) return "esquerda";
+  return (xA + xB) / 2 < larguraCanvas / 2 ? "direita" : "esquerda";
 }
 
 /**

@@ -1,5 +1,5 @@
 import { FIBO_NIVEIS } from "./padroes.js";
-import { FERRAMENTAS_PERSONALIZAVEIS, TRACOS, fonteDoCanvas, normalizarEstilo } from "./estiloDesenho.js";
+import { FERRAMENTAS_PERSONALIZAVEIS, TRACOS, fonteDoCanvas, ladoDosRotulos, normalizarEstilo } from "./estiloDesenho.js";
 import { fmtP } from "../mercado.js";
 
 // Marcador de resultado do padrão — bolinha colorida com um ícone
@@ -451,6 +451,32 @@ export function _desenharNivel(ctx, toX, toY, p, isSel){
 //
 // As linhas vão do ponto mais antigo até a borda direita do canvas — jeito
 // clássico de projetar os níveis pra frente no tempo.
+/**
+ * Etiqueta com uma pílula escura atrás.
+ *
+ * Sem o fundo, o texto some em cima dos candles — que é exatamente o
+ * lugar onde ele cai, já que as linhas do Fibonacci atravessam o
+ * movimento medido. Devolve a largura ocupada, pra quem precisa saber
+ * se a etiqueta cabe antes de pintar.
+ */
+export function _rotuloComFundo(ctx, texto, x, y, alinhamento, cor){
+  const larg = ctx.measureText(texto).width;
+  const folga = 4, altura = 14;
+  const xCaixa = alinhamento === "right" ? x - larg : x;
+
+  ctx.save();
+  ctx.globalAlpha = 0.78;
+  ctx.fillStyle = "rgba(6,8,15,0.92)";
+  ctx.fillRect(xCaixa - folga, y - altura/2, larg + folga*2, altura);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = cor;
+  ctx.textAlign = alinhamento;
+  ctx.textBaseline = "middle";
+  ctx.fillText(texto, x, y);
+  ctx.restore();
+  return larg + folga*2;
+}
+
 export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
   if(!pontos || pontos.length < 2) return;
   const [a, b] = pontos;
@@ -467,9 +493,13 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
   const xFim = Math.max(xA, xB);
 
   ctx.save();
-  ctx.font = "bold 9px 'JetBrains Mono',monospace";
+  ctx.font = "bold 10px 'JetBrains Mono',monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
+
+  // De que lado as etiquetas ficam. Em `auto` é do lado com espaço — e o
+  // lado sem espaço é sempre o direito, onde fica o eixo de preço.
+  const lado = ladoDosRotulos(_estilo?.ladoRotulos, xA, xB, canvasWidth);
 
   // Quais níveis aparecem é escolha de quem usa (ver estiloDesenho). Quem
   // só quer 50% e 61,8% desliga o resto, e o desenho para de virar sete
@@ -490,9 +520,21 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
     ctx.lineTo(xFim, y);
     ctx.stroke();
 
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = _cor(FIBO_COR);
-    ctx.fillText(`${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`, xIni + 6, y - 8);
+    ctx.globalAlpha = 1;
+    const texto = `${(nivel*100).toFixed(1)}% · ${fmtP(preco)}`;
+    if(lado === "direita"){
+      // Encostada na ponta direita do desenho. Se o gráfico acabar antes
+      // dela, volta pra dentro em vez de ser pintada pela metade.
+      const larg = ctx.measureText(texto).width + 8;
+      const cabe = canvasWidth ? xFim + 6 + larg <= canvasWidth : true;
+      if(cabe) _rotuloComFundo(ctx, texto, xFim + 6, y, "left", _cor(FIBO_COR));
+      else     _rotuloComFundo(ctx, texto, canvasWidth - 4, y, "right", _cor(FIBO_COR));
+    } else {
+      const larg = ctx.measureText(texto).width + 8;
+      const cabe = xIni - 6 - larg >= 0;
+      if(cabe) _rotuloComFundo(ctx, texto, xIni - 6, y, "right", _cor(FIBO_COR));
+      else     _rotuloComFundo(ctx, texto, 4, y, "left", _cor(FIBO_COR));
+    }
   });
 
   ctx.setLineDash([]);
@@ -879,6 +921,75 @@ export function manterLarguraDoCanal(antes, depois, pontoIndex){
   const saida = depois.slice();
   saida[2] = { logical: c.logical, preco: precoNaBase(depois, c.logical) + larguraEmPreco };
   return saida;
+}
+
+/**
+ * O ponteiro está no CORPO do desenho (não numa alça)?
+ *
+ * É o que separa "esticar uma ponta" de "mover a figura inteira": a alça
+ * gira e estica, o corpo translada sem mexer na inclinação nem no
+ * tamanho. Antes, só o retângulo e o texto tinham corpo — uma linha de
+ * tendência só dava pra reposicionar apagando e redesenhando.
+ *
+ * Recebe os pontos JÁ EM PIXEL porque quem sabe converter preço e índice
+ * lógico em tela é o componente do gráfico, não este módulo.
+ */
+export function _noCorpoDoDesenho(d, pts, mx, my, tol = 7){
+  if(!d || !pts || !pts.length) return false;
+  const emSegmento = (p, q) => _distPontoSegmento(mx, my, p.x, p.y, q.x, q.y) <= tol;
+
+  // Risco vertical: corre a altura toda, então só o x importa.
+  if(d.tipo === "vertical") return pts[0]?.x != null && Math.abs(mx - pts[0].x) <= tol;
+
+  if(d.tipo === "retangulo_desenho"){
+    if(pts.length < 2) return false;
+    const [p0, p1] = pts;
+    return mx >= Math.min(p0.x,p1.x)-tol && mx <= Math.max(p0.x,p1.x)+tol
+        && my >= Math.min(p0.y,p1.y)-tol && my <= Math.max(p0.y,p1.y)+tol;
+  }
+
+  // Canal: a faixa inteira entre as duas paralelas, do mesmo jeito que
+  // ela é pintada (ver _desenharCanal) — inclusive a mediana, que fica
+  // dentro dela.
+  if(d.tipo === "canal"){
+    if(pts.length < 2) return false;
+    const [a, b] = pts;
+    if(pts.length < 3) return emSegmento(a, b);
+    const [xL,yL,xR,yR] = a.x <= b.x ? [a.x,a.y,b.x,b.y] : [b.x,b.y,a.x,a.y];
+    if(mx < xL-tol || mx > xR+tol) return false;
+    const m = xR !== xL ? (yR-yL)/(xR-xL) : 0;
+    const offset = pts[2].y - (yL + m*(pts[2].x - xL));
+    const yBase = yL + m*(mx - xL);
+    const [cima, baixo] = offset >= 0 ? [yBase, yBase+offset] : [yBase+offset, yBase];
+    return my >= cima-tol && my <= baixo+tol;
+  }
+
+  // Fibonacci: as próprias linhas de nível, e não a caixa entre elas —
+  // o espaço entre os níveis é onde ficam os candles que se está medindo,
+  // e engolir o arrasto ali tiraria o pan do gráfico.
+  if(d.tipo === "fibo"){
+    if(pts.length < 2) return false;
+    const [a, b] = pts;
+    if(mx < Math.min(a.x,b.x)-tol || mx > Math.max(a.x,b.x)+tol) return false;
+    const niveis = normalizarEstilo("fibo", d.estilo).niveis;
+    return niveis.some(n => Math.abs(my - (a.y + (b.y-a.y)*n)) <= tol);
+  }
+
+  // Linha de tendência em modo contínuo: o corpo é a reta toda, não só o
+  // trecho entre os dois cliques — é essa reta que a pessoa vê.
+  if(d.tipo === "trend" && d.continua && pts.length >= 2){
+    const [a, b] = pts;
+    if(a.x === b.x) return Math.abs(mx - a.x) <= tol;
+    const m = (b.y-a.y)/(b.x-a.x);
+    // distância perpendicular = distância vertical × cosseno da inclinação
+    return Math.abs(my - (a.y + m*(mx-a.x))) / Math.hypot(1, m) <= tol;
+  }
+
+  for(let i = 0; i < pts.length-1; i++) if(emSegmento(pts[i], pts[i+1])) return true;
+  // O triângulo fecha: o lado que volta do último vértice ao primeiro
+  // também é corpo.
+  if(d.tipo === "triangulo_desenho" && pts.length === 3) return emSegmento(pts[2], pts[0]);
+  return false;
 }
 
 function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){

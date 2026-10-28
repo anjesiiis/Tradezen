@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   CORES_DESENHO, ESPESSURAS, FIBO_NIVEIS_DISPONIVEIS, FIBO_NIVEIS_FIXOS,
-  FONTES, TAMANHOS, normalizarNiveisFibo, rotuloDaFerramenta,
+  FONTES, LADOS_ROTULO, TAMANHOS, normalizarNiveisFibo, rotuloDaFerramenta,
 } from "../../lib/grafico/estiloDesenho.js";
 
 /**
@@ -79,6 +79,29 @@ function Niveis({ niveis, aoMudar }) {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// De que lado da linha fica a etiqueta de preço. "Automático" põe do lado
+// com espaço, que é o oposto do eixo de preço — por isso é o padrão.
+function LadoDosRotulos({ lado, aoMudar }) {
+  return (
+    <div className="pp-linha">
+      <span className="pp-rotulo">Etiquetas</span>
+      <div className="pp-grupo">
+        {LADOS_ROTULO.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            title={l.rotulo}
+            aria-label={`Etiquetas à ${l.rotulo.toLowerCase()}`}
+            aria-pressed={lado === l.id}
+            className={`pp-lado ${lado === l.id ? "ativo" : ""}`}
+            onClick={() => aoMudar(l.id)}
+          >{l.icone}</button>
+        ))}
       </div>
     </div>
   );
@@ -183,6 +206,7 @@ export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
                   ))}
                 </div>
               </div>
+              {eFibo && <LadoDosRotulos lado={estilo.ladoRotulos} aoMudar={(ladoRotulos) => aoMudar({ ladoRotulos })} />}
               {eFibo && <Niveis niveis={estilo.niveis} aoMudar={(niveis) => aoMudar({ niveis })} />}
             </>
           )}

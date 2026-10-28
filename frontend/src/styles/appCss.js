@@ -444,6 +444,9 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .pp-select{flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:5px;
   color:var(--text);font-size:11px;padding:3px 5px;font-family:inherit}
 .pp-select-curto{flex:0 0 62px}
+.pp-lado{width:30px;height:20px;flex:0 0 auto;background:var(--s2);border:1px solid var(--border);
+  border-radius:5px;color:var(--text2);cursor:pointer;font-size:12px;padding:0;line-height:1}
+.pp-lado.ativo{border-color:var(--blue);color:var(--blue)}
 .pp-bi{width:22px;height:22px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
   color:var(--text2);cursor:pointer;font-size:11px;padding:0}
 .pp-bi.ativo{border-color:var(--blue);color:var(--blue)}
@@ -471,6 +474,7 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .pp-esp{width:40px;height:34px;min-height:34px}
   .pp-traco{height:34px;min-height:34px;padding:0 11px}
   .pp-bi{width:34px;height:34px;min-height:34px}
+  .pp-lado{width:40px;height:34px;min-height:34px;font-size:14px}
   .pp-recolher{min-height:32px}
   .pp-select{min-height:34px}
   /* Dez níveis não cabem em 375px sem virar quatro fileiras: vira uma

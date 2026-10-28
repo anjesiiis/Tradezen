@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers } from "lightweight-charts";
 import { useIsMobile } from "../hooks/useIsMobile.js";
-import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, pontoDaParalela } from "../lib/grafico/desenhos.js";
+import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, _noCorpoDoDesenho, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
@@ -697,12 +697,31 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // no pointerdown. Pegar a alça não desloca mais nada por si (o
     // pointerdown guarda a distância do dedo até ela), então um raio
     // maior só facilita acertar, sem risco de empurrar o desenho.
+    // Em DOIS passos, e não desenho a desenho: as alças de todos vêm
+    // antes do corpo de qualquer um. Misturar os dois fazia o corpo de um
+    // retângulo desenhado primeiro engolir a alça de uma linha desenhada
+    // em cima dele — e aí não dava mais pra esticar essa linha.
     const acharHandleProximo = (mx,my,raio=RAIO_HANDLE) => {
       for(const d of desenhosRef.current){
-        // A etiqueta de texto se pega pelo corpo, não pelo pontinho da
-        // âncora: ela fica À DIREITA do ponto, então mirar os 8px do
-        // handle era adivinhação — o texto parecia pregado no gráfico.
+        // O texto não tem alça visível: ele se pega pelo corpo (passo 2).
+        if(d.tipo==="texto") continue;
+        for(const pp of pontosPixel(d)){
+          if(pp.x==null){ // horizontal — a linha inteira é arrastável, não só um ponto
+            if(Math.abs(my-pp.y) <= raio) return {desenhoId:d.id, pontoIndex:0};
+          } else if(Math.hypot(mx-pp.x, my-pp.y) <= raio){
+            return {desenhoId:d.id, pontoIndex:pp.idx};
+          }
+        }
+      }
+      // Passo 2 — o corpo move a figura INTEIRA, sem mexer na inclinação
+      // nem no tamanho. Vale pra toda ferramenta, não só pro retângulo:
+      // antes, reposicionar uma linha de tendência era apagar e
+      // redesenhar.
+      const tolCorpo = Math.max(7, raio - 4);
+      for(const d of desenhosRef.current){
         if(d.tipo==="texto"){
+          // A etiqueta fica À DIREITA da âncora, então mirar o pontinho
+          // era adivinhação — o texto parecia pregado no gráfico.
           const ctx2d = canvasRef.current?.getContext("2d");
           const pp = pontosPixel(d)[0];
           if(ctx2d && pp){
@@ -711,26 +730,8 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           }
           continue;
         }
-        // Retângulo: os cantos redimensionam, o MIOLO move a figura
-        // inteira. Sem isto só dava pra esticar — pra reposicionar era
-        // apagar e desenhar de novo.
-        if(d.tipo==="retangulo_desenho"){
-          const [p0,p1] = pontosPixel(d);
-          if(p0 && p1){
-            const perto = [p0,p1].find(pp=>Math.hypot(mx-pp.x, my-pp.y) <= raio);
-            if(perto) return {desenhoId:d.id, pontoIndex:perto.idx};
-            const dentro = mx >= Math.min(p0.x,p1.x) && mx <= Math.max(p0.x,p1.x)
-                        && my >= Math.min(p0.y,p1.y) && my <= Math.max(p0.y,p1.y);
-            if(dentro) return {desenhoId:d.id, pontoIndex:INTEIRO};
-          }
-          continue;
-        }
-        for(const pp of pontosPixel(d)){
-          if(pp.x==null){ // horizontal — a linha inteira é arrastável, não só um ponto
-            if(Math.abs(my-pp.y) <= raio) return {desenhoId:d.id, pontoIndex:0};
-          } else if(Math.hypot(mx-pp.x, my-pp.y) <= raio){
-            return {desenhoId:d.id, pontoIndex:pp.idx};
-          }
+        if(_noCorpoDoDesenho(d, pontosPixel(d), mx, my, tolCorpo)){
+          return {desenhoId:d.id, pontoIndex:INTEIRO};
         }
       }
       return null;
@@ -894,7 +895,14 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // "" (e não "default") devolve a decisão ao CSS: é ele que mantém a
       // mão aberta do pan. Escrever "default" aqui apagava o grab pra
       // sempre, no primeiro movimento do mouse sobre o gráfico.
-      container.style.cursor = acharHandleProximo(mx,my) ? "move" : "";
+      //
+      // Alça e corpo fazem coisas diferentes, então mostram cursores
+      // diferentes: a alça gira e estica a figura, o corpo move ela
+      // inteira. Sem isso não dá pra saber o que vai acontecer antes de
+      // apertar o botão.
+      const sob = acharHandleProximo(mx,my);
+      container.style.cursor = !sob ? ""
+        : sob.pontoIndex === INTEIRO ? "move" : "crosshair";
     };
 
     const onMouseDown = (e) => {

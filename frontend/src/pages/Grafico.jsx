@@ -457,7 +457,19 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             <PainelPersonalizacao
               ferramenta={ferramentaAtiva}
               estilo={prefs[ferramentaAtiva]}
-              aoMudar={mudanca=>definirEstilo(ferramentaAtiva, mudanca)}
+              aoMudar={mudanca=>{
+                definirEstilo(ferramentaAtiva, mudanca);
+                // De que lado ficam as etiquetas é jeito de LER, não
+                // identidade do desenho: quem muda isso quer enxergar o
+                // que já está na tela, não só o próximo Fibonacci. Cor e
+                // espessura continuam valendo só pros novos — um suporte
+                // marcado em vermelho ontem tem que seguir vermelho.
+                if(mudanca.ladoRotulos){
+                  setDesenhos(atual=>atual.map(d=>d.tipo==="fibo"
+                    ? {...d, estilo:{...d.estilo, ladoRotulos:mudanca.ladoRotulos}}
+                    : d));
+                }
+              }}
             />
           )}
           {carregandoMais&&(
