@@ -693,7 +693,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         .filter(Boolean);
     };
 
-    const acharHandleProximo = (mx,my) => {
+    // `raio`: no dedo a mira é mais grossa que no mouse — ver a chamada
+    // no pointerdown. Pegar a alça não desloca mais nada por si (o
+    // pointerdown guarda a distância do dedo até ela), então um raio
+    // maior só facilita acertar, sem risco de empurrar o desenho.
+    const acharHandleProximo = (mx,my,raio=RAIO_HANDLE) => {
       for(const d of desenhosRef.current){
         // A etiqueta de texto se pega pelo corpo, não pelo pontinho da
         // âncora: ela fica À DIREITA do ponto, então mirar os 8px do
@@ -713,7 +717,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         if(d.tipo==="retangulo_desenho"){
           const [p0,p1] = pontosPixel(d);
           if(p0 && p1){
-            const perto = [p0,p1].find(pp=>Math.hypot(mx-pp.x, my-pp.y) <= RAIO_HANDLE);
+            const perto = [p0,p1].find(pp=>Math.hypot(mx-pp.x, my-pp.y) <= raio);
             if(perto) return {desenhoId:d.id, pontoIndex:perto.idx};
             const dentro = mx >= Math.min(p0.x,p1.x) && mx <= Math.max(p0.x,p1.x)
                         && my >= Math.min(p0.y,p1.y) && my <= Math.max(p0.y,p1.y);
@@ -723,8 +727,8 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         }
         for(const pp of pontosPixel(d)){
           if(pp.x==null){ // horizontal — a linha inteira é arrastável, não só um ponto
-            if(Math.abs(my-pp.y) <= RAIO_HANDLE) return {desenhoId:d.id, pontoIndex:0};
-          } else if(Math.hypot(mx-pp.x, my-pp.y) <= RAIO_HANDLE){
+            if(Math.abs(my-pp.y) <= raio) return {desenhoId:d.id, pontoIndex:0};
+          } else if(Math.hypot(mx-pp.x, my-pp.y) <= raio){
             return {desenhoId:d.id, pontoIndex:pp.idx};
           }
         }
@@ -794,6 +798,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       return paralela ? [...pontos, paralela] : pontos;   // sem candle entre eles: só a base
     };
 
+    // Canal com a base pronta e faltando a largura: mostra a paralela já
+    // numa largura palpitada pelos candles, em vez de deixar a tela com
+    // uma linha só. No mouse o movimento do cursor logo assume o lugar
+    // dela; no celular ela É o que se vê, porque entre um toque e o
+    // seguinte o dedo está no ar e não há movimento nenhum pra seguir —
+    // "mova e clique pra fixar a largura" simplesmente não existe ali.
+    const semearPreviewCanal = (pontos) => {
+      if(ferramentaAtivaRef.current !== "canal" || pontos.length !== 2) return;
+      previewPontoRef.current = pontoDaParalela(pontos[0], pontos[1], candlesRef.current);
+      redrawRef.current?.();
+    };
+
     const onMouseMove = (e) => {
       // Passou perto de um ícone de padrão já marcado? Mostra o que é e
       // de quando é.
@@ -828,9 +844,16 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
 
       if(arrastandoRef.current){
-        const { desenhoId, pontoIndex, ox=0, oy=0, partida } = arrastandoRef.current;
+        const { desenhoId, pontoIndex, ox=0, oy=0, partida, x0, y0 } = arrastandoRef.current;
         const series = candleRef.current, chart = chartRef.current;
         if(!series || !chart) return;
+        // Zona morta: até o ponteiro andar de verdade, nada se move. Dedo
+        // encostado na tela nunca fica parado — treme 2 ou 3 pixels, e
+        // cada tremor desses virava um reposicionamento do desenho.
+        if(!arrastandoRef.current.andou){
+          if(Math.hypot(e.clientX-x0, e.clientY-y0) <= 6) return;
+          arrastandoRef.current.andou = true;
+        }
         // Desconta onde a pessoa pegou: o desenho acompanha o cursor sem
         // saltar pra ficar centrado nele.
         const mxA = mx-ox, myA = my-oy;
@@ -927,7 +950,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         e.preventDefault();
         return;
       }
-      const proximo = acharHandleProximo(mx,my);
+      const proximo = acharHandleProximo(mx,my, e.pointerType==="touch" ? 14 : RAIO_HANDLE);
       if(proximo){
         // Só no texto: onde a pessoa pegou, em relação à âncora. Sem isto a
         // etiqueta pula pra alinhar a âncora embaixo do cursor, e quem
@@ -944,10 +967,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           const p0 = candleRef.current?.coordinateToPrice(my);
           if(l0!=null && p0!=null) partida = { pontos: alvoArraste.pontos, logical: l0, preco: p0 };
         }
-        const ancoraPx = alvoArraste?.tipo==="texto" ? pontosPixel(alvoArraste)[0] : null;
+        // Guardar a distância do ponteiro até a alça vale pra TODAS as
+        // ferramentas, não só pro texto: sem ela o ponto salta pro centro
+        // do cursor no primeiro movimento. No mouse isso quase não se vê,
+        // porque o clique cai a 1 ou 2 pixels da alça; no dedo cai a 10, e
+        // era isso que fazia o Fibonacci "andar sozinho" quando alguém
+        // tocava perto dele — ele não andava sozinho, ele pulava pro dedo.
+        const ancoraPx = (alvoArraste && proximo.pontoIndex !== INTEIRO)
+          ? pontosPixel(alvoArraste).find(pp=>pp.idx===proximo.pontoIndex)
+          : null;
         arrastandoRef.current = {
           ...proximo, x0:e.clientX, y0:e.clientY, partida,
-          ox: ancoraPx ? mx-ancoraPx.x : 0,
+          ox: ancoraPx?.x != null ? mx-ancoraPx.x : 0,
           oy: ancoraPx ? my-ancoraPx.y : 0,
         };
         // Mesma dupla trava de "toque não pode vazar pro navegador" do
@@ -1005,8 +1036,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // devolvia um canal de largura adivinhada, justamente o que o
         // dono pediu pra sair.
         if(ferramentaAtivaRef.current === "canal"){
-          previewPontoRef.current = null;
-          queueMicrotask(()=>setPontosProgresso([ancora, {logical, preco}]));
+          const base = [ancora, {logical, preco}];
+          semearPreviewCanal(base);
+          queueMicrotask(()=>setPontosProgresso(base));
           return;
         }
         const pontos = pontosDoDesenho(ferramentaAtivaRef.current, [ancora, {logical, preco}]);
@@ -1020,13 +1052,21 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         return;
       }
 
-      if(andou > 5) return; // foi arraste/pan, não clique
-
       const chart = chartRef.current, series = candleRef.current;
       if(!chart || !series) return;
       const ferramenta = ferramentaAtivaRef.current;
       const info = FERRAMENTA_INFO[ferramenta];
       if(!info) return;
+
+      // Arrastar não é clique — era o único jeito de não confundir pan com
+      // marcação de ponto. Com uma ferramenta armada, porém, o pan está
+      // desligado (ver o effect de "ferramenta-armada"), e no celular
+      // arrastar é o ÚNICO gesto que escolhe o último ponto olhando: é
+      // assim que se fixa a largura do canal, vendo a paralela correr
+      // junto com o dedo. Soltar fixa onde o dedo parou.
+      const noUltimoPonto = pontosProgressoRef.current.length === info.npontos - 1;
+      const arrastouAteOFim = e.pointerType === "touch" && noUltimoPonto;
+      if(andou > 5 && !arrastouAteOFim) return;
       const rect = container.getBoundingClientRect();
       const mx = e.clientX-rect.left, my = e.clientY-rect.top;
       const logical = chart.timeScale().coordinateToLogical(mx);
@@ -1058,6 +1098,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           return;
         }
         const novoDesenho = { id:`d${Date.now()}${Math.random().toString(36).slice(2,7)}`, tipo:ferramenta, pontos:pontosDoDesenho(ferramenta, novo), estilo:estiloNovo(ferramenta) };
+        previewPontoRef.current = null;
         // setDesenhos/setFerramentaAtiva são do pai (ChartPane) — chamar
         // direto aqui (ainda dentro do listener de mouseup nativo) disparava
         // "Cannot update a component while rendering a different component"
@@ -1069,6 +1110,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           setFerramentaAtiva?.(null);
         });
       } else {
+        semearPreviewCanal(novo);
         setPontosProgresso(novo);
       }
     };
@@ -1365,7 +1407,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
           background:"rgba(6,8,15,.85)",border:"1px solid rgba(41,98,255,.4)",color:"#2962ff",
           fontSize:11,fontFamily:"var(--font-m)",padding:"6px 8px 6px 14px",borderRadius:20,zIndex:15,
-          display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",
+          // Quebrar em vez de "nowrap": numa tela de 375px a dica do canal
+          // saía pelos dois lados e o começo dela ficava fora do gráfico.
+          display:"flex",alignItems:"center",gap:8,maxWidth:"calc(100% - 16px)",textAlign:"center",
         }}>
           <span style={{pointerEvents:"none"}}>{FERRAMENTA_INFO[ferramentaAtiva].hints[pontosProgresso.length] || "Toque no gráfico..."}</span>
           <button

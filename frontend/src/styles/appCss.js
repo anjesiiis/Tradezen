@@ -422,19 +422,23 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .pp-linha{display:flex;align-items:center;gap:8px}
 .pp-linha-col{flex-direction:column;align-items:flex-start;gap:5px}
 .pp-rotulo{flex:0 0 58px;color:var(--text2)}
-.pp-cores{display:flex;flex-wrap:wrap;gap:4px}
+/* align-items:center nestes tres nao e enfeite: sem ele os filhos
+   ESTICAM pra altura da linha (padrao do flex e stretch), e no celular,
+   onde o corpo do painel vira uma linha so, as bolinhas de cor viravam
+   ovais compridas. E por isso que o painel parecia deformado. */
+.pp-cores{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .pp-cor{width:16px;height:16px;border-radius:50%;border:1.5px solid transparent;cursor:pointer;padding:0;
-  display:flex;align-items:center;justify-content:center;position:relative}
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;position:relative}
 .pp-cor.ativa{border-color:var(--text);box-shadow:0 0 0 1.5px var(--card) inset}
 .pp-cor-custom{background:var(--s2);border:1.5px dashed var(--border);color:var(--text2);font-size:11px}
 .pp-cor-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:none}
-.pp-grupo{display:flex;gap:4px}
-.pp-esp{width:26px;height:20px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+.pp-grupo{display:flex;align-items:center;gap:4px}
+.pp-esp{width:26px;height:20px;flex:0 0 auto;background:var(--s2);border:1px solid var(--border);border-radius:5px;
   cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .pp-esp i{display:block;width:14px;background:var(--text2);border-radius:2px}
 .pp-esp.ativo{border-color:var(--blue)}
 .pp-esp.ativo i{background:var(--blue)}
-.pp-traco{height:20px;padding:0 7px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
+.pp-traco{height:20px;padding:0 7px;flex:0 0 auto;background:var(--s2);border:1px solid var(--border);border-radius:5px;
   color:var(--text2);cursor:pointer;font-size:10px;letter-spacing:-.04em}
 .pp-traco.ativo{border-color:var(--blue);color:var(--blue)}
 .pp-select{flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:5px;
@@ -443,16 +447,39 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .pp-bi{width:22px;height:22px;background:var(--s2);border:1px solid var(--border);border-radius:5px;
   color:var(--text2);cursor:pointer;font-size:11px;padding:0}
 .pp-bi.ativo{border-color:var(--blue);color:var(--blue)}
-.pp-niveis{display:flex;flex-wrap:wrap;gap:4px}
-.pp-nivel{padding:2px 6px;background:var(--s2);border:1px solid var(--border);border-radius:999px;
+.pp-niveis{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.pp-nivel{padding:2px 6px;flex:0 0 auto;white-space:nowrap;background:var(--s2);border:1px solid var(--border);border-radius:999px;
   color:var(--text2);cursor:pointer;font-size:10px;font-variant-numeric:tabular-nums}
 .pp-nivel.ativo{border-color:var(--blue);color:var(--blue)}
 .pp-nivel.fixo{opacity:.55;cursor:default}
-/* No celular ele vai pro rodapé: à esquerda cobriria metade dos candles. */
+/* No celular ele vai pro rodapé: à esquerda cobriria metade dos candles.
+   Teto de 46vh pra nunca comer mais que o gráfico, e alvos de toque
+   maiores — 16px de bolinha é mira de mouse, não de dedo. */
 @media(max-width:767px){
-  .pp{left:8px;right:8px;top:auto;bottom:46px;width:auto}
-  .pp-corpo{flex-direction:row;flex-wrap:wrap;gap:8px 14px}
+  .pp{left:8px;right:8px;top:auto;bottom:46px;width:auto;
+    max-height:46vh;overflow-y:auto;border-radius:14px}
+  .pp-corpo{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:10px 14px;padding:10px 12px}
   .pp-rotulo{flex:0 0 auto}
+  .pp-linha{flex-wrap:wrap}
+  /* O min-height:44px que vale pra todo button no celular (regra de alvo
+     de toque, mais abaixo) esticava estas bolinhas de 26 pra 44 de
+     altura: era ISSO que as deixava ovais, e nenhum ajuste de largura ia
+     resolver. Aqui elas viram alvo de toque de verdade, 32 por 32, e
+     dizem a própria altura mínima — classe vence seletor de elemento. */
+  .pp-cores{gap:9px}
+  .pp-cor{width:32px;height:32px;min-height:32px;border-width:2px}
+  .pp-esp{width:40px;height:34px;min-height:34px}
+  .pp-traco{height:34px;min-height:34px;padding:0 11px}
+  .pp-bi{width:34px;height:34px;min-height:34px}
+  .pp-recolher{min-height:32px}
+  .pp-select{min-height:34px}
+  /* Dez níveis não cabem em 375px sem virar quatro fileiras: vira uma
+     tira que corre pro lado, com o painel ficando da altura de sempre. */
+  .pp-linha-col{width:100%}
+  .pp-niveis{flex-wrap:nowrap;overflow-x:auto;width:100%;gap:6px;
+    padding-bottom:3px;scrollbar-width:none}
+  .pp-niveis::-webkit-scrollbar{display:none}
+  .pp-nivel{padding:6px 12px;font-size:11px;min-height:30px}
 }
 /* Botao de resetar a escala do grafico: so entra na tela depois que a
    pessoa arrasta o preco pra fora do enquadramento automatico. */

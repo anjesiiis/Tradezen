@@ -630,7 +630,10 @@ export const FERRAMENTA_INFO = {
     hints: [
       "Canal: arraste de um ponto ao outro (ou clique nos dois)",
       "Canal: clique no 2º ponto da linha base",
-      "Canal: mova pra cima ou pra baixo e clique pra fixar a largura",
+      // No celular não existe "mover sem tocar": entre um toque e o
+      // seguinte o dedo está no ar. Lá a largura se escolhe arrastando, e
+      // soltar fixa — a dica tem que caber nos dois gestos.
+      "Canal: arraste a paralela (ou clique) pra fixar a largura",
     ],
   },
   fibo: {
