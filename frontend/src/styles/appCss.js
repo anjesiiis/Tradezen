@@ -408,6 +408,31 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 @keyframes pcEntra{from{opacity:0}to{opacity:1}}
 @keyframes pcSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.pc-card{padding:28px 20px}.pc-titulo{font-size:19px}.pc-ctas{flex-direction:column}}
+/* ── Menu de aparência do gráfico (tipo + cores dos candles) ──────
+   Mesma caixa do dropdown de indicadores (.ind-drop), por isso só o que
+   é dele mesmo mora aqui. */
+.map-menu{width:236px;padding:4px 0 10px}
+.map-tipos{display:flex;gap:6px;padding:2px 10px 8px}
+.map-tipo{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 4px;background:var(--s2);border:1px solid var(--border);border-radius:7px;
+  color:var(--text2);cursor:pointer;font-size:11px;font-family:inherit}
+.map-tipo.ativo{border-color:var(--blue);color:var(--blue)}
+.map-presets{display:flex;flex-direction:column;gap:4px;padding:2px 10px}
+.map-preset{display:flex;align-items:center;gap:7px;width:100%;padding:6px 8px;
+  background:var(--s2);border:1px solid var(--border);border-radius:7px;
+  color:var(--text2);cursor:pointer;font-size:11px;font-family:inherit;text-align:left}
+.map-preset.ativo{border-color:var(--blue);color:var(--text)}
+.map-amostra{width:13px;height:13px;border-radius:3px;flex:0 0 auto}
+.map-preset-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-custom{display:flex;gap:8px;padding:10px 10px 0;margin-top:8px;border-top:1px solid var(--border)}
+.map-cor{flex:1;display:flex;align-items:center;gap:6px;color:var(--text2);font-size:11px;cursor:pointer}
+.map-cor input{width:28px;height:24px;padding:0;border:1px solid var(--border);border-radius:5px;
+  background:var(--s2);cursor:pointer;flex:0 0 auto}
+@media(max-width:767px){
+  .map-tipo{min-height:52px}
+  .map-preset{min-height:38px}
+  .map-cor input{width:38px;height:34px;min-height:34px}
+}
 /* ── Painel de personalização do desenho ──────────────────────────
    Flutua junto da barra de ferramentas, estreito de propósito: ele
    divide a tela com o gráfico e não pode comer o espaço dos candles. */

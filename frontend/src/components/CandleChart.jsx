@@ -4,11 +4,12 @@ import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSerie
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, _noCorpoDoDesenho, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
+import { normalizarAparencia, opcoesDaSerieCandle, opcoesDaSerieLinha, paraLinha } from "../lib/grafico/aparencia.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia}){
   const isMobile = useIsMobile();
   // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
   // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
@@ -16,6 +17,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // que faz setData não roda de novo. Era exatamente esse o bug da tela
   // preta ao estreitar a janela — ver o comentário na criação.
   const [geracao, setGeracao] = useState(0);
+  // Ref além do prop: o effect que CRIA o gráfico roda uma vez só, e lá
+  // dentro o valor do prop ficaria congelado no que era na montagem.
+  const aparenciaRef = useRef(normalizarAparencia(aparencia));
+  aparenciaRef.current = normalizarAparencia(aparencia);
   const containerRef = useRef(null);
   // O estilo escolhido pra ferramenta, copiado pra dentro de cada desenho
   // novo. Em ref porque os listeners de ponteiro são nativos e ficariam
@@ -34,6 +39,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const bbLowerRef   = useRef(null);
   const vwapRef      = useRef(null);
   const volMaRef     = useRef(null);
+  // A linha mora AO LADO dos candles, não no lugar deles: trocar a série
+  // principal levaria junto o volume, os indicadores, os marcadores de
+  // padrão e toda a conta de pixel (priceToCoordinate sai dela). As duas
+  // existem sempre, e o que muda é qual está visível.
+  const linhaRef     = useRef(null);
   const oscilRef     = useRef({}); // { [id]: {paneIndex, series:[...]} } — RSI/Estocástico/ATR/OBV
   const markersRef   = useRef(null);
   const canvasRef    = useRef(null);
@@ -226,13 +236,18 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
 
     // Candlestick series
     candleRef.current = chartRef.current.addSeries(CandlestickSeries, {
-      upColor:         "#00D68F",
-      downColor:       "#FF4560",
-      borderUpColor:   "#00D68F",
-      borderDownColor: "#FF4560",
-      wickUpColor:     "#00D68F",
-      wickDownColor:   "#FF4560",
+      ...opcoesDaSerieCandle(aparenciaRef.current.cores),
       priceLineVisible: false,
+      visible: aparenciaRef.current.tipo === "candle",
+    });
+
+    linhaRef.current = chartRef.current.addSeries(LineSeries, {
+      ...opcoesDaSerieLinha(aparenciaRef.current.cores),
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: true,
+      visible: aparenciaRef.current.tipo === "linha",
     });
 
     // Volume — só cria se showVolume (esconde pra commodities/futuros, cujo volume do Yahoo é ruim).
@@ -393,6 +408,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
 
     const lw = toLWCandles(candles);
     candleRef.current.setData(lw);
+    linhaRef.current?.setData(paraLinha(lw));
 
     if(faixaAntes){
       const deslocou = candles.length - anterior.total;
@@ -1180,6 +1196,26 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       container.removeEventListener("contextmenu", onContextMenu);
     };
   },[]);
+
+  // Aparência — cor dos candles e candle↔linha, aplicadas NO LUGAR.
+  //
+  // applyOptions em vez de recriar a série: é o que faz a cor trocar no
+  // mesmo quadro em que a pessoa escolhe, e é o que preserva zoom,
+  // rolagem e posição ao alternar candle↔linha. Recriar a série devolveria
+  // o gráfico pro enquadramento inicial a cada clique.
+  useEffect(()=>{
+    const ap = normalizarAparencia(aparencia);
+    try{
+      candleRef.current?.applyOptions({
+        ...opcoesDaSerieCandle(ap.cores),
+        visible: ap.tipo === "candle",
+      });
+      linhaRef.current?.applyOptions({
+        ...opcoesDaSerieLinha(ap.cores),
+        visible: ap.tipo === "linha",
+      });
+    }catch{ /* série ainda não existe, ou gráfico já desmontado */ }
+  },[aparencia, geracao]);
 
   // Suportes/Resistências — linhas de preço nativas (recalculadas a cada troca de timeframe/ticker,
   // e filtradas pelos toggles "Suporte"/"Resistência" na lista de indicadores)

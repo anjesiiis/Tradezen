@@ -6,6 +6,8 @@ import LeftToolbar from "../components/chart/LeftToolbar.jsx";
 import { guardarFerramenta, lerFerramentaSalva } from "../components/chart/ferramentasGrafico.js";
 import PainelPersonalizacao from "../components/chart/PainelPersonalizacao.jsx";
 import { usePreferenciasDesenho } from "../hooks/usePreferenciasDesenho.js";
+import MenuAparencia, { IconeTipo } from "../components/chart/MenuAparencia.jsx";
+import { usePreferenciasGrafico } from "../hooks/usePreferenciasGrafico.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
@@ -39,6 +41,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // Cor/espessura/traço de cada ferramenta. Sem conta, valem neste
   // navegador; com conta, acompanham a pessoa (ver usePreferenciasDesenho).
   const { prefs, definirEstilo, estiloDe } = usePreferenciasDesenho();
+  // Cor dos candles e candle↔linha. Mesma divisão das preferências de
+  // desenho: navegador pra quem não tem conta, conta pra quem tem.
+  const { aparencia, definirAparencia } = usePreferenciasGrafico();
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
   const [selPat,setSelPat]    = useState(null);
@@ -47,6 +52,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [indOpen,setIndOpen]  = useState(false);
   const indBtnRef = useRef(null);
   const [indPos,setIndPos]    = useState({top:0,left:0});
+  const [aparOpen,setAparOpen] = useState(false);
+  const aparBtnRef = useRef(null);
+  const [aparPos,setAparPos]  = useState({top:0,left:0});
   const [painelAberto,setPainelAberto] = useState(true);
   const [switcherAberto,setSwitcherAberto] = useState(false);
   const [maisAberto,setMaisAberto] = useState(false); // legenda: mostra os indicadores "a mais" (além do limite visível)
@@ -380,6 +388,44 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </button>
         </div>
 
+        {/* Candle ↔ linha num clique. Fica DEPOIS de "Indicadores", como
+            as cores: no celular a barra rola, e qualquer botão posto antes
+            empurrava "Indicadores" pra fora da primeira tela. O ícone
+            mostra pra onde se vai, não onde se está. */}
+        <button
+          className="pane-btn"
+          title={aparencia.tipo==="candle" ? "Ver como linha" : "Ver como candles"}
+          aria-label={aparencia.tipo==="candle" ? "Ver como linha" : "Ver como candles"}
+          onClick={()=>definirAparencia({tipo: aparencia.tipo==="candle" ? "linha" : "candle"})}
+        >
+          <IconeTipo tipo={aparencia.tipo==="candle" ? "linha" : "candle"} />
+        </button>
+
+        {/* As cores vêm DEPOIS de "Indicadores" de propósito: no celular a
+            barra rola, e pôr mais um botão antes dele empurrava
+            "Indicadores" pra fora da primeira tela. Cor se escolhe uma vez;
+            indicador se liga e desliga o tempo todo. */}
+        <button
+          ref={aparBtnRef}
+          className={`pane-btn${aparOpen?" ativo":""}`}
+          title="Cores do gráfico"
+          aria-label="Cores do gráfico"
+          aria-expanded={aparOpen}
+          onClick={()=>{
+            if(!aparOpen && aparBtnRef.current){
+              const r = aparBtnRef.current.getBoundingClientRect();
+              setAparPos({top: r.bottom+4, left: Math.max(8, Math.min(r.left, window.innerWidth-244))});
+            }
+            setAparOpen(v=>!v);
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9"/><circle cx="9" cy="9.5" r="1.3" fill="currentColor"/>
+            <circle cx="15" cy="9.5" r="1.3" fill="currentColor"/><circle cx="12" cy="15.5" r="1.3" fill="currentColor"/>
+          </svg>
+        </button>
+
+
         <div className="sep"/>
 
         {/* Régua: medição rápida. Arma como ferramenta, mas o que ela
@@ -493,6 +539,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               registrarHistorico={registrarHistorico}
               aoChegarNoComeco={carregarMaisCandles}
               estiloDe={estiloDe}
+              aparencia={aparencia}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip
@@ -673,6 +720,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </div>
         );
       })()}
+
+      {aparOpen && (
+        <MenuAparencia
+          pos={aparPos}
+          aparencia={aparencia}
+          aoMudar={definirAparencia}
+          aoFechar={()=>setAparOpen(false)}
+        />
+      )}
 
       {/* ── PORTAL DO DROPDOWN DE INDICADORES ── */}
       {indOpen && createPortal(
