@@ -42,6 +42,39 @@ export const CSS = `
   --pro:#2F6FEF;
 }
 html,body,#root{height:100%;width:100%;background:var(--bg);color:var(--text);font-family:var(--font-b);overflow:hidden;max-width:none!important}
+/* ── ZOOM INDEVIDO NO CELULAR ─────────────────────────────────────
+   "pan-x pan-y" deixa rolar e TIRA os dois gestos de zoom do navegador:
+   a pinça de dois dedos e o toque duplo. É isto, e não o meta viewport,
+   que resolve no iPhone — o Safari ignora user-scalable desde o iOS 10.
+   O gráfico fica de fora (.chart-container abaixo): a pinça lá é a da
+   Lightweight Charts, e ampliava a página em vez dos candles.
+   "text-size-adjust" impede o iOS de reescalar texto sozinho ao girar
+   a tela, que é de onde vinha o "layout deslocado" depois da rotação. */
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* O gráfico cuida dos próprios gestos — nenhum deles pode vazar pro
+   navegador. Vale sempre, com ou sem ferramenta armada. */
+.chart-container,.chart-container canvas,.achart canvas{touch-action:none}
+/* No celular, campo com fonte menor que 16px faz o Safari AMPLIAR a tela
+   ao focar — é o zoom que aparecia ao tocar na busca. 16px é o mínimo
+   que não dispara isso; a aparência menor se resolve no padding, não na
+   fonte. */
+/* Seletor de timeframe. Estava em style inline, com 11px — e inline vence
+   media query, então era o único campo que ainda fazia o iPhone ampliar a
+   tela ao ser tocado. No celular vai pra 16px e perde padding, pra ocupar
+   o mesmo espaço de antes. */
+.pane-tf{background:var(--s2);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;
+  font-family:var(--font-m);cursor:pointer;outline:none}
+/* O !important aqui é proposital e necessário: quase todo campo do app
+   tem regra própria por classe (.search input, .admin-input, .cfg-input),
+   e classe vence seletor de elemento mesmo dentro de media query. Sem
+   ele a regra abaixo não pegava em campo nenhum — foi o que a medição
+   mostrou. É o único lugar do CSS onde isto se justifica: o preço de não
+   usar é o Safari ampliar a tela toda a cada toque num campo. */
+@media (max-width:768px){
+  input,select,textarea{font-size:16px !important}
+  .pane-tf{padding:2px 4px}
+}
 #root{display:flex;flex-direction:column}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 

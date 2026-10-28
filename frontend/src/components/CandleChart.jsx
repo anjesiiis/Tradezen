@@ -144,11 +144,11 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // enquanto o botão está pressionado — regra de :active não vence
     // style inline.
     containerRef.current.classList.toggle("ferramenta-armada", armado);
-    // touch-action:none trava o navegador de tentar fazer pan/zoom nativo
-    // com o dedo enquanto uma ferramenta está armada — sem isso, mesmo com
-    // handleScroll/handleScale desligados no chart, o navegador ainda podia
-    // "roubar" o toque antes do nosso pointerdown/pointerup rodar.
-    containerRef.current.style.touchAction = armado ? "none" : "auto";
+    // O touch-action do gráfico é SEMPRE none, e mora no CSS
+    // (.chart-container em appCss). Aqui ele voltava pra "auto" sempre que
+    // nenhuma ferramenta estava armada — e era por isso que a pinça dentro
+    // do gráfico ampliava a PÁGINA em vez dos candles: estilo inline vence
+    // o do CSS, e devolvia os gestos pro navegador.
     chartRef.current?.applyOptions({ handleScroll: !armado, handleScale: !armado });
   },[ferramentaAtiva]);
 
@@ -956,7 +956,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         // navegador ainda conseguia interpretar o arrastar de um ponto já
         // colocado (não criar um novo) como gesto de pan da página inteira.
         chartRef.current?.applyOptions({ handleScroll:false, handleScale:false });
-        container.style.touchAction = "none";
         e.preventDefault();
       }
     };
@@ -966,7 +965,6 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
         const arr = arrastandoRef.current;
         arrastandoRef.current = null;
         chartRef.current?.applyOptions({ handleScroll:true, handleScale:true });
-        container.style.touchAction = "auto";
         // Encostou e soltou no mesmo lugar: foi toque, não arraste. Dois
         // desses seguidos no 2º ponto de uma linha de tendência fazem o
         // mesmo que o duplo clique do mouse (ver onDoubleClick).

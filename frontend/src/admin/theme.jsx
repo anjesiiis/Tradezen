@@ -295,6 +295,13 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .filtro-padroes.aberto .filtro-salvos{max-height:160px}
   .filtro-padroes.aberto .filtro-padroes-lista{max-height:260px}
 }
+
+/* Mesma razão da regra do appCss: campo com menos de 16px faz o Safari
+   do iPhone ampliar a tela inteira ao ser tocado. Estas telas injetam o
+   proprio CSS, entao a regra precisa existir aqui tambem. */
+@media (max-width:768px){
+  input,select,textarea{font-size:16px !important}
+}
 `;
 
 export default function AdminShell({ children, tema }) {

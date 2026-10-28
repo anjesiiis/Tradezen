@@ -4,7 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- VIEWPORT — por que é tão travado assim
+         `viewport-fit=cover`: ocupa a área sob o notch/ilha dinâmica.
+         `maximum-scale=1` + `user-scalable=no`: impedem o zoom do
+         NAVEGADOR. É uma decisão consciente: o gráfico tem zoom próprio
+         (pinça da Lightweight Charts), e quando os dois convivem a pinça
+         amplia a página inteira em vez dos candles — o gesto mais
+         natural do app virava o bug mais irritante dele.
+         Ressalva honesta: o Safari do iPhone IGNORA os dois desde o iOS
+         10, de propósito, pra não tirar o zoom de quem enxerga mal. Quem
+         realmente bloqueia lá é o `touch-action` do CSS (ver appCss) e os
+         16px dos campos. Estes dois aqui valem pro Android. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <!-- Salvo na tela inicial do iPhone, abre sem a barra do Safari. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Sem isto o iOS transforma preço e volume ("52.79", "79.98M") em
+         link de telefone: fica azul, sublinhado, e tocar nele abre o
+         discador em cima do gráfico. -->
+    <meta name="format-detection" content="telephone=no" />
     <title>TradeZen</title>
   </head>
   <body>

@@ -349,11 +349,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             if(escolhido) setTf(escolhido);
           }}
           title="Timeframe do gráfico"
-          style={{
-            background:"var(--s2)",color:"var(--text)",border:"1px solid var(--border)",
-            borderRadius:6,padding:"5px 8px",fontSize:11,fontWeight:700,
-            fontFamily:"var(--font-m)",cursor:"pointer",outline:"none",
-          }}
+          className="pane-tf"
         >
           {TFS.map(t=>(
             <option key={t.label} value={t.label}>{t.label}</option>

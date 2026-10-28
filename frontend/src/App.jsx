@@ -56,8 +56,45 @@ function Redirecionar({ to }){
   return null;
 }
 
+/**
+ * Gestos de zoom que o CSS não cobre.
+ *
+ * O touch-action do appCss já tira a pinça e o toque duplo da página.
+ * Isto aqui é o cinto e suspensório pro Safari, que em algumas versões
+ * ainda dispara o gesto mesmo assim — e é SÓ pra fora do gráfico: lá
+ * dentro a pinça é a da Lightweight Charts, e bloquear tiraria o zoom
+ * dos candles junto.
+ *
+ * O que de propósito NÃO está aqui: o truque de barrar o segundo
+ * "touchend" em 300ms. Ele mata o toque duplo do navegador, mas mata
+ * junto o nosso — é com ele que se prolonga uma linha de tendência no
+ * celular. E o Ctrl+rolar do desktop fica em paz: lá o zoom do navegador
+ * não atrapalha ninguém e é recurso de acessibilidade.
+ */
+function useSemZoomDeGesto(){
+  useEffect(()=>{
+    const barrar = (e) => {
+      if (e.target?.closest?.(".chart-container")) return;
+      e.preventDefault();
+    };
+    for (const nome of ["gesturestart","gesturechange","gestureend"]) {
+      document.addEventListener(nome, barrar, { passive:false });
+    }
+    return ()=>{
+      for (const nome of ["gesturestart","gesturechange","gestureend"]) {
+        document.removeEventListener(nome, barrar);
+      }
+    };
+  },[]);
+}
+
 function Router(){
   const location = useLocation();
+  useSemZoomDeGesto();
+
+  // Tela nova começa do topo. Sem isto, sair de uma página rolada (a de
+  // vendas, por exemplo) abria a seguinte no meio dela.
+  useEffect(()=>{ window.scrollTo(0,0); },[location.pathname]);
   const naAbertura = location.pathname === "/";
 
   // Magic link do admin pode cair em qualquer rota (ver pages/Admin.jsx)
