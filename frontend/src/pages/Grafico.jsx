@@ -75,6 +75,8 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // toda vez que QUALQUER ativo salvasse configuração, não só o ticker que
   // está sendo trocado).
   const candlesRef = useRef([]);
+  // De qual ticker são os `tools`/`desenhos` que estão na tela agora.
+  const [tickerCarregado,setTickerCarregado] = useState(null);
   const ativoConfigRef = useRef(ativoConfig);
   useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
   useEffect(()=>{ candlesRef.current = candles; },[candles]);
@@ -231,13 +233,26 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // passa de null pra logado *depois* do primeiro render). Também reage a
   // `tf`: a configuração salva é por ticker (não por timeframe), então
   // trocar pro 60m e voltar pro 1D restaura os mesmos indicadores/desenhos.
+  // Vale pra QUALQUER pessoa, com conta ou sem. Antes isto exigia `user`,
+  // e o efeito era que quem não tinha conta perdia tudo ao trocar de
+  // ativo — nem o navegador guardava. Pior: a subida do trabalho de
+  // visitante pra conta nova, no primeiro login, nunca achava nada pra
+  // subir, porque nada tinha sido gravado.
+  //
+  // Restaura SEMPRE, inclusive pro vazio: sem o `else`, trocar pra um
+  // ativo ainda sem nada salvo deixava na tela os desenhos do ativo
+  // anterior até a próxima mudança.
   useEffect(()=>{
-    if(!ticker || !user) return;
+    if(!ticker) return;
     const configSalva = ativoConfigRef.current?.[ticker];
-    if(configSalva){
-      setTools(new Set(configSalva.tools||[]));
-      setDesenhos(configSalva.desenhos||[]);
-    }
+    setTools(new Set(configSalva?.tools||[]));
+    setDesenhos(configSalva?.desenhos||[]);
+    // Marca de que o estado desta tela já é o DESTE ativo. É state, e não
+    // ref, de propósito: o React junta as três trocas num render só, então
+    // quando esta marca chega `desenhos` já é o do ativo certo. Com ref, a
+    // marca mudaria antes do estado, e a gravação logo abaixo salvaria os
+    // desenhos do ativo anterior sob o nome do novo.
+    setTickerCarregado(ticker);
   },[ticker, user, tf.intervalo]);
 
   const toggleTool=id=>{
@@ -272,9 +287,16 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // com `user` truthy). Régua fica de fora: é medição rápida, não uma
   // anotação pra guardar — salvar ela só acumularia lixo no retrato salvo.
   useEffect(()=>{
-    if(!ticker || !user) return;
-    salvarConfigAtivo?.(ticker, { tools:[...tools], desenhos: desenhos.filter(d=>d.tipo!=="regua") });
-  },[tools, desenhos, user, ticker]);
+    if(!ticker) return;
+    // Enquanto o estado for o do ativo anterior, não grava nada: é o
+    // quadro em que o ticker já mudou e os desenhos ainda não.
+    if(tickerCarregado !== ticker) return;
+    const limpos = desenhos.filter(d=>d.tipo!=="regua");
+    // Tela vazia de ativo que nunca teve nada salvo não vira registro:
+    // senão cada ativo só de passagem deixaria uma linha vazia no banco.
+    if(!tools.size && !limpos.length && !ativoConfigRef.current?.[ticker]) return;
+    salvarConfigAtivo?.(ticker, { tools:[...tools], desenhos: limpos });
+  },[tools, desenhos, user, ticker, tickerCarregado]);
 
   // Busca a página anterior e a coloca na frente do array. O gráfico
   // recoloca a faixa visível no lugar (ver anteriorRef no CandleChart)
