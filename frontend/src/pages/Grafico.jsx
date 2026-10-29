@@ -20,7 +20,7 @@ import { fmtP } from "../lib/mercado.js";
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial, aoTrocarTempo }){
   const navigate = useNavigate();
   // `tempoInicial` vem do modal do "+": a 2ª mesa do mesmo ativo abre num
   // tempo diferente, que é a razão de existir duas mesas do mesmo papel.
@@ -376,7 +376,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           value={tf.label}
           onChange={e=>{
             const escolhido = TFS.find(t=>t.label===e.target.value);
-            if(escolhido) setTf(escolhido);
+            if(!escolhido) return;
+            setTf(escolhido);
+            // Quem monta a bancada precisa saber em que tempo cada mesa
+            // está, pra devolvê-la assim no próximo F5.
+            aoTrocarTempo?.(escolhido.label);
           }}
           title="Timeframe do gráfico"
           className="pane-tf"

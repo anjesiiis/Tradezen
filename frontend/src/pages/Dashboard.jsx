@@ -11,6 +11,7 @@ import { NavInferiorMobile } from "../components/NavBarMobile.jsx";
 import { Sidebar } from "../components/Sidebar.jsx";
 import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../components/Skeleton.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
+import { useSessaoTelas } from "../hooks/useSessaoTelas.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
 import ModalAdicionarGrafico from "../components/ModalAdicionarGrafico.jsx";
@@ -164,6 +165,17 @@ function AppInner(){
   // mesma tela (o effect de troca de ticker do ChartPane cuida do reset).
   const MAX_TELAS_EXTRAS = 3;
   const [telasExtras,setTelasExtras] = useState([]);
+  // O tempo da mesa PRINCIPAL mora aqui porque o ticker dela vem da URL:
+  // sem isto, dar F5 numa mesa no semanal devolvia o diário.
+  //
+  // São DOIS valores de propósito. `tempoPrincipal` acompanha a mesa e é
+  // o que vai pro banco. `tempoAberturaPrincipal` só muda na restauração,
+  // e é ele que entra na `key` do ChartPane — a mesa lê o tempo de
+  // abertura uma vez só, então precisa remontar pra aceitar o que veio do
+  // banco. Se a `key` seguisse o tempo atual, cada troca de timeframe
+  // remontaria a mesa e apagaria os desenhos da tela.
+  const [tempoPrincipal,setTempoPrincipal] = useState(null);
+  const [tempoAberturaPrincipal,setTempoAberturaPrincipal] = useState(null);
   const fecharTela = (idx) => {
     setTelasExtras(prev => prev.filter((_,i)=>i!==idx));
   };
@@ -178,6 +190,34 @@ function AppInner(){
   // lista combinada [principal, ...telasExtras] (0 = principal).
   const isMobile = useIsMobile();
   const [telaAtivaMobile, setTelaAtivaMobile] = useState(0);
+
+  // ── A bancada sobrevive ao F5 ──────────────────────────────────
+  //
+  // Só com conta, por pedido do dono. A mesa principal continua vindo da
+  // URL (é o que faz um link de ativo funcionar); o que volta daqui são
+  // as mesas EXTRAS, o tempo de cada uma e qual estava na frente.
+  const { restaurada, guardar } = useSessaoTelas(user?.id);
+  const jaRestaurou = useRef(false);
+  useEffect(()=>{
+    if(!restaurada || jaRestaurou.current) return;
+    jaRestaurou.current = true;
+    if(restaurada.extras.length) setTelasExtras(restaurada.extras);
+    if(restaurada.tempoPrincipal){
+      setTempoPrincipal(restaurada.tempoPrincipal);
+      setTempoAberturaPrincipal(restaurada.tempoPrincipal);
+    }
+    setTelaAtivaMobile(restaurada.ativa);
+  },[restaurada]);
+
+  // Sair da conta solta a trava: entrar de novo restaura outra vez.
+  useEffect(()=>{ if(!user?.id) jaRestaurou.current = false; },[user?.id]);
+
+  // Só grava DEPOIS de ler o que havia guardado — senão a bancada vazia
+  // do primeiro quadro apagaria a que estava lá.
+  useEffect(()=>{
+    if(!user?.id || !restaurada) return;
+    guardar({ extras: telasExtras, tempoPrincipal, ativa: telaAtivaMobile });
+  },[user?.id, restaurada, telasExtras, tempoPrincipal, telaAtivaMobile, guardar]);
   // Cada mesa extra guarda o ticker e com que tempo ela abre: duas mesas
   // do MESMO ativo só fazem sentido em tempos diferentes.
   const adicionarTelaEIrPara = (ticker, tempo) => {
@@ -503,9 +543,11 @@ function AppInner(){
           )}
           <div className={`analysis-row ${!isMobile && (1+telasExtras.length)>2 ? "grid4" : ""}`}>
           <ChartPane
-            key="primary"
+            key={`primary-${tempoAberturaPrincipal || "padrao"}`}
             mercado={mercado}
             ticker={tickerUrl}
+            tempoInicial={tempoAberturaPrincipal || undefined}
+            aoTrocarTempo={setTempoPrincipal}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
             onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? (tempo)=>setModalAdicionar({tempo}) : undefined}
             ocultoMobile={isMobile && telaAtivaMobile!==0}
@@ -522,6 +564,7 @@ function AppInner(){
               mercado={mercado}
               ticker={mesa.ticker}
               tempoInicial={mesa.tempo}
+              aoTrocarTempo={(tempo)=>setTelasExtras(prev=>prev.map((t,i)=> i===idx ? {...t, tempo} : t))}
               onTickerChange={novo=>trocarTela(idx, novo)}
               onClose={()=>fecharTelaMobile(idx)}
               ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
