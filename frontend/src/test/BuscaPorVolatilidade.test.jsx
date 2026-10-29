@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchBar } from '../components/SearchBar.jsx';
-import { GRUPO_DA_CATEGORIA, esquecerTopVolateis } from '../lib/topVolateis.js';
+import { ESPERA_MAX_MS, GRUPO_DA_CATEGORIA, esquecerTopVolateis } from '../lib/topVolateis.js';
 
 /**
  * A lista padrão da busca deixou de ser uma seleção fixa e virou o
@@ -190,5 +190,111 @@ describe('Busca livre — global, não por categoria', () => {
 
     await user.clear(input);
     await waitFor(() => expect(screen.getByText('Mais voláteis hoje')).toBeInTheDocument());
+  });
+});
+
+/**
+ * O defeito que isto guarda: `fetch` não tem timeout. Com o servidor
+ * lento ou mudo, a busca ficava em "Medindo o pregão…" PARA SEMPRE —
+ * medido em produção, 70 segundos sem resposta e o aviso ainda na tela.
+ *
+ * Esperar é aceitável; esperar sem fim não é. E enquanto se espera, a
+ * lista de destaques continua na tela: ninguém fica olhando pra nada.
+ */
+describe('Busca — quando o ranking não vem', () => {
+  beforeEach(() => esquecerTopVolateis());
+  afterEach(() => vi.restoreAllMocks());
+
+  const comRankingQueNaoVolta = () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url, opcoes) => {
+      const u = String(url);
+      if (u.includes('top-volateis')) {
+        // nunca resolve sozinho; só o abort tira daqui
+        return new Promise((_, rejeitar) => {
+          opcoes?.signal?.addEventListener('abort', () => rejeitar(new Error('abortado')));
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => respostaDe(u) });
+    });
+  };
+
+  it('desiste em vez de esperar sem fim', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    comRankingQueNaoVolta();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { input } = montar();
+    await user.click(input);
+
+    expect(await screen.findByText('Medindo o pregão…')).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(ESPERA_MAX_MS + 500);
+    await waitFor(() => expect(screen.queryByText('Medindo o pregão…')).not.toBeInTheDocument());
+    vi.useRealTimers();
+  });
+
+  it('o ranking que falha não esvazia a tela — os destaques assumem', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('top-volateis')) throw new Error('servidor fora');
+      return { ok: true, json: async () => respostaDe(u) };
+    });
+    const user = userEvent.setup();
+    const { input } = montar();
+    await user.click(input);
+
+    await waitFor(() => expect(document.querySelectorAll('.search-item').length).toBeGreaterThan(0));
+  });
+
+  it('avisa que a cotação não veio, e oferece tentar de novo', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('top-volateis')) throw new Error('servidor fora');
+      return { ok: true, json: async () => respostaDe(u) };
+    });
+    const user = userEvent.setup();
+    const { input } = montar();
+    await user.click(input);
+
+    expect(await screen.findByText(/Cotações indisponíveis/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument();
+  });
+
+  it('tentar de novo busca de novo — e dá certo quando o servidor volta', async () => {
+    let fora = true;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('top-volateis')) {
+        if (fora) throw new Error('servidor fora');
+        return { ok: true, json: async () => respostaDe(u) };
+      }
+      return { ok: true, json: async () => respostaDe(u) };
+    });
+    const user = userEvent.setup();
+    const { input } = montar();
+    await user.click(input);
+    await screen.findByRole('button', { name: 'Tentar de novo' });
+
+    fora = false;
+    await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    await waitFor(() => expect(screen.getByText('Magazine Luiza ON')).toBeInTheDocument());
+    expect(screen.queryByText(/Cotações indisponíveis/)).not.toBeInTheDocument();
+  });
+
+  // Uma categoria que falhou não pode contaminar a outra
+  it('o erro é por categoria, não da busca inteira', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('top-volateis/b3')) throw new Error('so a B3 falhou');
+      return { ok: true, json: async () => respostaDe(u) };
+    });
+    const user = userEvent.setup();
+    const { input } = montar();
+    await user.click(input);
+    await screen.findByText(/Cotações indisponíveis/);
+
+    await user.click(screen.getByRole('button', { name: 'Cripto' }));
+    await waitFor(() => expect(screen.getByText('Bitcoin')).toBeInTheDocument());
+    expect(screen.queryByText(/Cotações indisponíveis/)).not.toBeInTheDocument();
   });
 });

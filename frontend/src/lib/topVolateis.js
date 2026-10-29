@@ -68,6 +68,17 @@ export const nomeDoGrupo = (grupo) => NOMES[grupo] || grupo;
 const VALIDADE_MS = 5 * 60 * 1000;
 const lembrado = new Map();
 
+/**
+ * Quanto se espera pelo ranking antes de desistir.
+ *
+ * Oito segundos, e não três: o servidor dorme quando ninguém usa, e a
+ * primeira requisição do dia paga esse despertar. Desistir cedo demais
+ * trocaria uma espera por um erro em todo primeiro acesso. Quem desiste
+ * cai na lista de destaques, que já está na tela — ninguém fica olhando
+ * pra nada.
+ */
+export const ESPERA_MAX_MS = 8000;
+
 export function esquecerTopVolateis() {
   lembrado.clear();
 }
@@ -80,9 +91,24 @@ export async function buscarTopVolateis(grupo, limite = 5) {
   const guardado = lembrado.get(chave);
   if (guardado && Date.now() - guardado.quando < VALIDADE_MS) return guardado.dado;
 
-  const resposta = await fetch(`${API}/mercados/top-volateis/${grupo}?limite=${limite}`);
-  if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-  const bruto = await resposta.json();
+  // Timeout na marra: `fetch` não tem um. Sem isto, um servidor que
+  // demora a responder (ou que não responde) deixava a busca em
+  // "Medindo o pregão…" PARA SEMPRE — medido em produção, 70 segundos
+  // sem resposta e o aviso ainda na tela. Esperar é aceitável; esperar
+  // sem fim não é.
+  const freio = new AbortController();
+  const corte = setTimeout(() => freio.abort(), ESPERA_MAX_MS);
+  let bruto;
+  try {
+    const resposta = await fetch(
+      `${API}/mercados/top-volateis/${grupo}?limite=${limite}`,
+      { signal: freio.signal },
+    );
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    bruto = await resposta.json();
+  } finally {
+    clearTimeout(corte);
+  }
 
   const dado = {
     top: Array.isArray(bruto?.top) ? bruto.top : [],

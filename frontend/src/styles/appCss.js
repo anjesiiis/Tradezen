@@ -413,6 +413,16 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    âmbar (é neutra: diz o tamanho do movimento) e direção em verde ou
    vermelho — uma sem a outra engana. */
 .search-ranking-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+/* Aviso de cotação indisponível: fica EM CIMA da lista de destaques, que
+   continua utilizável — a pessoa escolhe um ativo enquanto decide se
+   tenta de novo. */
+.search-aviso{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin:6px 8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;font-size:11px;color:var(--text2)}
+.search-retentar{flex:0 0 auto;background:none;border:1px solid var(--border);border-radius:999px;
+  color:var(--accent);cursor:pointer;font-size:11px;font-family:inherit;padding:4px 10px}
+.search-retentar:hover{border-color:var(--accent)}
+@media(max-width:767px){.search-retentar{min-height:32px;padding:0 12px}}
 .search-ranking-nota{font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;font-weight:400}
 .search-numeros{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
   font-family:var(--font-m);font-variant-numeric:tabular-nums;line-height:1.3}

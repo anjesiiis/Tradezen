@@ -66,7 +66,21 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
   // { [categoria]: Array } — o que já foi buscado nesta sessão. Trocar de
   // pílula e voltar não repete a ida ao servidor.
   const [volateis, setVolateis] = useState({});
-  const [carregandoVolateis, setCarregandoVolateis] = useState(false);
+  // Por CATEGORIA, não um booleano só: trocar de pílula no meio de uma
+  // busca deixava a marca de "carregando" presa na categoria errada —
+  // ora girando sobre uma lista já pronta, ora nenhum aviso sobre uma
+  // lista que ainda estava vindo.
+  const [estadoVolateis, setEstadoVolateis] = useState({});   // { [cat]: "carregando"|"erro"|"pronto" }
+  // Quem já foi tentada mora numa REF, não no estado. Em estado, marcar
+  // "carregando" entrava nas dependências do próprio efeito: ele rodava
+  // de novo, a limpeza marcava a busca anterior como morta, e a resposta
+  // que chegava era jogada fora — a lista nunca aparecia.
+  const tentadas = useRef(new Set());
+  const [tentativa, setTentativa] = useState(0);
+  const tentarDeNovo = (cat) => {
+    tentadas.current.delete(cat);
+    setTentativa((t) => t + 1);   // só pra o efeito rodar outra vez
+  };
   const boxRef = useRef(null);
   const inputRef = useRef(null);
   // O catálogo inteiro (283 ativos). A home só carrega os ~69 do resumo,
@@ -101,15 +115,25 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
   const grupoVolateis = GRUPO_DA_CATEGORIA[categoria];
   useEffect(() => {
     if (!open || buscando || !grupoVolateis) return;
-    if (volateis[categoria] !== undefined) return;
+    if (tentadas.current.has(categoria)) return;
+    tentadas.current.add(categoria);
     let vivo = true;
-    setCarregandoVolateis(true);
+    setEstadoVolateis((e) => ({ ...e, [categoria]: "carregando" }));
     buscarTopVolateis(grupoVolateis, 10)
-      .then((d) => { if (vivo) setVolateis((c) => ({ ...c, [categoria]: d.top })); })
-      .catch(() => { if (vivo) setVolateis((c) => ({ ...c, [categoria]: [] })); })
-      .finally(() => { if (vivo) setCarregandoVolateis(false); });
+      .then((d) => {
+        if (!vivo) return;
+        setVolateis((c) => ({ ...c, [categoria]: d.top }));
+        setEstadoVolateis((e) => ({ ...e, [categoria]: "pronto" }));
+      })
+      .catch(() => {
+        // Desistiu, caiu ou demorou demais: a lista de destaques assume
+        // (ver `lista`), e aqui fica o recado com o botão de tentar de
+        // novo. Não gravo [] em `volateis` de propósito — gravar marcaria
+        // a categoria como resolvida e impediria a nova tentativa.
+        if (vivo) setEstadoVolateis((e) => ({ ...e, [categoria]: "erro" }));
+      });
     return () => { vivo = false; };
-  }, [open, buscando, grupoVolateis, categoria, volateis]);
+  }, [open, buscando, grupoVolateis, categoria, tentativa]);
 
   // Casa cada ativo do ranking com a linha do catálogo: é de lá que vêm
   // o logo e o mercado, e é a linha do catálogo que quem escolhe recebe —
@@ -269,11 +293,23 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
             </div>
           )}
 
-          {!buscando && carregandoVolateis && !rankingDaCategoria && (
+          {!buscando && estadoVolateis[categoria] === "carregando" && !rankingDaCategoria && (
             <div className="search-vazio">Medindo o pregão…</div>
           )}
 
-          {lista.length === 0 && !carregandoVolateis && (
+          {/* Aviso curto, EM CIMA da lista de destaques que já está na
+              tela. A pessoa continua podendo escolher um ativo enquanto
+              decide se tenta de novo. */}
+          {!buscando && estadoVolateis[categoria] === "erro" && (
+            <div className="search-aviso">
+              <span>Cotações indisponíveis agora — mostrando os ativos de sempre.</span>
+              <button type="button" className="search-retentar" onClick={() => tentarDeNovo(categoria)}>
+                Tentar de novo
+              </button>
+            </div>
+          )}
+
+          {lista.length === 0 && estadoVolateis[categoria] !== "carregando" && (
             <div className="search-vazio">
               {buscando
                 ? <>Nenhum ativo encontrado para <strong>{q.trim()}</strong>. Tente outro termo.</>

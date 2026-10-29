@@ -473,6 +473,8 @@ def pagina_de_candles(
 # em que o ranking ainda significa alguma coisa e a resposta ainda chega:
 # a B3 sozinha tem 109 papéis no catálogo, e buscar os 109 a cada clique
 # derrubaria metade das requisições no Yahoo.
+FORMULA_VOLATEIS = "(máxima − mínima) ÷ abertura"
+
 TETO_DO_UNIVERSO = 24
 
 GRUPOS_VOLATEIS = {
@@ -535,9 +537,30 @@ async def top_volateis(
     if em_cache is not None:
         return {**em_cache, "cache": True}
 
+    # Teto de espera. Sem ele, um grupo lento segurava a requisição por
+    # tempo indefinido — medido em produção, 90 segundos sem resposta, e a
+    # tela do outro lado ficava em "Medindo o pregão…" todo esse tempo.
+    # Quem estoura o teto recebe o último ranking bom, mesmo velho; e se
+    # não houver nenhum, recebe uma lista vazia e a tela mostra os
+    # destaques. A medição continua rodando por trás e fica pronta pro
+    # próximo pedido.
     loop = asyncio.get_event_loop()
-    resposta = await loop.run_in_executor(None, _medir_grupo, grupo, limite)
-    return {**resposta, "cache": False}
+    try:
+        resposta = await asyncio.wait_for(
+            loop.run_in_executor(None, _medir_grupo, grupo, limite),
+            timeout=ESPERA_MAX_VOLATEIS,
+        )
+        _ultimo_bom[grupo] = resposta
+        return {**resposta, "cache": False}
+    except asyncio.TimeoutError:
+        antigo = _ultimo_bom.get(grupo)
+        if antigo:
+            return {**antigo, "cache": True, "fonte": "antigo"}
+        return {
+            "status": "ok", "grupo": grupo, "formula": FORMULA_VOLATEIS,
+            "total_analisados": 0, "total_validos": 0, "pregao": "",
+            "top": [], "cache": False, "fonte": "indisponivel",
+        }
 
 
 # Uma busca por grupo de cada vez. Sem isto, a thread de aquecimento e um
@@ -546,6 +569,16 @@ async def top_volateis(
 # ativos válidos pra 17. O segundo a chegar espera o primeiro e aproveita
 # o resultado, em vez de martelar o Yahoo em dobro.
 _locks_volateis = {g: threading.Lock() for g in GRUPOS_VOLATEIS}
+
+# Quanto a requisição espera pela medição antes de devolver o que tem.
+# Com a busca em lote um grupo leva 1 ou 2 segundos; doze é folga pra um
+# servidor acordando, e ainda assim um teto.
+ESPERA_MAX_VOLATEIS = 12.0
+
+# O último ranking que deu certo em cada grupo, sem prazo de validade.
+# Não é cache: é a rede de segurança pra quando a medição estourar o
+# tempo. Ranking de ontem é informação; tela vazia não é.
+_ultimo_bom: dict = {}
 
 
 def _medir_grupo(grupo: str, limite: int = 5):
@@ -612,7 +645,7 @@ def _medir_grupo_sem_trava(grupo: str, limite: int):
     return {
         "status": "ok",
         "grupo": grupo,
-        "formula": "(máxima − mínima) ÷ abertura",
+        "formula": FORMULA_VOLATEIS,
         "total_analisados": len(universo),
         "total_validos": len(validos),
         # A data do pregão medido: é ela que diz à tela se o número é de
