@@ -234,6 +234,25 @@ def _refinar_ultima_vela(ticker, candles, intervalo):
         return candles
 
 
+def _linha_para_candle(idx, row):
+    """Uma linha do pandas vira um candle nosso.
+
+    Extraída pra ser a MESMA conta nos dois caminhos: o de um ticker por
+    vez e o do lote. Duas cópias disso acabariam divergindo no primeiro
+    campo novo.
+    """
+    return {
+        "timestamp": int(idx.timestamp() * 1000) if hasattr(idx, "timestamp") else 0,
+        "data": idx.strftime("%Y-%m-%d %H:%M") if hasattr(idx, "strftime") else str(idx),
+        "abertura": round(float(row["Open"]), 4),
+        "maxima": round(float(row["High"]), 4),
+        "minima": round(float(row["Low"]), 4),
+        "fechamento": round(float(row["Close"]), 4),
+        "volume": int(float(row.get("Volume", 0) or 0)),
+        "fonte": "yahoo",
+    }
+
+
 def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
     """Busca candles do Yahoo Finance.
 
@@ -260,20 +279,7 @@ def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
             df.dropna(inplace=True)
-            candles = []
-            for idx, row in df.iterrows():
-                ts = int(idx.timestamp() * 1000) if hasattr(idx, "timestamp") else 0
-                candles.append({
-                    "timestamp": ts,
-                    "data": idx.strftime("%Y-%m-%d %H:%M") if hasattr(idx, "strftime") else str(idx),
-                    "abertura": round(float(row["Open"]), 4),
-                    "maxima": round(float(row["High"]), 4),
-                    "minima": round(float(row["Low"]), 4),
-                    "fechamento": round(float(row["Close"]), 4),
-                    "volume": int(float(row.get("Volume", 0))),
-                    "fonte": "yahoo",
-                })
-
+            candles = [_linha_para_candle(idx, row) for idx, row in df.iterrows()]
             return _sanear_candles(candles)
         except Exception as e:
             if tentativa + 1 < tentativas:
@@ -281,6 +287,82 @@ def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
                 continue
             print(f"[Yahoo] Erro {ticker}: {e}")
             return []
+
+
+def buscar_candles_em_lote(tickers, periodo="5d", intervalo="1d"):
+    """Candles de VÁRIOS ativos numa requisição só.
+
+    Pedir 24 ativos em 24 requisições simultâneas não é só mais lento: o
+    Yahoo começa a recusar. Medido com os 24 primeiros papéis da B3:
+
+        24 requisições em paralelo  →  3 a 11 s, 14 ativos com dados
+        1 requisição em lote        →  1,9 s,    24 ativos com dados
+
+    Ou seja, o jeito antigo apagava 10 ativos do ranking em silêncio — o
+    ranking saía errado, não só devagar. Buscar em lote conserta as duas
+    coisas de uma vez.
+
+    Cripto fica de fora: ela vem da Binance, um símbolo por requisição.
+    Devolve `{ticker: candles}`, sem as chaves que não vieram.
+    """
+    pedidos = [t for t in dict.fromkeys(tickers) if t]
+    saida, faltando = {}, []
+    for t in pedidos:
+        em_cache = _cache_get(f"{t.upper()}:{periodo}:{intervalo}")
+        if em_cache is not None:
+            saida[t] = em_cache
+        elif _eh_cripto(t):
+            faltando.append(t)          # Binance: um a um, logo abaixo
+        else:
+            faltando.append(t)
+
+    do_yahoo = [t for t in faltando if not _eh_cripto(t)]
+    if do_yahoo:
+        try:
+            df = yf.download(
+                " ".join(do_yahoo),
+                period=periodo_valido(intervalo, periodo),
+                interval=intervalo,
+                auto_adjust=True,
+                group_by="ticker",
+                threads=True,
+                progress=False,
+            )
+            for t in do_yahoo:
+                try:
+                    # Com um ticker só o yfinance devolve colunas planas;
+                    # com vários, um nível por ticker.
+                    sub = df[t] if isinstance(df.columns, pd.MultiIndex) else df
+                    sub = sub.dropna()
+                    if sub.empty:
+                        continue
+                    candles = _sanear_candles([_linha_para_candle(idx, linha)
+                                               for idx, linha in sub.iterrows()])
+                    if candles:
+                        saida[t] = candles
+                        _cache_set(f"{t.upper()}:{periodo}:{intervalo}", candles)
+                except Exception:
+                    continue    # um ativo sem dado não derruba o lote
+        except Exception as e:
+            print(f"[Yahoo] lote de {len(do_yahoo)} falhou: {e}")
+
+    # O que o lote não trouxe volta pelo caminho de sempre — mas em
+    # paralelo. A Binance não tem rota de lote como o Yahoo, então os 24
+    # símbolos de cripto caem todos aqui: um a um davam 6,5 segundos, que
+    # era o único trecho de fato sequencial deste endpoint.
+    restantes = [t for t in faltando if t not in saida]
+    if restantes:
+        with ThreadPoolExecutor(max_workers=min(12, len(restantes))) as pool:
+            futuros = {pool.submit(buscar_candles, t, periodo, intervalo): t for t in restantes}
+            for fut in as_completed(futuros):
+                t = futuros[fut]
+                try:
+                    candles = fut.result()
+                    if candles:
+                        saida[t] = candles
+                except Exception:
+                    continue    # um ativo que falhou não derruba o resto
+    return saida
 
 
 def buscar_candles(ticker, periodo="5y", intervalo="1d"):

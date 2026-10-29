@@ -48,7 +48,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from ativos import ATIVOS
-from data.fetcher import _eh_cripto, buscar_candles, buscar_pagina_cripto, buscar_resumo_mercado, buscar_ativo_info
+from data.fetcher import _eh_cripto, buscar_candles, buscar_candles_em_lote, buscar_pagina_cripto, buscar_resumo_mercado, buscar_ativo_info, limpar_cache_fetcher
 from patterns.classicos import detectar_padroes_classicos
 from patterns.consolidacao import detectar_consolidacoes
 from patterns.reversao import detectar_reversoes
@@ -212,16 +212,38 @@ def _resumo_mercado_atualizado():
         return dados
 
 
+def _aquecer_volateis():
+    """Deixa o ranking de cada grupo pronto ANTES de alguém pedir.
+
+    A primeira pessoa a abrir a busca não tem por que pagar a busca
+    inteira: aqui ela já encontra o ranking feito. Roda na mesma thread do
+    resumo, e depois dele, pra não disputarem o Yahoo ao mesmo tempo.
+    """
+    for grupo in GRUPOS_VOLATEIS:
+        if cache_get(f"volateis:{grupo}:5", TTL_CURTO) is not None:
+            continue
+        try:
+            _medir_grupo(grupo, 5)
+        except Exception as e:
+            print(f"[aquecimento] volateis de {grupo} falhou: {e}")
+
+
 def _loop_aquecimento():
     while True:
         try:
             _resumo_mercado_atualizado()
         except Exception as e:  # nunca deixa a thread morrer
             print(f"[aquecimento] resumo de mercado falhou: {e}")
+        try:
+            _aquecer_volateis()
+        except Exception as e:
+            print(f"[aquecimento] volateis falharam: {e}")
         time.sleep(_INTERVALO_AQUECIMENTO)
 
 
-threading.Thread(target=_loop_aquecimento, daemon=True).start()
+# A thread arranca no FIM do arquivo (ver o final de main.py): ela chama
+# _aquecer_volateis, que depende de coisas definidas mais abaixo. Arrancar
+# aqui seria uma corrida com o próprio import.
 
 
 # ── LISTA COMPLETA DE ATIVOS DISPONÍVEIS ──────────────────────
@@ -513,13 +535,50 @@ async def top_volateis(
     if em_cache is not None:
         return {**em_cache, "cache": True}
 
+    loop = asyncio.get_event_loop()
+    resposta = await loop.run_in_executor(None, _medir_grupo, grupo, limite)
+    return {**resposta, "cache": False}
+
+
+# Uma busca por grupo de cada vez. Sem isto, a thread de aquecimento e um
+# visitante podiam medir o MESMO grupo ao mesmo tempo, e o Yahoo responde
+# mal quando as requisições se atropelam: medido, o grupo caía de 24
+# ativos válidos pra 17. O segundo a chegar espera o primeiro e aproveita
+# o resultado, em vez de martelar o Yahoo em dobro.
+_locks_volateis = {g: threading.Lock() for g in GRUPOS_VOLATEIS}
+
+
+def _medir_grupo(grupo: str, limite: int = 5):
+    """Mede o grupo inteiro e devolve o ranking pronto, já cacheado."""
+    chave_cache = f"volateis:{grupo}:{limite}"
+    with _locks_volateis[grupo]:
+        # Quem esperou na porta não refaz a busca: ela acabou de rodar.
+        ja_pronto = cache_get(chave_cache, TTL_CURTO)
+        if ja_pronto is not None:
+            return ja_pronto
+        resposta = _medir_grupo_sem_trava(grupo, limite)
+        if resposta["top"]:
+            cache_set(chave_cache, resposta)
+        return resposta
+
+
+def _medir_grupo_sem_trava(grupo: str, limite: int):
     universo = _universo_do_grupo(grupo)
+
+    # Em LOTE, e não um ativo por vez. Medido com os 24 primeiros papéis
+    # da B3: 24 requisições simultâneas levavam de 3 a 11 segundos e
+    # traziam 14 ativos; uma requisição em lote leva 1,9 e traz os 24. O
+    # Yahoo recusa parte das requisições quando elas chegam juntas, então
+    # o jeito antigo não era só lento — apagava 10 ativos do ranking em
+    # silêncio, e o ranking saía errado.
+    #
+    # 5 dias é o bastante: só o último candle entra na conta, e os outros
+    # são a folga pra feriado e fim de semana.
+    por_ticker = buscar_candles_em_lote([a["ticker"] for a in universo], "5d", "1d")
 
     def medir(ativo):
         try:
-            # 5 dias é o bastante: só o último candle entra na conta, e os
-            # outros são a folga pra feriado e fim de semana.
-            candles = buscar_candles(ativo["ticker"], "5d", "1d")
+            candles = por_ticker.get(ativo["ticker"])
             if not candles:
                 return None
             ultimo = candles[-1]
@@ -545,12 +604,12 @@ async def top_volateis(
             # não entra. É o Yahoo recusando uma requisição no meio de 24.
             return None
 
-    loop = asyncio.get_event_loop()
-    medidos = await asyncio.gather(*[loop.run_in_executor(None, medir, a) for a in universo])
-    validos = [m for m in medidos if m]
+    # A conta em si é aritmética em cima de dado que já está na memória —
+    # não precisa de thread nenhuma.
+    validos = [m for m in (medir(a) for a in universo) if m]
     validos.sort(key=lambda m: m["volatilidade_pct"], reverse=True)
 
-    resposta = {
+    return {
         "status": "ok",
         "grupo": grupo,
         "formula": "(máxima − mínima) ÷ abertura",
@@ -561,9 +620,6 @@ async def top_volateis(
         "pregao": validos[0]["pregao"] if validos else "",
         "top": validos[:limite],
     }
-    if validos:
-        cache_set(chave_cache, resposta)
-    return {**resposta, "cache": False}
 
 
 @app.get("/ativos")
@@ -847,7 +903,12 @@ def limpar_cache(request: Request, admin: str = Depends(require_admin)):
     no Yahoo Finance/Binance, de graça."""
     total = len(_cache)
     _cache.clear()
-    return {"status": "ok", "removidos": total}
+    # O fetcher tem cache PRÓPRIO, de 5 minutos. Sem limpar os dois, esta
+    # rota dizia ter limpado tudo e a requisição seguinte continuava
+    # respondendo de memória — o que fazia uma medição "a frio" parecer
+    # rápida sem nunca ter ido ao Yahoo.
+    do_fetcher = limpar_cache_fetcher()
+    return {"status": "ok", "removidos": total, "removidos_fetcher": do_fetcher}
 
 
 @app.get("/cache/status")
@@ -865,3 +926,10 @@ def status_cache(request: Request, admin: str = Depends(require_admin)):
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+# ── AQUECIMENTO ───────────────────────────────────────────────
+# No fim de tudo, de propósito: a thread usa funções e constantes
+# definidas ao longo do arquivo, e começar antes seria uma corrida com o
+# import do próprio módulo.
+threading.Thread(target=_loop_aquecimento, daemon=True).start()
