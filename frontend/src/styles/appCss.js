@@ -408,6 +408,32 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 @keyframes pcEntra{from{opacity:0}to{opacity:1}}
 @keyframes pcSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.pc-card{padding:28px 20px}.pc-titulo{font-size:19px}.pc-ctas{flex-direction:column}}
+/* ── Selo de "está salvo" ─────────────────────────────────────────
+   Não há botão de salvar, então é este selo que diz que o trabalho foi
+   guardado. pointer-events:none porque ele cobre um canto do gráfico e
+   não pode roubar um clique de desenho. */
+.ind-salvo-area{position:fixed;right:16px;bottom:16px;z-index:40;pointer-events:none}
+.ind-salvo{display:flex;align-items:center;gap:6px;padding:7px 13px;
+  background:rgba(6,8,15,.88);border:1px solid var(--border);border-radius:999px;
+  font-size:11px;font-weight:500;color:var(--text2);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 6px 20px rgba(0,0,0,.35);animation:indSalvoEntra .18s ease-out}
+.ind-salvo-salvo{color:var(--up);border-color:rgba(38,199,123,.35)}
+.ind-salvo-erro{color:var(--down);border-color:rgba(232,93,93,.4)}
+.ind-salvo-salvando{color:var(--blue)}
+.ind-salvo-salvando .ind-salvo-icone{display:inline-block;animation:indSalvoGira 1s linear infinite}
+@keyframes indSalvoEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes indSalvoGira{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* No celular sobe acima da barra de navegação, que é fixa no rodapé. */
+@media(max-width:767px){
+  .ind-salvo-area{right:12px;
+    bottom:calc(var(--h-nav-inferior) + env(safe-area-inset-bottom,0px) + 10px)}
+}
+/* Quem pediu menos animação não precisa ver o ⟳ girando. */
+@media(prefers-reduced-motion:reduce){
+  .ind-salvo{animation:none}
+  .ind-salvo-salvando .ind-salvo-icone{animation:none}
+}
 /* ── Menu de aparência do gráfico (tipo + cores dos candles) ──────
    Mesma caixa do dropdown de indicadores (.ind-drop), por isso só o que
    é dele mesmo mora aqui. */

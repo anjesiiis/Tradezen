@@ -12,6 +12,8 @@ import { Sidebar } from "../components/Sidebar.jsx";
 import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../components/Skeleton.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { useSessaoTelas } from "../hooks/useSessaoTelas.js";
+import IndicadorSalvamento from "../components/IndicadorSalvamento.jsx";
+import { anunciarStatus } from "../lib/statusSalvamento.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
 import ModalAdicionarGrafico from "../components/ModalAdicionarGrafico.jsx";
@@ -142,17 +144,34 @@ function AppInner(){
   // hora (é ele que pinta a tela); a conta recebe quando a mão para.
   const gravacaoPendente = useRef({});
   useEffect(()=>()=>{ for(const t of Object.values(gravacaoPendente.current)) clearTimeout(t); },[]);
+  // Espelho do estado pra ler dentro de salvarConfigAtivo sem recriá-la a
+  // cada mudança — ela é passada como prop pras mesas.
+  const ativoConfigRef = useRef(ativoConfig);
+  useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
 
   const salvarConfigAtivo = (ticker, config) => {
+    // Abrir um ativo já dispara esta função: restaurar o que estava
+    // salvo mexe no estado, e mexer no estado chama aqui. Sem comparar,
+    // o selo piscava "Editando…" a cada ativo aberto, e cada abertura
+    // virava um UPDATE de nada no banco.
+    const igualAoGuardado =
+      JSON.stringify(ativoConfigRef.current?.[ticker]) === JSON.stringify(config);
+    if(igualAoGuardado) return;
+
+    anunciarStatus("editando");
     setAtivoConfig(prev=>{
       const next = {...prev, [ticker]: config};
       gravarLocal(next);
       return next;
     });
-    if(!user?.id) return;
+    // Sem conta o trabalho fica no navegador, e isso já está feito aqui:
+    // dizer "salvando" seria encenar uma espera que não existe.
+    if(!user?.id){ anunciarStatus("salvo"); return; }
     clearTimeout(gravacaoPendente.current[ticker]);
     gravacaoPendente.current[ticker] = setTimeout(()=>{
-      salvarNaConta(user.id, ticker, config);
+      anunciarStatus("salvando");
+      salvarNaConta(user.id, ticker, config)
+        .then(deu=>anunciarStatus(deu ? "salvo" : "erro"));
     }, 1200);
   };
 
@@ -541,6 +560,10 @@ function AppInner(){
               )}
             </div>
           )}
+          {/* Não há botão de salvar: o selo é o que diz que o trabalho
+              está guardado. Fica fora da linha das mesas porque vale pra
+              todas — a gravação é por ativo, mas o aviso é um só. */}
+          <IndicadorSalvamento/>
           <div className={`analysis-row ${!isMobile && (1+telasExtras.length)>2 ? "grid4" : ""}`}>
           <ChartPane
             key={`primary-${tempoAberturaPrincipal || "padrao"}`}
