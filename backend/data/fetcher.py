@@ -5,6 +5,7 @@ Fontes: Yahoo Finance (B3, Forex, Ações EUA, Commodities) + Binance (Cripto)
 v1.1 — Paralelismo com ThreadPoolExecutor + cache interno
 """
 
+import math
 import yfinance as yf
 
 from ativos import DO_RESUMO, periodo_valido, por_ticker
@@ -134,6 +135,105 @@ def buscar_pagina_cripto(ticker, intervalo="60m", antes_de=None, limite=1000):
     return [_kline_para_candle(k) for k in lote], len(lote) == limite
 
 
+def _numero_valido(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0
+
+
+def _sanear_candles(candles):
+    """Tira do caminho preço que não pode existir.
+
+    Um único candle com mínima zero destrói a escala do gráfico inteiro:
+    o eixo passa a ir de zero ao topo histórico, os candles de verdade
+    viram um risco fino lá em cima, e o volume (que divide o eixo) vai
+    parar fora do lugar. Não é hipótese — é o que o Yahoo devolve HOJE na
+    vela semanal em formação de toda ação da B3:
+
+        2026-10-26  abertura 205070  máxima 205089  mínima 0  fechamento 171006
+
+    Abertura, máxima e fechamento batem com os diários da mesma semana; só
+    a mínima vem zerada. Então o candle não é lixo, é um candle com um
+    campo faltando — e jogá-lo fora apagaria a semana corrente de todo
+    ativo brasileiro. O que falta se repõe pelo que sobrou; o que não dá
+    pra repor cai fora.
+    """
+    saida = []
+    for c in candles:
+        abertura, maxima = c.get("abertura"), c.get("maxima")
+        minima, fechamento = c.get("minima"), c.get("fechamento")
+
+        # Sem abertura ou sem fechamento não há candle: não dá pra deduzir
+        # o corpo a partir de nada.
+        if not _numero_valido(abertura) or not _numero_valido(fechamento):
+            continue
+
+        # As DUAS pontas quebradas é outra coisa: é o pregão que o Yahoo
+        # publica antes de começar de fato, sem faixa de preço nenhuma, só
+        # com o último preço no fechamento. Esse candle sai fora — era o
+        # que o código já fazia no diário, e continua fazendo.
+        if not _numero_valido(maxima) and not _numero_valido(minima):
+            continue
+
+        # Uma ponta só quebrada se deduz do corpo: a máxima nunca é menor
+        # que o maior dos dois, a mínima nunca é maior que o menor. É o
+        # candle mais conservador compatível com o que sobrou — pavio curto
+        # demais, nunca um extremo inventado.
+        topo_do_corpo = max(abertura, fechamento)
+        base_do_corpo = min(abertura, fechamento)
+        if not _numero_valido(maxima) or maxima < topo_do_corpo:
+            maxima = topo_do_corpo
+        if not _numero_valido(minima) or minima > base_do_corpo:
+            minima = base_do_corpo
+
+        if maxima < minima:
+            continue
+
+        novo = {**c, "abertura": abertura, "maxima": maxima,
+                "minima": minima, "fechamento": fechamento}
+        # Marca o que foi remendado: é o sinal pra quem puder buscar o
+        # valor de verdade (ver _refinar_ultima_vela).
+        if (maxima, minima) != (c.get("maxima"), c.get("minima")):
+            novo["reparado"] = True
+        saida.append(novo)
+    return saida
+
+
+def _refinar_ultima_vela(ticker, candles, intervalo):
+    """Reconstrói a vela em formação a partir dos candles diários.
+
+    O remendo de _sanear_candles devolve o pavio mais curto possível, não
+    o de verdade: no IBOV de hoje dá mínima 171.006 onde os diários da
+    mesma semana mostram 169.516 — 0,87% de diferença, bem no lugar onde
+    alguém traça um suporte. Os diários são a mesma fonte e já estão em
+    cache na maioria das vezes (quem abre o semanal quase sempre viu o
+    diário antes), então sai barato buscar o número certo.
+
+    Se não der, fica o remendo: gráfico com pavio curto é um detalhe;
+    gráfico com escala destruída é a tela inteira.
+    """
+    if intervalo not in ("1wk", "1w", "1mo") or not candles:
+        return candles
+    if not candles[-1].get("reparado"):
+        return candles
+    try:
+        diarios = buscar_candles(ticker, "1mo", "1d")
+        inicio = candles[-1]["timestamp"]
+        da_vela = [d for d in diarios if d.get("timestamp", 0) >= inicio]
+        if not da_vela:
+            return candles
+        ultima = {
+            **candles[-1],
+            "abertura": da_vela[0]["abertura"],
+            "maxima": max(d["maxima"] for d in da_vela),
+            "minima": min(d["minima"] for d in da_vela),
+            "fechamento": da_vela[-1]["fechamento"],
+        }
+        ultima.pop("reparado", None)
+        return candles[:-1] + [ultima]
+    except Exception as e:
+        print(f"[Yahoo] Nao deu pra refinar a ultima vela de {ticker}: {e}")
+        return candles
+
+
 def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
     """Busca candles do Yahoo Finance.
 
@@ -174,14 +274,7 @@ def _buscar_yahoo(ticker, periodo="3mo", intervalo="1d", tentativas=2):
                     "fonte": "yahoo",
                 })
 
-            # Yahoo às vezes publica o candle do pregão ainda em formação (ex: B3
-            # antes do fechamento oficial do dia) com abertura/máxima/mínima
-            # zeradas e só o último preço no fechamento — descarta esse candle
-            # incompleto pra não virar um "marubozo" indo até zero no gráfico.
-            if candles and candles[-1]["maxima"] == 0 and candles[-1]["minima"] == 0:
-                candles.pop()
-
-            return candles
+            return _sanear_candles(candles)
         except Exception as e:
             if tentativa + 1 < tentativas:
                 time.sleep(0.6)
@@ -228,6 +321,7 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
     # Pedir mais histórico do que o provedor dá de graça volta VAZIO (não
     # dá erro): 60m com 5y, por exemplo. O corte é aqui, num lugar só.
     candles = _buscar_yahoo(ticker, periodo_valido(intervalo, periodo), intervalo)
+    candles = _refinar_ultima_vela(ticker, candles, intervalo)
     if candles:
         _cache_set(chave, candles)
     return candles

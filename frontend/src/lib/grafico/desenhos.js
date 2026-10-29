@@ -1153,24 +1153,42 @@ function _desenharRegua(ctx, toX, toY, pontos, isSel, canvasWidth){
   const linha1 = `${subiu?"+":""}${fmtP(delta)} (${subiu?"+":""}${pct.toFixed(2)}%)`;
   const linha2 = `${nBarras} vela${nBarras===1?"":"s"}`;
 
+  // A etiqueta é o motivo de a régua existir, então ela é opaca de ponta
+  // a ponta: nada de alfa herdado, nada de tracejado, e uma borda escura
+  // que a separa do candle que estiver atrás. Era aqui que a medição
+  // sumia no gráfico.
   ctx.save();
-  ctx.font = "800 12px 'JetBrains Mono',monospace";
-  const largura = Math.max(ctx.measureText(linha1).width, 70);
-  const padX=8, padY=6;
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([]);
+  ctx.font = "800 13px 'JetBrains Mono',monospace";
+  const largura = Math.max(ctx.measureText(linha1).width, 76);
+  const padX=9, padY=7;
   let bx = Math.max(x1,x2)+10;
   const by = Math.min(y1,y2);
-  const bw = largura+padX*2, bh = 34+padY;
+  const bw = largura+padX*2, bh = 38+padY;
   if(bx+bw > canvasWidth) bx = Math.min(x1,x2)-10-bw; // sem espaço à direita → mostra à esquerda
   ctx.beginPath();
   if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,6); else ctx.rect(bx,by,bw,bh);
   ctx.fillStyle = cor;
+  ctx.shadowColor = "rgba(0,0,0,.55)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
   ctx.fill();
-  ctx.fillStyle = "#0a0a0f";
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(6,8,15,.85)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Preto sobre verde/vermelho vivo: é o par de maior contraste que dá
+  // pra ter aqui sem trocar a cor que informa a direção do movimento.
+  ctx.fillStyle = "#06080f";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText(linha1, bx+padX, by+padY);
-  ctx.font = "600 10px 'JetBrains Mono',monospace";
-  ctx.fillText(linha2, bx+padX, by+padY+16);
+  ctx.font = "700 11px 'JetBrains Mono',monospace";
+  ctx.globalAlpha = 0.82;
+  ctx.fillText(linha2, bx+padX, by+padY+18);
   ctx.restore();
 }
 
@@ -1225,7 +1243,13 @@ export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasW
   _estilo = FERRAMENTAS_PERSONALIZAVEIS.includes(d.tipo)
     ? normalizarEstilo(d.tipo, d.estilo)
     : null;
-  if(preview){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
+  // Translúcido e tracejado é a marca de "ainda colocando" — distingue o
+  // desenho que está nascendo do que já ficou. A régua fica de fora: ela
+  // existe PRA SER LIDA enquanto se arrasta, e some no clique seguinte,
+  // então não há um "depois" do qual distinguir. A 55% os números dela
+  // sumiam em cima dos candles, que foi a queixa.
+  const esmaecer = preview && d.tipo !== "regua";
+  if(esmaecer){ ctx.save(); ctx.globalAlpha = 0.55; ctx.setLineDash([6,4]); }
   if(d.tipo==="trend")      _desenharTrend(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth, d.continua);
   else if(d.tipo==="vertical") _desenharVertical(ctx, toLogX, d.pontos, isSel, canvasHeight);
   else if(d.tipo==="triangulo_desenho") _desenharTrianguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
@@ -1236,6 +1260,6 @@ export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasW
   else if(d.tipo==="fibo")   _desenharFibonacci(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="texto")  _desenharTexto(ctx, toLogX, toPrecoY, d.pontos, d.texto, isSel);
   else if(d.tipo==="regua")  _desenharRegua(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
-  if(preview){ ctx.restore(); }
+  if(esmaecer){ ctx.restore(); }
   _estilo = null;
 }

@@ -1,4 +1,29 @@
 // ── Converte candles do backend pro formato Lightweight Charts ──
+
+const precoValido = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+/**
+ * Candle que o gráfico pode receber sem se quebrar.
+ *
+ * Uma mínima zerada num candle só destrói a escala do gráfico INTEIRO: o
+ * eixo passa a ir de zero ao topo histórico, os candles de verdade viram
+ * um risco fino lá em cima e o volume, que divide o mesmo eixo, vai parar
+ * fora do lugar. Foi o que aconteceu no semanal — ver _sanear_candles no
+ * backend, que é a primeira barreira.
+ *
+ * Esta é a segunda. Vale a pena ter as duas: a fonte não é só o nosso
+ * backend (cripto vem da Binance), o backend demora a subir, e o custo
+ * aqui é uma comparação por candle.
+ */
+export const candleUtilizavel = (c) => {
+  if (!c) return false;
+  const { open, high, low, close } = c;
+  if (![open, high, low, close].every(precoValido)) return false;
+  // Máxima abaixo da mínima, ou corpo fora do pavio: o candle se
+  // contradiz, e desenhar isso é pior que não desenhar.
+  return high >= low && high >= Math.max(open, close) && low <= Math.min(open, close);
+};
+
 export const toLWCandles = (candles) =>
   candles.map(c => ({
     time: Math.floor(c.timestamp / 1000),
@@ -6,7 +31,7 @@ export const toLWCandles = (candles) =>
     high:  c.maxima,
     low:   c.minima,
     close: c.fechamento,
-  })).sort((a,b) => a.time - b.time);
+  })).filter(candleUtilizavel).sort((a,b) => a.time - b.time);
 
 export const toLWSeries = (candles) =>
   candles.map(c => ({
