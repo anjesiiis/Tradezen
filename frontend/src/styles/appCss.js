@@ -944,6 +944,49 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .globo-popup-var{font-family:var(--font-m);font-size:12px;font-weight:600;color:var(--text3);font-variant-numeric:tabular-nums}
 .globo-popup-var.alta{color:var(--up)}
 .globo-popup-var.baixa{color:var(--down)}
+/* ── Top 5 mais voláteis, dentro do card do ponto do globo ────────
+   Volatilidade é AMPLITUDE (quanto o preço andou no dia), não direção —
+   por isso cada linha mostra as duas, e em cores diferentes: a amplitude
+   em âmbar, que é neutra, e a variação em verde ou vermelho. */
+.tv-bloco{display:flex;flex-direction:column;gap:3px;margin-top:8px;
+  padding-top:8px;border-top:1px solid var(--border)}
+.tv-topo{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.tv-selo{font-size:9px;color:var(--text2);background:var(--s2);border:1px solid var(--border);
+  border-radius:999px;padding:1px 6px;white-space:nowrap}
+.tv-linha{display:flex;align-items:center;gap:7px;width:100%;padding:5px 4px;
+  background:none;border:0;border-radius:6px;cursor:pointer;text-align:left;font-family:inherit}
+.tv-linha:hover{background:var(--s2)}
+.tv-posicao{flex:0 0 auto;width:16px;height:16px;border-radius:50%;background:var(--s2);
+  color:var(--text2);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tv-nomes{flex:1;min-width:0;display:flex;flex-direction:column}
+.tv-simbolo{color:var(--text);font-size:11px;font-weight:600;line-height:1.25}
+.tv-nome{color:var(--text3);font-size:9px;line-height:1.25;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.tv-numeros{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
+  font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.tv-preco{color:var(--text);font-size:10px;line-height:1.3}
+.tv-linha-baixo{display:flex;align-items:center;gap:5px;line-height:1.3}
+.tv-amplitude{color:#F5B14C;font-size:10px;font-weight:600}
+.tv-variacao{font-size:9px}
+.tv-variacao.alta{color:var(--up)}
+.tv-variacao.baixa{color:var(--down)}
+/* No celular o card do ponto vira folha no rodapé: ancorado ao globo ele
+   sairia pelas bordas de uma tela de 375px. */
+@media(max-width:767px){
+  /* Para EM CIMA da barra de navegação, não por baixo dela: a .mnav é
+     fixa no bottom:0 com z-index 9999, então uma folha em bottom:0
+     nasceria escondida atrás das cinco abas. */
+  .globo-popup{position:fixed !important;left:0 !important;right:0 !important;
+    top:auto !important;width:auto !important;
+    bottom:calc(var(--h-nav-inferior) + env(safe-area-inset-bottom,0px)) !important;
+    max-height:64vh;overflow-y:auto;border-radius:16px 16px 0 0;
+    padding:16px 14px 18px;
+    border-left:0;border-right:0;border-bottom:0;z-index:9998}
+  .globo-popup-x{top:12px;right:12px;font-size:16px;min-height:32px;padding:0 6px}
+  .tv-linha{padding:9px 6px;min-height:44px}
+  .tv-simbolo{font-size:12px}
+  .tv-preco,.tv-amplitude{font-size:11px}
+}
 .globo-popup-btn{background:var(--accent);border:0;color:#fff;font:inherit;font-size:11px;font-weight:600;padding:6px 12px;border-radius:14px;cursor:pointer}
 .globo-popup-btn:hover{filter:brightness(1.1)}
 

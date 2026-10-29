@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { API } from "../lib/api.js";
 import { CATEGORIAS, PONTOS_DO_GLOBO, variacaoDoDia } from "../lib/mercadosGlobais.js";
 import { buscarTopAcoes } from "../lib/topAcoes.js";
+import { grupoDoPonto } from "../lib/topVolateis.js";
+import TopVolateis from "./TopVolateis.jsx";
 import { fmtP } from "../lib/mercado.js";
 
 // Bloco do globo da página inicial: o globo em si, a coluna de filtros e o
@@ -119,6 +121,10 @@ export default function GloboMercados({ compacto = false }) {
                 area={area}
                 aoFechar={() => setSelecionado(null)}
                 aoVerIndice={() => navigate(`/ativo/${encodeURIComponent(selecionado.indice)}`)}
+                aoAbrirAtivo={(ativo) => {
+                  setSelecionado(null);
+                  navigate(`/ativo/${encodeURIComponent(ativo.ticker)}`);
+                }}
               />
             )
           )}
@@ -200,6 +206,11 @@ function PopupAcoes({ mercado, posicao, area, aoFechar, aoAbrirAcao }) {
           Maior volume: {acoes[0].simbolo}, {acoes[0].moeda} {fmtP(acoes[0].preco)}
         </span>
       )}
+
+      {/* Quem mais NEGOCIOU é uma pergunta; quem mais se MEXEU é outra, e
+          quase nunca dão a mesma lista. As duas no mesmo card porque o
+          clique é o mesmo. */}
+      <TopVolateis grupo={grupoDoPonto(mercado)} aoAbrirAtivo={aoAbrirAcao} />
     </div>
   );
 }
@@ -214,9 +225,11 @@ function encaixar(posicao, area, largura, altura) {
 }
 
 // Card flutuante do ponto clicado, preso dentro da área do globo.
-function PopupMercado({ mercado, dado, posicao, area, aoFechar, aoVerIndice }) {
-  const LARGURA = 226;
-  const ALTURA = 188;   // o suficiente pro texto de duas linhas e o rodapé
+function PopupMercado({ mercado, dado, posicao, area, aoFechar, aoVerIndice, aoAbrirAtivo }) {
+  const grupo = grupoDoPonto(mercado);
+  const LARGURA = grupo ? 248 : 226;
+  // Com a lista dos voláteis o card cresce; sem ela fica como era.
+  const ALTURA = grupo ? 340 : 188;
   const { esquerda, topo } = encaixar(posicao, area, LARGURA, ALTURA);
   const alta = dado ? dado.variacao >= 0 : null;
 
@@ -232,6 +245,11 @@ function PopupMercado({ mercado, dado, posicao, area, aoFechar, aoVerIndice }) {
         </span>
         <button type="button" className="globo-popup-btn" onClick={aoVerIndice}>Ver Índice</button>
       </div>
+
+      {/* Moeda e os dois índices com papéis no catálogo (B3 e EUA) ganham
+          a lista. Londres, Tóquio, Frankfurt e Hong Kong não: ranquear
+          "os mais voláteis de Tóquio" com ação americana seria mentira. */}
+      <TopVolateis grupo={grupo} aoAbrirAtivo={aoAbrirAtivo} />
     </div>
   );
 }

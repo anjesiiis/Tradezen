@@ -435,6 +435,137 @@ def pagina_de_candles(
     return {**resposta, "cache": False}
 
 
+# ─────────────────────────────────────────────────────────────────────
+# TOP 5 MAIS VOLÁTEIS DO DIA — por grupo de mercado
+#
+# Volatilidade do dia = (máxima − mínima) ÷ abertura × 100. É a amplitude
+# do pregão, não a direção: um papel que abriu a 10, foi a 11, caiu a 9 e
+# fechou a 10 teve 20% de volatilidade e 0% de variação. É justamente o
+# que interessa a quem procura movimento pra estudar.
+#
+# O universo sai do catálogo único (ativos.py), e não de uma lista nova
+# aqui: ativo acrescentado lá entra neste ranking sozinho.
+# ─────────────────────────────────────────────────────────────────────
+
+# Quantos ativos de cada grupo entram na conta. Vinte e quatro é o ponto
+# em que o ranking ainda significa alguma coisa e a resposta ainda chega:
+# a B3 sozinha tem 109 papéis no catálogo, e buscar os 109 a cada clique
+# derrubaria metade das requisições no Yahoo.
+TETO_DO_UNIVERSO = 24
+
+GRUPOS_VOLATEIS = {
+    "b3":        ("B3",),
+    "eua":       ("NYSE", "NASDAQ"),
+    "forex":     ("FOREX",),
+    "cripto":    ("CRIPTO",),
+    "commodity": ("COMMODITY",),
+    "indice":    ("INDICE",),
+}
+
+
+def _universo_do_grupo(grupo: str):
+    """Os ativos daquele grupo, os do resumo primeiro.
+
+    `resumo: True` marca os que o dono já escolheu como representativos —
+    são eles que entram na fileira de cotações da home. Usar essa mesma
+    escolha aqui evita inventar um segundo critério de "quais importam".
+    """
+    mercados = GRUPOS_VOLATEIS[grupo]
+    do_grupo = [a for a in ATIVOS if a.get("mercado", "").upper() in mercados]
+    do_grupo.sort(key=lambda a: not a.get("resumo"))
+    return do_grupo[:TETO_DO_UNIVERSO]
+
+
+def _volatilidade_do_candle(c):
+    """Devolve (volatilidade, variação) em %, ou None se o candle não presta."""
+    abertura, maxima = c.get("abertura"), c.get("maxima")
+    minima, fechamento = c.get("minima"), c.get("fechamento")
+    if not all(isinstance(v, (int, float)) for v in (abertura, maxima, minima, fechamento)):
+        return None
+    if abertura <= 0 or maxima < minima:
+        return None
+    return (
+        (maxima - minima) / abertura * 100,
+        (fechamento - abertura) / abertura * 100,
+    )
+
+
+@app.get("/mercados/top-volateis/{grupo}")
+@limiter.limit("30/minute")
+async def top_volateis(
+    request: Request,
+    grupo: str,
+    limite: int = Query(5, ge=1, le=20),
+):
+    """Os ativos que mais se mexeram no último pregão daquele grupo."""
+    grupo = grupo.lower()
+    if grupo not in GRUPOS_VOLATEIS:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Grupo '{grupo}' não existe. Use: {', '.join(GRUPOS_VOLATEIS)}",
+        )
+
+    # Cache do RANKING pronto, além do cache por ativo que o fetcher já
+    # tem. Sem ele, cada clique num ponto do globo refaz 24 leituras de
+    # cache e 24 contas — barato, mas desnecessário a cada abertura.
+    chave_cache = f"volateis:{grupo}:{limite}"
+    em_cache = cache_get(chave_cache, TTL_CURTO)
+    if em_cache is not None:
+        return {**em_cache, "cache": True}
+
+    universo = _universo_do_grupo(grupo)
+
+    def medir(ativo):
+        try:
+            # 5 dias é o bastante: só o último candle entra na conta, e os
+            # outros são a folga pra feriado e fim de semana.
+            candles = buscar_candles(ativo["ticker"], "5d", "1d")
+            if not candles:
+                return None
+            ultimo = candles[-1]
+            medida = _volatilidade_do_candle(ultimo)
+            if medida is None:
+                return None
+            volatilidade, variacao = medida
+            return {
+                "ticker": ativo["ticker"],
+                "simbolo": ativo.get("simbolo") or ativo["ticker"],
+                "nome": ativo.get("nome") or ativo["ticker"],
+                "moeda": ativo.get("moeda", ""),
+                "preco": ultimo["fechamento"],
+                "maxima": ultimo["maxima"],
+                "minima": ultimo["minima"],
+                "variacao_pct": round(variacao, 2),
+                "volatilidade_pct": round(volatilidade, 2),
+                "volume": ultimo.get("volume", 0),
+                "pregao": ultimo.get("data", ""),
+            }
+        except Exception:
+            # Um ativo que falhou não derruba o ranking inteiro — ele só
+            # não entra. É o Yahoo recusando uma requisição no meio de 24.
+            return None
+
+    loop = asyncio.get_event_loop()
+    medidos = await asyncio.gather(*[loop.run_in_executor(None, medir, a) for a in universo])
+    validos = [m for m in medidos if m]
+    validos.sort(key=lambda m: m["volatilidade_pct"], reverse=True)
+
+    resposta = {
+        "status": "ok",
+        "grupo": grupo,
+        "formula": "(máxima − mínima) ÷ abertura",
+        "total_analisados": len(universo),
+        "total_validos": len(validos),
+        # A data do pregão medido: é ela que diz à tela se o número é de
+        # hoje ou do último dia em que o mercado abriu.
+        "pregao": validos[0]["pregao"] if validos else "",
+        "top": validos[:limite],
+    }
+    if validos:
+        cache_set(chave_cache, resposta)
+    return {**resposta, "cache": False}
+
+
 @app.get("/ativos")
 @limiter.limit("60/minute")
 def listar_ativos(request: Request, mercado: Optional[str] = Query(None, description="Filtra por mercado: B3, CRIPTO, FOREX...")):

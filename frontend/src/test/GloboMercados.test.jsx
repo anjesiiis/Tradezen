@@ -29,10 +29,10 @@ function montar() {
 }
 
 describe('Bloco do globo na tela inicial', () => {
-  it('mostra os filtros (Moeda, Índice e Ações), todos ligados', async () => {
+  it('mostra os quatro filtros, todos ligados', async () => {
     montar();
 
-    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Moeda', 'Índice', 'Ações']);
+    expect(CATEGORIAS.map((c) => c.rotulo)).toEqual(['Moeda', 'Índice', 'Ações', 'Cripto e Commodities']);
     expect(screen.queryByRole('button', { name: 'Cripto' })).not.toBeInTheDocument();
     for (const { rotulo } of CATEGORIAS) {
       expect(screen.getByRole('button', { name: rotulo })).toHaveAttribute('aria-pressed', 'true');
@@ -43,10 +43,11 @@ describe('Bloco do globo na tela inicial', () => {
   it('desligar "Índice" deixa só as moedas', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(PONTOS_DO_GLOBO.length));
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
     await user.click(screen.getByRole('button', { name: 'Ações' }));
+    await user.click(screen.getByRole('button', { name: 'Cripto e Commodities' }));
 
     expect(mercadosRecebidos).toHaveLength(MOEDAS_GLOBAIS.length);
     expect(mercadosRecebidos.every((m) => m.categoria === 'moeda')).toBe(true);
@@ -55,23 +56,25 @@ describe('Bloco do globo na tela inicial', () => {
   it('desligar "Moeda" deixa só as bolsas', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(PONTOS_DO_GLOBO.length));
 
     await user.click(screen.getByRole('button', { name: 'Moeda' }));
     await user.click(screen.getByRole('button', { name: 'Ações' }));
+    await user.click(screen.getByRole('button', { name: 'Cripto e Commodities' }));
 
     expect(mercadosRecebidos).toHaveLength(MERCADOS_GLOBAIS.length);
     expect(mercadosRecebidos.every((m) => m.categoria === 'indice')).toBe(true);
   });
 
-  it('desligar os dois esvazia o globo', async () => {
+  it('desligar todos esvazia o globo', async () => {
     const user = userEvent.setup();
     montar();
-    await waitFor(() => expect(mercadosRecebidos).toHaveLength(13));
+    await waitFor(() => expect(mercadosRecebidos).toHaveLength(PONTOS_DO_GLOBO.length));
 
     await user.click(screen.getByRole('button', { name: 'Índice' }));
     await user.click(screen.getByRole('button', { name: 'Moeda' }));
     await user.click(screen.getByRole('button', { name: 'Ações' }));
+    await user.click(screen.getByRole('button', { name: 'Cripto e Commodities' }));
 
     expect(mercadosRecebidos).toHaveLength(0);
     expect(screen.getByText('Nenhum mercado foi escolhido.')).toBeInTheDocument();

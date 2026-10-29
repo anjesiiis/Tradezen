@@ -9,6 +9,7 @@ export const CATEGORIAS = [
   { id: "moeda", rotulo: "Moeda" },
   { id: "indice", rotulo: "Índice" },
   { id: "acao", rotulo: "Ações" },
+  { id: "outro", rotulo: "Cripto e Commodities" },
 ];
 
 export const MERCADOS_GLOBAIS = [
@@ -241,12 +242,58 @@ export const ACOES_GLOBAIS = [
   },
 ];
 
+// Commodity e cripto não são bolsa nem moeda de país, então entram numa
+// categoria própria — em roxo, pra não se confundirem com as outras três.
+const ROXO = "#A78BFA";
+
+export const OUTROS_GLOBAIS = [
+  {
+    id: "commodities",
+    codigo: "CME",
+    categoria: "outro",
+    grupo: "commodity",
+    sigla: "Commodities",
+    nome: "Bolsa de Chicago (CME)",
+    cidade: "Chicago",
+    pais: "Estados Unidos",
+    continente: "América do Norte",
+    indice: "GC=F",
+    nomeIndice: "Ouro (futuro)",
+    cor: ROXO,
+    lat: 41.88,
+    lng: -87.63,
+    descricao: "Onde se formam os preços de ouro, petróleo, soja e café. A CME é a maior bolsa de futuros do mundo, e é dela que sai a referência que o Brasil usa pra exportar.",
+  },
+  {
+    id: "cripto",
+    categoria: "outro",
+    grupo: "cripto",
+    codigo: "CRIPTO",
+    sigla: "Criptomoedas",
+    nome: "Mercado de cripto",
+    cidade: "Sem sede",
+    pais: "Sem país",
+    continente: "—",
+    indice: "BTC-USD",
+    nomeIndice: "Bitcoin",
+    cor: ROXO,
+    // No meio do Atlântico de propósito, e não num país: cripto não tem
+    // bolsa nem banco central, negocia 24 horas e em toda parte. Qualquer
+    // coordenada aqui seria chute — esta ao menos não finge ser uma sede.
+    lat: 14,
+    lng: -32,
+    descricao: "Não tem bolsa, sede nem país: negocia 24 horas por dia, direto entre as corretoras. Por isso o ponto fica no meio do oceano — não há onde colocá-lo.",
+  },
+];
+
 /**
  * Tudo que o globo desenha. A lista de cards da tela Mercados Globais
  * continua sendo só MERCADOS_GLOBAIS (bolsas) — moeda entra no mapa, não
  * naquela lista.
  */
-export const PONTOS_DO_GLOBO = [...MERCADOS_GLOBAIS, ...MOEDAS_GLOBAIS, ...ACOES_GLOBAIS];
+export const PONTOS_DO_GLOBO = [
+  ...MERCADOS_GLOBAIS, ...MOEDAS_GLOBAIS, ...ACOES_GLOBAIS, ...OUTROS_GLOBAIS,
+];
 
 /** Variação do dia a partir dos candles: último fechamento contra o anterior. */
 export function variacaoDoDia(candles) {
