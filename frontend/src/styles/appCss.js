@@ -408,6 +408,24 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 @keyframes pcEntra{from{opacity:0}to{opacity:1}}
 @keyframes pcSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.pc-card{padding:28px 20px}.pc-titulo{font-size:19px}.pc-ctas{flex-direction:column}}
+/* ── Ranking do dia dentro da busca ───────────────────────────────
+   A lista padrão da busca é "os que mais se mexeram hoje". Amplitude em
+   âmbar (é neutra: diz o tamanho do movimento) e direção em verde ou
+   vermelho — uma sem a outra engana. */
+.search-ranking-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.search-ranking-nota{font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;font-weight:400}
+.search-numeros{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
+  font-family:var(--font-m);font-variant-numeric:tabular-nums;line-height:1.3}
+.search-preco{color:var(--text);font-size:11px}
+.search-linha-baixo{display:flex;align-items:center;gap:6px}
+.search-amplitude{color:#F5B14C;font-size:11px;font-weight:600}
+.search-var{font-size:10px}
+.search-var.alta{color:var(--up)}
+.search-var.baixa{color:var(--down)}
+@media(max-width:767px){
+  .search-preco,.search-amplitude{font-size:12px}
+  .search-var{font-size:11px}
+}
 /* ── Selo de "está salvo" ─────────────────────────────────────────
    Não há botão de salvar, então é este selo que diz que o trabalho foi
    guardado. pointer-events:none porque ele cobre um canto do gráfico e

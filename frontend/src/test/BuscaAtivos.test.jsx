@@ -137,17 +137,20 @@ describe('Busca — a tela', () => {
     return { onSelect, input: screen.getByLabelText('Buscar ativo') };
   };
 
-  it('ao focar, mostra as sugestões sem precisar digitar', async () => {
+  // A lista padrão virou um RANKING do dia, e ranking só existe dentro de
+  // uma categoria: juntar cripto com ação daria uma lista em que a cripto
+  // ganha sempre (ela se mexe 5% num dia calmo). Por isso a busca abre em
+  // "Ações BR" e não mais em "Todos".
+  it('ao focar, mostra ativos sem precisar digitar', async () => {
     const user = userEvent.setup();
     const { input } = montar();
 
     await user.click(input);
 
     expect(screen.getByText('Vale ON')).toBeInTheDocument();
-    expect(screen.getByText('Bitcoin')).toBeInTheDocument();
   });
 
-  it('tem as pílulas de categoria, com Todos ligado', async () => {
+  it('tem as pílulas de categoria, abrindo em Ações BR', async () => {
     const user = userEvent.setup();
     const { input } = montar();
     await user.click(input);
@@ -155,7 +158,8 @@ describe('Busca — a tela', () => {
     const chips = [...document.querySelectorAll('.search-chip')];
     expect(chips.map((c) => c.textContent)).toEqual(
       ['Todos', 'Ações BR', 'Ações EUA', 'Moedas', 'Cripto', 'Commodities', 'Índices']);
-    expect(chips[0]).toHaveClass('ativo');
+    expect(chips[1]).toHaveClass('ativo');
+    expect(chips[0]).not.toHaveClass('ativo');
   });
 
   it('clicar numa pílula filtra a lista', async () => {

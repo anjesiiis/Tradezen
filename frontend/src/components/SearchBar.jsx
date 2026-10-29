@@ -5,6 +5,9 @@ import {
   CATEGORIAS, COR_DA_CATEGORIA, categoriaDoAtivo, destaquesDaCategoria,
   filtrarPorCategoria, iniciaisDoAtivo, ordenarPorRelevancia, rotuloDaCategoria,
 } from "../lib/buscaAtivos.js";
+import {
+  GRUPO_DA_CATEGORIA, buscarTopVolateis, precoComMoeda,
+} from "../lib/topVolateis.js";
 
 // Uma linha de resultado: logo, ticker grande, nome embaixo, e à direita
 // o selo da categoria com o mercado.
@@ -28,10 +31,25 @@ function ItemDaBusca({ a, destacado, aoPassar, aoClicar }) {
         <span className="search-ticker">{a.simbolo}</span>
         <span className="search-nome">{a.nome}</span>
       </span>
-      <span className="search-meta">
-        <span className={`search-selo selo-${categoria}`}>{rotuloDaCategoria(categoria)}</span>
-        <span className="search-mercado">{a.mercado}</span>
-      </span>
+      {/* Com número do dia, o selo da categoria sai: quem está olhando
+          uma lista DE uma categoria já sabe em qual está, e o espaço vale
+          mais pro preço. Na busca livre, que é global, o selo fica. */}
+      {a.volatilidade_pct != null ? (
+        <span className="search-numeros">
+          <span className="search-preco">{precoComMoeda(a.preco, a.moeda)}</span>
+          <span className="search-linha-baixo">
+            <span className="search-amplitude">↕ {a.volatilidade_pct.toFixed(2)}%</span>
+            <span className={`search-var ${a.variacao_pct >= 0 ? "alta" : "baixa"}`}>
+              {a.variacao_pct >= 0 ? "▲" : "▼"} {Math.abs(a.variacao_pct).toFixed(2)}%
+            </span>
+          </span>
+        </span>
+      ) : (
+        <span className="search-meta">
+          <span className={`search-selo selo-${categoria}`}>{rotuloDaCategoria(categoria)}</span>
+          <span className="search-mercado">{a.mercado}</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -41,7 +59,14 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
   const [res, setRes] = useState([]);
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
-  const [categoria, setCategoria] = useState("todos");
+  // Abre nas ações brasileiras, e não em "Todos": a lista padrão agora é
+  // um ranking do dia, e ranking só existe dentro de uma categoria —
+  // juntar cripto com ação daria uma lista em que a cripto ganha sempre.
+  const [categoria, setCategoria] = useState("acoes_br");
+  // { [categoria]: Array } — o que já foi buscado nesta sessão. Trocar de
+  // pílula e voltar não repete a ida ao servidor.
+  const [volateis, setVolateis] = useState({});
+  const [carregandoVolateis, setCarregandoVolateis] = useState(false);
   const boxRef = useRef(null);
   const inputRef = useRef(null);
   // O catálogo inteiro (283 ativos). A home só carrega os ~69 do resumo,
@@ -70,13 +95,47 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
     return () => clearTimeout(timer);
   }, [q]);
 
-  // O que a lista mostra: o resultado da busca, ou as sugestões quando
-  // ninguém digitou nada ainda. Nos dois casos passa pelo filtro de
-  // categoria e pela ordem de relevância.
+  // Os mais voláteis da pílula escolhida — é a lista padrão, no lugar dos
+  // destaques fixos. "Mais volátil" é onde o preço se mexeu hoje, que é a
+  // pergunta de quem abre a busca sem saber o que procurar.
+  const grupoVolateis = GRUPO_DA_CATEGORIA[categoria];
+  useEffect(() => {
+    if (!open || buscando || !grupoVolateis) return;
+    if (volateis[categoria] !== undefined) return;
+    let vivo = true;
+    setCarregandoVolateis(true);
+    buscarTopVolateis(grupoVolateis, 10)
+      .then((d) => { if (vivo) setVolateis((c) => ({ ...c, [categoria]: d.top })); })
+      .catch(() => { if (vivo) setVolateis((c) => ({ ...c, [categoria]: [] })); })
+      .finally(() => { if (vivo) setCarregandoVolateis(false); });
+    return () => { vivo = false; };
+  }, [open, buscando, grupoVolateis, categoria, volateis]);
+
+  // Casa cada ativo do ranking com a linha do catálogo: é de lá que vêm
+  // o logo e o mercado, e é a linha do catálogo que quem escolhe recebe —
+  // assim abrir um ativo daqui é igual a abrir de qualquer outro lugar.
+  const rankingDaCategoria = useMemo(() => {
+    const medidos = volateis[categoria];
+    if (!medidos?.length) return null;
+    const porTicker = new Map(catalogo.map((a) => [a.ticker, a]));
+    return medidos
+      .map((m) => {
+        const doCatalogo = porTicker.get(m.ticker);
+        if (!doCatalogo) return null;   // fora do catálogo: não abriria gráfico
+        return { ...doCatalogo, preco: m.preco, moeda: m.moeda,
+                 variacao_pct: m.variacao_pct, volatilidade_pct: m.volatilidade_pct };
+      })
+      .filter(Boolean);
+  }, [volateis, categoria, catalogo]);
+
+  // O que a lista mostra: o resultado da busca, ou o ranking do dia
+  // quando ninguém digitou nada ainda.
   const lista = useMemo(() => {
     const base = catalogo.length ? catalogo : mercado;
-    // Sem texto: os destaques da categoria. Com texto: o catálogo todo.
-    if (!buscando) return destaquesDaCategoria(base, categoria);
+    // Sem texto: o ranking da categoria, com os destaques como rede de
+    // segurança (servidor fora do ar, categoria sem ranking, catálogo
+    // ainda chegando — melhor uma lista velha que uma tela vazia).
+    if (!buscando) return rankingDaCategoria || destaquesDaCategoria(base, categoria);
     // O servidor casa só ticker e nome, então "dolar" e "ouro" não
     // achavam nada por lá. O catálogo que a página já carregou é
     // vasculhado junto, e é nele que os apelidos pegam. Os dois se
@@ -85,20 +144,25 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
     for (const a of [...res, ...catalogo, ...mercado]) {
       if (!porTicker.has(a.ticker)) porTicker.set(a.ticker, a);
     }
-    return ordenarPorRelevancia(filtrarPorCategoria([...porTicker.values()], categoria), q);
-  }, [buscando, res, mercado, catalogo, categoria, q]);
+    // Digitar busca em TUDO, sem filtro de categoria. Antes a pílula
+    // escolhida continuava valendo, e agora que a busca abre em "Ações
+    // BR" isso significaria digitar AAPL e não achar nada.
+    return ordenarPorRelevancia([...porTicker.values()], q);
+  }, [buscando, res, mercado, catalogo, categoria, rankingDaCategoria, q]);
 
   // Agrupar por mercado só faz sentido em "Todos": dentro de uma
   // categoria todos os itens teriam o mesmo cabeçalho.
   const grupos = useMemo(() => {
-    if (categoria !== "todos") return null;
+    // Na busca livre, que é global, agrupar por mercado ajuda a separar
+    // PETR4 de PETR4.SA de um ADR homônimo.
+    if (categoria !== "todos" && !buscando) return null;
     const porMercado = new Map();
     for (const a of lista) {
       if (!porMercado.has(a.mercado)) porMercado.set(a.mercado, []);
       porMercado.get(a.mercado).push(a);
     }
     return [...porMercado.entries()].map(([m, ativos]) => ({ mercado: m, ativos }));
-  }, [lista, categoria]);
+  }, [lista, categoria, buscando]);
 
   // Aberto dentro de um modal, o campo já nasce pronto pra digitar: o
   // modal só existe porque a pessoa quer procurar alguma coisa.
@@ -130,7 +194,9 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
   }, []);
 
   const escolher = (a) => {
-    setQ(""); setRes([]); setOpen(false); setCategoria("todos");
+    // Volta pra pílula de abertura, não pra "Todos": a próxima vez que a
+    // busca abrir tem que mostrar um ranking, e "Todos" não tem ranking.
+    setQ(""); setRes([]); setOpen(false); setCategoria("acoes_br");
     onSelect(a);
   };
 
@@ -174,7 +240,10 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
 
       {open && (
         <div className="search-dd" role="listbox">
-          <div className="search-filtros">
+          {/* As pílulas somem enquanto se digita: a busca é global, e
+              deixá-las na tela sugeriria que o texto só procura dentro da
+              categoria escolhida. */}
+          {!buscando && <div className="search-filtros">
             {CATEGORIAS.map((c) => (
               <button
                 key={c.id}
@@ -188,9 +257,23 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
                 {c.rotulo}
               </button>
             ))}
-          </div>
+          </div>}
 
-          {lista.length === 0 && (
+          {/* Diz o que a lista É. Sem isso, dez ações em ordem estranha
+              parecem uma lista aleatória, e ninguém adivinha que o
+              critério é o quanto o preço andou hoje. */}
+          {!buscando && rankingDaCategoria && (
+            <div className="search-group-head search-ranking-head">
+              <span>Mais voláteis hoje</span>
+              <span className="search-ranking-nota">maior amplitude do dia</span>
+            </div>
+          )}
+
+          {!buscando && carregandoVolateis && !rankingDaCategoria && (
+            <div className="search-vazio">Medindo o pregão…</div>
+          )}
+
+          {lista.length === 0 && !carregandoVolateis && (
             <div className="search-vazio">
               {buscando
                 ? <>Nenhum ativo encontrado para <strong>{q.trim()}</strong>. Tente outro termo.</>

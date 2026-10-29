@@ -35,6 +35,23 @@ export function grupoDoPonto(ponto) {
   return null;
 }
 
+/**
+ * Qual universo cada pílula da busca representa.
+ *
+ * "Todos" fica de fora de propósito: juntar os seis rankings pediria seis
+ * idas ao servidor pra montar uma lista que mistura cripto com ação, onde
+ * a cripto ganha sempre (ela se mexe 5% num dia calmo). A visão geral
+ * continua sendo a lista de destaques.
+ */
+export const GRUPO_DA_CATEGORIA = {
+  acoes_br: "b3",
+  acoes_eua: "eua",
+  forex: "forex",
+  cripto: "cripto",
+  commodities: "commodity",
+  indices: "indice",
+};
+
 const NOMES = {
   b3: "Ações da B3",
   eua: "Ações dos EUA",
