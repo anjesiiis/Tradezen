@@ -9,6 +9,7 @@ import { useToasts } from "./toastsAdmin.js";
 import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
+import ModalMoverMarcacao from "./ModalMoverMarcacao.jsx";
 import {
   PADROES, areasDoPadrao, avisosDoPadrao, configDoTemplate, ehFracasso,
   linhasDoPadrao, normalizarPares, padroesCompativeis, paresDeLinha,
@@ -181,6 +182,26 @@ export default function PainelMarcacao({ padraoInicial }) {
 
   // Cada mensagem vira um toast próprio, some sozinho em 8s. Vermelho
   // (erro) impede salvar; amarelo (aviso) é só um "confira isso".
+
+  // Mover a marcação pro outro lado: de "é o padrão" pra "não é", ou o
+  // contrário. Só nas bandeiras — são as únicas com os dois lados hoje.
+  // A linha inteira atravessa no servidor (candles, pontos, anotações),
+  // que é o que evita remarcar os 8 pontos à mão.
+  const [movendo, setMovendo] = useState(null);
+  const destinoDoMover = souFracasso ? "padrao" : "fracasso";
+  const podeMover = padrao.forma === "bandeira";
+
+  async function confirmarMover(motivo) {
+    await api.mover(movendo.id, destinoDoMover, motivo);
+    setMovendo(null);
+    // Sai desta lista e aparece na outra: recarregar é o bastante.
+    await carregarTemplates();
+    mostrarToasts([
+      destinoDoMover === "fracasso"
+        ? `${movendo.ticker} foi para os fracassos.`
+        : `${movendo.ticker} foi para os padrões.`,
+    ], "ok");
+  }
 
   async function carregarTemplates() {
     try {
@@ -665,9 +686,20 @@ export default function PainelMarcacao({ padraoInicial }) {
           aoVisualizar={(t) => abrirTemplate(t, true)}
           aoEditar={(t) => abrirTemplate(t, false)}
           aoExcluir={remover}
+          aoMover={podeMover ? setMovendo : undefined}
+          destinoDoMover={destinoDoMover}
         />
 
       </main>
+
+      {movendo && (
+        <ModalMoverMarcacao
+          marcacao={movendo}
+          destino={destinoDoMover}
+          aoConfirmar={confirmarMover}
+          aoCancelar={() => setMovendo(null)}
+        />
+      )}
 
       <AdminToast avisos={avisos} onFechar={fecharAviso} />
     </AdminShell>

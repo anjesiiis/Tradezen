@@ -1,7 +1,7 @@
 // Marcações salvas em cards — um por template, com o que interessa relembrar
 // depois: ticker, padrão, data do primeiro ponto e a anotação inteira (numa
 // tabela ela ficava cortada). Mesma lista nas telas de todos os padrões.
-export default function ListaTemplates({ templates = [], rotulo, aoVisualizar, aoEditar, aoExcluir }) {
+export default function ListaTemplates({ templates = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover }) {
   return (
     <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <h2>Marcados em {rotulo} ({templates.length})</h2>
@@ -29,11 +29,26 @@ export default function ListaTemplates({ templates = [], rotulo, aoVisualizar, a
               <div><dt>Salvo em</dt><dd>{new Date(t.criado_em).toLocaleDateString("pt-BR")}</dd></div>
             </dl>
             {t.observacao && <p className="admin-card-nota">{t.observacao}</p>}
+            {/* Marcação que já trocou de lado. Serve pra enxergar o que
+                foi revisado à mão sem abrir um a um. */}
+            {t.movido_de && (
+              <p className="admin-card-nota revisada" title={t.motivo_movimento || "Revisada manualmente"}>
+                ✎ movida de {t.movido_de.includes("fracasso") ? "fracassos" : "padrões"}
+                {t.motivo_movimento ? ` — ${t.motivo_movimento}` : ""}
+              </p>
+            )}
             {/* botão de verdade, não <a> sem href: o mouse vira mãozinha, dá
                 pra chegar pelo teclado e o leitor de tela anuncia como botão */}
             <footer>
               <button type="button" className="action" onClick={() => aoVisualizar(t)}>Visualizar</button>
               <button type="button" className="action" onClick={() => aoEditar(t)}>Editar</button>
+              {/* Trocar de lado em vez de apagar e remarcar: a marcação
+                  leva candles, pontos e anotações junto. */}
+              {aoMover && (
+                <button type="button" className="action" onClick={() => aoMover(t)}>
+                  {destinoDoMover === "fracasso" ? "Não é o padrão" : "É o padrão"}
+                </button>
+              )}
               <button type="button" className="action danger" onClick={() => aoExcluir(t.id)}>Excluir</button>
             </footer>
           </article>

@@ -67,6 +67,7 @@ from admin_templates_cunha_baixa import router as admin_templates_cunha_baixa_ro
 from admin_templates_canal_alta import router as admin_templates_canal_alta_router
 from admin_templates_extras import ROUTERS as admin_templates_extras_routers
 from admin_templates_fracasso import ROUTERS as admin_templates_fracasso_routers
+from admin_templates_mover import ROUTERS as admin_templates_mover_routers
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
 from admin_usuarios import router as admin_usuarios_router
 from padroes_marcados import router as padroes_marcados_router
@@ -163,6 +164,11 @@ app.include_router(usuario_router)
 app.include_router(admin_usuarios_router)
 app.include_router(analises_router)
 app.include_router(alertas_router)
+
+# Mover uma marcação entre "é o padrão" e "não é o padrão". Vai depois
+# dos dois acima porque pendura rotas nos MESMOS prefixos deles.
+for _router in admin_templates_mover_routers:
+    app.include_router(_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }

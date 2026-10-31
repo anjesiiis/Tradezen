@@ -142,6 +142,16 @@ function makeTemplateApi(basePath) {
     async remove(id) {
       await adminFetch(`${basePath}/${id}`, { method: "DELETE" });
     },
+    // Move a marcação pro outro lado: de "é o padrão" pra "não é", ou o
+    // contrário. A linha inteira atravessa — candles, pontos e anotações
+    // —, que é o que evita remarcar os 8 pontos à mão.
+    async mover(id, destino, motivo) {
+      const rota = destino === "fracasso" ? "mover-para-fracasso" : "mover-para-padrao";
+      return adminFetch(`${basePath}/${id}/${rota}`, {
+        method: "POST",
+        body: JSON.stringify({ motivo: motivo || null }),
+      });
+    },
   };
 }
 

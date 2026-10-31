@@ -110,6 +110,36 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-card-item dt{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin:0}
 .admin-card-item dd{font-size:13px;color:var(--text);margin:0}
 .admin-card-nota{font-size:12px;color:var(--text2);line-height:1.5;margin:0;border-left:2px solid var(--border);padding-left:8px}
+/* Marcação que já trocou de lado — âmbar, que não é nem sucesso nem
+   erro: é "mexeram aqui à mão". */
+.admin-card-nota.revisada{color:#F5B14C;border-left-color:#F5B14C}
+/* ── Mover marcação entre padrão e fracasso ──────────────────── */
+.mv-fundo{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.mv-caixa{width:min(520px,100%);max-height:90vh;overflow-y:auto;background:var(--card);
+  border:1px solid var(--border);border-radius:14px;padding:20px;
+  display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.mv-caixa h3{margin:0;font-size:16px;color:var(--text)}
+.mv-frase{margin:0;font-size:13px;color:var(--text2);line-height:1.5}
+/* O engano fácil é mover pra cá uma bandeira que só não funcionou. O
+   aviso tem destaque porque é esse erro que envenena o treino. */
+.mv-aviso{margin:0;font-size:12px;line-height:1.55;color:#F5B14C;
+  background:rgba(245,177,76,.1);border:1px solid rgba(245,177,76,.3);
+  border-radius:8px;padding:10px 12px}
+.mv-rotulo{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.mv-motivos{display:flex;flex-wrap:wrap;gap:6px}
+.mv-motivo{padding:6px 11px;background:var(--s2);border:1px solid var(--border);
+  border-radius:999px;color:var(--text2);cursor:pointer;font-size:11px;font-family:inherit}
+.mv-motivo.ativo{border-color:var(--accent);color:var(--accent)}
+.mv-texto{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:inherit;font-size:12px;padding:8px 10px;resize:vertical}
+.mv-erro{margin:0;font-size:12px;color:var(--down)}
+.mv-botoes{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+@media(max-width:600px){
+  .mv-caixa{padding:16px}
+  .mv-motivo{min-height:32px}
+  .mv-botoes .action{min-height:40px;flex:1}
+}
 .admin-card-item footer{display:flex;gap:10px;margin-top:2px}
 .admin-chip-x{margin-left:6px;color:var(--text3);cursor:pointer;font-size:11px;line-height:1;padding:0 2px;border-radius:4px}
 .admin-chip-x:hover{color:#ef5350;background:rgba(239,83,80,.14)}
