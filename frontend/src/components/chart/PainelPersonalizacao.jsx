@@ -109,10 +109,17 @@ function LadoDosRotulos({ lado, aoMudar }) {
 
 export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
   const [recolhido, setRecolhido] = useState(false);
+  // Só o Fibonacci tem aba: ele é a única ferramenta com mais de três
+  // grupos de controle (cor, espessura, traço, etiquetas e dez níveis), e
+  // era o único painel que precisava ROLAR num aparelho de 320, 360 ou
+  // 375px — medido. Nas outras, abas só acrescentariam um toque pra
+  // chegar no que já estava à vista.
+  const [aba, setAba] = useState("estilo");
   if (!ferramenta || !estilo) return null;
 
   const eTexto = ferramenta === "texto";
   const eFibo = ferramenta === "fibo";
+  const emNiveis = eFibo && aba === "niveis";
 
   return (
     <div className="pp" role="group" aria-label={`Estilo — ${rotuloDaFerramenta(ferramenta)}`}>
@@ -127,9 +134,24 @@ export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
         >{recolhido ? "▸" : "▾"}</button>
       </div>
 
+      {eFibo && !recolhido && (
+        <div className="pp-abas" role="tablist" aria-label="Seções do Fibonacci">
+          {[["estilo", "Estilo"], ["niveis", "Níveis"]].map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={aba === id}
+              className={`pp-aba ${aba === id ? "ativa" : ""}`}
+              onClick={() => setAba(id)}
+            >{rotulo}</button>
+          ))}
+        </div>
+      )}
+
       {!recolhido && (
-        <div className="pp-corpo">
-          <Cores cor={estilo.cor} aoEscolher={(cor) => aoMudar({ cor })} />
+        <div className="pp-corpo" role={eFibo ? "tabpanel" : undefined}>
+          {!emNiveis && <Cores cor={estilo.cor} aoEscolher={(cor) => aoMudar({ cor })} />}
 
           {eTexto ? (
             <>
@@ -172,7 +194,7 @@ export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
             </>
           ) : (
             <>
-              <div className="pp-linha">
+              {!emNiveis && <div className="pp-linha">
                 <span className="pp-rotulo">Espessura</span>
                 <div className="pp-grupo">
                   {ESPESSURAS.map((e) => (
@@ -189,8 +211,8 @@ export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="pp-linha">
+              </div>}
+              {!emNiveis && <div className="pp-linha">
                 <span className="pp-rotulo">Traço</span>
                 <div className="pp-grupo">
                   {TRACOS_VISIVEIS.map((t) => (
@@ -205,9 +227,9 @@ export default function PainelPersonalizacao({ ferramenta, estilo, aoMudar }) {
                     >{t.risco}</button>
                   ))}
                 </div>
-              </div>
-              {eFibo && <LadoDosRotulos lado={estilo.ladoRotulos} aoMudar={(ladoRotulos) => aoMudar({ ladoRotulos })} />}
-              {eFibo && <Niveis niveis={estilo.niveis} aoMudar={(niveis) => aoMudar({ niveis })} />}
+              </div>}
+              {eFibo && !emNiveis && <LadoDosRotulos lado={estilo.ladoRotulos} aoMudar={(ladoRotulos) => aoMudar({ ladoRotulos })} />}
+              {emNiveis && <Niveis niveis={estilo.niveis} aoMudar={(niveis) => aoMudar({ niveis })} />}
             </>
           )}
         </div>

@@ -10,10 +10,14 @@ const regra = (seletor) => {
   return CSS.slice(i + seletor.length + 1, CSS.indexOf('}', i));
 };
 
-// O trecho do painel dentro da media query de celular.
+// O trecho do painel dentro da media query de celular. Ancorado na
+// definição dos tokens, que é a primeira regra do bloco — e não numa
+// linha solta, que some assim que alguém escreve um comentário ali.
 const MOBILE = (() => {
-  const i = CSS.indexOf('@media(max-width:767px){\n  .pp{');
-  return i === -1 ? '' : CSS.slice(i, CSS.indexOf('\n}', i));
+  const i = CSS.indexOf('--pp-alvo:');
+  if (i === -1) return '';
+  const fim = CSS.indexOf('\n}', i);
+  return CSS.slice(CSS.lastIndexOf('@media', i), fim === -1 ? undefined : fim);
 })();
 
 describe('Painel de personalização — proporção no celular', () => {
@@ -22,18 +26,11 @@ describe('Painel de personalização — proporção no celular', () => {
   // esticava uma bolinha de 26px pra 44px de altura. Um border-radius de
   // 50% numa caixa 26x44 é uma oval. Medido: 8 ovais de 26x44, e só o
   // seletor de cor livre (que é <label>, não <button>) saía redondo.
-  it('as bolinhas dizem a própria altura mínima, vencendo a regra dos 44px', () => {
-    expect(MOBILE).toMatch(/\.pp-cor\{[^}]*min-height:\d+px/);
-    // classe vence seletor de elemento — é o que faz a regra pegar
-    const alvo = MOBILE.match(/\.pp-cor\{[^}]*min-height:(\d+)px/)[1];
-    const altura = MOBILE.match(/\.pp-cor\{width:\d+px;height:(\d+)px/)[1];
-    expect(alvo).toBe(altura);
-  });
-
-  it.each(['.pp-esp', '.pp-traco', '.pp-bi', '.pp-nivel'])(
-    '%s também escapa do esticão dos 44px',
+  it.each(['.pp-cor', '.pp-esp', '.pp-traco', '.pp-bi', '.pp-nivel'])(
+    '%s diz a própria altura mínima, vencendo a regra dos 44px',
     (seletor) => {
-      expect(MOBILE).toMatch(new RegExp(`\\${seletor}\\{[^}]*min-height:\\d+px`));
+      // classe vence seletor de elemento — é o que faz a regra pegar
+      expect(MOBILE).toMatch(new RegExp(`\\${seletor}\\{[^}]*min-height:`));
     },
   );
 
@@ -65,6 +62,31 @@ describe('Painel de personalização — proporção no celular', () => {
     expect(w).toBe(h);
   });
 
+  // Num SE de 320px um botão de 34px come 11% da largura; num Pro Max de
+  // 430, 8%. O clamp faz o controle encolher e crescer com o aparelho.
+  it.each(['--pp-alvo', '--pp-cor', '--pp-gap', '--pp-pad', '--pp-fs'])(
+    '%s escala com a tela em vez de ser fixo',
+    (token) => {
+      const m = MOBILE.match(new RegExp(`${token}:clamp\\((\\d+)px,[^,]+,(\\d+)px\\)`));
+      expect(m, `${token} deveria ser um clamp`).not.toBeNull();
+      expect(Number(m[1])).toBeLessThan(Number(m[2]));   // piso abaixo do teto
+    },
+  );
+
+  it('o piso dos alvos de toque não desce abaixo de 30px', () => {
+    const piso = Number(MOBILE.match(/--pp-alvo:clamp\((\d+)px/)[1]);
+    expect(piso).toBeGreaterThanOrEqual(30);
+  });
+
+  // Antes era bottom:46px no osso, com a barra de navegação em 56px mais
+  // a safe area: num iPhone com indicador o painel nascia por baixo das
+  // abas, e os controles de baixo ficavam inalcançáveis.
+  it('para em cima da barra de navegação, com a folga do aparelho', () => {
+    expect(MOBILE).toContain('var(--h-nav-inferior)');
+    expect(MOBILE).toContain('env(safe-area-inset-bottom');
+    expect(MOBILE).not.toMatch(/\.pp\{[^}]*bottom:46px/);
+  });
+
   describe('no celular', () => {
     it('o painel tem teto de altura e rola por dentro', () => {
       // Sem teto ele cobria quase metade da tela e empurrava os candles
@@ -73,10 +95,9 @@ describe('Painel de personalização — proporção no celular', () => {
     });
 
     it('a bolinha de cor cresce pro dedo, continuando quadrada', () => {
-      const m = MOBILE.match(/\.pp-cor\{width:(\d+)px;height:(\d+)px/);
-      expect(m).not.toBeNull();
+      const m = MOBILE.match(/\.pp-cor\{width:var\((--pp-cor)\);height:var\((--pp-cor)\)/);
+      expect(m, 'largura e altura têm que sair do MESMO token').not.toBeNull();
       expect(m[1]).toBe(m[2]);
-      expect(Number(m[1])).toBeGreaterThanOrEqual(30);
     });
 
     it('os níveis do Fibonacci correm pro lado em vez de virar 4 fileiras', () => {

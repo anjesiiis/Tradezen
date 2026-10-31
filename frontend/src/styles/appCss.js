@@ -436,6 +436,16 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .search-preco,.search-amplitude{font-size:12px}
   .search-var{font-size:11px}
 }
+/* Alvo de toque mínimo, decidido pelo PONTEIRO e não pela largura: um
+   tablet de 768px é "desktop" pela régua de pixels e mesmo assim se usa
+   com o dedo — lá os controles saíam com 14px. 32px é o piso da WCAG
+   2.5.5 pra área clicável. */
+@media (pointer:coarse){
+  .pp-recolher{min-width:32px;min-height:32px}
+  .pp-cor,.pp-esp,.pp-traco,.pp-bi,.pp-lado,.pp-nivel,.pp-select{min-height:32px}
+  .pp-cor,.pp-esp,.pp-bi,.pp-lado{min-width:32px}
+  .pp-cor-custom input{width:100%;height:100%}
+}
 /* ── Selo de "está salvo" ─────────────────────────────────────────
    Não há botão de salvar, então é este selo que diz que o trabalho foi
    guardado. pointer-events:none porque ele cobre um canto do gráfico e
@@ -497,6 +507,18 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   padding:7px 10px;border-bottom:1px solid var(--border);background:var(--s2)}
 .pp-topo strong{color:var(--text);font-size:11px;font-weight:600;letter-spacing:.01em}
 .pp-recolher{background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:2px 4px;line-height:1}
+/* Abas — só o Fibonacci tem. Barra segmentada, no molde do iOS: fundo
+   afundado, pílula clara na aba de vez. */
+.pp-abas{display:flex;gap:2px;margin:8px 10px 0;padding:2px;
+  background:var(--s2);border-radius:8px}
+.pp-aba{flex:1;padding:5px 8px;background:none;border:0;border-radius:6px;
+  color:var(--text2);cursor:pointer;font-size:11px;font-family:inherit;font-weight:500}
+.pp-aba.ativa{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+@media(max-width:767px){
+  .pp-abas{margin:9px 12px 0}
+  .pp-aba{min-height:var(--pp-alvo,32px);font-size:var(--pp-fs,12px)}
+}
+@media (pointer:coarse){.pp-aba{min-height:32px}}
 .pp-corpo{padding:9px 10px;display:flex;flex-direction:column;gap:9px}
 .pp-linha{display:flex;align-items:center;gap:8px}
 .pp-linha-col{flex-direction:column;align-items:flex-start;gap:5px}
@@ -538,8 +560,27 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    Teto de 46vh pra nunca comer mais que o gráfico, e alvos de toque
    maiores — 16px de bolinha é mira de mouse, não de dedo. */
 @media(max-width:767px){
-  .pp{left:8px;right:8px;top:auto;bottom:46px;width:auto;
-    max-height:46vh;overflow-y:auto;border-radius:14px}
+  /* Tamanhos proporcionais à tela, e não fixos: num iPhone SE de 320px
+     o mesmo botão de 34px come 11% da largura; num Pro Max de 430, 8%.
+     O clamp faz o controle encolher e crescer junto com o aparelho, com
+     piso de alvo de toque e teto pra não virar botão de brinquedo grande.
+     Os números ficam só aqui: no desktop nada disto vale. */
+  .pp{--pp-alvo:clamp(32px,8.6vw,36px);     /* altura dos botões */
+      --pp-cor:clamp(32px,8.4vw,34px);      /* bolinha de cor */
+      --pp-gap:clamp(7px,2.4vw,10px);
+      --pp-pad:clamp(9px,3.2vw,14px);
+      --pp-fs:clamp(11px,3vw,13px)}
+  /* Para EM CIMA da barra de navegação, com a folga do aparelho. Antes
+     era bottom:46px no osso, com a nav em 56px mais a safe area: num
+     iPhone com indicador o painel nascia por baixo das abas. */
+  .pp{left:8px;right:8px;top:auto;width:auto;
+    bottom:calc(var(--h-nav-inferior) + env(safe-area-inset-bottom,0px) + 8px);
+    max-height:46vh;overflow-y:auto;border-radius:14px;font-size:var(--pp-fs)}
+  /* Tela curta ganha um pouco mais de teto: 46% de 568px são 261px, e
+     num aparelho desses o painel some antes de mostrar o que tem. O
+     Fibonacci ainda rola — é a ferramenta com mais controles, e esticar
+     o painel pra caber tudo comeria o gráfico, que é o que se veio ver. */
+  @media(max-height:700px){.pp{max-height:52vh}}
   .pp-corpo{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:10px 14px;padding:10px 12px}
   .pp-rotulo{flex:0 0 auto}
   .pp-linha{flex-wrap:wrap}
@@ -548,21 +589,21 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
      altura: era ISSO que as deixava ovais, e nenhum ajuste de largura ia
      resolver. Aqui elas viram alvo de toque de verdade, 32 por 32, e
      dizem a própria altura mínima — classe vence seletor de elemento. */
-  .pp-cores{gap:9px}
-  .pp-cor{width:32px;height:32px;min-height:32px;border-width:2px}
-  .pp-esp{width:40px;height:34px;min-height:34px}
-  .pp-traco{height:34px;min-height:34px;padding:0 11px}
-  .pp-bi{width:34px;height:34px;min-height:34px}
-  .pp-lado{width:40px;height:34px;min-height:34px;font-size:14px}
-  .pp-recolher{min-height:32px}
-  .pp-select{min-height:34px}
+  .pp-cores{gap:var(--pp-gap)}
+  .pp-cor{width:var(--pp-cor);height:var(--pp-cor);min-height:var(--pp-cor);border-width:2px}
+  .pp-esp{width:calc(var(--pp-alvo) + 6px);height:var(--pp-alvo);min-height:var(--pp-alvo)}
+  .pp-traco{height:var(--pp-alvo);min-height:var(--pp-alvo);padding:0 clamp(8px,2.8vw,12px)}
+  .pp-bi{width:var(--pp-alvo);height:var(--pp-alvo);min-height:var(--pp-alvo)}
+  .pp-lado{width:calc(var(--pp-alvo) + 6px);height:var(--pp-alvo);min-height:var(--pp-alvo);font-size:14px}
+  .pp-select{min-height:var(--pp-alvo);font-size:var(--pp-fs)}
   /* Dez níveis não cabem em 375px sem virar quatro fileiras: vira uma
      tira que corre pro lado, com o painel ficando da altura de sempre. */
   .pp-linha-col{width:100%}
   .pp-niveis{flex-wrap:nowrap;overflow-x:auto;width:100%;gap:6px;
     padding-bottom:3px;scrollbar-width:none}
   .pp-niveis::-webkit-scrollbar{display:none}
-  .pp-nivel{padding:6px 12px;font-size:11px;min-height:30px}
+  .pp-nivel{padding:0 clamp(9px,3vw,13px);font-size:var(--pp-fs);min-height:var(--pp-alvo);
+    display:inline-flex;align-items:center}
 }
 /* Botao de resetar a escala do grafico: so entra na tela depois que a
    pessoa arrasta o preco pra fora do enquadramento automatico. */
