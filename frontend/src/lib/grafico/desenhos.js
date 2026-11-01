@@ -477,7 +477,7 @@ export function _rotuloComFundo(ctx, texto, x, y, alinhamento, cor){
   return larg + folga*2;
 }
 
-export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
+export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth, continua=false){
   if(!pontos || pontos.length < 2) return;
   const [a, b] = pontos;
   const xA = toX(a.logical), xB = toX(b.logical);
@@ -489,8 +489,13 @@ export function _desenharFibonacci(ctx, toX, toY, pontos, isSel, canvasWidth){
   // borda direita do canvas: quem media um movimento no meio do gráfico
   // via sete linhas atravessando tudo o que veio depois, tapando os
   // candles que não tinham nada a ver com a medição.
-  const xIni = Math.min(xA, xB);
-  const xFim = Math.max(xA, xB);
+  //
+  // `continua` (duplo clique no 100%) estende os níveis pra frente, que é
+  // como se vê se o preço respeitou a retração nos candles seguintes. Os
+  // PREÇOS de cada nível não mudam — níveis de Fibonacci são horizontais,
+  // então projetar aqui é só alongar a linha.
+  const xIni = continua ? 0 : Math.min(xA, xB);
+  const xFim = continua && canvasWidth ? canvasWidth : Math.max(xA, xB);
 
   ctx.save();
   ctx.font = "bold 10px 'JetBrains Mono',monospace";
@@ -638,10 +643,23 @@ function _corFill(alpha = 0.1, padrao = DESENHO_FILL){
 // espaço vazio à direita não fazia nada. Agora é ferramenta como as
 // outras: coordenada lógica, preview, desfazer, seleção e vários na
 // mesma tela.
+/**
+ * Ferramentas que aceitam projeção (duplo clique no 2º ponto).
+ *
+ * São as que têm reta com inclinação ou nível de preço: prolongar diz
+ * alguma coisa. Retângulo, vertical, triângulo e texto não entram — não
+ * têm "pra frente", e um retângulo infinito é só uma faixa.
+ *
+ * Mora aqui e não no CandleChart porque quem DESENHA a projeção, quem
+ * ouve o duplo clique e quem oferece o item no menu do botão direito
+ * precisam concordar sobre a mesma lista.
+ */
+export const PROJETAVEIS = new Set(["trend", "canal", "fibo"]);
+
 export const FERRAMENTA_INFO = {
   trend: {
     npontos: 2,
-    hints: ["Linha de Tendência: clique no 1º ponto", "Linha de Tendência: clique no 2º ponto"],
+    hints: ["Linha de Tendência: clique no 1º ponto", "Linha de Tendência: clique no 2º ponto (depois, duplo clique nele prolonga a reta)"],
   },
   horizontal: {
     npontos: 1,
@@ -675,12 +693,12 @@ export const FERRAMENTA_INFO = {
       // No celular não existe "mover sem tocar": entre um toque e o
       // seguinte o dedo está no ar. Lá a largura se escolhe arrastando, e
       // soltar fixa — a dica tem que caber nos dois gestos.
-      "Canal: arraste a paralela (ou clique) pra fixar a largura",
+      "Canal: arraste a paralela (ou clique) pra fixar a largura — duplo clique no 2º ponto projeta",
     ],
   },
   fibo: {
     npontos: 2,
-    hints: ["Fibonacci: clique no 0% (início do movimento)", "Fibonacci: clique no 100% (fim do movimento)"],
+    hints: ["Fibonacci: clique no 0% (início do movimento)", "Fibonacci: clique no 100% (depois, duplo clique nele estende os níveis)"],
   },
   vertical: {
     npontos: 1,
@@ -954,11 +972,28 @@ export function _noCorpoDoDesenho(d, pts, mx, my, tol = 7){
   if(d.tipo === "canal"){
     if(pts.length < 2) return false;
     const [a, b] = pts;
-    if(pts.length < 3) return emSegmento(a, b);
     const [xL,yL,xR,yR] = a.x <= b.x ? [a.x,a.y,b.x,b.y] : [b.x,b.y,a.x,a.y];
-    if(mx < xL-tol || mx > xR+tol) return false;
     const m = xR !== xL ? (yR-yL)/(xR-xL) : 0;
+    // Distância perpendicular a uma das retas do canal, pra qualquer x —
+    // é o que permite pegar a PROJEÇÃO, fora do trecho marcado.
+    const naReta = (desvio) =>
+      xL === xR ? Math.abs(mx - xL) <= tol
+                : Math.abs(my - (yL + m*(mx-xL) + desvio)) / Math.hypot(1, m) <= tol;
+
+    // Só a linha base (preview do 2º clique, ou canal sem largura).
+    if(pts.length < 3) return d.continua ? naReta(0) : emSegmento(a, b);
+
     const offset = pts[2].y - (yL + m*(pts[2].x - xL));
+    const dentroDoTrecho = mx >= xL-tol && mx <= xR+tol;
+
+    // Fora do trecho marcado, projetado, o corpo são as TRÊS LINHAS e não
+    // a faixa. A faixa projetada pode cobrir meio gráfico, e aí todo
+    // arrasto ali viraria "mover o canal" em vez de deslocar o gráfico —
+    // o pan sumiria sem ninguém entender por quê.
+    if(!dentroDoTrecho){
+      return !!d.continua && (naReta(0) || naReta(offset) || naReta(offset/2));
+    }
+
     const yBase = yL + m*(mx - xL);
     const [cima, baixo] = offset >= 0 ? [yBase, yBase+offset] : [yBase+offset, yBase];
     return my >= cima-tol && my <= baixo+tol;
@@ -970,7 +1005,7 @@ export function _noCorpoDoDesenho(d, pts, mx, my, tol = 7){
   if(d.tipo === "fibo"){
     if(pts.length < 2) return false;
     const [a, b] = pts;
-    if(mx < Math.min(a.x,b.x)-tol || mx > Math.max(a.x,b.x)+tol) return false;
+    if(!d.continua && (mx < Math.min(a.x,b.x)-tol || mx > Math.max(a.x,b.x)+tol)) return false;
     const niveis = normalizarEstilo("fibo", d.estilo).niveis;
     return niveis.some(n => Math.abs(my - (a.y + (b.y-a.y)*n)) <= tol);
   }
@@ -992,20 +1027,35 @@ export function _noCorpoDoDesenho(d, pts, mx, my, tol = 7){
   return false;
 }
 
-function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
+/**
+ * Canal paralelo.
+ *
+ * Por padrão termina no 2º clique. Antes seguia até a borda direita do
+ * canvas: quem marcava uma consolidação de duas semanas via as duas
+ * linhas e a faixa sombreada atravessarem todo o resto do gráfico, como
+ * se o canal valesse pra sempre.
+ *
+ * `continua` (duplo clique no 2º ponto, igual à linha de tendência)
+ * devolve a projeção — e é o que serve pra ver onde o canal estaria nos
+ * próximos candles. As TRÊS linhas e a faixa acompanham, porque a
+ * inclinação e a largura são as mesmas; o que muda é só até onde se
+ * desenha. Projeta pros dois lados, como a tendência: a reta do canal não
+ * nasce no 1º clique, ela só foi marcada ali.
+ */
+function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth, continua=false){
   if(pontos.length<2) return;
   const x1=toX(pontos[0].logical), y1=toY(pontos[0].preco);
   const x2=toX(pontos[1].logical), y2=toY(pontos[1].preco);
   if([x1,y1,x2,y2].some(v=>v==null)) return;
-  const [xL,yL,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
-  const m = xR!==xL ? (yR-yL)/(xR-xL) : 0;
-  // O canal termina no 2º clique. Antes seguia até a borda direita do
-  // canvas: quem marcava uma consolidação de duas semanas via as duas
-  // linhas e a faixa sombreada atravessarem todo o resto do gráfico,
-  // como se o canal valesse pra sempre. A inclinação `m` continua sendo
-  // usada pra achar a paralela no 3º ponto.
-  const xEnd = xR;
-  const yBaseEnd = yR;
+  const [xA,yA,xR,yR] = x1<=x2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
+  const m = xR!==xA ? (yR-yA)/(xR-xA) : 0;
+  // Projetado: os extremos vão às bordas do canvas, com o y tirado da
+  // MESMA inclinação. A conta da paralela (offset no 3º ponto) não muda —
+  // ela sai da reta base, não de onde a reta é cortada.
+  const xL = continua ? 0 : xA;
+  const yL = continua ? yA + m*(0-xA) : yA;
+  const xEnd = continua && canvasWidth ? canvasWidth : xR;
+  const yBaseEnd = continua && canvasWidth ? yR + m*(canvasWidth-xR) : yR;
 
   // Só a linha base: é o preview depois do 1º clique, e o caso em que não
   // havia candle nenhum entre os dois pontos pra tirar a largura.
@@ -1023,7 +1073,7 @@ function _desenharCanal(ctx, toX, toY, pontos, isSel, canvasWidth){
 
   const x3=toX(pontos[2].logical), y3=toY(pontos[2].preco);
   if([x3,y3].some(v=>v==null)) return;
-  const yBaseAtX3 = yL + m*(x3-xL);
+  const yBaseAtX3 = yA + m*(x3-xA);
   const offset = y3 - yBaseAtX3;
 
   ctx.save();
@@ -1256,8 +1306,8 @@ export function _desenharDesenhoUsuario(ctx, toLogX, toPrecoY, d, isSel, canvasW
   else if(d.tipo==="fibo_extensao") _desenharFiboExtensao(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="horizontal") _desenharHorizontal(ctx, toPrecoY, d.pontos, isSel, canvasWidth);
   else if(d.tipo==="retangulo_desenho") _desenharRetanguloDesenho(ctx, toLogX, toPrecoY, d.pontos, isSel);
-  else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
-  else if(d.tipo==="fibo")   _desenharFibonacci(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
+  else if(d.tipo==="canal")  _desenharCanal(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth, d.continua);
+  else if(d.tipo==="fibo")   _desenharFibonacci(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth, d.continua);
   else if(d.tipo==="texto")  _desenharTexto(ctx, toLogX, toPrecoY, d.pontos, d.texto, isSel);
   else if(d.tipo==="regua")  _desenharRegua(ctx, toLogX, toPrecoY, d.pontos, isSel, canvasWidth);
   if(esmaecer){ ctx.restore(); }

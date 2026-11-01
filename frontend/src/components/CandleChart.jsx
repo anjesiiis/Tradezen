@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers } from "lightweight-charts";
 import { useIsMobile } from "../hooks/useIsMobile.js";
-import { FERRAMENTA_INFO, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, _noCorpoDoDesenho, pontoDaParalela } from "../lib/grafico/desenhos.js";
+import { FERRAMENTA_INFO, PROJETAVEIS, _anchorFechar, _caixaDoTexto, manterLarguraDoCanal, _dentroDaCaixa, _desenharBandeira, _desenharBotaoFechar, _desenharDesenhoUsuario, _desenharNivel, _desenharOCO, _desenharTopoDuplo, _distPontoSegmento, _noCorpoDoDesenho, pontoDaParalela } from "../lib/grafico/desenhos.js";
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { normalizarAparencia, opcoesDaSerieCandle, opcoesDaSerieLinha, paraLinha } from "../lib/grafico/aparencia.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
@@ -108,6 +108,10 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // difícil. Null quando ninguém está arrastando.
   const arrastoNovoRef = useRef(null);
   const [menuCtx, setMenuCtx] = useState(null); // {x,y,desenhoId} em coords de tela
+  // O desenho que o menu do botão direito está mirando. Fica aqui porque
+  // o item de projeção precisa saber o TIPO (pra aparecer ou não) e o
+  // estado atual (pra dizer "Projetar" ou "Não projetar").
+  const desenhoDoMenu = menuCtx ? desenhos.find(x=>x.id===menuCtx.desenhoId) : null;
   const [textoEditando, setTextoEditando] = useState(null); // {x,y,logical,preco} — input flutuante da ferramenta Texto, só enquanto o usuário está digitando
   const [valorTextoNovo, setValorTextoNovo] = useState("");
   // `textoEditando=null` de propósito ANTES de ler o valor — assim, se
@@ -1156,13 +1160,22 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     // elemento também está de olho no toque, ex: o próprio Lightweight
     // Charts cuidando de pan/zoom) — era por isso que colocar ponto de
     // desenho não funcionava de verdade no celular.
-    // Alterna a linha de tendência entre o segmento (o padrão — vai de um
-    // clique ao outro e para) e a reta projetada pros dois lados. Só no
-    // 2º ponto: é o "ponto final" que a pessoa quer prolongar.
+    // Alterna entre o desenho limitado (o padrão — vai de um clique ao
+    // outro e para) e a projeção pros dois lados. Só no 2º ponto: é o
+    // "ponto final" que a pessoa quer prolongar.
+    //
+    // Vale pras três ferramentas que têm reta com inclinação ou nível:
+    // tendência (a reta), canal (as duas bordas, a mediana e a faixa) e
+    // Fibonacci (os níveis). Retângulo, vertical e texto ficam de fora
+    // porque não há o que projetar: não têm "pra frente".
+    //
+    // No canal o 3º ponto é a LARGURA, não um fim de reta — projetar por
+    // ele não quer dizer nada, e por isso a regra do índice 1 serve aos
+    // três sem exceção.
     const alternarContinua = (desenhoId, pontoIndex) => {
       if(pontoIndex !== 1) return false;
       const alvoD = desenhosRef.current.find(x=>x.id===desenhoId);
-      if(!alvoD || alvoD.tipo !== "trend") return false;
+      if(!alvoD || !PROJETAVEIS.has(alvoD.tipo)) return false;
       queueMicrotask(()=>{
         registrarHistorico?.();
         setDesenhos?.(atual=>atual.map(x=>
@@ -1473,6 +1486,23 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
             }}
             onMouseDown={e=>e.stopPropagation()}
           >
+            {/* Projeção também pelo menu: o duplo clique na âncora é rápido
+                pra quem já sabe, mas ninguém descobre um duplo clique
+                sozinho. No celular este menu abre com o toque longo. */}
+            {PROJETAVEIS.has(desenhoDoMenu?.tipo) && (
+              <div
+                onClick={()=>{
+                  registrarHistorico?.();
+                  setDesenhos?.(prev=>prev.map(x=>
+                    x.id===menuCtx.desenhoId ? {...x, continua: !x.continua} : x
+                  ));
+                  setMenuCtx(null);
+                }}
+                style={{padding:"7px 10px",fontSize:12,color:"var(--text)",cursor:"pointer",borderRadius:5}}
+                onMouseEnter={e=>e.currentTarget.style.background="var(--s2)"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+              >{desenhoDoMenu?.continua ? "Não projetar" : "Projetar pra frente"}</div>
+            )}
             <div
               onClick={()=>{
                 const d = desenhos.find(x=>x.id===menuCtx.desenhoId);
