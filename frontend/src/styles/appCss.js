@@ -335,12 +335,27 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 /* Aviso de conteúdo premium: fica no canto, não cobre o gráfico. O free
    continua com candles, indicadores e desenhos — só as lâmpadas dos
    padrões marcados é que não vêm. */
-.chart-toolbar{width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
+/* O icone escala por clamp, entao nao ha um tamanho novo por breakpoint.
+   O botao e 40px FIXO e quadrado: a barra tem 44px de largura no celular,
+   logo nao cabe um alvo de 44, e um clamp que nunca varia seria enfeite. */
+.chart-toolbar{--tool-btn:40px;--tool-icone:clamp(20px,5.4vw,22px);width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
 .chart-toolbar::-webkit-scrollbar{display:none}
 .chart-toolbar-grupo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
 .chart-toolbar-grupo:not(:last-child){padding-bottom:12px;border-bottom:1px solid var(--border)}
-.chart-tool{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:0;border-left:2px solid transparent;border-radius:7px;color:var(--text2);font-size:16px;line-height:1;cursor:pointer;padding:0}
-.chart-tool:hover{background:var(--s2);color:var(--text)}
+/* A cor era --text2 (#5A7299 sobre #0D1117): 3,9:1, que passa raspando o
+   minimo de 3:1 do WCAG pra elemento grafico e, com traco fino, lia como
+   borrao. Com --text sao ~14:1. O aceso continua distinto pelo azul mais
+   o fundo mais a barrinha, nao por ser "o mais claro". */
+.chart-tool{position:relative;width:var(--tool-btn,40px);height:var(--tool-btn,40px);min-width:var(--tool-btn,40px);min-height:var(--tool-btn,40px);display:flex;align-items:center;justify-content:center;background:none;border:0;border-left:2px solid transparent;border-radius:7px;color:var(--text);font-size:16px;line-height:1;cursor:pointer;padding:0;transition:background .15s,color .15s,transform .1s}
+.chart-tool svg{width:var(--tool-icone,13px);height:var(--tool-icone,13px);display:block}
+.chart-tool:hover{background:var(--s2)}
+/* Feedback de toque: no celular nao existe hover, e sem isto o toque nao
+   da sinal nenhum antes do desenho comecar. */
+.chart-tool:active{transform:scale(.93);background:var(--s2)}
+/* A regra global button{min-height:44px} do celular esticava o botao pra
+   36 de largura por 44 de altura. Aqui ele volta a ser quadrado: classe
+   vence seletor de elemento. Sem isto o icone fica fora do centro otico
+   e o alvo de toque mente sobre onde termina. */
 .chart-tool.ativo{background:var(--s2);color:var(--accent);border-left-color:var(--accent);border-radius:0 7px 7px 0}
 .chart-tool.destaque{color:var(--accent)}
 /* dica à direita do ícone, fora da barra */
@@ -1404,7 +1419,9 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .abody{flex-direction:row}
   .chart-toolbar{width:44px;gap:8px}
   .chart-toolbar-grupo:not(:last-child){padding-bottom:8px}
-  .chart-tool{width:36px;height:36px;font-size:15px}
+  /* largura/altura vem do clamp em .chart-toolbar; aqui so o glifo de
+     reserva, que nao e SVG */
+  .chart-tool{font-size:15px}
   .rpanel{width:100%;border-left:none;border-top:1px solid var(--border)}
 
   /* ── INÍCIO: globo ── */
