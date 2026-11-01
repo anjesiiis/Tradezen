@@ -14,6 +14,7 @@ import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
+import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
@@ -252,6 +253,9 @@ export default function AdminTemplatesNiveis() {
     window.location.href = "/admin/login";
   }
 
+  // Clicar em Visualizar/Editar monta o gráfico no topo da página,
+  // longe de onde o dedo estava: isto leva a pessoa até lá.
+  const refDoGrafico = useSubirAoAbrir(chaveDoAberto(editando));
   return (
     <AdminShell>
       <div className="admin-header">
@@ -271,7 +275,7 @@ export default function AdminTemplatesNiveis() {
         )}
 
         {editando ? (
-          <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <section ref={refDoGrafico} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
               <button onClick={() => setEditando(null)} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>

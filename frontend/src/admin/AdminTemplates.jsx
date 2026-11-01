@@ -18,6 +18,7 @@ import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
 import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
+import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PASSOS = STEPS.map((s) => s.key);
@@ -304,6 +305,9 @@ export default function AdminTemplates() {
     window.location.href = "/admin/login";
   }
 
+  // Clicar em Visualizar/Editar monta o gráfico no topo da página,
+  // longe de onde o dedo estava: isto leva a pessoa até lá.
+  const refDoGrafico = useSubirAoAbrir(chaveDoAberto(editando));
   return (
     <AdminShell>
       <div className="admin-header">
@@ -323,7 +327,7 @@ export default function AdminTemplates() {
         )}
 
         {editando ? (
-          <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <section ref={refDoGrafico} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
               <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>

@@ -26,6 +26,7 @@ import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } fr
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
 import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
+import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -433,6 +434,9 @@ export default function PainelMarcacao({ padraoInicial }) {
   const padraoEmEdicao = (editando && PADROES[editando.tipoEdit]) || padrao;
   const configEdicao = editando ? configDoTemplate(editando.pontos, padraoEmEdicao) : null;
 
+  // Clicar em Visualizar/Editar monta o gráfico no topo da página,
+  // longe de onde o dedo estava: isto leva a pessoa até lá.
+  const refDoGrafico = useSubirAoAbrir(chaveDoAberto(editando));
   return (
     <AdminShell tema={souFracasso ? "fracasso" : undefined}>
       <div className="admin-header">
@@ -452,7 +456,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         )}
 
         {editando ? (
-          <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <section ref={refDoGrafico} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
               <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
