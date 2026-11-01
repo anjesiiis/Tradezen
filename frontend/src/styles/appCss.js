@@ -338,6 +338,48 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 /* O icone escala por clamp, entao nao ha um tamanho novo por breakpoint.
    O botao e 40px FIXO e quadrado: a barra tem 44px de largura no celular,
    logo nao cabe um alvo de 44, e um clamp que nunca varia seria enfeite. */
+/* ── Popup do limite de telas (PopupLimiteTelas) ──
+   Cores dos tokens do projeto, nao hex solto: o popup tem que virar junto
+   no tema claro, e um #0f1424 cravado aqui ficaria escuro num fundo
+   branco. */
+.plt-fundo{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(5px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:pltEntra .18s ease-out}
+/* padding-bottom com a safe area: no iPhone o "Agora nao" caia atras da
+   barra de gestos, e o popup e alto o bastante pra encostar lah. */
+.plt-caixa{width:min(400px,100%);max-height:calc(100vh - 40px);overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 22px calc(18px + env(safe-area-inset-bottom,0px));position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pltSobe .22s cubic-bezier(.32,.72,0,1)}
+.plt-caixa:focus{outline:none}
+.plt-x{position:absolute;top:12px;right:12px;width:32px;height:32px;min-width:32px;min-height:32px;border-radius:50%;background:var(--s2);border:0;color:var(--text2);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+.plt-x:hover{color:var(--text)}
+.plt-etiqueta{display:inline-block;background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:10px;letter-spacing:1px;margin-bottom:10px}
+.plt-titulo{font-size:18px;font-weight:600;color:var(--text);margin:0 0 8px;padding-right:34px;text-wrap:balance}
+.plt-frase{color:var(--text2);font-size:13px;line-height:1.5;margin:0 0 16px}
+.plt-ganhos{list-style:none;padding:0;margin:0 0 18px}
+.plt-ganhos li{color:var(--text);font-size:13px;line-height:1.45;padding:8px 0 8px 22px;border-bottom:1px solid var(--border);position:relative}
+.plt-ganhos li:last-child{border-bottom:none}
+/* o check e conteudo decorativo: entra pelo ::before pra o leitor de tela
+   ler o beneficio e nao "marca de selecao" antes de cada linha */
+.plt-ganhos li::before{content:"✓";position:absolute;left:0;color:var(--up);font-weight:700}
+.plt-preco{text-align:center;margin:0 0 16px;color:var(--text);font-variant-numeric:tabular-nums}
+.plt-preco strong{font-size:28px;font-weight:700}
+.plt-preco span{font-size:12px;color:var(--text2);margin-left:2px}
+.plt-botoes{display:flex;flex-direction:column;gap:8px}
+.plt-principal,.plt-secundario{display:block;text-align:center;text-decoration:none;border-radius:10px;font-size:14px;padding:13px 18px}
+.plt-principal{background:var(--accent);color:#fff;font-weight:600}
+.plt-secundario{background:transparent;color:var(--text);border:1px solid var(--border);font-size:13px;padding:12px 18px}
+.plt-depois{background:transparent;color:var(--text2);border:0;padding:10px;font-size:12px;cursor:pointer;min-height:36px}
+.plt-rodape{text-align:center;color:var(--text2);font-size:10px;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--border)}
+@keyframes pltEntra{from{opacity:0}to{opacity:1}}
+@keyframes pltSobe{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+/* Quem pediu menos movimento no sistema nao leva o cartao subindo. */
+@media (prefers-reduced-motion:reduce){.plt-fundo,.plt-caixa{animation:none}}
+
+/* Contador de telas, ao lado do "+" */
+.ct-aviso-teto{margin:0 0 8px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;text-align:center}
+.ct-telas{display:inline-flex;align-items:center;gap:2px;font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums;padding:0 4px;white-space:nowrap}
+.ct-telas.no-teto{color:var(--accent)}
+/* No teto o "+" continua CLICAVEL de proposito: ele abre o convite. Um
+   botao desabilitado nao conta por que parou de funcionar. */
+.mesa-tab-add.no-teto{opacity:.55}
+
 .chart-toolbar{--tool-btn:40px;--tool-icone:clamp(20px,5.4vw,22px);width:52px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;overflow-y:auto;scrollbar-width:none}
 .chart-toolbar::-webkit-scrollbar{display:none}
 .chart-toolbar-grupo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}

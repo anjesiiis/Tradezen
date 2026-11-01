@@ -8,7 +8,7 @@ import { API } from "../lib/api.js";
 const carregarSupabase = () => import("../lib/supabaseClient.js").then((m) => m.supabase);
 
 const AuthContext = createContext({
-  user: null, plano: "free", isAdmin: false, temAcesso: false, loading: true, logout: async () => {},
+  user: null, plano: "free", planoPronto: false, isAdmin: false, temAcesso: false, loading: true, logout: async () => {},
 });
 
 // Quem é esse usuário pro backend: o plano e se o email está na lista de
@@ -36,6 +36,12 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [temAcesso, setTemAcesso] = useState(false);
   const [loading, setLoading] = useState(true);
+  // O plano chega DEPOIS da sessão (uma ida ao /eu). Até chegar, `plano`
+  // vale "free", que é o padrão seguro pra mostrar na tela — mas quem
+  // decide com base nele precisa saber se já é resposta ou se é ainda o
+  // padrão. Sem isto, um premium perderia telas no instante do login,
+  // porque pareceria grátis por um quadro.
+  const [planoPronto, setPlanoPronto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -48,12 +54,17 @@ export function AuthProvider({ children }) {
         if (cancelado) return;
         setUser(sessao?.user ?? null);
         setLoading(false);
+        // Troca de sessão: o plano de novo é desconhecido até o /eu
+        // responder. Logout é o caso em que ele já está decidido — sem
+        // conta não há plano a buscar.
+        setPlanoPronto(!sessao?.access_token);
         // o plano chega depois da sessão, sem segurar a tela
         const { plano: p, admin, acesso } = await buscarPlano(sessao?.access_token);
         if (cancelado) return;
         setPlano(p);
         setIsAdmin(admin);
         setTemAcesso(acesso);
+        setPlanoPronto(true);
       };
 
       supabase.auth.getSession().then(({ data }) => aplicarSessao(data.session));
@@ -78,7 +89,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, plano, isAdmin, temAcesso, loading, logout }}>
+    <AuthContext.Provider value={{ user, plano, planoPronto, isAdmin, temAcesso, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

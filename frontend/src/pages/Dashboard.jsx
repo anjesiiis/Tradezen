@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import PopupLimiteTelas, { foiVistoNaSessao, marcarVistoNaSessao } from "../components/PopupLimiteTelas.jsx";
+import { cortarExtras, limiteDeTelas, limiteDeTelasExtras, motivoDoBloqueio } from "../lib/limitesTelas.js";
 import { AssetCard, SkeletonCard } from "../components/AssetCard.jsx";
 import { MaisAtivos } from "../components/MaisAtivos.jsx";
 import { TopAtivosMobile } from "../components/TopAtivosMobile.jsx";
@@ -39,7 +41,7 @@ import { fmtP } from "../lib/mercado.js";
 function AppInner(){
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, plano, planoPronto } = useAuth();
   const [drawerAberto,setDrawerAberto] = useState(false); // menu hambúrguer (mobile) — sidebar + conta
 
   const [mercado,setMercado] = useState([]);
@@ -182,8 +184,20 @@ function AppInner(){
   // o React reconcilia o mesmo componente pra um ticker novo, que é
   // exatamente o que já acontece quando o usuário troca de ativo dentro da
   // mesma tela (o effect de troca de ticker do ChartPane cuida do reset).
-  const MAX_TELAS_EXTRAS = 3;
+  // Quantas telas, por plano: visitante 1, grátis 2, premium 4 (ver
+  // lib/limitesTelas.js, que é de onde a contagem, o bloqueio e o corte
+  // na carga leem o mesmo número). Era 4 fixo pra todo mundo, sem olhar
+  // conta nem plano — o grátis estava recebendo o que a página de vendas
+  // promete ao premium.
+  const MAX_TELAS_EXTRAS = limiteDeTelasExtras(user, plano);
+  const limiteTelas = limiteDeTelas(user, plano);
   const [telasExtras,setTelasExtras] = useState([]);
+  // Já está no máximo do plano? É o que decide se o "+" abre o seletor
+  // de ativo ou o convite.
+  const noTeto = telasExtras.length >= MAX_TELAS_EXTRAS;
+  // O convite aparece quando a tela pedida não cabe: "cadastrado" pra
+  // quem não tem conta, "upgrade" pra quem tem a grátis. null = fechado.
+  const [convite,setConvite] = useState(null);
   // O tempo da mesa PRINCIPAL mora aqui porque o ticker dela vem da URL:
   // sem isto, dar F5 numa mesa no semanal devolvia o diário.
   //
@@ -220,7 +234,11 @@ function AppInner(){
   useEffect(()=>{
     if(!restaurada || jaRestaurou.current) return;
     jaRestaurou.current = true;
-    if(restaurada.extras.length) setTelasExtras(restaurada.extras);
+    // A bancada volta do banco como estava. Se o limite baixou desde
+    // então (saiu da conta, ou o premium venceu), ela não cabe mais —
+    // corta aqui, antes de montar, em vez de montar e piscar.
+    const cabem = cortarExtras(restaurada.extras, user, plano);
+    if(cabem.length) setTelasExtras(cabem);
     if(restaurada.tempoPrincipal){
       setTempoPrincipal(restaurada.tempoPrincipal);
       setTempoAberturaPrincipal(restaurada.tempoPrincipal);
@@ -231,6 +249,24 @@ function AppInner(){
   // Sair da conta solta a trava: entrar de novo restaura outra vez.
   useEffect(()=>{ if(!user?.id) jaRestaurou.current = false; },[user?.id]);
 
+  // O limite também vale no meio da sessão: quem sai da conta com 4 telas
+  // abertas fica com 1, que é o que um visitante tem. Só corta quando o
+  // plano já é RESPOSTA e não o padrão "free" — senão um premium perderia
+  // duas telas no quadro entre o login e a volta do /eu, e o corte seria
+  // gravado no banco logo depois.
+  useEffect(()=>{
+    if(!planoPronto) return;
+    setTelasExtras(atual=>{
+      const cabem = cortarExtras(atual, user, plano);
+      if(cabem.length === atual.length) return atual;
+      // No celular só uma mesa aparece por vez. Se a que estava na frente
+      // foi cortada, o índice aponta pro vazio e a tela fica em branco —
+      // volta pra principal, que nunca sai.
+      setTelaAtivaMobile(ativa => ativa > cabem.length ? 0 : ativa);
+      return cabem;
+    });
+  },[planoPronto, user, plano]);
+
   // Só grava DEPOIS de ler o que havia guardado — senão a bancada vazia
   // do primeiro quadro apagaria a que estava lá.
   useEffect(()=>{
@@ -240,9 +276,30 @@ function AppInner(){
   // Cada mesa extra guarda o ticker e com que tempo ela abre: duas mesas
   // do MESMO ativo só fazem sentido em tempos diferentes.
   const adicionarTelaEIrPara = (ticker, tempo) => {
-    if(telasExtras.length >= MAX_TELAS_EXTRAS) return;
+    if(telasExtras.length >= MAX_TELAS_EXTRAS){ pedirMaisTelas(); return; }
     setTelasExtras(prev => [...prev, { ticker, tempo }]);
     setTelaAtivaMobile(telasExtras.length + 1); // combinado: 0=principal, 1..N=extras
+  };
+
+  // O "+" no teto não fica morto: ele diz o que falta pra caber mais uma.
+  // Antes o botão simplesmente desaparecia, e quem queria a segunda tela
+  // não tinha como descobrir que bastava criar conta.
+  //
+  // Premium não vê popup: já está no teto do que existe, não há o que
+  // oferecer. Fica o aviso de texto, que some sozinho.
+  const [avisoTeto,setAvisoTeto] = useState(false);
+  const pedirMaisTelas = () => {
+    const motivo = motivoDoBloqueio(user, plano);
+    if(motivo === "teto"){
+      setAvisoTeto(true);
+      setTimeout(()=>setAvisoTeto(false), 4000);
+      return;
+    }
+    // Uma vez por sessão. Da segunda em diante o botão não faz nada
+    // visível, e isso é melhor que repetir um convite já recusado.
+    if(foiVistoNaSessao(motivo)) return;
+    marcarVistoNaSessao(motivo);
+    setConvite(motivo);
   };
 
   // O "+" pergunta antes: mesmo ativo noutro tempo, ou outro ativo.
@@ -555,9 +612,18 @@ function AppInner(){
                   >✕</span>
                 </button>
               ))}
-              {telasExtras.length<MAX_TELAS_EXTRAS && (
-                <button className="mesa-tab mesa-tab-add" onClick={()=>setModalAdicionar({tempo:null})} title="Adicionar mesa">+</button>
-              )}
+              {/* O "+" NÃO desaparece mais no teto: ele fica apagado e,
+                  clicado, diz o que falta pra caber mais uma. Botão
+                  desabilitado não explica por que parou de funcionar, e
+                  botão ausente explica menos ainda. */}
+              <button
+                className={`mesa-tab mesa-tab-add${noTeto ? " no-teto" : ""}`}
+                onClick={()=> noTeto ? pedirMaisTelas() : setModalAdicionar({tempo:null})}
+                title={noTeto ? `Você está usando ${limiteTelas} de ${limiteTelas} telas` : "Adicionar mesa"}
+              >+</button>
+              <span className={`ct-telas${noTeto ? " no-teto" : ""}`}>
+                {1+telasExtras.length}/{limiteTelas}
+              </span>
             </div>
           )}
           {/* Não há botão de salvar: o selo é o que diz que o trabalho
@@ -572,7 +638,7 @@ function AppInner(){
             tempoInicial={tempoAberturaPrincipal || undefined}
             aoTrocarTempo={setTempoPrincipal}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
-            onAddSplit={telasExtras.length<MAX_TELAS_EXTRAS ? (tempo)=>setModalAdicionar({tempo}) : undefined}
+            onAddSplit={(tempo)=> noTeto ? pedirMaisTelas() : setModalAdicionar({tempo})}
             ocultoMobile={isMobile && telaAtivaMobile!==0}
             tema={tema}
             user={user}
@@ -600,6 +666,15 @@ function AppInner(){
             />
           ))}
           </div>
+          {/* Convite pra caber mais uma tela. Fechar não tira tela de
+              ninguém: a bancada atual fica como está. */}
+          <PopupLimiteTelas motivo={convite} aoFechar={()=>setConvite(null)}/>
+          {/* Premium no teto: não há o que oferecer, então é só o aviso. */}
+          {avisoTeto && (
+            <p className="ct-aviso-teto" role="status">
+              Você já está com {limiteTelas} telas, o máximo que o TradeZen abre.
+            </p>
+          )}
           {modalAdicionar && (
             <ModalAdicionarGrafico
               ticker={tickerUrl}
