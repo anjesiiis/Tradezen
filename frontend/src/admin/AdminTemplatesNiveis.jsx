@@ -13,6 +13,7 @@ import { useLampadas } from "./lampadas.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
+import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
@@ -190,10 +191,20 @@ export default function AdminTemplatesNiveis() {
   async function abrirTemplate(template, readOnly) {
     setMensagem(null);
     try {
-      const completo = await templatesNiveisApi.get(template.id);
+      const cru = await templatesNiveisApi.get(template.id);
+      const falta = problemaNoTemplate(cru);
+      if(falta){
+        registrarFalha("abrir template", template?.id, { message: falta, data: { template: cru } });
+        setMensagem({ tipo: "erro", texto: falta });
+        return;
+      }
+      const completo = cru;
       setEditando({ ...completo, toquesEdit: completo.pontos?.toques || [], readOnly });
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
+    } catch (erro) {
+      // O recado do backend é o que diz o que fazer: tabela que falta,
+      // sessão vencida, linha apagada. Engolir isso aqui era o bug.
+      registrarFalha("abrir template", template?.id, erro);
+      setMensagem({ tipo: "erro", texto: explicarFalhaAoAbrir(erro, template?.id) });
     }
   }
 

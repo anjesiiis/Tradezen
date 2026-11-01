@@ -25,6 +25,7 @@ import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
+import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -149,8 +150,9 @@ export default function PainelMarcacao({ padraoInicial }) {
       });
       if (desenho) setDesenhoSalvo(desenho);
       else mostrarToasts(["Esse padrão não está na faixa de candles carregada — carregue um período maior."], "aviso");
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Não foi possível abrir esse padrão." });
+    } catch (erro) {
+      registrarFalha("abrir padrão salvo", lampada?.templateId, erro);
+      setMensagem({ tipo: "erro", texto: explicarFalhaAoAbrir(erro, lampada?.templateId) });
     }
   }
 
@@ -316,7 +318,14 @@ export default function PainelMarcacao({ padraoInicial }) {
   async function abrirTemplate(template, readOnly) {
     setMensagem(null);
     try {
-      const completoDoBanco = comContextoLargo(await api.get(template.id));
+      const cru = await api.get(template.id);
+      const falta = problemaNoTemplate(cru);
+      if(falta){
+        registrarFalha("abrir template", template.id, { message: falta, data: { template: cru } });
+        setMensagem({ tipo: "erro", texto: falta });
+        return;
+      }
+      const completoDoBanco = comContextoLargo(cru);
       escreverModoNaUrl(readOnly ? "visualizar" : "editar", template.id);
       setEditando({
         ...completoDoBanco,
@@ -325,8 +334,11 @@ export default function PainelMarcacao({ padraoInicial }) {
         tipoEdit: padrao.id,   // pode ser trocado na edição (ver salvarEdicao)
         readOnly,
       });
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
+    } catch (erro) {
+      // O recado do backend é o que diz o que fazer: tabela que falta,
+      // sessão vencida, linha apagada. Engolir isso aqui era o bug.
+      registrarFalha("abrir template", template?.id, erro);
+      setMensagem({ tipo: "erro", texto: explicarFalhaAoAbrir(erro, template?.id) });
     }
   }
 

@@ -16,6 +16,7 @@ import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } fr
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
+import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PASSOS = STEPS.map((s) => s.key);
@@ -108,8 +109,9 @@ export default function AdminTemplatesTopoDuplo() {
         candlesAtuais: candlesContexto,
       });
       if (desenho) setDesenhoSalvo(desenho);
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Não foi possível abrir esse padrão." });
+    } catch (erro) {
+      registrarFalha("abrir padrão salvo", lampada?.templateId, erro);
+      setMensagem({ tipo: "erro", texto: explicarFalhaAoAbrir(erro, lampada?.templateId) });
     }
   }
 
@@ -206,7 +208,14 @@ export default function AdminTemplatesTopoDuplo() {
   async function abrirTemplate(template, readOnly) {
     setMensagem(null);
     try {
-      const completo = comContextoLargo(await templatesTopoDuploApi.get(template.id));
+      const cru = await templatesTopoDuploApi.get(template.id);
+      const falta = problemaNoTemplate(cru);
+      if(falta){
+        registrarFalha("abrir template", template?.id, { message: falta, data: { template: cru } });
+        setMensagem({ tipo: "erro", texto: falta });
+        return;
+      }
+      const completo = comContextoLargo(cru);
       escreverModoNaUrl(readOnly ? "visualizar" : "editar", template.id);
       setEditando({
         ...completo,
@@ -214,8 +223,11 @@ export default function AdminTemplatesTopoDuplo() {
         anotacoesEdit: completo.anotacoes || [],
         readOnly,
       });
-    } catch {
-      setMensagem({ tipo: "erro", texto: "Não foi possível abrir este template." });
+    } catch (erro) {
+      // O recado do backend é o que diz o que fazer: tabela que falta,
+      // sessão vencida, linha apagada. Engolir isso aqui era o bug.
+      registrarFalha("abrir template", template?.id, erro);
+      setMensagem({ tipo: "erro", texto: explicarFalhaAoAbrir(erro, template?.id) });
     }
   }
 
