@@ -698,6 +698,7 @@ export default function PainelMarcacao({ padraoInicial }) {
 
         <ListaTemplates
           templates={templates}
+          abertoId={editando?.id ?? null}
           rotulo={padrao.rotulo}
           aoVisualizar={(t) => abrirTemplate(t, true)}
           aoEditar={(t) => abrirTemplate(t, false)}

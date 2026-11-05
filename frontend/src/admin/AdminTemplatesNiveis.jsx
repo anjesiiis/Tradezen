@@ -413,6 +413,7 @@ export default function AdminTemplatesNiveis() {
 
         <ListaTemplates
           templates={templates}
+          abertoId={editando?.id ?? null}
           rotulo="Suporte/Resistência"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

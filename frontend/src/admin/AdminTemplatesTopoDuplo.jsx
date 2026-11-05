@@ -455,6 +455,7 @@ export default function AdminTemplatesTopoDuplo() {
 
         <ListaTemplates
           templates={templates}
+          abertoId={editando?.id ?? null}
           rotulo="Topo Duplo"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

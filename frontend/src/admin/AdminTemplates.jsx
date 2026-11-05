@@ -495,6 +495,7 @@ export default function AdminTemplates() {
 
         <ListaTemplates
           templates={templates}
+          abertoId={editando?.id ?? null}
           rotulo="OCO"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

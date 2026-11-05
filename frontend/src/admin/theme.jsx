@@ -102,7 +102,34 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 /* Lista de marcações salvas — cards em vez de tabela: cabe a anotação
    inteira, que é o que interessa relembrar depois. */
 .admin-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.admin-card-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.admin-card-item{position:relative;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:34px 14px 12px;display:flex;flex-direction:column;gap:8px}
+
+/* ── Numeracao e marcador de "onde parei" (ver ListaTemplates) ── */
+/* tabular-nums: a largura nao dança entre #9 e #10, entao a coluna de
+   numeros fica alinhada card a card */
+.lt-numero{position:absolute;top:10px;left:14px;display:inline-flex;align-items:baseline;gap:1px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.lt-numero-total{font-size:9px;font-weight:500;opacity:.55}
+.lt-selo{position:absolute;top:9px;right:14px;background:var(--gold);color:#1a1205;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;animation:ltPulsa 1.6s ease-in-out 3}
+.lt-marcado{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 18px color-mix(in srgb,var(--gold) 22%,transparent)}
+
+/* Pulsa TRES vezes e para. Chamar atencao na chegada e util; piscar pra
+   sempre num card que a pessoa ja achou e so incomodo. */
+@keyframes ltPulsa{0%,100%{opacity:1}50%{opacity:.72}}
+@media (prefers-reduced-motion:reduce){.lt-selo{animation:none}}
+
+.lt-retomar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:color-mix(in srgb,var(--gold) 10%,transparent);border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);border-radius:10px}
+.lt-retomar-btn{background:var(--gold);color:#1a1205;border:0;padding:9px 16px;border-radius:8px;font:600 13px var(--font-b);cursor:pointer}
+.lt-retomar-btn:hover{filter:brightness(1.08)}
+.lt-retomar-limpar{background:none;border:0;color:var(--text2);font:inherit;font-size:11px;text-decoration:underline;cursor:pointer;padding:4px}
+.lt-retomar-limpar:hover{color:var(--text)}
+
+/* No celular o selo e o numero disputam a mesma linha: o selo vira so o
+   alfinete, que ainda diz "e aqui" sem empurrar o numero pra fora. */
+@media (max-width:520px){
+  .lt-selo{font-size:0;padding:5px 7px}
+  .lt-selo::before{content:"📍";font-size:11px}
+  .lt-retomar-btn,.lt-retomar-limpar{min-height:44px}
+}
 .admin-card-item header{display:flex;align-items:center;gap:8px}
 .admin-card-item header strong{font-size:14px;color:var(--text)}
 .admin-tag{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin-left:auto}
