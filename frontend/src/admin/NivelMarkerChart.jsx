@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { candleDaData } from "./periodoDoPadrao.js";
-import { createChart, ColorType, CandlestickSeries, BaselineSeries, createSeriesMarkers } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, BaselineSeries, HistogramSeries, createSeriesMarkers } from "lightweight-charts";
+import {
+  MARGENS_PRECO_COM_VOLUME, MARGENS_PRECO_SEM_VOLUME, MARGENS_VOLUME,
+  barrasDeVolume, temVolume,
+} from "./volumeDoTemplate.js";
 
 function toChartTime(candle) {
   return Math.floor(candle.timestamp / 1000);
@@ -51,6 +55,7 @@ export default function NivelMarkerChart({
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
+  const volumeRef = useRef();
   const markersApiRef = useRef();
   const bandaSeriesRef = useRef({});
   const timeToIndexRef = useRef(new Map());
@@ -93,6 +98,19 @@ export default function NivelMarkerChart({
       wickDownColor: "#FF4560",
     });
 
+    // Escala própria pro volume, igual à tela de padrões (ver
+    // volumeDoTemplate.js): na escala do preço a maior barra achataria os
+    // candles. Num nível o volume é o argumento — um toque com volume
+    // confirma a linha, um sem volume pode ser só ruído.
+    const volume = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+      scaleMargins: MARGENS_VOLUME,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    chart.priceScale("volume").applyOptions({ scaleMargins: MARGENS_VOLUME });
+
     // Baseline preenche a área entre a linha de dados (topo da faixa) e o
     // baseValue (fundo da faixa) — usamos isso pra desenhar a faixa de
     // preço em vez de uma reta única. O lado "bottom" fica transparente
@@ -122,6 +140,7 @@ export default function NivelMarkerChart({
       if (faixa && Number.isFinite(faixa.from)) aoMudarFaixaRef.current?.(faixa);
     });
     chartRef.current = chart;
+    volumeRef.current = volume;
     seriesRef.current = series;
     markersApiRef.current = createSeriesMarkers(series, []);
 
@@ -162,6 +181,12 @@ export default function NivelMarkerChart({
       close: c.fechamento,
     }));
     seriesRef.current.setData(data);
+
+    const comVolume = temVolume(candles);
+    volumeRef.current?.setData(comVolume ? barrasDeVolume(candles) : []);
+    chartRef.current?.priceScale("right").applyOptions({
+      scaleMargins: comVolume ? MARGENS_PRECO_COM_VOLUME : MARGENS_PRECO_SEM_VOLUME,
+    });
 
     timeToIndexRef.current = new Map(candles.map((c, i) => [toChartTime(c), i]));
 

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, CandlestickSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, HistogramSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
 import { faixaDeLeitura } from "./enquadrar.js";
 import { candleDaData } from "./periodoDoPadrao.js";
 import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
+import {
+  MARGENS_PRECO_COM_VOLUME, MARGENS_PRECO_SEM_VOLUME, MARGENS_VOLUME,
+  barrasDeVolume, temVolume,
+} from "./volumeDoTemplate.js";
 
 const DURACAO_ZOOM = 500;   // ms da animação do zoom ao abrir um padrão salvo
 
@@ -39,6 +43,7 @@ export default function TemplateMarkerChart({
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
+  const volumeRef = useRef();
   const markersApiRef = useRef();
   const lineSeriesRef = useRef([]);
   const timeToIndexRef = useRef(new Map());
@@ -149,12 +154,25 @@ export default function TemplateMarkerChart({
       wickDownColor: "#FF4560",
     });
 
+    // Volume numa escala própria ("volume"), não na do preço: dividir o
+    // eixo faria a maior barra esticar a escala e achatar os candles num
+    // risco fino — justo o que se precisa ver pra marcar.
+    const volume = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+      scaleMargins: MARGENS_VOLUME,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    chart.priceScale("volume").applyOptions({ scaleMargins: MARGENS_VOLUME });
+
     // As séries de linha são criadas sob demanda (ver `serieDeLinha`): o
     // número delas muda conforme o padrão e quantos pontos já foram marcados.
     lineSeriesRef.current = [];
 
     chartRef.current = chart;
     seriesRef.current = series;
+    volumeRef.current = volume;
     markersApiRef.current = createSeriesMarkers(series, []);
 
     // Posição do cursor DENTRO do gráfico. Vem do próprio gráfico, no mesmo
@@ -272,6 +290,15 @@ export default function TemplateMarkerChart({
       close: c.fechamento,
     }));
     seriesRef.current.setData(data);
+
+    // Volume e margens juntos, e a cada troca de candles: trocar de ativo
+    // pode trocar quem tem volume (ação tem, índice não), e as margens do
+    // preço precisam acompanhar — senão sobra um vão vazio embaixo.
+    const comVolume = temVolume(candles);
+    volumeRef.current?.setData(comVolume ? barrasDeVolume(candles) : []);
+    chartRef.current?.priceScale("right").applyOptions({
+      scaleMargins: comVolume ? MARGENS_PRECO_COM_VOLUME : MARGENS_PRECO_SEM_VOLUME,
+    });
 
     timeToIndexRef.current = new Map(candles.map((c, i) => [toChartTime(c), i]));
 
