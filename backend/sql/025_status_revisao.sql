@@ -74,23 +74,66 @@ begin
   end loop;
 end $$;
 
--- Conferência: quantas marcações em cada pé, por tabela. Tudo deve sair
--- como 'nao_visto' nesta primeira rodada.
+-- Rede de segurança: se um dia nascer uma tabela templates_% que não
+-- esteja no array acima, ela fica SEM as colunas e a tela dela mostra o
+-- aviso de "status indisponível" — sem ninguém saber por quê. Isto não
+-- altera tabela desconhecida (alterar às cegas o que ninguém revisou é
+-- pior), só grita o nome dela nas mensagens.
+do $$
+declare
+  t text;
+  achou boolean := false;
+begin
+  for t in
+    select c.table_name
+    from information_schema.tables c
+    where c.table_schema = 'public'
+      and c.table_name like 'templates\_%'
+      and not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = c.table_name
+          and k.column_name = 'status_revisao')
+  loop
+    achou := true;
+    raise warning 'tabela % ficou SEM status_revisao: acrescente no array desta migration e em TABELAS de backend/admin_status_revisao.py', t;
+  end loop;
+  if not achou then
+    raise notice 'nenhuma tabela de marcacao ficou de fora';
+  end if;
+end $$;
+
+-- Conferência. O SQL Editor do Supabase mostra só o resultado da ÚLTIMA
+-- instrução, então as duas perguntas saem num SELECT só:
+--   secao 'colunas' → cada tabela de marcação tem a coluna? (o que
+--                     responde se a migration pegou: esperado 21 linhas,
+--                     todas em 'ok')
+--   secao 'status'  → em que pé está cada marcação. Nesta primeira
+--                     rodada tudo sai como 'nao_visto'.
 do $$
 declare
   t text;
 begin
   drop table if exists _conf_status;
-  create temp table _conf_status (tabela text, status_revisao text, quantas bigint);
+  create temp table _conf_status (secao text, tabela text, detalhe text, quantas bigint);
+
   for t in
-    select table_name from information_schema.columns
-    where table_schema = 'public' and column_name = 'status_revisao'
-      and table_name like 'templates_%'
+    select table_name from information_schema.tables
+    where table_schema = 'public' and table_name like 'templates\_%'
   loop
-    execute format(
-      'insert into _conf_status select %L, status_revisao, count(*) from %I group by status_revisao',
-      t, t);
+    if exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = t
+        and column_name = 'status_revisao')
+    then
+      insert into _conf_status values ('colunas', t, 'ok', 1);
+      execute format(
+        'insert into _conf_status select ''status'', %L, status_revisao, count(*) from %I group by status_revisao',
+        t, t);
+    else
+      insert into _conf_status values ('colunas', t, 'FALTANDO', 0);
+    end if;
   end loop;
 end $$;
 
-select tabela, status_revisao, quantas from _conf_status order by tabela, status_revisao;
+select secao, tabela, detalhe, quantas from _conf_status
+order by secao, tabela, detalhe;
