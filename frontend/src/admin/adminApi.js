@@ -187,17 +187,25 @@ export const templatesRetanguloApi = makeTemplateApi("/admin/templates-retangulo
  * inteira até a migration rodar — a tela ficaria vazia por um enfeite.
  */
 export const statusRevisaoApi = {
-  /** Mapa id → { status, status_em, revisto_em, revisto_por }. */
+  /**
+   * { marcacoes, indisponivel, motivo }.
+   *
+   * Devolve o MOTIVO e não só um mapa vazio porque mapa vazio tem três
+   * causas que pedem recados diferentes: falta a migration, não deu pra
+   * falar com o servidor, ou esta lista simplesmente não tem marcação
+   * nenhuma ainda. Dizer "falta rodar a migration 025" nos três casos é
+   * mandar a pessoa consertar o que já está certo.
+   */
   async listar(rota) {
     try {
       const data = await adminFetch(`/admin/status-revisao/${rota}`);
-      return data?.marcacoes || {};
+      return { marcacoes: data?.marcacoes || {}, indisponivel: false, motivo: null };
     } catch (erro) {
       // Migration não rodada não é erro de quem está usando a tela: a
-      // lista aparece sem selo, e o aviso fica no console.
+      // lista aparece sem selo e o aviso diz qual arquivo rodar.
       if (tabelaAindaNaoExiste(erro)) {
         console.warn(`[admin] status de revisão indisponível: ${erro.message}`);
-        return {};
+        return { marcacoes: {}, indisponivel: true, motivo: erro.message };
       }
       throw erro;
     }

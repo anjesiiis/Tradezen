@@ -63,3 +63,44 @@ describe('As três listas de tabelas concordam', () => {
     }
   });
 });
+
+describe('CORS deixa passar todo método que o frontend usa', () => {
+  // O bug que isto previne, medido em produção: `allow_methods` não tinha
+  // PATCH, então o preflight voltava 400 e o NAVEGADOR recusava o pedido
+  // antes de mandá-lo. A tela mostrava "Load failed" — o texto do WebKit
+  // pra falha de rede —, que não parece erro de permissão nem de banco, e
+  // por isso o diagnóstico foi pra migration, que era outro assunto.
+  //
+  // Pegava as duas rotas de PATCH que existem: status de revisão e troca
+  // de plano do usuário no admin.
+  const metodosDoCors = () => {
+    const main = ler('main.py');
+    const m = main.match(/allow_methods=\[([^\]]+)\]/);
+    return new Set([...m[1].matchAll(/"(\w+)"/g)].map((x) => x[1]));
+  };
+
+  const metodosDoFrontend = () => {
+    const usados = new Set(['GET']);   // o default do fetch
+    for (const arquivo of ['../frontend/src/admin/adminApi.js', '../frontend/src/lib/api.js']) {
+      let texto;
+      try { texto = ler(arquivo); } catch { continue; }
+      for (const m of texto.matchAll(/method:\s*["'](\w+)["']/g)) usados.add(m[1].toUpperCase());
+    }
+    return usados;
+  };
+
+  it('PATCH está liberado — era ele que faltava', () => {
+    expect(metodosDoCors()).toContain('PATCH');
+  });
+
+  it('OPTIONS está liberado, senão nenhum preflight passa', () => {
+    expect(metodosDoCors()).toContain('OPTIONS');
+  });
+
+  it('todo método que o frontend manda está no allow_methods', () => {
+    const liberados = metodosDoCors();
+    for (const metodo of metodosDoFrontend()) {
+      expect(liberados, `o frontend manda ${metodo} e o CORS não libera`).toContain(metodo);
+    }
+  });
+});

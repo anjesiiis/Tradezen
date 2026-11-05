@@ -122,7 +122,9 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sr-chip.em_andamento.aceso{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent)}
 .sr-chip.revisto.aceso{border-color:var(--up);color:var(--up);background:color-mix(in srgb,var(--up) 14%,transparent)}
 .sr-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.sr-indisponivel{margin:0;font-size:11px;color:var(--gold);max-width:230px;line-height:1.35}
+.sr-indisponivel{display:flex;flex-direction:column;align-items:flex-start;gap:5px;font-size:11px;color:var(--gold);max-width:260px;line-height:1.35}
+.sr-tentar{background:color-mix(in srgb,var(--gold) 16%,transparent);border:1px solid color-mix(in srgb,var(--gold) 42%,transparent);color:var(--gold);border-radius:6px;padding:4px 10px;font:600 11px var(--font-b);cursor:pointer}
+.sr-tentar:hover{background:color-mix(in srgb,var(--gold) 26%,transparent)}
 /* Fora da fila dos status de proposito: fechar nao e um status, e ao lado
    de "Revisto" ele virava o botao mais facil de acertar por engano. */
 .sr-fechar{width:32px;height:32px;min-width:32px;min-height:32px;border-radius:50%;background:var(--s2);border:0;color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}

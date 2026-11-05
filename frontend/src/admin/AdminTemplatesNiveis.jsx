@@ -13,7 +13,7 @@ import { useLampadas } from "./lampadas.js";
 import ListaTemplates from "./ListaTemplates.jsx";
 import { fetchAtivoCandles, templatesNiveisApi, clearAdminToken } from "./adminApi";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
-import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
+import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
 import { useStatusRevisao } from "./useStatusRevisao.js";
@@ -260,7 +260,7 @@ export default function AdminTemplatesNiveis() {
   // `aoFalhar` em vez de engolir: um selo que não gravou e não avisa é
   // pior que selo nenhum, porque a pessoa marca e segue adiante.
   const statusRev = useStatusRevisao("niveis", {
-    aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: erro?.message || "Não deu pra salvar o status." }),
+    aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: explicarFalha(erro, "o status") }),
   });
   // Abriu: registra que PASSOU pelos olhos, e só. Não diz "está certa" —
   // isso é clique em Visto.
@@ -299,6 +299,8 @@ export default function AdminTemplatesNiveis() {
               status={statusDe(statusRev.mapa, editando.id)}
               aoMudar={(s) => statusRev.mudar(editando.id, s)}
               indisponivel={statusRev.indisponivel}
+              motivo={statusRev.motivo}
+              aoTentarDeNovo={statusRev.recarregar}
               aoFechar={() => setEditando(null)}
             />
 

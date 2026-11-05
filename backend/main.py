@@ -116,7 +116,12 @@ _origens_permitidas = {
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(_origens_permitidas),
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    # PATCH entra aqui ou o navegador recusa o pedido ANTES de manda-lo:
+    # o preflight volta 400 e a tela mostra "Load failed" (o texto do
+    # WebKit pra falha de REDE). Mediram-se as duas rotas de PATCH que
+    # existem — status de revisao e troca de plano do usuario —, e as duas
+    # estavam inalcancaveis pelo navegador por causa desta lista.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 

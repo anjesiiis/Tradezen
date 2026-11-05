@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ROTA_DO_STATUS, statusRevisaoApi } from "./adminApi.js";
 import { STATUS_PADRAO, statusDe } from "./statusRevisao.js";
+import { explicarFalha } from "./diagnosticoTemplate.js";
 
 /**
  * O status de revisão de uma lista inteira, e como mudá-lo.
@@ -19,11 +20,14 @@ export function useStatusRevisao(padraoId, { aoFalhar } = {}) {
   const rota = ROTA_DO_STATUS[padraoId] || null;
   const [mapa, setMapa] = useState({});
   const [carregando, setCarregando] = useState(false);
-  // Sem a migration 025 o backend devolve 503 e o `listar` devolve {}.
-  // Isto distingue "nenhuma marcação tem status" de "não dá pra ter
-  // status" — a tela esconde os controles no segundo caso, em vez de
-  // oferecer botões que não gravam.
+  // "Não dá pra ter status" é diferente de "nenhuma marcação tem status
+  // ainda": a tela esconde os controles no primeiro caso, e no segundo
+  // eles funcionam normalmente. Vem do MOTIVO que o `listar` devolve, e
+  // não de o mapa estar vazio — mapa vazio é também o que uma lista nova
+  // e um servidor fora do ar produzem, e os três pedem recados
+  // diferentes.
   const [indisponivel, setIndisponivel] = useState(false);
+  const [motivo, setMotivo] = useState(null);
   const vivo = useRef(true);
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
 
@@ -31,12 +35,18 @@ export function useStatusRevisao(padraoId, { aoFalhar } = {}) {
     if (!rota) return;
     setCarregando(true);
     try {
-      const novo = await statusRevisaoApi.listar(rota);
+      const r = await statusRevisaoApi.listar(rota);
       if (!vivo.current) return;
-      setMapa(novo);
-      setIndisponivel(Object.keys(novo).length === 0);
-    } catch {
-      if (vivo.current) setIndisponivel(true);
+      setMapa(r.marcacoes);
+      setIndisponivel(r.indisponivel);
+      setMotivo(r.motivo);
+    } catch (erro) {
+      // Não é falta de migration: é falha de rede, sessão vencida ou erro
+      // do servidor. Esconde os controles igual, mas o recado é outro.
+      if (vivo.current) {
+        setIndisponivel(true);
+        setMotivo(explicarFalha(erro, "o status"));
+      }
     } finally {
       if (vivo.current) setCarregando(false);
     }
@@ -80,5 +90,5 @@ export function useStatusRevisao(padraoId, { aoFalhar } = {}) {
     mudar(id, "aberto");
   }, [mapa, mudar]);
 
-  return { mapa, mudar, registrarAbertura, recarregar, carregando, indisponivel, disponivel: !!rota };
+  return { mapa, mudar, registrarAbertura, recarregar, carregando, indisponivel, motivo, disponivel: !!rota };
 }

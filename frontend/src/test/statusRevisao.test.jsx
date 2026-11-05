@@ -87,14 +87,37 @@ describe('Os três status são exclusivos entre si', () => {
 
   // Sem a migration 025 não há onde gravar. Botão que aceita o clique e
   // perde a marcação em silêncio é pior que botão nenhum.
-  it('sem a migration, diz o que falta em vez de oferecer botões', () => {
+  it('indisponível: sem botões de status, e o motivo é o que chegou', () => {
     render(<BarraStatusRevisao titulo="x" status="nao_visto" indisponivel
+      motivo="Rode backend/sql/025_status_revisao.sql no SQL Editor."
       aoMudar={vi.fn()} aoFechar={vi.fn()} />);
 
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
-    expect(screen.getByText(/migration 025/)).toBeInTheDocument();
+    expect(screen.getByText(/025_status_revisao\.sql/)).toBeInTheDocument();
     // e ainda dá pra fechar
     expect(screen.getByRole('button', { name: 'Fechar' })).toBeInTheDocument();
+  });
+
+  // Não é sempre a migration: pode ser rede. Dizer "migration" numa falha
+  // de rede manda consertar o que já está certo.
+  it('o motivo não é cravado na tela — falha de rede diz falha de rede', () => {
+    render(<BarraStatusRevisao titulo="x" status="nao_visto" indisponivel
+      motivo="O navegador não conseguiu falar com o servidor."
+      aoMudar={vi.fn()} aoFechar={vi.fn()} />);
+
+    expect(screen.getByText(/não conseguiu falar com o servidor/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/migration/i);
+  });
+
+  it('dá pra tentar de novo sem recarregar a página', () => {
+    const aoTentarDeNovo = vi.fn();
+    render(<BarraStatusRevisao titulo="x" status="nao_visto" indisponivel
+      motivo="falhou" aoTentarDeNovo={aoTentarDeNovo}
+      aoMudar={vi.fn()} aoFechar={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(aoTentarDeNovo).toHaveBeenCalled();
   });
 });
 

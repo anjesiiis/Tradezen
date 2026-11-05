@@ -28,7 +28,9 @@ const montar = (props) => render(<Sonda {...props} />);
 describe('useStatusRevisao', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    listar.mockResolvedValue({ 7: { status: 'visto' } });
+    // o `listar` devolve { marcacoes, indisponivel, motivo }: mapa vazio
+    // tem três causas (migration, rede, lista nova) e o motivo separa
+    listar.mockResolvedValue({ marcacoes: { 7: { status: 'visto' } }, indisponivel: false, motivo: null });
     mudar.mockResolvedValue({ status: 'ok' });
   });
 
@@ -80,7 +82,7 @@ describe('useStatusRevisao', () => {
 
   describe('registrar abertura', () => {
     it('marca "aberto" quem ainda não tinha status', async () => {
-      listar.mockResolvedValue({});
+      listar.mockResolvedValue({ marcacoes: {}, indisponivel: false, motivo: null });
       montar();
       await waitFor(() => expect(listar).toHaveBeenCalled());
 
@@ -93,7 +95,7 @@ describe('useStatusRevisao', () => {
     // por reabrir — seria apagar a decisão dele.
     it.each(['visto', 'em_andamento', 'revisto', 'aberto'])(
       'não mexe em quem já está "%s"', async (status) => {
-        listar.mockResolvedValue({ 7: { status } });
+        listar.mockResolvedValue({ marcacoes: { 7: { status } }, indisponivel: false, motivo: null });
         montar();
         await waitFor(() => expect(api.mapa['7']).toBeTruthy());
 
@@ -104,13 +106,40 @@ describe('useStatusRevisao', () => {
     );
   });
 
-  // Sem a migration 025 o backend devolve 503 e o `listar` devolve {}.
-  // A tela usa isto pra esconder os botões, em vez de oferecer controle
-  // que não grava.
-  it('mapa vazio é lido como indisponível', async () => {
-    listar.mockResolvedValue({});
+  // Sem a migration 025 o backend devolve 503 e o `listar` avisa. A tela
+  // usa isto pra esconder os botões, em vez de oferecer controle que não
+  // grava.
+  it('o aviso de migration vem do motivo, e chega na tela', async () => {
+    listar.mockResolvedValue({
+      marcacoes: {}, indisponivel: true,
+      motivo: 'Rode backend/sql/025_status_revisao.sql no SQL Editor do Supabase.',
+    });
     montar();
+
     await waitFor(() => expect(api.indisponivel).toBe(true));
+    expect(api.motivo).toMatch(/025_status_revisao\.sql/);
+  });
+
+  // O defeito que isto previne: lista nova, sem marcação nenhuma, dizia
+  // "falta rodar a migration 025" — mandava consertar o que já estava
+  // certo.
+  it('lista sem marcação nenhuma NÃO é indisponível', async () => {
+    listar.mockResolvedValue({ marcacoes: {}, indisponivel: false, motivo: null });
+    montar();
+
+    await waitFor(() => expect(listar).toHaveBeenCalled());
+    expect(api.indisponivel).toBe(false);
+  });
+
+  // "Load failed" é o texto do WebKit pra fetch que NÃO chegou a ter
+  // resposta. Mostrar cru é inútil: está em inglês e não diz o que fazer.
+  it('falha de rede dá recado de rede, não de migration', async () => {
+    listar.mockRejectedValue(new TypeError('Load failed'));
+    montar();
+
+    await waitFor(() => expect(api.indisponivel).toBe(true));
+    expect(api.motivo).toMatch(/não conseguiu falar com o servidor/i);
+    expect(api.motivo).not.toMatch(/migration/i);
   });
 
   it('com status, não é indisponível', async () => {

@@ -58,6 +58,40 @@ export function explicarFalhaAoAbrir(erro, id) {
 }
 
 /**
+ * O recado pra qualquer falha de rede/servidor numa tela do admin.
+ *
+ * Existe porque "Load failed" chegou a aparecer no topo da tela: é o
+ * texto que o WebKit põe em `erro.message` quando o fetch NÃO CHEGOU a
+ * ter resposta (o Chrome diz "Failed to fetch"). Mostrar isso cru é pior
+ * que inútil — está em inglês, não diz o que fazer, e some a informação
+ * de que servidor nenhum foi consultado.
+ *
+ * Caso real medido: o PATCH estava fora do `allow_methods` do CORS, então
+ * o navegador recusava o pedido antes de mandá-lo. Um erro de servidor e
+ * um pedido que nem saiu pedem providências opostas, e a frase tem que
+ * separar os dois.
+ */
+export function explicarFalha(erro, oQue = "isto") {
+  const status = erro?.status;
+  const recado = (erro?.data?.detail || erro?.message || "").trim();
+
+  if (!status) {
+    // Sem status não houve resposta: rede, CORS, ou o Render dormindo.
+    if (/load failed|failed to fetch|networkerror/i.test(recado)) {
+      return `O navegador não conseguiu falar com o servidor ao salvar ${oQue}. `
+        + "Pode ser conexão, ou o backend reiniciando — tente de novo em alguns segundos.";
+    }
+    return recado ? `Não deu pra salvar ${oQue}: ${recado}` : `Não deu pra salvar ${oQue}.`;
+  }
+  if (status === 503) return recado || "Falta rodar uma migration no Supabase.";
+  if (status === 401 || status === 403) {
+    return "Sua sessão de admin venceu. Peça um novo link de acesso. (401)";
+  }
+  if (status === 429) return "Muitos pedidos seguidos. Espere alguns segundos. (429)";
+  return `Não deu pra salvar ${oQue}${recado ? `: ${recado}` : ""} (${status})`;
+}
+
+/**
  * O template veio, mas dá pra desenhar?
  *
  * Devolve null quando está bom, ou a frase do que falta. Sem isto, um
