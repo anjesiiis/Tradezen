@@ -38,13 +38,13 @@ export function marcarVistoNaSessao(motivo) {
 const CONTEUDO = {
   cadastrado: {
     etiqueta: null,
-    titulo: "Quer ver dois ativos lado a lado?",
-    frase: "Criar conta é grátis e te dá a segunda tela — além de guardar seus desenhos.",
+    titulo: "Quer analisar dois ativos lado a lado?",
+    frase: "Criar conta é grátis e libera a segunda tela — além de guardar todos os seus desenhos automaticamente.",
     ganhos: [
       "2 telas simultâneas",
-      "Seus desenhos salvos automaticamente",
-      "A mesma bancada em qualquer aparelho",
-      "Até 10 ativos na watchlist",
+      "Desenhos salvos automaticamente",
+      "Mesmas análises em qualquer dispositivo",
+      "Até 10 ativos na lista de favoritos",
     ],
     preco: null,
     principal: { texto: "Criar conta grátis", para: "/cadastro" },
@@ -52,13 +52,13 @@ const CONTEUDO = {
   },
   upgrade: {
     etiqueta: "PREMIUM",
-    titulo: "Analise 4 ativos ao mesmo tempo",
-    frase: "O dobro de telas do plano grátis, e a detecção de padrões por Machine Learning.",
+    titulo: "Analise até 4 ativos ao mesmo tempo",
+    frase: "Monte sua lista operacional completa, com o dobro de telas do plano grátis e detecção de padrões por Machine Learning.",
     ganhos: [
       "4 telas simultâneas (o dobro do grátis)",
       "Detecção automática de padrões via Machine Learning",
       "Alertas em formação, desenvolvimento e confirmação",
-      "Até 50 ativos na watchlist",
+      "Até 50 ativos na lista de favoritos",
     ],
     // Mesmo valor e mesmo período da página de vendas. Se mudar lá, muda
     // aqui — dois preços diferentes no mesmo produto é o pior dos mundos.
@@ -132,9 +132,14 @@ export default function PopupLimiteTelas({ motivo, aoFechar }) {
         </div>
 
         {/* O que o TradeZen não faz é parte da oferta, não letra miúda:
-            fechar o aviso não tira nenhuma tela de ninguém. */}
+            fechar o aviso não tira nenhuma tela de ninguém.
+
+            "Sem compartilhamento" e não "não compartilhamos": a forma
+            negativa com verbo deixa no ar quem é o sujeito e quando;
+            sem verbo, é estado da coisa. E a frase de antes repetia
+            "suas" duas vezes ("Suas análises são suas"). */}
         <p className="plt-rodape">
-          Nenhum dado de comportamento é coletado. Suas análises são suas.
+          Sem compartilhamento de dados. Suas análises ficam só com você.
         </p>
       </div>
     </div>

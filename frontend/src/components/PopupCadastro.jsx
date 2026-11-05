@@ -47,10 +47,10 @@ function marcarVisto() {
 }
 
 const BENEFICIOS = [
-  "Salve seus estudos, desenhos e análises",
-  "Suas cores e fontes salvas em qualquer dispositivo",
-  "Watchlist personalizada com seus favoritos",
-  "Notificação diária dos ativos favoritos",
+  "Seus estudos, desenhos e análises guardados",
+  "Suas cores e fontes em qualquer dispositivo",
+  "Lista de favoritos organizada por estratégia",
+  "Resumo diário dos ativos que você acompanha",
 ];
 
 export default function PopupCadastro() {

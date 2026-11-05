@@ -20,12 +20,12 @@ const RECURSOS = [
   { icone: "📊", titulo: "Todos os mercados", texto: "Ativos da B3, criptomoedas e principais mercados globais num só lugar." },
   { icone: "📈", titulo: "Indicadores e timeframes", texto: "Volume, RSI, médias móveis, MACD e todos os timeframes personalizáveis." },
   { icone: "✏️", titulo: "Ferramentas de desenho", texto: "Linhas, canais, Fibonacci e anotações no gráfico com um clique." },
-  { icone: "⭐", titulo: "Watchlist personalizada", texto: "Salve seus favoritos e organize suas listas por estratégia." },
+  { icone: "⭐", titulo: "Lista de favoritos", texto: "Salve os ativos que você acompanha e organize por estratégia." },
   { icone: "🔔", titulo: "Notificações diárias", texto: "Resumo dos seus ativos principais, todo dia no horário que escolher." },
 ];
 
 const SINAIS = [
-  { classe: "formando", titulo: "Padrão em formação", texto: "O setup está começando a se desenhar no gráfico." },
+  { classe: "formando", titulo: "Padrão em formação", texto: "A formação está começando a se desenhar no gráfico." },
   { classe: "desenvolvendo", titulo: "Padrão em desenvolvimento", texto: "A estrutura está se consolidando com os critérios iniciais atendidos." },
   { classe: "confirmado", titulo: "Padrão confirmado", texto: "Todos os critérios estatísticos foram atendidos — pronto para sua análise." },
 ];
@@ -38,7 +38,7 @@ const NUMEROS = [
 ];
 
 const PASSOS = [
-  { titulo: "Escolha seus ativos", texto: "Monte sua watchlist com até 50 ativos entre ações da B3, criptos e índices globais." },
+  { titulo: "Escolha seus ativos", texto: "Monte sua lista de favoritos com até 50 ativos entre ações da B3, criptos e índices globais." },
   { titulo: "A Machine Learning monitora 24/7", texto: "Enquanto você vive sua vida, nossa IA varre o mercado buscando padrões se formando." },
   { titulo: "Receba o alerta", texto: "Push no celular, email ou WhatsApp — na hora que o padrão aparecer, você fica sabendo." },
 ];
@@ -58,7 +58,7 @@ const PLANOS = [
       "Acesso a ativos da B3, cripto e mercados globais",
       "Indicadores e timeframes personalizáveis",
       "Ferramentas de desenho (linhas, Fibonacci, canais)",
-      "Até 10 ativos na watchlist",
+      "Até 10 ativos na lista de favoritos",
       "Notificação diária por email",
     ],
     botao: "Criar conta grátis",
@@ -78,7 +78,7 @@ const PLANOS = [
       "Detecção automática de padrões via Machine Learning",
       "Alertas em 3 estágios: formação, desenvolvimento e confirmação",
       "Notificações por push, email e WhatsApp",
-      "Até 50 ativos na watchlist",
+      "Até 50 ativos na lista de favoritos",
       "Suporte prioritário em português",
     ],
     botao: "Começar grátis por 7 dias",
