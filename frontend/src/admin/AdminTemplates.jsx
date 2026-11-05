@@ -19,6 +19,9 @@ import { filtroInicial } from "../lib/filtroPadroes.js";
 import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
 import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
+import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
+import { useStatusRevisao } from "./useStatusRevisao.js";
+import { filtrar, statusDe } from "./statusRevisao.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
 const PASSOS = STEPS.map((s) => s.key);
@@ -305,6 +308,17 @@ export default function AdminTemplates() {
     window.location.href = "/admin/login";
   }
 
+  // Em que pé está cada marcação na revisão (ver useStatusRevisao).
+  // `aoFalhar` em vez de engolir: um selo que não gravou e não avisa é
+  // pior que selo nenhum, porque a pessoa marca e segue adiante.
+  const statusRev = useStatusRevisao("oco", {
+    aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: erro?.message || "Não deu pra salvar o status." }),
+  });
+  // Abriu: registra que PASSOU pelos olhos, e só. Não diz "está certa" —
+  // isso é clique em Visto.
+  useEffect(() => { if (editando?.id != null) statusRev.registrarAbertura(editando.id); },
+    [editando?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Clicar em Visualizar/Editar monta o gráfico no topo da página,
   // longe de onde o dedo estava: isto leva a pessoa até lá.
   const refDoGrafico = useSubirAoAbrir(chaveDoAberto(editando));
@@ -328,10 +342,17 @@ export default function AdminTemplates() {
 
         {editando ? (
           <section ref={refDoGrafico} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
-            </div>
+            {/* Os três status no lugar do "Fechar" solto: o ✕ continua, no
+                canto. Ver BarraStatusRevisao — é grupo de rádio e não
+                caixinhas, porque os três são exclusivos entre si. */}
+            <BarraStatusRevisao
+              titulo={`${editando.readOnly ? "Visualizando" : "Editando"} #${editando.id} — ${editando.ticker} · ${editando.timeframe}`}
+              subtitulo={editando.readOnly ? "Visualização — somente leitura." : undefined}
+              status={statusDe(statusRev.mapa, editando.id)}
+              aoMudar={(s) => statusRev.mudar(editando.id, s)}
+              indisponivel={statusRev.indisponivel}
+              aoFechar={() => { setEditando(null); escreverModoNaUrl(null); }}
+            />
 
             <TemplateMarkerChart
               key={`${editando.id}-${editando.readOnly}`}
@@ -496,6 +517,7 @@ export default function AdminTemplates() {
         <ListaTemplates
           templates={templates}
           abertoId={editando?.id ?? null}
+          statusMapa={statusRev.mapa}
           rotulo="OCO"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

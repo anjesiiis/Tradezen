@@ -68,6 +68,7 @@ from admin_templates_canal_alta import router as admin_templates_canal_alta_rout
 from admin_templates_extras import ROUTERS as admin_templates_extras_routers
 from admin_templates_fracasso import ROUTERS as admin_templates_fracasso_routers
 from admin_templates_mover import ROUTERS as admin_templates_mover_routers
+from admin_status_revisao import router as admin_status_revisao_router
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
 from admin_usuarios import router as admin_usuarios_router
 from padroes_marcados import router as padroes_marcados_router
@@ -169,6 +170,11 @@ app.include_router(alertas_router)
 # dos dois acima porque pendura rotas nos MESMOS prefixos deles.
 for _router in admin_templates_mover_routers:
     app.include_router(_router)
+
+# Em que pé está cada marcação na revisão. Prefixo próprio (/admin/
+# status-revisao) e não coluna somada às 21 listagens: ver o porquê no
+# cabeçalho de admin_status_revisao.py.
+app.include_router(admin_status_revisao_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }

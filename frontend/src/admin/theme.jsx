@@ -104,6 +104,63 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 .admin-card-item{position:relative;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:34px 14px 12px;display:flex;flex-direction:column;gap:8px}
 
+/* ── Status de revisao (BarraStatusRevisao + selos na lista) ── */
+/* Grid e nao flex: o titulo pode ser longo (#215 — EZTC3.SA · 1d) e com
+   flex ele empurrava os chips pra fora da tela em vez de encurtar. */
+.sr-barra{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px}
+.sr-info{min-width:0}
+.sr-titulo{font-size:15px;font-weight:600;margin:0;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-sub{margin:2px 0 0;font-size:11px;color:var(--text2);font-style:italic}
+.sr-grupo{display:flex;gap:7px;flex-shrink:0}
+.sr-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font:500 12px var(--font-b);cursor:pointer;transition:background .15s,border-color .15s,color .15s;white-space:nowrap}
+.sr-chip:hover{background:color-mix(in srgb,var(--text) 8%,var(--s2));color:var(--text)}
+.sr-chip-marca{font-size:12px;line-height:1}
+/* O aceso muda de COR e tambem de peso: cor sozinha nao chega pra quem
+   nao distingue verde de laranja. */
+.sr-chip.aceso{font-weight:600}
+.sr-chip.visto.aceso{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.sr-chip.em_andamento.aceso{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.sr-chip.revisto.aceso{border-color:var(--up);color:var(--up);background:color-mix(in srgb,var(--up) 14%,transparent)}
+.sr-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr-indisponivel{margin:0;font-size:11px;color:var(--gold);max-width:230px;line-height:1.35}
+/* Fora da fila dos status de proposito: fechar nao e um status, e ao lado
+   de "Revisto" ele virava o botao mais facil de acertar por engano. */
+.sr-fechar{width:32px;height:32px;min-width:32px;min-height:32px;border-radius:50%;background:var(--s2);border:0;color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sr-fechar:hover{background:color-mix(in srgb,var(--down) 22%,transparent);color:var(--down)}
+
+.sr-filtros{display:flex;gap:7px;flex-wrap:wrap}
+.sr-filtro{background:var(--s2);border:1px solid var(--border);border-radius:999px;padding:6px 12px;color:var(--text2);font:500 12px var(--font-b);cursor:pointer;white-space:nowrap}
+.sr-filtro:hover{color:var(--text)}
+.sr-filtro.aceso{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
+.sr-filtro-n{font-variant-numeric:tabular-nums;opacity:.65;margin-left:3px}
+
+/* Selo no card. Embaixo do numero, a esquerda: o canto direito e do
+   "voce parou aqui", e os dois juntos se sobrepunham. */
+.sr-badge{position:absolute;top:10px;left:74px;padding:3px 8px;border-radius:10px;border:1px solid;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.sr-aberto{color:var(--text2);border-color:var(--border);background:var(--s1)}
+.sr-visto{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.sr-andamento{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 55%,transparent);background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.sr-revisto{color:var(--up);border-color:color-mix(in srgb,var(--up) 55%,transparent);background:color-mix(in srgb,var(--up) 14%,transparent)}
+/* Faixa na borda esquerda: da pra varrer a coluna de cards e ver o
+   progresso sem ler selo nenhum. */
+.sr-borda-visto{border-left:3px solid var(--accent)}
+.sr-borda-em_andamento{border-left:3px solid var(--gold)}
+.sr-borda-revisto{border-left:3px solid var(--up)}
+
+/* Celular: o titulo fica numa linha, os chips rolam na seguinte. Grid de
+   tres colunas num celular cortava os chips pela metade. */
+@media (max-width:767px){
+  .sr-barra{grid-template-columns:minmax(0,1fr) auto}
+  .sr-grupo{grid-column:1/-1;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .sr-grupo::-webkit-scrollbar{display:none}
+  .sr-chip{min-height:40px}
+  .sr-indisponivel{grid-column:1/-1;max-width:none}
+  .sr-filtro{min-height:40px}
+  /* o selo volta pra baixo do numero: lado a lado nao cabe em 375px */
+  .sr-badge{top:auto;bottom:10px;left:14px}
+  .admin-card-item{padding-bottom:36px}
+}
+
 /* ── Numeracao e marcador de "onde parei" (ver ListaTemplates) ── */
 /* tabular-nums: a largura nao dança entre #9 e #10, entao a coluna de
    numeros fica alinhada card a card */

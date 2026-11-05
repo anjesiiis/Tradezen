@@ -27,6 +27,10 @@ import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
 import { explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
+import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
+import { useStatusRevisao } from "./useStatusRevisao.js";
+import { filtrar, statusDe } from "./statusRevisao.js";
+import { ROTA_DO_STATUS, statusRevisaoApi } from "./adminApi.js";
 
 // Tela de marcação dos padrões de continuação (bandeira e flâmula, de alta
 // e de baixa). As quatro são iguais na mecânica — 8 pontos em 4 pares —,
@@ -195,7 +199,20 @@ export default function PainelMarcacao({ padraoInicial }) {
   const podeMover = padrao.forma === "bandeira";
 
   async function confirmarMover(motivo) {
-    await api.mover(movendo.id, destinoDoMover, motivo);
+    const r = await api.mover(movendo.id, destinoDoMover, motivo);
+    // Trocar de lado É revisar: foi um julgamento humano sobre a forma, e
+    // é justamente o rótulo que o ML vai querer saber que foi conferido.
+    // Marca a linha de DESTINO, que é onde a marcação passou a morar —
+    // com id novo, porque no destino ela é outra linha.
+    //
+    // Falhar aqui não desfaz nada: a mudança de lado já valeu, e o status
+    // é o acessório. Fica no console pra não parecer que gravou.
+    if (r?.id_destino != null) {
+      const rotaDestino = destinoDoMover === "fracasso"
+        ? `${padrao.id}_fracasso` : padrao.id.replace(/_fracasso$/, "");
+      statusRevisaoApi.mudar(ROTA_DO_STATUS[rotaDestino], r.id_destino, "revisto")
+        .catch((e) => console.warn("[admin] status 'revisto' no destino não gravou:", e?.message));
+    }
     setMovendo(null);
     // Sai desta lista e aparece na outra: recarregar é o bastante.
     await carregarTemplates();
@@ -434,6 +451,17 @@ export default function PainelMarcacao({ padraoInicial }) {
   const padraoEmEdicao = (editando && PADROES[editando.tipoEdit]) || padrao;
   const configEdicao = editando ? configDoTemplate(editando.pontos, padraoEmEdicao) : null;
 
+  // Em que pé está cada marcação na revisão (ver useStatusRevisao).
+  // `aoFalhar` em vez de engolir: um selo que não gravou e não avisa é
+  // pior que selo nenhum, porque a pessoa marca e segue adiante.
+  const statusRev = useStatusRevisao(padrao.id, {
+    aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: erro?.message || "Não deu pra salvar o status." }),
+  });
+  // Abriu: registra que PASSOU pelos olhos, e só. Não diz "está certa" —
+  // isso é clique em Visto.
+  useEffect(() => { if (editando?.id != null) statusRev.registrarAbertura(editando.id); },
+    [editando?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Clicar em Visualizar/Editar monta o gráfico no topo da página,
   // longe de onde o dedo estava: isto leva a pessoa até lá.
   const refDoGrafico = useSubirAoAbrir(chaveDoAberto(editando));
@@ -457,10 +485,17 @@ export default function PainelMarcacao({ padraoInicial }) {
 
         {editando ? (
           <section ref={refDoGrafico} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2>{editando.readOnly ? "Visualizando" : "Editando"} #{editando.id} — {editando.ticker} · {editando.timeframe}</h2>
-              <button onClick={() => { setEditando(null); escreverModoNaUrl(null); }} className="admin-link-btn">{editando.readOnly ? "Fechar" : "Cancelar"}</button>
-            </div>
+            {/* Os três status no lugar do "Fechar" solto: o ✕ continua, no
+                canto. Ver BarraStatusRevisao — é grupo de rádio e não
+                caixinhas, porque os três são exclusivos entre si. */}
+            <BarraStatusRevisao
+              titulo={`${editando.readOnly ? "Visualizando" : "Editando"} #${editando.id} — ${editando.ticker} · ${editando.timeframe}`}
+              subtitulo={editando.readOnly ? "Visualização — somente leitura." : undefined}
+              status={statusDe(statusRev.mapa, editando.id)}
+              aoMudar={(s) => statusRev.mudar(editando.id, s)}
+              indisponivel={statusRev.indisponivel}
+              aoFechar={() => { setEditando(null); escreverModoNaUrl(null); }}
+            />
 
             <TemplateMarkerChart
               /* tipoEdit na key: trocar o padrão redesenha com as cores e
@@ -699,6 +734,7 @@ export default function PainelMarcacao({ padraoInicial }) {
         <ListaTemplates
           templates={templates}
           abertoId={editando?.id ?? null}
+          statusMapa={statusRev.mapa}
           rotulo={padrao.rotulo}
           aoVisualizar={(t) => abrirTemplate(t, true)}
           aoEditar={(t) => abrirTemplate(t, false)}

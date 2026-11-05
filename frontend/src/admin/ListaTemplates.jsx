@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { gravarUltimoVisto, lerUltimoVisto, limparUltimoVisto, posicaoNaLista } from "./ultimoVisto.js";
+import { COM_FAIXA, FILTROS, SELO, contarPorFiltro, filtrar, statusDe } from "./statusRevisao.js";
 
 // Marcações salvas em cards — um por template, com o que interessa relembrar
 // depois: ticker, padrão, data do primeiro ponto e a anotação inteira (numa
@@ -18,9 +19,15 @@ import { gravarUltimoVisto, lerUltimoVisto, limparUltimoVisto, posicaoNaLista } 
 // por ele que a lista sabe das duas transições que importam: abriu um
 // (marca) e fechou (rola de volta até onde estava).
 export default function ListaTemplates({
-  templates = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover,
-  abertoId = null,
+  templates: todos = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover,
+  abertoId = null, statusMapa = null,
 }) {
+  // Filtro de status. Sem o mapa (migration 025 não rodada) a barra de
+  // filtros não aparece e a lista é a lista inteira, como era antes.
+  const [filtro, setFiltro] = useState("todos");
+  const temStatus = !!statusMapa && Object.keys(statusMapa).length > 0;
+  const contas = temStatus ? contarPorFiltro(todos, statusMapa) : null;
+  const templates = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
   const [ultimoVisto, setUltimoVisto] = useState(() => lerUltimoVisto(rotulo));
   const refDoMarcado = useRef(null);
   // Trocar de tela (de Bandeira de Alta pra Topo Duplo) tem que trocar o
@@ -61,7 +68,28 @@ export default function ListaTemplates({
 
   return (
     <section className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2>Marcados em {rotulo} ({templates.length})</h2>
+      <h2>
+        Marcados em {rotulo} ({templates.length}
+        {templates.length !== todos.length ? ` de ${todos.length}` : ""})
+      </h2>
+
+      {/* Filtros por status. Primeiro o que falta decidir: é o que se
+          procura quando se senta pra revisar. */}
+      {temStatus && (
+        <div className="sr-filtros" role="group" aria-label="Filtrar por status">
+          {FILTROS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={filtro === f.id}
+              className={`sr-filtro${filtro === f.id ? " aceso" : ""}`}
+              onClick={() => setFiltro(f.id)}
+            >
+              {f.rotulo} <span className="sr-filtro-n">{contas[f.id]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {templates.length === 0 && (
         <p style={{ color: "var(--text2)", fontSize: 13, margin: 0 }}>Nenhum template ainda.</p>
@@ -91,13 +119,23 @@ export default function ListaTemplates({
             <article
               key={t.id}
               ref={marcado ? refDoMarcado : undefined}
-              className={`admin-card-item${marcado ? " lt-marcado" : ""}`}
+              className={`admin-card-item${marcado ? " lt-marcado" : ""}`
+                + (temStatus && COM_FAIXA.has(statusDe(statusMapa, t.id))
+                   ? ` sr-borda-${statusDe(statusMapa, t.id)}` : "")}
             >
               {/* Número tabular: a coluna não dança entre #9 e #10 */}
               <span className="lt-numero" aria-label={`Marcação ${i + 1} de ${templates.length}`}>
                 #{i + 1}<span className="lt-numero-total">/{templates.length}</span>
               </span>
               {marcado && <span className="lt-selo">📍 Você parou aqui</span>}
+              {/* Selo de status. Sai do lado esquerdo, embaixo do número,
+                  pra não disputar o canto com o "você parou aqui". */}
+              {temStatus && SELO[statusDe(statusMapa, t.id)] && (
+                <span className={`sr-badge ${SELO[statusDe(statusMapa, t.id)].classe}`}>
+                  <span aria-hidden="true">{SELO[statusDe(statusMapa, t.id)].marca}</span>
+                  {" "}{SELO[statusDe(statusMapa, t.id)].rotulo}
+                </span>
+              )}
               <header>
                 <strong>{t.ticker}</strong>
                 <span className="admin-tag">{rotulo}</span>

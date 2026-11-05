@@ -178,6 +178,64 @@ export const templatesTrianguloDescendenteApi = makeTemplateApi("/admin/template
 export const templatesTrianguloSimetricoApi = makeTemplateApi("/admin/templates-triangulo-simetrico");
 export const templatesRetanguloApi = makeTemplateApi("/admin/templates-retangulo");
 
+/**
+ * Em que pé está cada marcação na revisão (ver admin_status_revisao.py).
+ *
+ * Endpoint próprio, fora das listagens: sem a migration 025 ele devolve
+ * 503, a tela não mostra selo nenhum e a LISTA segue de pé. Somar a
+ * coluna ao `_COLUNAS_LISTA` das 21 listagens faria cada uma falhar
+ * inteira até a migration rodar — a tela ficaria vazia por um enfeite.
+ */
+export const statusRevisaoApi = {
+  /** Mapa id → { status, status_em, revisto_em, revisto_por }. */
+  async listar(rota) {
+    try {
+      const data = await adminFetch(`/admin/status-revisao/${rota}`);
+      return data?.marcacoes || {};
+    } catch (erro) {
+      // Migration não rodada não é erro de quem está usando a tela: a
+      // lista aparece sem selo, e o aviso fica no console.
+      if (tabelaAindaNaoExiste(erro)) {
+        console.warn(`[admin] status de revisão indisponível: ${erro.message}`);
+        return {};
+      }
+      throw erro;
+    }
+  },
+  mudar(rota, id, status) {
+    return adminFetch(`/admin/status-revisao/${rota}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+};
+
+// Rota do status pra cada padrão. Os nomes são os do backend (TABELAS em
+// admin_status_revisao.py) — uma lista a menos pra sair de sincronia.
+export const ROTA_DO_STATUS = {
+  oco: "oco",
+  topo_duplo: "topo-duplo",
+  niveis: "niveis",
+  bandeira_alta: "bandeira-alta",
+  bandeira_baixa: "bandeira-baixa",
+  bandeira_alta_fracasso: "bandeira-alta-fracasso",
+  bandeira_baixa_fracasso: "bandeira-baixa-fracasso",
+  flamula_alta: "flamula-alta",
+  flamula_baixa: "flamula-baixa",
+  cunha_alta: "cunha-alta",
+  cunha_baixa: "cunha-baixa",
+  canal_alta: "canal-alta",
+  canal_baixa: "canal-baixa",
+  fundo_duplo: "fundo-duplo",
+  oco_invertido: "oco-invertido",
+  topo_triplo: "topo-triplo",
+  fundo_triplo: "fundo-triplo",
+  triangulo_ascendente: "triangulo-ascendente",
+  triangulo_descendente: "triangulo-descendente",
+  triangulo_simetrico: "triangulo-simetrico",
+  retangulo: "retangulo",
+};
+
 // Qual API usar pra cada padrão de continuação — é o que permite trocar de
 // padrão sem sair da tela de marcação (ver o seletor em PainelMarcacao).
 export const API_DO_PADRAO = {
