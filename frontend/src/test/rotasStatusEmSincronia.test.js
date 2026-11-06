@@ -62,6 +62,35 @@ describe('As três listas de tabelas concordam', () => {
       expect(sql, `${s} na trava CHECK`).toContain(`'${s}'`);
     }
   });
+
+  // As quatro colunas, pelo nome exato que o endpoint usa. Mais de uma
+  // vez chegou uma versão "corrigida" da 025 com `visto_em` no lugar de
+  // `status_em` — a coluna fica faltando, o endpoint responde 503 e o
+  // sintoma é idêntico a não ter rodado migration nenhuma.
+  it('a migration cria as colunas com o nome que o endpoint lê', () => {
+    const py = ler('admin_status_revisao.py');
+    const sql = ler('sql/025_status_revisao.sql');
+    const colunas = [...py.matchAll(/_COLUNAS = "([^"]+)"/g)][0][1]
+      .split(',').filter((c) => c !== 'id');
+
+    expect(colunas).toContain('status_em');
+    for (const coluna of colunas) {
+      expect(sql, `coluna ${coluna} na migration`).toMatch(
+        new RegExp(`add column if not exists ${coluna}\\b`, 'i'));
+    }
+  });
+
+  // `require_admin` devolve o EMAIL do admin, e é ele que vai pra
+  // `revisto_por`. Declarar a coluna como uuid (referenciando
+  // auth.users) faz todo clique em "Revisto" falhar por tipo.
+  it('revisto_por é text, porque o que se grava ali é email', () => {
+    const sql = ler('sql/025_status_revisao.sql');
+    expect(sql).toMatch(/add column if not exists revisto_por text/i);
+    expect(sql).not.toMatch(/revisto_por\s+uuid/i);
+
+    const auth = ler('admin_auth.py');
+    expect(auth, 'require_admin devolve email').toMatch(/email = user\.email/);
+  });
 });
 
 describe('CORS deixa passar todo método que o frontend usa', () => {

@@ -69,3 +69,21 @@ curl http://localhost:8000/ativos/buscar?q=petro
 Com o servidor rodando, acesse:
 - http://localhost:8000/docs (Swagger UI)
 - http://localhost:8000/redoc (ReDoc)
+
+## Migrations do Supabase
+
+Ficam em `backend/sql/`, numeradas, e rodam **à mão** no SQL Editor do
+Supabase, em ordem:
+
+1. [SQL Editor → New query](https://supabase.com/dashboard/project/wxkgcpclxgwlxdmeaigp/sql/new)
+2. Cole o arquivo inteiro
+3. **Run**
+
+São idempotentes — rodar de novo não quebra nada. As mensagens de
+progresso saem na aba de **mensagens**, não na grade de resultados.
+
+`npx supabase db push` **não funciona aqui**: não há pasta `supabase/`
+nem migrations linkadas ao CLI.
+
+A lista completa, o que cada uma faz e como perguntar ao banco o que já
+rodou estão em [`sql/MIGRATIONS.md`](sql/MIGRATIONS.md).

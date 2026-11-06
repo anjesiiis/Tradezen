@@ -25,11 +25,25 @@
 -- Roda nas 21 tabelas de marcação que existirem. Tabela cuja migration
 -- ainda não rodou é pulada em silêncio. Seguro rodar mais de uma vez.
 --
--- Rode no SQL Editor do Supabase.
+-- COMO RODAR
+--   1. https://supabase.com/dashboard/project/wxkgcpclxgwlxdmeaigp/sql/new
+--   2. Cole este arquivo INTEIRO
+--   3. Run
+--   4. F5 na página de templates. O backend não precisa reiniciar: ele
+--      descobre a coluna na primeira consulta.
+--
+--   `npx supabase db push` NÃO funciona neste projeto: não existe pasta
+--   `supabase/` nem migrations linkadas ao CLI. As migrations daqui são
+--   rodadas à mão no SQL Editor, em ordem. Ver sql/MIGRATIONS.md.
+--
+-- As mensagens de progresso saem na aba de mensagens do SQL Editor, não
+-- na grade de resultados — a grade mostra só a conferência do fim.
 
 do $$
 declare
   t text;
+  feitas int := 0;
+  puladas int := 0;
   tabelas text[] := array[
     'templates_oco', 'templates_topo_duplo', 'templates_niveis',
     'templates_bandeira_alta', 'templates_bandeira_baixa',
@@ -45,7 +59,8 @@ declare
 begin
   foreach t in array tabelas loop
     if to_regclass('public.' || t) is null then
-      raise notice 'pulando %: tabela nao existe', t;
+      puladas := puladas + 1;
+      raise notice 'pulada %: tabela nao existe (a migration dela ainda nao rodou)', t;
       continue;
     end if;
 
@@ -71,7 +86,12 @@ begin
     execute format(
       'create index if not exists %I on %I (status_revisao) where status_revisao <> ''nao_visto''',
       'idx_' || t || '_status_revisao', t);
+
+    feitas := feitas + 1;
+    raise notice 'ok %', t;
   end loop;
+
+  raise notice '--- % tabelas com status de revisao, % puladas ---', feitas, puladas;
 end $$;
 
 -- Rede de segurança: se um dia nascer uma tabela templates_% que não
