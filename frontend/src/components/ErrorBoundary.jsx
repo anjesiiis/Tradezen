@@ -83,6 +83,8 @@ export default class ErrorBoundary extends Component {
     this.detalhe = `${erro?.message || erro}\n\n${info?.componentStack || ""}`.trim();
   }
 
+  tentarDeNovo = () => this.setState({ erro: null });
+
   copiar = () => {
     const texto = this.detalhe || String(this.state.erro?.message || this.state.erro);
     navigator.clipboard?.writeText(texto).catch(() => {});
@@ -99,6 +101,22 @@ export default class ErrorBoundary extends Component {
       );
     }
     if (!this.state.erro) return this.props.children;
+
+    // Modo compacto: a rede de segurança está em volta de UM pedaço da
+    // tela (um gráfico, p.ex.), não do app. Aqui a tela cheia estaria
+    // errada — apagaria a lista e o formulário que continuam funcionando.
+    if (this.props.compacto) {
+      return (
+        <div className="erro-pedaco">
+          <strong>{this.props.compacto}</strong>
+          <pre className="erro-detalhe">{String(this.state.erro?.message || this.state.erro)}</pre>
+          <div className="erro-acoes">
+            <button className="erro-btn secundario" onClick={this.tentarDeNovo}>Tentar de novo</button>
+            <button className="erro-btn secundario" onClick={this.copiar}>Copiar o erro</button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="erro-tela">

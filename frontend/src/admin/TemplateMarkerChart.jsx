@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { createChart, ColorType, CandlestickSeries, HistogramSeries, LineSeries, LineStyle, createSeriesMarkers } from "lightweight-charts";
 import { limitarIndice, linhaSobCursor, moverPar, passouDoArrasto, pontoSobCursor } from "./arrastar.js";
 import AnotacoesGrafico from "./AnotacoesGrafico.jsx";
@@ -23,7 +24,7 @@ function toChartTime(candle) {
 //   • `linhas`    — função (pontos, candles) => linhas calculadas, cada uma
 //     com cor, espessura e tracejado próprios. É o que a bandeira usa pra
 //     esticar o canal até o rompimento e projetar o alvo.
-export default function TemplateMarkerChart({
+function GraficoDeMarcacao({
   candles, steps, linePairs = [], linhas, pares,
   marcadoresExtras = [],   // templates já salvos deste ativo: viram 💡 clicáveis
   desenhoSalvo,            // { linhas, pontos, anotacoes } do template aberto pela 💡
@@ -509,7 +510,17 @@ export default function TemplateMarkerChart({
   useEffect(() => {
     if (!markersApiRef.current || !candles?.length) return;
 
-    const marcadores = steps.filter((s) => pontos[s.key]).map((s) => ({
+    // O `candles[...]` tem que existir, e não é paranoia: durante um
+    // render o `pontos` já é do template novo e o `candles` ainda é o do
+    // anterior (são dois estados, atualizados em passos diferentes). Um
+    // índice do desenho novo cai fora do array velho, `candles[i]` volta
+    // undefined, e `toChartTime` estourava em "undefined is not an object
+    // (evaluating 'c.timestamp')" — derrubando a tela inteira no
+    // ErrorBoundary. Todo o resto deste arquivo já filtra assim; só os
+    // marcadores do padrão em edição não filtravam.
+    const marcadores = steps
+      .filter((s) => pontos[s.key] && candles[pontos[s.key].i])
+      .map((s) => ({
       time: toChartTime(candles[pontos[s.key].i]),
       position: "atPriceMiddle",
       price: pontos[s.key].preco,
@@ -816,5 +827,17 @@ export default function TemplateMarkerChart({
       )}
       </div>
     </div>
+  );
+}
+
+// A rede de segurança fica AQUI, e não nas quatro telas que montam este
+// gráfico: assim um erro de desenho derruba só o gráfico, e a lista, o
+// formulário e o botão de salvar continuam de pé — em vez de a página
+// inteira virar a tela de "Algo quebrou".
+export default function TemplateMarkerChart(props) {
+  return (
+    <ErrorBoundary compacto="Não deu pra desenhar o gráfico desta marcação.">
+      <GraficoDeMarcacao {...props} />
+    </ErrorBoundary>
   );
 }

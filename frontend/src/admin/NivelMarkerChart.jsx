@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { candleDaData } from "./periodoDoPadrao.js";
 import { createChart, ColorType, CandlestickSeries, BaselineSeries, HistogramSeries, createSeriesMarkers } from "lightweight-charts";
 import {
@@ -30,7 +31,7 @@ const GRUPO_UNICO = "_single";
 // resistência) marcados ao mesmo tempo no mesmo gráfico, cada um com sua
 // cor — usado na tela de "Nova marcação", pra não perder o progresso de um
 // grupo enquanto marca o outro.
-export default function NivelMarkerChart({
+function GraficoDeNivel({
   candles,
   cor = "#00D68F",
   initialToques,
@@ -206,7 +207,14 @@ export default function NivelMarkerChart({
 
     grupos.forEach((g) => {
       const c = corDe(g);
-      const ordenados = [...(toquesPorGrupo[g] || [])].sort((a, b) => a.i - b.i);
+      // Toque cujo candle não está mais no array é descartado aqui, no
+      // único lugar: tanto os marcadores quanto a banda saem desta lista.
+      // Sem isto, `candles[t.i]` undefined estourava em "undefined is not
+      // an object (evaluating 'c.timestamp')" ao trocar de template, e o
+      // ErrorBoundary comia a página toda.
+      const ordenados = (toquesPorGrupo[g] || [])
+        .filter((t) => candles[t?.i])
+        .sort((a, b) => a.i - b.i);
 
       ordenados.forEach((t, idx) => {
         todosMarcadores.push({
@@ -363,5 +371,17 @@ export default function NivelMarkerChart({
         </div>
       </div>
     </div>
+  );
+}
+
+// A rede de segurança fica AQUI, e não nas duas telas que montam este
+// gráfico: assim um erro de desenho derruba só o gráfico, e a lista, o
+// formulário e o botão de salvar continuam de pé — em vez de a página
+// inteira virar a tela de "Algo quebrou".
+export default function NivelMarkerChart(props) {
+  return (
+    <ErrorBoundary compacto="Não deu pra desenhar o gráfico desta marcação.">
+      <GraficoDeNivel {...props} />
+    </ErrorBoundary>
   );
 }

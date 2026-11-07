@@ -89,6 +89,8 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .erro-tela p{font-size:13px;line-height:1.5;margin:0;color:var(--text2);max-width:520px}
 .erro-detalhe{font-family:var(--font-m);font-size:11px;white-space:pre-wrap;word-break:break-word;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;margin:0;width:100%;max-width:520px;max-height:40vh;overflow:auto}
 .erro-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.erro-pedaco{box-sizing:border-box;width:100%;padding:16px;background:var(--s2);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;color:var(--text)}
+.erro-pedaco strong{font-size:14px;font-weight:600;line-height:1.4}
 .erro-btn{font:inherit;font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:28px;padding:11px 26px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .erro-btn.secundario{background:transparent;color:var(--text2);border-color:var(--border)}
 .nav{height:52px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;z-index:200;position:relative}
