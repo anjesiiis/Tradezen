@@ -260,3 +260,65 @@ describe("lista sem a qualidade carregada", () => {
     expect(screen.getAllByText("Sem avaliação").length).toBe(2);
   });
 });
+
+// AVALIAR NÃO PODE FAZER O CARD EVAPORAR
+// ======================================
+//
+// O filtro padrão é "Sem avaliação". Dar nota tira o card desse filtro no
+// mesmo instante, e ele saía da lista antes de a pessoa ver o selo mudar.
+// O relato foi "salva no visualizador mas não aparece na listagem" — o
+// selo estava certo; o card é que não estava mais lá.
+describe("card avaliado agora não sai da lista", () => {
+  const T = [
+    { id: 1, ticker: "PETR4", timeframe: "1d" },
+    { id: 2, ticker: "VALE3", timeframe: "1d" },
+  ];
+  const semNota = { 1: { qualidade: null }, 2: { qualidade: null } };
+
+  it("o filtro sozinho tira o avaliado (é o comportamento do filtro)", () => {
+    expect(filtrarPorQualidade(T, { 1: { qualidade: 4 }, 2: { qualidade: null } }, "sem_nota"))
+      .toEqual([T[1]]);
+  });
+
+  it("mas com `manter` ele fica, no lugar onde estava", () => {
+    const r = filtrarPorQualidade(
+      T, { 1: { qualidade: 4 }, 2: { qualidade: null } }, "sem_nota", new Set(["1"]),
+    );
+    expect(r).toEqual(T);
+  });
+
+  it("na lista, avaliar mantém o card e mostra a nota nova", () => {
+    const { rerender } = render(
+      <ListaTemplates templates={T} rotulo="OCO" qualidadeMapa={semNota} />,
+    );
+    expect(screen.getByText("PETR4")).toBeTruthy();
+
+    // é o que useQualidade faz ao clicar numa estrela: mapa novo, otimista
+    rerender(
+      <ListaTemplates
+        templates={T}
+        rotulo="OCO"
+        qualidadeMapa={{ 1: { qualidade: 4 }, 2: { qualidade: null } }}
+      />,
+    );
+    expect(screen.getByText("PETR4")).toBeTruthy();   // não evaporou
+    expect(screen.getByText("Ótimo")).toBeTruthy();   // e o selo virou
+  });
+
+  it("a primeira carga do mapa não marca ninguém como avaliado agora", () => {
+    const { rerender } = render(
+      <ListaTemplates templates={T} rotulo="OCO" qualidadeMapa={null} />,
+    );
+    rerender(
+      <ListaTemplates
+        templates={T}
+        rotulo="OCO"
+        qualidadeMapa={{ 1: { qualidade: 4 }, 2: { qualidade: null } }}
+      />,
+    );
+    // o #1 já veio avaliado do banco: pertence ao filtro "Ótimos e Alta",
+    // não à lista de "acabei de avaliar"
+    expect(screen.queryByText("PETR4")).toBeNull();
+    expect(screen.getByText("VALE3")).toBeTruthy();
+  });
+});

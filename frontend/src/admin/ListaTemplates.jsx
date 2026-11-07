@@ -40,9 +40,30 @@ export default function ListaTemplates({
   const temQualidade = !!qualidadeMapa && Object.keys(qualidadeMapa).length > 0;
   const contasQ = temQualidade ? contarPorQualidade(todos, qualidadeMapa) : null;
 
+  // Quem foi avaliado AGORA continua na lista, mesmo tendo saído do
+  // filtro. Sem isto, dar nota no filtro "Sem avaliação" (o padrão) faz
+  // o card evaporar antes de a pessoa ver o selo mudar — e parece que a
+  // nota não foi salva. A lista é descoberta aqui mesmo, comparando o
+  // mapa com o anterior: assim nenhuma das 5 telas que montam esta lista
+  // precisa saber do assunto.
+  const [recemAvaliados, setRecemAvaliados] = useState(() => new Set());
+  const mapaAnterior = useRef(null);
+  useEffect(() => {
+    const antes = mapaAnterior.current;
+    mapaAnterior.current = qualidadeMapa;
+    if (!antes || !qualidadeMapa) return;   // primeira carga não é avaliação
+    const mudaram = Object.keys(qualidadeMapa).filter(
+      (id) => qualidadeMapa[id]?.qualidade !== antes[id]?.qualidade,
+    );
+    if (!mudaram.length) return;
+    setRecemAvaliados((atual) => new Set([...atual, ...mudaram]));
+  }, [qualidadeMapa]);
+  // Trocar de filtro ou de tela é pedir a lista do filtro, sem exceções.
+  useEffect(() => { setRecemAvaliados(new Set()); }, [filtroQ, rotulo]);
+
   const porStatus = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
   const templates = temQualidade
-    ? filtrarPorQualidade(porStatus, qualidadeMapa, filtroQ) : porStatus;
+    ? filtrarPorQualidade(porStatus, qualidadeMapa, filtroQ, recemAvaliados) : porStatus;
   const [ultimoVisto, setUltimoVisto] = useState(() => lerUltimoVisto(rotulo));
   const refDoMarcado = useRef(null);
   // Trocar de tela (de Bandeira de Alta pra Topo Duplo) tem que trocar o
@@ -128,6 +149,15 @@ export default function ListaTemplates({
           explicação era um buraco meu: quem avaliava via as estrelas
           desaparecerem e não tinha como saber que o problema era o
           carregamento, não o salvamento. Se houve motivo, ele aparece. */}
+      {recemAvaliados.size > 0 && filtroQ !== "todos" && (
+        <p className="lt-recem">
+          {recemAvaliados.size === 1
+            ? "1 marcação avaliada agora continua abaixo, fora do filtro, pra você ver a nota."
+            : `${recemAvaliados.size} marcações avaliadas agora continuam abaixo, fora do filtro, pra você ver a nota.`}
+          {" "}Trocar de filtro refaz a lista.
+        </p>
+      )}
+
       {!temQualidade && qualidadeMotivo && (
         <div className="sq-indisponivel">{qualidadeMotivo}</div>
       )}

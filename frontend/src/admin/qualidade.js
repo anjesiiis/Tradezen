@@ -106,8 +106,22 @@ export function contarPorQualidade(templates, mapa) {
   return contas;
 }
 
-export function filtrarPorQualidade(templates, mapa, filtroId) {
+/**
+ * `manter` é a correção de um erro de projeto meu.
+ *
+ * O filtro padrão é "Sem avaliação", a fila de quem senta pra avaliar. Só
+ * que dar uma nota tira o card desse filtro NO MESMO INSTANTE: ele
+ * desaparece da lista antes de a pessoa ver o selo mudar. Eu tinha
+ * anotado isso como "efeito colateral aceito" — e o efeito foi o dono do
+ * projeto concluir, com razão, que a nota não estava sendo salva.
+ *
+ * Os ids em `manter` ficam na lista mesmo não cabendo no filtro: quem
+ * avaliou vê o selo virar ★★★★★ Ótimo na hora, no lugar onde estava.
+ */
+export function filtrarPorQualidade(templates, mapa, filtroId, manter = null) {
   const filtro = FILTROS_QUALIDADE.find((f) => f.id === filtroId);
   if (!filtro || filtro.id === "todos") return templates || [];
-  return (templates || []).filter((t) => filtro.cabe(qualidadeDe(mapa, t?.id)));
+  return (templates || []).filter(
+    (t) => filtro.cabe(qualidadeDe(mapa, t?.id)) || !!manter?.has(String(t?.id)),
+  );
 }

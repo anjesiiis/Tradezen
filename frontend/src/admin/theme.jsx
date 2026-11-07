@@ -178,6 +178,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sq-estrelas{display:inline-flex;font-size:13px;line-height:1;letter-spacing:-.5px}
 .sq-estrelas .cheia{color:currentColor}
 .sq-estrelas .vazia{color:currentColor;opacity:.25}
+.lt-recem{margin:0;font:400 11px var(--font-b);color:var(--text3);line-height:1.4}
 .sq-indisponivel{grid-column:1/-1;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font:400 11px var(--font-b);color:var(--gold);line-height:1.35}
 
 /* Selo de qualidade no card da lista, no canto oposto ao de status pra
