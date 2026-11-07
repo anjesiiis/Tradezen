@@ -133,3 +133,53 @@ describe('CORS deixa passar todo método que o frontend usa', () => {
     }
   });
 });
+
+// A 027 conserta tabela que ficou com resquício de versão errada da 025.
+// O banner vermelho quer dizer que o select do backend falhou, e como a
+// 026 funciona na mesma tabela, com a mesma auth, só pode ser coluna.
+describe('a 027 conserta a 025 sem tocar na 026', () => {
+  const SQL027 = () => ler('sql/027_consertar_status_revisao.sql');
+
+  it('atende as mesmas tabelas da 025', () => {
+    const tabelasDe = (texto) =>
+      [...new Set([...texto.matchAll(/'(templates_\w+)'/g)].map((m) => m[1]))].sort();
+    expect(tabelasDe(SQL027())).toEqual(tabelasDe(ler('sql/025_status_revisao.sql')));
+  });
+
+  // Renomear e não criar do zero: a coluna pode já ter datas, e uma nova
+  // vazia ao lado jogaria fora quando cada marcação foi olhada.
+  it('renomeia visto_em em vez de criar status_em vazia ao lado', () => {
+    expect(SQL027()).toMatch(/rename column visto_em to status_em/i);
+  });
+
+  it('garante as quatro colunas que o backend pede', () => {
+    const colunas = [...PY_COLUNAS().matchAll(/_COLUNAS = "([^"]+)"/g)][0][1]
+      .split(',').filter((c) => c !== 'id');
+    for (const coluna of colunas) {
+      expect(SQL027(), `coluna ${coluna}`).toMatch(
+        new RegExp(`add column if not exists ${coluna}\\b`, 'i'));
+    }
+  });
+
+  // As versões de 4 valores não têm 'aberto', e é 'aberto' que entra
+  // sozinho ao abrir: com a trava delas no lugar, toda abertura falha.
+  it('derruba trava de outra versão e deixa a de cinco valores', () => {
+    expect(SQL027()).toMatch(/drop constraint/i);
+    expect(SQL027()).toContain("'aberto'");
+  });
+
+  // O backend grava o email do admin ali.
+  it('converte revisto_por de uuid pra text', () => {
+    expect(SQL027()).toMatch(/alter column revisto_por type text/i);
+  });
+
+  // A palavra aparece nos comentários (eles explicam que a 026 funciona
+  // e por isso o problema é coluna). O que não pode é DDL nela.
+  it('não altera nenhuma coluna da 026', () => {
+    const sql = SQL027().replace(/^\s*--.*$/gm, '');   // fora os comentários
+    expect(sql).not.toMatch(/(add|drop|alter|rename)\s+column[^;]*qualidade/i);
+    expect(sql).not.toMatch(/qualidade\s+(smallint|timestamptz|text)/i);
+  });
+});
+
+const PY_COLUNAS = () => ler('admin_status_revisao.py');

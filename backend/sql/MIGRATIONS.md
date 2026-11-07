@@ -60,6 +60,22 @@ notify pgrst, 'reload schema';
 Inofensivo se não era o caso. Rode e recarregue a página antes de concluir
 que a migration falhou.
 
+## Uma feature funciona e a outra não? Então não é cache
+
+Os endpoints de status (025) e de qualidade (026) são gêmeos: mesma lista
+de tabelas, mesma autenticação, mesmo padrão de rota, e leem a MESMA
+tabela. Se a qualidade aparece na tela e o status mostra banner, então
+deploy, cache e permissão estão todos bons — **falta coluna**.
+
+O backend pede exatamente isto, e um nome errado derruba o select inteiro:
+
+```
+select id, status_revisao, status_em, revisto_em, revisto_por
+```
+
+O suspeito é `status_em`: as versões "corrigidas" da 025 que circularam
+criam `visto_em`. A **027** conserta isso num Run só.
+
 ## A lista
 
 | # | Arquivo | O que faz |
@@ -89,6 +105,8 @@ que a migration falhou.
 | 023 | `023_mover_entre_padrao_e_fracasso.sql` | Mover marcação entre "é o padrão" e "não é" |
 | 024 | `024_diagnostico_templates.sql` | **Só leitura.** Diagnóstico: quantos templates estão corrompidos e por quê |
 | 025 | `025_status_revisao.sql` | Status de revisão nas **21** tabelas de marcação |
+| 026 | `026_qualidade_da_marcacao.sql` | Qualidade da forma, 0–4. Eixo **separado** do `resultado` |
+| 027 | `027_consertar_status_revisao.sql` | **Conserto.** Desfaz resquício de versão errada da 025: renomeia `visto_em`→`status_em` preservando as datas, derruba trava CHECK sem `'aberto'` e converte `revisto_por` de uuid pra text. Idempotente; não toca na 026 |
 
 ## Sobre a 025 — três coisas que não se podem mudar nela
 
