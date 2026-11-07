@@ -89,10 +89,18 @@ def _executar(consulta, tabela: str):
     except Exception as erro:
         texto = str(erro)
         if "status_revisao" in texto or "status_em" in texto:
+            # Duas causas dão este MESMO erro, e a mensagem precisa dizer
+            # as duas: a coluna não existe, ou existe e o PostgREST ficou
+            # com o cache de schema antigo (acontece logo depois de um
+            # alter table). Mandar só "rode a migration" põe quem já
+            # rodou num círculo: roda, o aviso continua, roda de novo.
             raise HTTPException(
                 status_code=503,
-                detail=("O status de revisão ainda não existe no banco. Rode "
-                        "backend/sql/025_status_revisao.sql no SQL Editor do Supabase."),
+                detail=("O status de revisão não chegou ao banco. Rode "
+                        "backend/sql/025_status_revisao.sql no SQL Editor do "
+                        "Supabase. Se você JÁ rodou, o cache de schema está "
+                        "velho: rode `notify pgrst, 'reload schema';` e "
+                        "recarregue esta página."),
             ) from erro
         if "Could not find the table" in texto or "does not exist" in texto:
             raise HTTPException(

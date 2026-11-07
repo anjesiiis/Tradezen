@@ -46,6 +46,20 @@ select
 A própria **025** termina com uma conferência mais detalhada: lista cada
 tabela de marcação como `ok` ou `FALTANDO`, e as contagens por status.
 
+## Rodou e o erro continua? É o cache de schema
+
+O Supabase fala com o banco pelo PostgREST, que guarda um cache do schema.
+Depois de um `alter table`, esse cache pode continuar velho por um tempo —
+e aí ele responde **"coluna não existe"** para uma coluna que existe. O
+sintoma é idêntico a não ter rodado a migration.
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+Inofensivo se não era o caso. Rode e recarregue a página antes de concluir
+que a migration falhou.
+
 ## A lista
 
 | # | Arquivo | O que faz |
