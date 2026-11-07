@@ -171,16 +171,21 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sq-chip.aceso{color:var(--sq-cor);border-color:var(--sq-cor);background:color-mix(in srgb,var(--sq-cor) 14%,transparent)}
 .sq-rotulo{font-size:11px;font-weight:600;letter-spacing:.3px}
 .sq-chip.aceso .sq-rotulo{font-weight:700}
-/* As bolinhas dizem o nivel sem depender de cor: 5 de 5 cheias e Otimo,
-   1 de 5 e Falha. E o que salva quem nao distingue os tons. */
-.sq-bolinhas{display:flex;gap:2px}
-.sq-bolinhas i{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.22}
-.sq-bolinhas i.cheia{opacity:1}
+/* As estrelas dizem o nivel sem depender de cor: 5 de 5 cheias e Otimo,
+   1 de 5 e Falha. E o que salva quem nao distingue os tons.
+   tabular-nums e letter-spacing negativo: as cinco estrelas ocupam a
+   mesma largura em todos os niveis, senao os botoes dancam de tamanho. */
+.sq-estrelas{display:inline-flex;font-size:13px;line-height:1;letter-spacing:-.5px}
+.sq-estrelas .cheia{color:currentColor}
+.sq-estrelas .vazia{color:currentColor;opacity:.25}
 .sq-indisponivel{grid-column:1/-1;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font:400 11px var(--font-b);color:var(--gold);line-height:1.35}
 
 /* Selo de qualidade no card da lista, no canto oposto ao de status pra
    os dois caberem no mesmo card sem disputa. */
 .sq-selo{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border:1px solid;border-radius:999px;font:600 10px var(--font-b);letter-spacing:.3px;color:var(--sq-cor);border-color:color-mix(in srgb,var(--sq-cor) 55%,transparent);background:color-mix(in srgb,var(--sq-cor) 14%,transparent)}
+/* Sem avaliacao tem selo tambem, e apagado: a lista fica varrivel de
+   cima a baixo sem contar cards, e o que falta se ve de longe. */
+.sq-selo.sq-pendente{color:var(--text3);border-color:var(--border);background:var(--s2)}
 
 /* Celular: o titulo fica numa linha, os chips rolam na seguinte. Grid de
    tres colunas num celular cortava os chips pela metade. */
@@ -190,6 +195,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .sq-chip{min-height:48px}
   .sq-grupo{gap:5px}
   .sq-rotulo{font-size:10px}
+  .sq-estrelas{font-size:11px}
   .sr-barra{grid-template-columns:minmax(0,1fr) auto}
   .sr-grupo{grid-column:1/-1;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
   .sr-grupo::-webkit-scrollbar{display:none}

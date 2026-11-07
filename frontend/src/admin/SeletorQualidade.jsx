@@ -1,4 +1,5 @@
-import { NIVEIS, TOTAL_DE_BOLINHAS, bolinhasCheias, nivelDe, proximaQualidade } from "./qualidade.js";
+import { NIVEIS, TOTAL_DE_ESTRELAS, estrelasCheias, nivelDe, proximaQualidade } from "./qualidade.js";
+import Estrelas from "./Estrelas.jsx";
 
 /**
  * Os cinco níveis de qualidade, no topo do visualizador.
@@ -8,10 +9,10 @@ import { NIVEIS, TOTAL_DE_BOLINHAS, bolinhasCheias, nivelDe, proximaQualidade } 
  * o que é, e quem usa teclado ou leitor de tela recebe a mentira
  * primeiro.
  *
- * As bolinhas carregam o nível sem depender de cor: 5 de 5 cheias é
+ * As estrelas carregam o nível sem depender de cor: 5 de 5 cheias é
  * Ótimo, 1 de 5 é Falha. Quem não distingue os tons conta e sabe. São
  * `aria-hidden` porque o rótulo já diz o nome do nível — um leitor de
- * tela lendo "bolinha bolinha bolinha" antes de "Alta" só atrasa.
+ * tela lendo "estrela estrela estrela" antes de "Alta" só atrasa.
  *
  * NÃO desabilita os botões enquanto grava. A gravação é otimista (ver
  * useQualidade): desabilitar daria um piscar de botão morto a cada
@@ -66,11 +67,7 @@ export default function SeletorQualidade({ qualidade, aoMudar, indisponivel = fa
               onClick={() => aoMudar(proximaQualidade(qualidade, n.valor))}
               onKeyDown={(e) => aoTeclar(e, i)}
             >
-              <span className="sq-bolinhas" aria-hidden="true">
-                {Array.from({ length: TOTAL_DE_BOLINHAS }, (_, b) => (
-                  <i key={b} className={b < bolinhasCheias(n.valor) ? "cheia" : ""} />
-                ))}
-              </span>
+              <Estrelas cheias={estrelasCheias(n.valor)} total={TOTAL_DE_ESTRELAS} />
               <span className="sq-rotulo">{n.rotulo}</span>
             </button>
           );

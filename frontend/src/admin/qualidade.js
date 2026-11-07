@@ -18,7 +18,7 @@
  * theme.jsx), não uma paleta nova e nem as do app, que não existem
  * nestas telas. Só há um verde e um vermelho, e cinco níveis precisam de
  * cinco aparências: cada um se mistura com o cinza via color-mix, e a
- * informação ORDINAL fica nas bolinhas — quem não distingue os tons
+ * informação ORDINAL fica nas ESTRELAS — quem não distingue os tons
  * conta 4 de 5 cheias e sabe o nível igual.
  */
 
@@ -48,11 +48,12 @@ export const NIVEIS = [
   },
 ];
 
-export const TOTAL_DE_BOLINHAS = NIVEIS.length;
+export const TOTAL_DE_ESTRELAS = NIVEIS.length;
 
-/** Quantas bolinhas cheias um nível tem. Falha(0) tem uma, não zero:
- *  zero bolinha não se vê, e "não avaliado" já é a ausência do selo. */
-export function bolinhasCheias(valor) {
+/** Quantas estrelas cheias um nível tem. Falha(0) tem UMA, não zero:
+ *  zero estrela cheia é a aparência de "não avaliado", e os dois não
+ *  podem ter o mesmo desenho — um é julgamento, o outro é a falta dele. */
+export function estrelasCheias(valor) {
   return valor + 1;
 }
 
@@ -80,9 +81,16 @@ export function proximaQualidade(atual, clicado) {
 // Os filtros do topo, na ordem de quem está avaliando: primeiro o que
 // falta. "Serve pro treino" é 3+ porque é a partir daí que o desenho
 // representa a forma sem ressalva relevante.
+//
+// "Sem avaliação" é o PADRÃO ao abrir a lista: a tela nasce mostrando a
+// fila de trabalho. Efeito colateral que vale saber: avaliar um card o
+// faz sair da lista na hora, porque ele deixou de estar sem avaliação. O
+// número no botão "Todas" continua dizendo o total.
+export const FILTRO_QUALIDADE_PADRAO = "sem_nota";
+
 export const FILTROS_QUALIDADE = [
   { id: "todos", rotulo: "Todas", cabe: () => true },
-  { id: "sem_nota", rotulo: "Sem nota", cabe: (q) => q === null },
+  { id: "sem_nota", rotulo: "Sem avaliação", cabe: (q) => q === null },
   { id: "bons", rotulo: "Ótimos e Alta", cabe: (q) => q === 4 || q === 3 },
   { id: "media", rotulo: "Média", cabe: (q) => q === 2 },
   { id: "ruins", rotulo: "Baixa e Falha", cabe: (q) => q === 1 || q === 0 },

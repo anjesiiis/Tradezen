@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import {
-  FILTROS_QUALIDADE, NIVEIS, bolinhasCheias, contarPorQualidade,
-  filtrarPorQualidade, nivelDe, proximaQualidade, qualidadeDe,
+  FILTROS_QUALIDADE, FILTRO_QUALIDADE_PADRAO, NIVEIS, TOTAL_DE_ESTRELAS,
+  contarPorQualidade, estrelasCheias, filtrarPorQualidade, nivelDe,
+  proximaQualidade, qualidadeDe,
 } from "../admin/qualidade.js";
 import SeletorQualidade from "../admin/SeletorQualidade.jsx";
+import Estrelas from "../admin/Estrelas.jsx";
 
 const mapa = (pares) => Object.fromEntries(
   Object.entries(pares).map(([id, q]) => [id, { qualidade: q }])
@@ -35,12 +37,17 @@ describe("a escala", () => {
     for (const n of NIVEIS) expect(n.dica.length, n.rotulo).toBeGreaterThan(10);
   });
 
-  // Falha tem UMA bolinha, não zero: zero bolinha não se vê, e "sem
-  // nota" já é a ausência do selo.
-  it("as bolinhas crescem com o nível e Falha tem uma", () => {
-    expect(bolinhasCheias(0)).toBe(1);
-    expect(bolinhasCheias(4)).toBe(5);
-    expect(NIVEIS.map((n) => bolinhasCheias(n.valor))).toEqual([5, 4, 3, 2, 1]);
+  // Falha tem UMA estrela cheia, não zero: zero cheia é a aparência de
+  // "sem avaliação", e julgamento e falta de julgamento não podem ter o
+  // mesmo desenho.
+  it("as estrelas crescem com o nível e Falha tem uma", () => {
+    expect(estrelasCheias(0)).toBe(1);
+    expect(estrelasCheias(4)).toBe(5);
+    expect(NIVEIS.map((n) => estrelasCheias(n.valor))).toEqual([5, 4, 3, 2, 1]);
+  });
+
+  it("são sempre cinco estrelas, cheias mais vazias", () => {
+    expect(TOTAL_DE_ESTRELAS).toBe(5);
   });
 });
 
@@ -161,5 +168,57 @@ describe("SeletorQualidade", () => {
   it("nunca desabilita os botões", () => {
     render(<SeletorQualidade qualidade={2} aoMudar={() => {}} />);
     for (const b of screen.getAllByRole("radio")) expect(b).toBeEnabled();
+  });
+});
+
+describe("Estrelas", () => {
+  it("desenha cinco, com as cheias que o nível pede", () => {
+    const { container } = render(<Estrelas cheias={4} total={5} />);
+    expect(container.querySelectorAll(".cheia")).toHaveLength(4);
+    expect(container.querySelectorAll(".vazia")).toHaveLength(1);
+  });
+
+  it("usa ★ e ☆ literais, não escape de CSS", () => {
+    const { container } = render(<Estrelas cheias={3} total={5} />);
+    expect(container.textContent).toBe("★★★☆☆");
+  });
+
+  // Quem chama já escreve o nome do nível ao lado. Um leitor de tela
+  // lendo "estrela estrela estrela" antes de "Alta" só atrasa.
+  it("fica fora do alcance do leitor de tela", () => {
+    const { container } = render(<Estrelas cheias={5} total={5} />);
+    expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("sem nenhuma cheia, é a aparência de sem avaliação", () => {
+    const { container } = render(<Estrelas cheias={0} total={5} />);
+    expect(container.textContent).toBe("☆☆☆☆☆");
+  });
+});
+
+describe("a lista abre na fila de trabalho", () => {
+  // Sentar pra avaliar e ver primeiro o que já foi avaliado é começar
+  // pelo fim. Efeito colateral aceito: avaliar um card o tira da lista
+  // na hora, porque ele deixou de estar sem avaliação.
+  it("o filtro padrão é sem avaliação", () => {
+    expect(FILTRO_QUALIDADE_PADRAO).toBe("sem_nota");
+    expect(FILTROS_QUALIDADE.some((f) => f.id === FILTRO_QUALIDADE_PADRAO)).toBe(true);
+  });
+
+  it("o botão do padrão se chama Sem avaliação", () => {
+    const f = FILTROS_QUALIDADE.find((x) => x.id === FILTRO_QUALIDADE_PADRAO);
+    expect(f.rotulo).toBe("Sem avaliação");
+  });
+});
+
+describe("o seletor desenha estrelas", () => {
+  it("cada nível mostra suas estrelas cheias", () => {
+    const { container } = render(<SeletorQualidade qualidade={null} aoMudar={() => {}} />);
+    const botoes = screen.getAllByRole("radio");
+    // Ótimo é o primeiro da fila e tem as cinco cheias.
+    expect(botoes[0].querySelectorAll(".cheia")).toHaveLength(5);
+    // Falha é o último e tem uma.
+    expect(botoes[4].querySelectorAll(".cheia")).toHaveLength(1);
+    expect(container.querySelectorAll(".sq-estrelas")).toHaveLength(5);
   });
 });

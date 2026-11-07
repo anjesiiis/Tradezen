@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { gravarUltimoVisto, lerUltimoVisto, limparUltimoVisto, posicaoNaLista } from "./ultimoVisto.js";
 import { COM_FAIXA, FILTROS, SELO, contarPorFiltro, filtrar, statusDe } from "./statusRevisao.js";
 import {
-  FILTROS_QUALIDADE, TOTAL_DE_BOLINHAS, bolinhasCheias, contarPorQualidade,
-  filtrarPorQualidade, nivelDe, qualidadeDe,
+  FILTROS_QUALIDADE, FILTRO_QUALIDADE_PADRAO, TOTAL_DE_ESTRELAS, contarPorQualidade,
+  estrelasCheias, filtrarPorQualidade, nivelDe, qualidadeDe,
 } from "./qualidade.js";
+import Estrelas from "./Estrelas.jsx";
 
 // Marcações salvas em cards — um por template, com o que interessa relembrar
 // depois: ticker, padrão, data do primeiro ponto e a anotação inteira (numa
@@ -35,7 +36,7 @@ export default function ListaTemplates({
   // Filtro de qualidade, independente do de status. Os dois se somam (E,
   // não OU): "falta decidir" + "sem nota" é exatamente a fila de quem
   // senta pra avaliar, e seria um filtro inútil se um anulasse o outro.
-  const [filtroQ, setFiltroQ] = useState("todos");
+  const [filtroQ, setFiltroQ] = useState(FILTRO_QUALIDADE_PADRAO);
   const temQualidade = !!qualidadeMapa && Object.keys(qualidadeMapa).length > 0;
   const contasQ = temQualidade ? contarPorQualidade(todos, qualidadeMapa) : null;
 
@@ -173,21 +174,8 @@ export default function ListaTemplates({
                 <span className="admin-tag">{rotulo}</span>
                 {/* Nota da forma. Fica no cabeçalho, não no canto de
                     baixo: lá já mora o selo de status, e dois selos
-                    disputando o mesmo canto se sobrepõem em 375px.
-                    Sem nota, nenhum selo — ausência é informação. */}
-                {temQualidade && nivelDe(qualidadeDe(qualidadeMapa, t.id)) && (
-                  <span
-                    className="sq-selo"
-                    style={{ "--sq-cor": nivelDe(qualidadeDe(qualidadeMapa, t.id)).cor }}
-                  >
-                    <span className="sq-bolinhas" aria-hidden="true">
-                      {Array.from({ length: TOTAL_DE_BOLINHAS }, (_, b) => (
-                        <i key={b} className={b < bolinhasCheias(qualidadeDe(qualidadeMapa, t.id)) ? "cheia" : ""} />
-                      ))}
-                    </span>
-                    {nivelDe(qualidadeDe(qualidadeMapa, t.id)).rotulo}
-                  </span>
-                )}
+                    disputando o mesmo canto se sobrepõem em 375px. */}
+                {temQualidade && <SeloQualidade qualidade={qualidadeDe(qualidadeMapa, t.id)} />}
               </header>
               <dl>
                 <div>
@@ -228,5 +216,31 @@ export default function ListaTemplates({
         })}
       </div>
     </section>
+  );
+}
+
+/**
+ * O selo de qualidade do card, inclusive quando não há nota.
+ *
+ * "Não avaliado" ganha selo próprio, apagado, em vez de selo nenhum: com
+ * ele a coluna de cards fica varrível de cima a baixo e o que falta se vê
+ * de longe. Sem ele, a ausência de selo se confundia com card que ainda
+ * não carregou.
+ */
+function SeloQualidade({ qualidade }) {
+  const nivel = nivelDe(qualidade);
+  if (!nivel) {
+    return (
+      <span className="sq-selo sq-pendente">
+        <Estrelas cheias={0} total={TOTAL_DE_ESTRELAS} />
+        Sem avaliação
+      </span>
+    );
+  }
+  return (
+    <span className="sq-selo" style={{ "--sq-cor": nivel.cor }}>
+      <Estrelas cheias={estrelasCheias(nivel.valor)} total={TOTAL_DE_ESTRELAS} />
+      {nivel.rotulo}
+    </span>
   );
 }
