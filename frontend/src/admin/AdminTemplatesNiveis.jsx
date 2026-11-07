@@ -451,6 +451,7 @@ export default function AdminTemplatesNiveis() {
           abertoId={editando?.id ?? null}
           statusMapa={statusRev.mapa}
           qualidadeMapa={qualidadeRev.mapa}
+          qualidadeMotivo={qualidadeRev.motivo}
           rotulo="Suporte/Resistência"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

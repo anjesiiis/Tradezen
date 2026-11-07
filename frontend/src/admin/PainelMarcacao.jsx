@@ -750,6 +750,7 @@ export default function PainelMarcacao({ padraoInicial }) {
           abertoId={editando?.id ?? null}
           statusMapa={statusRev.mapa}
           qualidadeMapa={qualidadeRev.mapa}
+          qualidadeMotivo={qualidadeRev.motivo}
           rotulo={padrao.rotulo}
           aoVisualizar={(t) => abrirTemplate(t, true)}
           aoEditar={(t) => abrirTemplate(t, false)}

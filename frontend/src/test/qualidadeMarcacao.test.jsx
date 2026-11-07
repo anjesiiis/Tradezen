@@ -7,6 +7,7 @@ import {
 } from "../admin/qualidade.js";
 import SeletorQualidade from "../admin/SeletorQualidade.jsx";
 import Estrelas from "../admin/Estrelas.jsx";
+import ListaTemplates from "../admin/ListaTemplates.jsx";
 
 const mapa = (pares) => Object.fromEntries(
   Object.entries(pares).map(([id, q]) => [id, { qualidade: q }])
@@ -220,5 +221,42 @@ describe("o seletor desenha estrelas", () => {
     // Falha é o último e tem uma.
     expect(botoes[4].querySelectorAll(".cheia")).toHaveLength(1);
     expect(container.querySelectorAll(".sq-estrelas")).toHaveLength(5);
+  });
+});
+
+// A LISTA TEM QUE DIZER POR QUE NÃO TEM ESTRELA
+// =============================================
+//
+// Quando o carregamento da qualidade falha, o mapa vem vazio: nenhum selo
+// e nenhuma barra de filtro. Sem explicação, isso é indistinguível de "o
+// salvamento não funcionou" — foi exatamente a confusão que gerou o
+// relato "não está salvando as estrelas".
+describe("lista sem a qualidade carregada", () => {
+  const TEMPLATES = [{ id: 1, ticker: "PETR4", timeframe: "1d" }];
+
+  it("mostra o motivo quando a qualidade não carregou", () => {
+    render(
+      <ListaTemplates
+        templates={TEMPLATES}
+        rotulo="OCO"
+        qualidadeMapa={{}}
+        qualidadeMotivo="A qualidade não chegou ao banco."
+      />,
+    );
+    expect(screen.getByText("A qualidade não chegou ao banco.")).toBeTruthy();
+  });
+
+  it("não inventa recado quando a qualidade carregou normalmente", () => {
+    render(
+      <ListaTemplates
+        templates={TEMPLATES}
+        rotulo="OCO"
+        qualidadeMapa={{ 1: { qualidade: null } }}
+        qualidadeMotivo="A qualidade não chegou ao banco."
+      />,
+    );
+    expect(screen.queryByText("A qualidade não chegou ao banco.")).toBeNull();
+    // duas vezes: o botão do filtro e o selo do card
+    expect(screen.getAllByText("Sem avaliação").length).toBe(2);
   });
 });

@@ -25,7 +25,7 @@ import Estrelas from "./Estrelas.jsx";
 // (marca) e fechou (rola de volta até onde estava).
 export default function ListaTemplates({
   templates: todos = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover,
-  abertoId = null, statusMapa = null, qualidadeMapa = null,
+  abertoId = null, statusMapa = null, qualidadeMapa = null, qualidadeMotivo = null,
 }) {
   // Filtro de status. Sem o mapa (migration 025 não rodada) a barra de
   // filtros não aparece e a lista é a lista inteira, como era antes.
@@ -122,6 +122,14 @@ export default function ListaTemplates({
             </button>
           ))}
         </div>
+      )}
+
+      {/* A lista sem nenhum selo de qualidade e sem UMA PALAVRA de
+          explicação era um buraco meu: quem avaliava via as estrelas
+          desaparecerem e não tinha como saber que o problema era o
+          carregamento, não o salvamento. Se houve motivo, ele aparece. */}
+      {!temQualidade && qualidadeMotivo && (
+        <div className="sq-indisponivel">{qualidadeMotivo}</div>
       )}
 
       {templates.length === 0 && (

@@ -493,6 +493,7 @@ export default function AdminTemplatesTopoDuplo() {
           abertoId={editando?.id ?? null}
           statusMapa={statusRev.mapa}
           qualidadeMapa={qualidadeRev.mapa}
+          qualidadeMotivo={qualidadeRev.motivo}
           rotulo="Topo Duplo"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}

@@ -533,6 +533,7 @@ export default function AdminTemplates() {
           abertoId={editando?.id ?? null}
           statusMapa={statusRev.mapa}
           qualidadeMapa={qualidadeRev.mapa}
+          qualidadeMotivo={qualidadeRev.motivo}
           rotulo="OCO"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}
