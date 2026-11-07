@@ -107,7 +107,20 @@ def _executar(consulta, tabela: str):
                 status_code=503,
                 detail=f"A tabela {tabela} ainda não existe no Supabase.",
             ) from erro
-        raise
+
+        # NUNCA re-lançar cru. Exceção que escapa daqui derruba a resposta
+        # e o navegador não recebe status nenhum — a tela então diz "não
+        # consegui falar com o servidor", que é falso e manda a pessoa
+        # olhar a conexão dela em vez do erro real.
+        #
+        # Caso real que passava por aqui: `revisto_por` declarada como
+        # uuid por uma versão errada da 025. Gravar o email do admin dá
+        # "invalid input syntax for type uuid", que não cita a coluna e
+        # não é "does not exist".
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro do servidor em {tabela}: {texto[:300]}",
+        ) from erro
 
 
 @router.get("/{rota}")

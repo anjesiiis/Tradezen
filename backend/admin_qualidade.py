@@ -96,7 +96,15 @@ def _traduzir(erro: Exception, tabela: str):
             detail=f"A tabela {tabela} ainda não existe no Supabase.",
         ) from erro
 
-    raise erro
+    # NUNCA re-lançar cru. Exceção que escapa daqui derruba a resposta, e o
+    # navegador não recebe status nenhum — a tela então diz "não consegui
+    # falar com o servidor", que é falso e manda a pessoa olhar a conexão
+    # dela. Erro desconhecido é erro do servidor, e tem que dizer isso com
+    # o texto real do banco.
+    raise HTTPException(
+        status_code=500,
+        detail=f"Erro do servidor ao gravar em {tabela}: {texto[:300]}",
+    ) from erro
 
 
 def _executar(consulta, tabela: str):
@@ -158,17 +166,26 @@ def mudar_qualidade(request: Request, rota: str, template_id: int,
     if nivel is not None:
         com_status |= {"status_revisao": "revisto", "revisto_em": agora, "revisto_por": admin}
 
-    try:
-        resp = supabase.table(tabela).update(com_status).eq("id", template_id).execute()
-    except Exception as erro:
-        # Só cai pro plano B quando o que faltou foi coluna DA 025. Erro
-        # de outra natureza (coluna `qualidade`, tabela inexistente, rede)
-        # tem que subir traduzido: tentar de novo sem o status esconderia
-        # a causa e devolveria o mesmo erro.
-        da_025 = any(_falta_coluna(erro, c)
-                     for c in ("status_revisao", "revisto_em", "revisto_por"))
-        if not da_025:
-            _traduzir(erro, tabela)
+    # DUAS TENTATIVAS, e a ordem importa: primeiro com o status de brinde,
+    # depois só o que a pessoa pediu.
+    #
+    # Antes isto só caía pro plano B quando o erro TRAZIA o nome da coluna
+    # da 025 no texto. Não traz sempre: `revisto_por` declarada como uuid
+    # por uma versão errada da 025 faz o email do admin estourar com
+    # "invalid input syntax for type uuid", sem dizer em qual coluna. O
+    # resultado era a avaliação inteira se perder por causa de um brinde —
+    # e com a exceção crua subindo, sem nem dizer por quê.
+    #
+    # Agora qualquer falha da primeira tentativa vira a segunda. Marcar as
+    # estrelas é o pedido; marcar "Revisto" junto é conveniência, e
+    # conveniência não derruba o pedido.
+    resp = None
+    if com_status is not corpo and len(com_status) > len(corpo):
+        try:
+            resp = supabase.table(tabela).update(com_status).eq("id", template_id).execute()
+        except Exception:
+            resp = None
+    if resp is None:
         resp = _executar(
             supabase.table(tabela).update(corpo).eq("id", template_id), tabela)
 

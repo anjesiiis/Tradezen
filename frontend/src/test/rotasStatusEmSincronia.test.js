@@ -183,3 +183,32 @@ describe('a 027 conserta a 025 sem tocar na 026', () => {
 });
 
 const PY_COLUNAS = () => ler('admin_status_revisao.py');
+
+// Exceção que escapa do handler derruba a resposta: o navegador não
+// recebe status nenhum e a tela diz "não consegui falar com o servidor".
+// Isso é falso e manda a pessoa olhar a conexão dela em vez do erro real.
+describe('nenhum erro do servidor sai sem resposta', () => {
+  for (const arquivo of ['admin_status_revisao.py', 'admin_qualidade.py']) {
+    it(`${arquivo} nunca re-lança exceção crua`, () => {
+      // `except HTTPException: raise` é o idioma CERTO: repassa uma
+      // resposta que já está pronta. Sai da conta antes de procurar os
+      // errados.
+      const py = ler(arquivo).replace(/except HTTPException:\s*\n\s*raise\s*\n/g, '');
+      expect(py).not.toMatch(/^\s*raise\s*$/m);
+      expect(py).not.toMatch(/^\s*raise erro\s*$/m);
+    });
+
+    it(`${arquivo} traduz erro desconhecido em 500 com o texto do banco`, () => {
+      expect(ler(arquivo)).toMatch(/status_code=500/);
+    });
+  }
+
+  // Marcar as estrelas é o pedido. Marcar "Revisto" junto é conveniência,
+  // e conveniência não pode derrubar o pedido: `revisto_por` como uuid
+  // numa versão errada da 025 fazia a avaliação inteira se perder.
+  it('a qualidade grava mesmo quando as colunas da 025 estão tortas', () => {
+    const py = ler('admin_qualidade.py');
+    expect(py).toMatch(/except Exception:\s*\n\s*resp = None/);
+    expect(py).toMatch(/if resp is None:/);
+  });
+});
