@@ -1,4 +1,5 @@
 import { STATUS_DE_CLIQUE, proximoStatus } from "./statusRevisao.js";
+import SeletorQualidade from "./SeletorQualidade.jsx";
 
 /**
  * Os três status no topo do visualizador, mais o ✕ discreto no canto.
@@ -13,10 +14,20 @@ import { STATUS_DE_CLIQUE, proximoStatus } from "./statusRevisao.js";
  * O ✕ sai da fila dos status de propósito: fechar não é um status, e
  * deixá-lo junto fazia dele o botão mais fácil de acertar por engano
  * logo ao lado de "Revisto".
+ *
+ * A QUALIDADE DA FORMA entra aqui embaixo, e não numa barra própria em
+ * outro canto: são os dois julgamentos que se faz sobre a mesma
+ * marcação, com a mesma marcação na frente. Separados, dar as duas notas
+ * exigiria descer e subir a tela. Só aparece quando a tela passa
+ * `qualidade`/`aoMudarQualidade` — as telas que não têm a feature ficam
+ * como antes.
  */
 export default function BarraStatusRevisao({
   titulo, subtitulo, status, aoMudar, aoFechar, indisponivel = false,
   motivo = null, aoTentarDeNovo = null,
+  // Qualidade: opcional. `qualidade` é 0–4 ou null (ninguém avaliou).
+  qualidade = undefined, aoMudarQualidade = null,
+  qualidadeIndisponivel = false, qualidadeMotivo = null,
 }) {
   function aoTeclar(e, i) {
     const passo = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1
@@ -79,6 +90,15 @@ export default function BarraStatusRevisao({
       )}
 
       <button type="button" className="sr-fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+
+      {aoMudarQualidade && (
+        <SeletorQualidade
+          qualidade={qualidade ?? null}
+          aoMudar={aoMudarQualidade}
+          indisponivel={qualidadeIndisponivel}
+          motivo={qualidadeMotivo}
+        />
+      )}
     </div>
   );
 }

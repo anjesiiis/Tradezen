@@ -69,6 +69,7 @@ from admin_templates_extras import ROUTERS as admin_templates_extras_routers
 from admin_templates_fracasso import ROUTERS as admin_templates_fracasso_routers
 from admin_templates_mover import ROUTERS as admin_templates_mover_routers
 from admin_status_revisao import router as admin_status_revisao_router
+from admin_qualidade import router as admin_qualidade_router
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
 from admin_usuarios import router as admin_usuarios_router
 from padroes_marcados import router as padroes_marcados_router
@@ -180,6 +181,9 @@ for _router in admin_templates_mover_routers:
 # status-revisao) e não coluna somada às 21 listagens: ver o porquê no
 # cabeçalho de admin_status_revisao.py.
 app.include_router(admin_status_revisao_router)
+# Qualidade da marcação (0-4). Eixo SEPARADO do `resultado`, que é o
+# desfecho — ver o cabeçalho de admin_qualidade.py.
+app.include_router(admin_qualidade_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }

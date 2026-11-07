@@ -218,8 +218,38 @@ export const statusRevisaoApi = {
   },
 };
 
-// Rota do status pra cada padrão. Os nomes são os do backend (TABELAS em
-// admin_status_revisao.py) — uma lista a menos pra sair de sincronia.
+export const qualidadeApi = {
+  /**
+   * { marcacoes, indisponivel, motivo } — mesma forma do status, e pelo
+   * mesmo motivo: mapa vazio tem três causas (falta a migration 026, não
+   * deu pra falar com o servidor, ou ninguém avaliou nada ainda) e as
+   * três pedem recados diferentes.
+   */
+  async listar(rota) {
+    try {
+      const data = await adminFetch(`/admin/qualidade/${rota}`);
+      return { marcacoes: data?.marcacoes || {}, indisponivel: false, motivo: null };
+    } catch (erro) {
+      if (tabelaAindaNaoExiste(erro)) {
+        console.warn(`[admin] qualidade indisponível: ${erro.message}`);
+        return { marcacoes: {}, indisponivel: true, motivo: erro.message };
+      }
+      throw erro;
+    }
+  },
+  /** `qualidade` null desfaz a avaliação. */
+  mudar(rota, id, qualidade) {
+    return adminFetch(`/admin/qualidade/${rota}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ qualidade }),
+    });
+  },
+};
+
+// Rota do status pra cada padrão. Serve pras DUAS features (status de
+// revisão e qualidade): o nome da lista é o mesmo nos dois endpoints. Os
+// nomes são os do backend (TABELAS em admin_status_revisao.py) — uma
+// lista a menos pra sair de sincronia.
 export const ROTA_DO_STATUS = {
   oco: "oco",
   topo_duplo: "topo-duplo",

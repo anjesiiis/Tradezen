@@ -149,9 +149,47 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sr-borda-em_andamento{border-left:3px solid var(--gold)}
 .sr-borda-revisto{border-left:3px solid var(--up)}
 
+/* Qualidade da forma (0-4). Fica LOGO ABAIXO da barra de status, dentro
+   do mesmo cabecalho do visualizador: sao os dois julgamentos que se faz
+   sobre a mesma marcacao, e separa-los em cantos opostos da tela faria
+   descer e subir pra dar uma nota so.
+
+   A cor de cada chip entra por --sq-cor, posta no style do botao a
+   partir de qualidade.js. Uma classe por nivel seria cinco regras quase
+   iguais aqui, e a escala mora num lugar so. */
+.sq-bloco{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;padding-top:11px;margin-top:11px;border-top:1px solid var(--border)}
+.sq-cabeca{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.sq-label{font:600 11px var(--font-b);letter-spacing:.5px;text-transform:uppercase;color:var(--text2)}
+/* O criterio do nivel aceso, visivel: quem avalia 212 marcacoes seguidas
+   precisa dele na frente, nao a cada passada de mouse. */
+.sq-dica{font:400 11px var(--font-b);color:var(--text3);line-height:1.3}
+.sq-grupo{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.sq-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 6px;background:var(--s2);border:1px solid var(--border);border-radius:9px;color:var(--text2);font-family:var(--font-b);cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.sq-chip:hover{background:color-mix(in srgb,var(--text) 8%,var(--s2));color:var(--text)}
+.sq-chip:active{transform:scale(.97)}
+.sq-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sq-chip.aceso{color:var(--sq-cor);border-color:var(--sq-cor);background:color-mix(in srgb,var(--sq-cor) 14%,transparent)}
+.sq-rotulo{font-size:11px;font-weight:600;letter-spacing:.3px}
+.sq-chip.aceso .sq-rotulo{font-weight:700}
+/* As bolinhas dizem o nivel sem depender de cor: 5 de 5 cheias e Otimo,
+   1 de 5 e Falha. E o que salva quem nao distingue os tons. */
+.sq-bolinhas{display:flex;gap:2px}
+.sq-bolinhas i{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.22}
+.sq-bolinhas i.cheia{opacity:1}
+.sq-indisponivel{grid-column:1/-1;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font:400 11px var(--font-b);color:var(--gold);line-height:1.35}
+
+/* Selo de qualidade no card da lista, no canto oposto ao de status pra
+   os dois caberem no mesmo card sem disputa. */
+.sq-selo{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border:1px solid;border-radius:999px;font:600 10px var(--font-b);letter-spacing:.3px;color:var(--sq-cor);border-color:color-mix(in srgb,var(--sq-cor) 55%,transparent);background:color-mix(in srgb,var(--sq-cor) 14%,transparent)}
+
 /* Celular: o titulo fica numa linha, os chips rolam na seguinte. Grid de
    tres colunas num celular cortava os chips pela metade. */
 @media (max-width:767px){
+  /* Cinco colunas em 375px dariam ~62px por chip, e "Media"/"Otimo" sao
+     curtos o suficiente. So o alvo de toque cresce. */
+  .sq-chip{min-height:48px}
+  .sq-grupo{gap:5px}
+  .sq-rotulo{font-size:10px}
   .sr-barra{grid-template-columns:minmax(0,1fr) auto}
   .sr-grupo{grid-column:1/-1;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
   .sr-grupo::-webkit-scrollbar{display:none}

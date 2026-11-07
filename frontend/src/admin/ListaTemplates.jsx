@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { gravarUltimoVisto, lerUltimoVisto, limparUltimoVisto, posicaoNaLista } from "./ultimoVisto.js";
 import { COM_FAIXA, FILTROS, SELO, contarPorFiltro, filtrar, statusDe } from "./statusRevisao.js";
+import {
+  FILTROS_QUALIDADE, TOTAL_DE_BOLINHAS, bolinhasCheias, contarPorQualidade,
+  filtrarPorQualidade, nivelDe, qualidadeDe,
+} from "./qualidade.js";
 
 // Marcações salvas em cards — um por template, com o que interessa relembrar
 // depois: ticker, padrão, data do primeiro ponto e a anotação inteira (numa
@@ -20,14 +24,24 @@ import { COM_FAIXA, FILTROS, SELO, contarPorFiltro, filtrar, statusDe } from "./
 // (marca) e fechou (rola de volta até onde estava).
 export default function ListaTemplates({
   templates: todos = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover,
-  abertoId = null, statusMapa = null,
+  abertoId = null, statusMapa = null, qualidadeMapa = null,
 }) {
   // Filtro de status. Sem o mapa (migration 025 não rodada) a barra de
   // filtros não aparece e a lista é a lista inteira, como era antes.
   const [filtro, setFiltro] = useState("todos");
   const temStatus = !!statusMapa && Object.keys(statusMapa).length > 0;
   const contas = temStatus ? contarPorFiltro(todos, statusMapa) : null;
-  const templates = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
+
+  // Filtro de qualidade, independente do de status. Os dois se somam (E,
+  // não OU): "falta decidir" + "sem nota" é exatamente a fila de quem
+  // senta pra avaliar, e seria um filtro inútil se um anulasse o outro.
+  const [filtroQ, setFiltroQ] = useState("todos");
+  const temQualidade = !!qualidadeMapa && Object.keys(qualidadeMapa).length > 0;
+  const contasQ = temQualidade ? contarPorQualidade(todos, qualidadeMapa) : null;
+
+  const porStatus = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
+  const templates = temQualidade
+    ? filtrarPorQualidade(porStatus, qualidadeMapa, filtroQ) : porStatus;
   const [ultimoVisto, setUltimoVisto] = useState(() => lerUltimoVisto(rotulo));
   const refDoMarcado = useRef(null);
   // Trocar de tela (de Bandeira de Alta pra Topo Duplo) tem que trocar o
@@ -91,6 +105,24 @@ export default function ListaTemplates({
         </div>
       )}
 
+      {/* Filtros por qualidade da forma. "Sem nota" vem logo depois de
+          "Todas" por ser a fila de trabalho de quem está avaliando. */}
+      {temQualidade && (
+        <div className="sr-filtros" role="group" aria-label="Filtrar por qualidade da forma">
+          {FILTROS_QUALIDADE.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={filtroQ === f.id}
+              className={`sr-filtro${filtroQ === f.id ? " aceso" : ""}`}
+              onClick={() => setFiltroQ(f.id)}
+            >
+              {f.rotulo} <span className="sr-filtro-n">{contasQ[f.id]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {templates.length === 0 && (
         <p style={{ color: "var(--text2)", fontSize: 13, margin: 0 }}>Nenhum template ainda.</p>
       )}
@@ -139,6 +171,23 @@ export default function ListaTemplates({
               <header>
                 <strong>{t.ticker}</strong>
                 <span className="admin-tag">{rotulo}</span>
+                {/* Nota da forma. Fica no cabeçalho, não no canto de
+                    baixo: lá já mora o selo de status, e dois selos
+                    disputando o mesmo canto se sobrepõem em 375px.
+                    Sem nota, nenhum selo — ausência é informação. */}
+                {temQualidade && nivelDe(qualidadeDe(qualidadeMapa, t.id)) && (
+                  <span
+                    className="sq-selo"
+                    style={{ "--sq-cor": nivelDe(qualidadeDe(qualidadeMapa, t.id)).cor }}
+                  >
+                    <span className="sq-bolinhas" aria-hidden="true">
+                      {Array.from({ length: TOTAL_DE_BOLINHAS }, (_, b) => (
+                        <i key={b} className={b < bolinhasCheias(qualidadeDe(qualidadeMapa, t.id)) ? "cheia" : ""} />
+                      ))}
+                    </span>
+                    {nivelDe(qualidadeDe(qualidadeMapa, t.id)).rotulo}
+                  </span>
+                )}
               </header>
               <dl>
                 <div>

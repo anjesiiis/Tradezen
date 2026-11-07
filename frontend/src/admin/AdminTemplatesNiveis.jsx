@@ -17,6 +17,8 @@ import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
 import { useStatusRevisao } from "./useStatusRevisao.js";
+import { useQualidade } from "./useQualidade.js";
+import { qualidadeDe } from "./qualidade.js";
 import { filtrar, statusDe } from "./statusRevisao.js";
 
 const INTERVALOS = ["1d", "1wk", "60m"];
@@ -262,6 +264,12 @@ export default function AdminTemplatesNiveis() {
   const statusRev = useStatusRevisao("niveis", {
     aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: explicarFalha(erro, "o status") }),
   });
+  // Quão bom exemplo da FORMA é cada marcação (ver useQualidade). Eixo
+  // separado do `resultado`, que é o desfecho: um padrão de livro que
+  // não andou é qualidade alta com resultado ruim.
+  const qualidadeRev = useQualidade("niveis", {
+    aoFalhar: (erro) => setMensagem({ tipo: "erro", texto: explicarFalha(erro, "a qualidade") }),
+  });
   // Abriu: registra que PASSOU pelos olhos, e só. Não diz "está certa" —
   // isso é clique em Visto.
   useEffect(() => { if (editando?.id != null) statusRev.registrarAbertura(editando.id); },
@@ -301,6 +309,10 @@ export default function AdminTemplatesNiveis() {
               indisponivel={statusRev.indisponivel}
               motivo={statusRev.motivo}
               aoTentarDeNovo={statusRev.recarregar}
+              qualidade={qualidadeDe(qualidadeRev.mapa, editando.id)}
+              aoMudarQualidade={(q) => qualidadeRev.mudar(editando.id, q)}
+              qualidadeIndisponivel={qualidadeRev.indisponivel}
+              qualidadeMotivo={qualidadeRev.motivo}
               aoFechar={() => setEditando(null)}
             />
 
@@ -438,6 +450,7 @@ export default function AdminTemplatesNiveis() {
           templates={templates}
           abertoId={editando?.id ?? null}
           statusMapa={statusRev.mapa}
+          qualidadeMapa={qualidadeRev.mapa}
           rotulo="Suporte/Resistência"
           aoVisualizar={iniciarVisualizacao}
           aoEditar={iniciarEdicao}
