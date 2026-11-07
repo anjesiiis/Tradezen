@@ -83,13 +83,18 @@ describe('Marcador de onde parei', () => {
     expect(cards()[0]).not.toHaveClass('lt-marcado');
   });
 
-  // Enquanto o gráfico está aberto lá em cima, o selo na lista embaixo só
-  // competiria com ele: o marcador é pra VOLTAR, não pra enquanto se olha.
-  it('com o template aberto, o selo não aparece', () => {
+  // Este teste dizia o contrário: com o gráfico aberto, o selo sumia, com
+  // o argumento de que o marcador é "pra voltar, não pra enquanto se
+  // olha". Mudou por pedido do dono do projeto, e o pedido tem razão: a
+  // borda é um "você está aqui", e o momento em que ela mais serve é o
+  // momento em que você está olhando o card. O que continua escondido é o
+  // BOTÃO de retomar, que ofereceria ir pra onde já se está.
+  it('com o template aberto, o marcador fica e só o botão sai', () => {
     localStorage.setItem('tradezen-admin-ultimo-visto', JSON.stringify({ 'bandeira-de-alta': 101 }));
     montar({ abertoId: 101 });
 
-    expect(document.querySelector('.lt-selo')).toBeNull();
+    expect(document.querySelector('.lt-selo')).not.toBeNull();
+    expect(document.querySelector('.lt-marcado')).not.toBeNull();
     expect(screen.queryByRole('button', { name: /Continuar de onde parei/ })).not.toBeInTheDocument();
   });
 
@@ -219,5 +224,77 @@ describe('Posição na lista', () => {
     expect(posicaoNaLista(lista, 999)).toBe(0);
     expect(posicaoNaLista(lista, null)).toBe(0);
     expect(posicaoNaLista(undefined, 100)).toBe(0);
+  });
+});
+
+// A BORDA AMARELA É UM "VOCÊ ESTÁ AQUI"
+// =====================================
+//
+// Então ela não pode se apagar sozinha. Duas coisas a apagavam:
+//   • o card sair do filtro (avaliar um card no filtro "Sem avaliação",
+//     ou chegar nesse filtro com o último visto já avaliado);
+//   • ter um template aberto.
+// As duas davam a mesma impressão: o marcador some e não há como saber
+// onde se parou.
+describe('A borda amarela do último visualizado não se apaga', () => {
+  beforeEach(() => localStorage.clear());
+
+  const T = fazerTemplates(3);
+  const semNota = Object.fromEntries(T.map((t) => [t.id, { qualidade: null }]));
+
+  const montarComQualidade = (props = {}) => render(
+    <ListaTemplates
+      templates={T} rotulo="Bandeira de Alta"
+      aoVisualizar={vi.fn()} aoEditar={vi.fn()} aoExcluir={vi.fn()}
+      qualidadeMapa={semNota}
+      {...props}
+    />,
+  );
+
+  it('o card marcado fica na lista mesmo não cabendo no filtro', () => {
+    localStorage.setItem('tradezen-admin-ultimo-visto', JSON.stringify({ 'bandeira-de-alta': 101 }));
+    // o #101 tem nota, e o filtro padrão é "Sem avaliação": antes ele
+    // desaparecia, levando a borda com ele
+    montarComQualidade({
+      qualidadeMapa: { ...semNota, 101: { qualidade: 4 } },
+    });
+
+    const marcado = document.querySelector('.lt-marcado');
+    expect(marcado).not.toBeNull();
+    expect(within(marcado).getByText('T1.SA')).toBeInTheDocument();
+  });
+
+  it('e volta pra posição original, não pro fim da lista', () => {
+    localStorage.setItem('tradezen-admin-ultimo-visto', JSON.stringify({ 'bandeira-de-alta': 101 }));
+    montarComQualidade({ qualidadeMapa: { ...semNota, 101: { qualidade: 4 } } });
+
+    // T0, T1 (o reinserido), T2 — na ordem de sempre
+    expect(cards().map((c) => c.querySelector('strong').textContent))
+      .toEqual(['T0.SA', 'T1.SA', 'T2.SA']);
+  });
+
+  it('a borda continua com um template aberto', () => {
+    localStorage.setItem('tradezen-admin-ultimo-visto', JSON.stringify({ 'bandeira-de-alta': 101 }));
+    montarComQualidade({ abertoId: 101 });
+
+    expect(cards()[1]).toHaveClass('lt-marcado');
+    // mas o botão de retomar não: ele ofereceria ir pra onde já se está
+    expect(screen.queryByRole('button', { name: /Continuar/ })).not.toBeInTheDocument();
+  });
+
+  it('a borda acompanha a troca: abriu outro, é outro o amarelo', () => {
+    const { rerender } = montarComQualidade({ abertoId: 101 });
+    expect(cards()[1]).toHaveClass('lt-marcado');
+
+    rerender(
+      <ListaTemplates
+        templates={T} rotulo="Bandeira de Alta"
+        aoVisualizar={vi.fn()} aoEditar={vi.fn()} aoExcluir={vi.fn()}
+        qualidadeMapa={semNota} abertoId={102}
+      />,
+    );
+    expect(cards()[2]).toHaveClass('lt-marcado');
+    expect(cards()[1]).not.toHaveClass('lt-marcado');
+    expect(lerUltimoVisto('Bandeira de Alta')).toBe(102);
   });
 });

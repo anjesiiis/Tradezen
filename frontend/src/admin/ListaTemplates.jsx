@@ -23,6 +23,20 @@ import Estrelas from "./Estrelas.jsx";
 // `abertoId` é o id do template que está aberto lá em cima, ou null. É só
 // por ele que a lista sabe das duas transições que importam: abriu um
 // (marca) e fechou (rola de volta até onde estava).
+/**
+ * Reinsere na lista, na posição original, o card do último visualizado.
+ *
+ * `==` de propósito na comparação de id: ele vem número do banco e volta
+ * texto do localStorage.
+ */
+function comUltimoVisto(lista, todos, id) {
+  if (id == null || lista.some((t) => t?.id == id)) return lista;
+  const alvo = (todos || []).find((t) => t?.id == id);
+  if (!alvo) return lista;   // apagado, ou movido pro outro lado
+  const ordem = new Map((todos || []).map((t, i) => [t?.id, i]));
+  return [...lista, alvo].sort((a, b) => ordem.get(a?.id) - ordem.get(b?.id));
+}
+
 export default function ListaTemplates({
   templates: todos = [], rotulo, aoVisualizar, aoEditar, aoExcluir, aoMover, destinoDoMover,
   abertoId = null, statusMapa = null, qualidadeMapa = null, qualidadeMotivo = null,
@@ -61,10 +75,17 @@ export default function ListaTemplates({
   // Trocar de filtro ou de tela é pedir a lista do filtro, sem exceções.
   useEffect(() => { setRecemAvaliados(new Set()); }, [filtroQ, rotulo]);
 
-  const porStatus = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
-  const templates = temQualidade
-    ? filtrarPorQualidade(porStatus, qualidadeMapa, filtroQ, recemAvaliados) : porStatus;
   const [ultimoVisto, setUltimoVisto] = useState(() => lerUltimoVisto(rotulo));
+
+  const porStatus = temStatus ? filtrar(todos, statusMapa, filtro) : todos;
+  const comFiltroQ = temQualidade
+    ? filtrarPorQualidade(porStatus, qualidadeMapa, filtroQ, recemAvaliados) : porStatus;
+  // O último visualizado NUNCA é filtrado pra fora. A borda amarela quer
+  // dizer "é aqui que eu estava", e fazê-la sumir porque o card não cabe
+  // no filtro de agora apaga justamente o que ela carrega — some sozinha
+  // depois de avaliar, ou ao chegar com o filtro "Sem avaliação" num card
+  // que já tem nota.
+  const templates = comUltimoVisto(comFiltroQ, todos, ultimoVisto);
   const refDoMarcado = useRef(null);
   // Trocar de tela (de Bandeira de Alta pra Topo Duplo) tem que trocar o
   // marcador junto: sem isto a lista nova mostraria o marcador da antiga.
@@ -95,7 +116,15 @@ export default function ListaTemplates({
   // Posição 0 = o marcado não está mais na lista (apagado, ou movido pro
   // outro lado). Melhor não mostrar marcador nenhum que apontar pro card
   // errado — os números todos andaram quando ele saiu.
-  const temMarcador = posicaoDoUltimo > 0 && abertoId == null;
+  //
+  // A BORDA e o BOTÃO são duas coisas, e por isso duas condições:
+  //   • a borda vale sempre que existe um último visualizado — é um
+  //     "você está aqui", e um mapa que se apaga quando você olha pra ele
+  //     não serve de nada;
+  //   • o botão "Continuar de onde parei" só faz sentido com tudo
+  //     fechado, senão ele oferece ir pra onde você já está.
+  const temMarcador = posicaoDoUltimo > 0;
+  const mostrarBotaoRetomar = temMarcador && abertoId == null;
 
   function esquecerMarcador() {
     limparUltimoVisto(rotulo);
@@ -168,7 +197,7 @@ export default function ListaTemplates({
 
       {/* Atalho pra retomar sem procurar. Mostra o número pra conferir que
           é mesmo onde se parou antes de clicar. */}
-      {temMarcador && (
+      {mostrarBotaoRetomar && (
         <div className="lt-retomar">
           <button
             type="button"
