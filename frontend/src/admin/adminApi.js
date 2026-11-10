@@ -35,11 +35,35 @@ export async function sincronizarTokenAdmin() {
   return getAdminToken() || (await tokenDaSessao());
 }
 
-function enviar(path, options, token) {
+// Sem teto de espera, um backend que ACEITA a conexão e não responde
+// (Render reiniciando, sem memória, ou fora do ar) deixa o fetch pendurado
+// pra sempre. A tela fica com a lista vazia, sem erro e sem fim — foi
+// exatamente o que fez a página de templates dizer "Nenhum template ainda"
+// com as marcações todas no banco.
+//
+// 70s porque o plano free do Render dorme: o cold start legítimo passa de
+// um minuto, e um teto curto transformaria espera honesta em erro.
+const ESPERA_MAXIMA = 70000;
+
+async function enviar(path, options, token) {
   const headers = { ...(options.headers || {}) };
   if (options.body) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  return fetch(`${API}${path}`, { ...options, headers });
+  const controle = new AbortController();
+  const relogio = setTimeout(() => controle.abort(), ESPERA_MAXIMA);
+  try {
+    return await fetch(`${API}${path}`, { ...options, headers, signal: controle.signal });
+  } catch (erro) {
+    if (erro?.name !== "AbortError") throw erro;
+    const calado = new Error(
+      "O servidor não respondeu. Ele pode estar reiniciando ou fora do ar — "
+      + "tente de novo em um minuto.",
+    );
+    calado.semResposta = true;   // não é tabela faltando, e não é lista vazia
+    throw calado;
+  } finally {
+    clearTimeout(relogio);
+  }
 }
 
 async function adminFetch(path, options = {}) {
@@ -105,9 +129,20 @@ export async function fetchAtivos() {
 // vazia, fica o aviso no console, e o resto da página segue de pé. Sem
 // isso, um padrão sem tabela derrubava a tela inteira com "Não foi
 // possível carregar os templates".
+/**
+ * Só é "tabela faltando" se o servidor DISSER que é.
+ *
+ * Antes, qualquer 503 contava — e o Render responde 503 quando o serviço
+ * está reiniciando ou caiu. O resultado era a página mostrar "Nenhum
+ * template ainda. (0)" com as marcações todas no banco, sem erro na tela:
+ * o backend fora do ar era indistinguível de uma tabela que nunca foi
+ * criada. Os dois 503 reais do backend dizem "A tabela X ainda não existe
+ * no Supabase", então o texto basta e o atalho pelo status só mentia.
+ */
 function tabelaAindaNaoExiste(erro) {
   const texto = String(erro?.message || "");
-  return erro?.status === 503 || /tabela .* ainda não existe|Could not find the table/i.test(texto);
+  if (erro?.semResposta) return false;
+  return /tabela .* ainda não existe|Could not find the table/i.test(texto);
 }
 
 function makeTemplateApi(basePath) {
