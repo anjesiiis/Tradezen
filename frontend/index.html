@@ -27,14 +27,24 @@
          discador em cima do gráfico. -->
     <meta name="format-detection" content="telephone=no" />
     <title>TradeZen</title>
+    <!-- VIGIA DA TELA BRANCA — mora em /vigia.js, e não inline aqui,
+         porque a CSP do site é `script-src 'self'` e script inline não
+         executa (ver frontend/vercel.json).
+
+         Fica no <head> e NÃO no <body>: o Vite injeta a tag do bundle no
+         fim do <head>, então uma tag no body apareceria DEPOIS dela no
+         HTML construído. Na prática o vigia ainda rodaria primeiro (o
+         bundle é `type="module"`, logo deferido, e este é script clássico,
+         que executa durante o parse) — mas depender dessa sutileza pra
+         última rede de segurança do app é frágil. Aqui a ordem é
+         explícita no documento.
+
+         Sem `defer`/`async` de propósito: ele precisa executar antes. -->
+    <script src="/vigia.js"></script>
   </head>
   <body>
     <div id="root"></div>
 
-    <!-- O vigia da tela branca mora em /vigia.js, não aqui: a CSP do site
-         é `script-src 'self'` e bloqueia script inline. Sem `defer`/`async`
-         de propósito — ele precisa rodar ANTES do bundle. -->
-    <script src="/vigia.js"></script>
 
     <script type="module" src="/src/main.jsx"></script>
   </body>

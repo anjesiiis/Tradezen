@@ -94,6 +94,27 @@ describe('o index.html sobrevive à CSP', () => {
     expect(posVigia).toBeLessThan(posBundle);   // ordem é o ponto
   });
 
+  it('o vigia está no <head>, não no <body>', () => {
+    // Esta é a versão CORRIGIDA de um teste meu que era fraco: ele
+    // conferia a ordem no index.html FONTE, e o que vai pro navegador é
+    // o construído. O Vite injeta a tag do bundle no fim do <head>, então
+    // o vigia no <body> saía DEPOIS dela no HTML publicado — foi o que
+    // apareceu ao medir produção.
+    const html = ler('index.html');
+    expect(html.indexOf('/vigia.js')).toBeLessThan(html.indexOf('</head>'));
+  });
+
+  it('no HTML CONSTRUÍDO o vigia vem antes do bundle', () => {
+    const dist = resolve(RAIZ_FRONT, 'dist/index.html');
+    if (!existsSync(dist)) return;   // sem build, nada a conferir
+    const html = readFileSync(dist, 'utf8');
+    const posVigia = html.indexOf('/vigia.js');
+    const posBundle = html.search(/<script type="module"[^>]*src="\/assets\//);
+    expect(posVigia).toBeGreaterThan(-1);
+    expect(posBundle).toBeGreaterThan(-1);
+    expect(posVigia).toBeLessThan(posBundle);
+  });
+
   it('o vigia não usa defer nem async', () => {
     // defer/async o fariam rodar DEPOIS do bundle, que é o contrário do
     // que ele existe pra fazer
