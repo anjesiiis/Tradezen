@@ -75,6 +75,12 @@ function Landing(){
     <>
       <style>{CSS}</style>
       <Abertura/>
+      {/* Rodapé só com o que a lei pede que fique achável. A porta de
+          entrada do site é o lugar onde se procura isso, e é a única tela
+          pública que todo visitante vê. */}
+      <footer className="priv-rodape">
+        <a href="/privacidade">Política de Privacidade</a>
+      </footer>
     </>
   );
 }

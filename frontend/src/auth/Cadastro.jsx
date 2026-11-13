@@ -19,6 +19,12 @@ export default function Cadastro() {
   // seria uma parede de exigências antes mesmo de começar.
   const mostrarForca = senha.length > 0;
   const [erro, setErro] = useState("");
+  // DESMARCADO por padrão, e tem que continuar assim: consentimento que
+  // vem ligado por omissão não é consentimento (LGPD art. 7º, I). Está
+  // separado de tudo o mais porque marketing é base legal PRÓPRIA — o
+  // telefone para alerta e suporte se apoia em legítimo interesse e não
+  // precisa desta caixa.
+  const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
     if (user) navigate("/mercados", { replace: true });
@@ -51,7 +57,9 @@ export default function Cadastro() {
         // Vai pro raw_user_meta_data do auth.users; o trigger
         // criar_usuario_no_cadastro() (backend/sql/003_criar_usuarios.sql)
         // copia daqui pra usuarios.nome quando a conta é criada.
-        data: { nome: nome.trim() },
+        // marketing_whatsapp viaja junto e o trigger da migration
+        // 028 copia pra profiles.marketing_whatsapp, com a data.
+        data: { nome: nome.trim(), marketing_whatsapp: marketing },
       },
     });
     if (error) {
@@ -148,6 +156,28 @@ export default function Cadastro() {
                 </div>
               )}
             </div>
+            {/* Consentimento de marketing. NÃO bloqueia o cadastro: se
+                bloqueasse, deixaria de ser livre e não valeria como
+                consentimento. Fica acima do botão pra ser lido antes de
+                enviar, e não depois. */}
+            <label className="auth-check">
+              <input
+                type="checkbox"
+                checked={marketing}
+                onChange={(e) => setMarketing(e.target.checked)}
+              />
+              <span>
+                Aceito receber novidades e ofertas do{" "}
+                <span className="notranslate">TradeZen</span> via WhatsApp.
+                Posso cancelar quando quiser.
+              </span>
+            </label>
+
+            <p className="auth-aviso">
+              Ao criar a conta você concorda com o uso dos seus dados descrito na{" "}
+              <a href="/privacidade">Política de Privacidade</a>.
+            </p>
+
             {status === "error" && <div className="auth-msg auth-msg-err">{erro}</div>}
             <button className="auth-btn" type="submit" disabled={status === "sending" || !forca.forte}>
               {status === "sending" ? "Enviando..." : "Criar conta grátis"}

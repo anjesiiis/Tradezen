@@ -103,7 +103,7 @@ export async function carregarPerfil(userId) {
     const supabase = await cliente();
     const { data, error } = await supabase
       .from("profiles")
-      .select("nome,telefone,avatar_tipo,avatar_valor,plano")
+      .select("nome,telefone,avatar_tipo,avatar_valor,plano,marketing_whatsapp")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw error;

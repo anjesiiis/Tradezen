@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { excluirConta } from "../lib/conta.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { CSS } from "../styles/appCss.js";
@@ -48,6 +49,9 @@ function Perfil({ user }) {
   const [telefone, setTelefone] = useState("");
   const [avatar, setAvatar] = useState({ tipo: null, valor: null });
   const [escolhendoEmoji, setEscolhendoEmoji] = useState(false);
+  // Revogar consentimento tem que ser tão fácil quanto dar — é o que a
+  // LGPD exige, e é o que a Política de Privacidade promete nesta tela.
+  const [marketing, setMarketing] = useState(false);
   const [estado, setEstado] = useState("carregando");   // carregando | pronto | salvando | salvo
   const [erro, setErro] = useState("");
 
@@ -62,6 +66,7 @@ function Perfil({ user }) {
       setNome(base.nome || "");
       setTelefone(formatarTelefone(base.telefone || ""));
       setAvatar({ tipo: base.avatar_tipo || null, valor: base.avatar_valor || null });
+      setMarketing(!!base.marketing_whatsapp);
       setEstado("pronto");
     });
     return () => { vivo = false; };
@@ -72,7 +77,8 @@ function Perfil({ user }) {
     telefone: telefone.replace(/\D/g, "") || null,
     avatar_tipo: avatar.tipo,
     avatar_valor: avatar.valor,
-  }), [nome, telefone, avatar]);
+    marketing_whatsapp: marketing,
+  }), [nome, telefone, avatar, marketing]);
 
   const diff = original ? mudancas(original, atual) : {};
   const mudou = Object.keys(diff).length > 0;
@@ -172,6 +178,26 @@ function Perfil({ user }) {
         </label>
       </section>
 
+      <section className="cfg-secao">
+        <h3>Novidades e ofertas</h3>
+        <label className="cfg-check">
+          <input
+            type="checkbox"
+            checked={marketing}
+            onChange={(e) => setMarketing(e.target.checked)}
+          />
+          <span>
+            Aceito receber novidades e ofertas do{" "}
+            <span className="notranslate">TradeZen</span> via WhatsApp.
+          </span>
+        </label>
+        <p className="cfg-dica">
+          Desmarcar aqui revoga o consentimento e não afeta a sua conta nem os
+          alertas que você configurou. Detalhes na{" "}
+          <a href="/privacidade">Política de Privacidade</a>.
+        </p>
+      </section>
+
       {erro && <p className="cfg-erro-caixa">{erro}</p>}
 
       <div className="cfg-rodape">
@@ -186,7 +212,91 @@ function Perfil({ user }) {
         {estado === "salvo" && <span className="cfg-ok">Salvo ✓</span>}
         {!mudou && estado === "pronto" && <span className="cfg-dica">Nada mudou ainda.</span>}
       </div>
+
+      <ZonaDePerigo />
     </div>
+  );
+}
+
+/**
+ * Exclusão da conta (LGPD art. 18, VI).
+ *
+ * Fora do bloco de "Salvar alterações" de propósito: é a única ação desta
+ * tela que não tem volta, e misturá-la com os campos de edição convidaria
+ * ao clique por engano.
+ *
+ * A confirmação pede a palavra EXCLUIR digitada, e não um "tem certeza?".
+ * Um botão de confirmar é clicado no automático; escrever a palavra exige
+ * ler. O custo é alto porque o erro é irreversível.
+ */
+function ZonaDePerigo() {
+  const [aberto, setAberto] = useState(false);
+  const [palavra, setPalavra] = useState("");
+  const [estado, setEstado] = useState("idle");   // idle | excluindo | erro
+  const [erro, setErro] = useState("");
+
+  const confirmado = palavra.trim().toUpperCase() === "EXCLUIR";
+
+  async function confirmar() {
+    setEstado("excluindo");
+    setErro("");
+    const r = await excluirConta();
+    if (r?.ok) {
+      // replace e não push: voltar pra uma tela de conta que não existe
+      // mais deixaria o app num estado sem sentido.
+      window.location.replace("/?conta=excluida");
+      return;
+    }
+    setEstado("erro");
+    setErro(r?.erro || "Não foi possível excluir a conta.");
+  }
+
+  return (
+    <section className="cfg-perigo">
+      <h3>Excluir minha conta</h3>
+      <p className="cfg-dica">
+        Apaga a sua conta e, junto com ela, o perfil, as preferências, os alertas
+        e todos os seus desenhos e análises salvos. É imediato e não tem volta.
+      </p>
+
+      {!aberto ? (
+        <button type="button" className="cfg-btn-perigo" onClick={() => setAberto(true)}>
+          Excluir minha conta
+        </button>
+      ) : (
+        <div className="cfg-perigo-caixa" role="group" aria-label="Confirmar exclusão da conta">
+          <p>
+            Para confirmar, escreva <strong>EXCLUIR</strong> no campo abaixo.
+          </p>
+          <input
+            className="cfg-input"
+            value={palavra}
+            onChange={(e) => setPalavra(e.target.value)}
+            placeholder="EXCLUIR"
+            aria-label="Escreva EXCLUIR para confirmar"
+            autoComplete="off"
+          />
+          {erro && <p className="cfg-erro-caixa">{erro}</p>}
+          <div className="cfg-perigo-acoes">
+            <button
+              type="button"
+              className="cfg-btn-perigo"
+              disabled={!confirmado || estado === "excluindo"}
+              onClick={confirmar}
+            >
+              {estado === "excluindo" ? "Excluindo…" : "Excluir para sempre"}
+            </button>
+            <button
+              type="button"
+              className="cfg-btn-cancelar"
+              onClick={() => { setAberto(false); setPalavra(""); setErro(""); }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -46,6 +46,11 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .auth-msg{font-size:13px;padding:12px 14px;border-radius:8px;border:1px solid;margin-bottom:16px;line-height:1.5}
 .auth-msg-ok{background:rgba(0,214,143,.08);border-color:rgba(0,214,143,.25);color:var(--up)}
 .auth-msg-err{background:rgba(255,69,96,.08);border-color:rgba(255,69,96,.25);color:var(--down)}
+/* Consentimento de marketing e aviso da politica, no cadastro. */
+.auth-check{display:flex;align-items:flex-start;gap:9px;margin-top:4px;font:400 13px/1.45 var(--font-b);color:var(--text);cursor:pointer}
+.auth-check input{margin:2px 0 0;width:16px;height:16px;flex-shrink:0;accent-color:var(--accent)}
+.auth-aviso{margin:10px 0 0;font:400 12px/1.5 var(--font-b);color:var(--text3)}
+.auth-aviso a{color:var(--accent)}
 /* Força da senha: barra + lista que mudam a cada tecla. As cores são as
    da paleta — vermelho (--down), âmbar (--gold) e verde (--up) — e quem
    escolhe qual é o avaliarSenha, não o CSS. */

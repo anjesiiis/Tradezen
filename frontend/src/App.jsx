@@ -14,10 +14,12 @@ const Cadastro = lazy(() => import("./pages/Cadastro.jsx"));
 // por anúncio não precisa da navegação do produto, precisa da oferta.
 const PaginaDeVendas = lazy(() => import("./pages/PaginaDeVendas.jsx"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes.jsx"));
+const Privacidade = lazy(() => import("./pages/Privacidade.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const RecuperarSenha = lazy(() => import("./auth/RecuperarSenha.jsx"));
 const PopupCadastro = lazy(() => import("./components/PopupCadastro.jsx"));
+const BannerPrivacidade = lazy(() => import("./components/BannerPrivacidade.jsx"));
 const RedefinirSenha = lazy(() => import("./auth/RedefinirSenha.jsx"));
 const AuthCallback = lazy(() => import("./auth/AuthCallback.jsx"));
 
@@ -107,6 +109,10 @@ function Router(){
   if (location.pathname === "/login") return <Login/>;
   if (location.pathname === "/cadastro") return <Cadastro/>;
   if (location.pathname === "/pagina-de-vendas") return <PaginaDeVendas/>;
+  // Política de Privacidade: rota pública, sem login. Tem que abrir pra
+  // quem ainda não tem conta — é justamente antes de criar a conta que a
+  // pessoa precisa poder ler o que será coletado.
+  if (location.pathname === "/privacidade") return <Privacidade/>;
   // /configuracoes e as sub-abas (segurança, plano, notificações)
   if (location.pathname.startsWith("/configuracoes")) return <Configuracoes/>;
   if (location.pathname === "/recuperar-senha") return <RecuperarSenha/>;
@@ -149,6 +155,10 @@ export default function App(){
             rotas, e lá dentro o convite só apareceria em algumas telas.
             Ele mesmo decide onde não entra (ver ROTAS_SEM_POPUP). */}
         <Suspense fallback={null}><PopupCadastro/></Suspense>
+        {/* Também fora do Router, e pelo mesmo motivo: o aviso vale pro
+            site inteiro, inclusive nas rotas em que o Router devolve
+            cedo. Ele se esconde sozinho depois do primeiro "Entendi". */}
+        <Suspense fallback={null}><BannerPrivacidade/></Suspense>
       </AuthProvider>
     </BrowserRouter>
   );

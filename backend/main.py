@@ -46,6 +46,7 @@ PeriodoAtivo = Literal["5d", "1mo", "60d", "3mo", "6mo", "1y", "2y", "3y", "5y",
 IntervaloAtivo = Literal["1m", "5m", "15m", "60m", "1d", "1wk"]
 import uvicorn
 
+from conta import router as conta_router
 from logs import erro as log_erro, ip_do_pedido
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -195,6 +196,9 @@ app.include_router(usuario_router)
 app.include_router(admin_usuarios_router)
 app.include_router(analises_router)
 app.include_router(alertas_router)
+# Exclusão da própria conta (LGPD art. 18) — depois de alertas, de quem
+# importa o require_user.
+app.include_router(conta_router)
 
 # Mover uma marcação entre "é o padrão" e "não é o padrão". Vai depois
 # dos dois acima porque pendura rotas nos MESMOS prefixos deles.

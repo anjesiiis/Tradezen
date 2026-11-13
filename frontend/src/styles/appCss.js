@@ -204,6 +204,18 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .cfg-input:focus{border-color:var(--accent)}
 .cfg-input:disabled{color:var(--text3);cursor:not-allowed}
 .cfg-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 24px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+/* Consentimento e exclusao de conta (LGPD). A zona de perigo e vermelha e
+   fica separada por uma borda: e a unica acao da tela sem volta. */
+.cfg-check{display:flex;align-items:flex-start;gap:10px;font:400 14px/1.45 var(--font-b);color:var(--text);cursor:pointer}
+.cfg-check input{margin:2px 0 0;width:17px;height:17px;flex-shrink:0;accent-color:var(--accent)}
+.cfg-perigo{margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,69,96,.3)}
+.cfg-perigo h3{color:var(--down);font:600 15px var(--font-b);margin:0 0 6px}
+.cfg-btn-perigo{background:transparent;color:var(--down);border:1px solid rgba(255,69,96,.45);border-radius:8px;padding:11px 24px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;min-height:44px}
+.cfg-btn-perigo:disabled{opacity:.45;cursor:not-allowed}
+.cfg-btn-cancelar{background:transparent;color:var(--text3);border:1px solid var(--border);border-radius:8px;padding:11px 20px;font:inherit;font-size:14px;cursor:pointer;min-height:44px}
+.cfg-perigo-caixa{margin-top:12px;padding:14px;background:rgba(255,69,96,.06);border:1px solid rgba(255,69,96,.3);border-radius:var(--r);display:flex;flex-direction:column;gap:10px}
+.cfg-perigo-caixa p{margin:0;font:400 13px/1.5 var(--font-b);color:var(--text)}
+.cfg-perigo-acoes{display:flex;gap:10px;flex-wrap:wrap}
 .cfg-btn:disabled{opacity:.45;cursor:not-allowed}
 .cfg-btn-secundario{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 16px;font:inherit;font-size:13px;cursor:pointer}
 .cfg-btn-secundario:hover{border-color:var(--accent)}
@@ -1490,5 +1502,54 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .tbar{display:none}
   .ti{font-size:11px;padding:0 14px}
 
+}
+
+/* POLITICA DE PRIVACIDADE + AVISO DE PRIVACIDADE
+   Documento legal e por isso mede-se a legibilidade: 68ch de largura
+   maxima (linha longa demais faz o olho perder a linha de volta), 1.65 de
+   altura de linha, e nada de cinza fraco no corpo do texto. Em 375px a
+   tabela de "dado / finalidade / base legal" vira cartao empilhado, que e
+   a unica forma de tres colunas caberem sem rolagem horizontal. */
+.priv-pagina{min-height:100vh;background:var(--bg);color:var(--text);padding:28px 16px 64px;box-sizing:border-box}
+.priv-corpo{max-width:68ch;margin:0 auto;font:400 15px/1.65 var(--font-b)}
+.priv-voltar{display:inline-block;margin-bottom:22px;color:var(--text3);font-size:13px;text-decoration:none}
+.priv-voltar:hover{color:var(--text)}
+.priv-corpo h1{font:600 26px/1.2 var(--font-b);margin:0 0 6px}
+.priv-corpo h2{font:600 18px/1.3 var(--font-b);margin:34px 0 10px;padding-top:18px;border-top:1px solid var(--border)}
+.priv-corpo h3{font:600 15px/1.3 var(--font-b);margin:22px 0 8px}
+.priv-data{color:var(--text3);font-size:12px;margin:0 0 18px}
+.priv-resumo{background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r);padding:14px 16px;margin:0}
+.priv-corpo p{margin:0 0 12px}
+.priv-nota{color:var(--text3);font-size:13px}
+.priv-lista{margin:0;padding-left:20px}
+.priv-lista li{margin-bottom:9px}
+.priv-tabela{display:flex;flex-direction:column;gap:9px;margin:14px 0}
+.priv-linha{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.4fr);gap:12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.priv-linha-dupla{grid-template-columns:minmax(0,1fr) minmax(0,2.2fr)}
+.priv-dado{font-weight:600}
+.priv-finalidade{color:var(--text)}
+.priv-base{color:var(--text3);font-size:13px}
+.priv-corpo a{color:var(--accent)}
+
+.bpriv{position:fixed;left:0;right:0;bottom:0;z-index:9998;background:var(--s2);border-top:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;font:400 13px/1.5 var(--font-b);color:var(--text)}
+.bpriv-texto{margin:0;max-width:62ch}
+.bpriv-acoes{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.bpriv-link{color:var(--accent);font-size:13px;text-decoration:none;white-space:nowrap}
+.bpriv-btn{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:28px;padding:10px 24px;cursor:pointer;min-height:44px}
+
+/* Link discreto pra politica, no pe das telas publicas. */
+.priv-rodape{padding:26px 16px 34px;text-align:center;border-top:1px solid var(--border)}
+.priv-rodape a{color:var(--text3);font:400 12px var(--font-b);text-decoration:none;margin:0 10px}
+.priv-rodape a:hover{color:var(--text)}
+
+@media (max-width:767px){
+  /* Tres colunas em 375px dariam 9ch cada: ilegivel. Empilha. */
+  .priv-linha,.priv-linha-dupla{grid-template-columns:1fr;gap:5px}
+  .priv-base{border-top:1px solid var(--border);padding-top:6px}
+  .priv-corpo{font-size:15px}
+  .priv-corpo h1{font-size:22px}
+  /* A nav inferior fixa mora em bottom:0 — sem isto o banner cobriria ela. */
+  .bpriv{bottom:var(--h-nav-inferior,56px);flex-direction:column;align-items:flex-start;gap:10px}
+  .bpriv-acoes{width:100%;justify-content:space-between}
 }
 `;
