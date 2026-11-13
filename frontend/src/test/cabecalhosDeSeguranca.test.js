@@ -61,9 +61,13 @@ describe('headers de segurança do site (Vercel)', () => {
     const c = diretiva('connect-src');
     // host conferido no bundle publicado em www.tradezen.com.br
     expect(c).toMatch(/https:\/\/tradezen-7brh\.onrender\.com/);
-    expect(c).toMatch(/supabase\.co/);
-    expect(c).toMatch(/wss:\/\/.*supabase\.co/);   // realtime/auth usam websocket
-    expect(c).not.toMatch(/\*\s|'unsafe/);
+    // host do projeto, não curinga: `*.supabase.co` aceitaria QUALQUER
+    // projeto Supabase como destino, o que num XSS seria um canal de
+    // exfiltração pronto. Confirmado no bundle publicado.
+    expect(c).toMatch(/https:\/\/wxkgcpclxgwlxdmeaigp\.supabase\.co/);
+    expect(c).toMatch(/wss:\/\/wxkgcpclxgwlxdmeaigp\.supabase\.co/);   // auth/realtime
+    expect(c).not.toMatch(/\*/);
+    expect(c).not.toMatch(/'unsafe/);
   });
 
   it('libera as origens que o código realmente usa, senão o site quebra', () => {
