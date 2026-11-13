@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr
 from supabase_auth.errors import AuthApiError
 
 from config import ADMIN_EMAILS, FRONTEND_URL
+from logs import ip_do_pedido, seguranca
 from rate_limit import limiter
 from supabase_client import supabase
 
@@ -52,6 +53,10 @@ def solicitar_magic_link(request: Request, payload: MagicLinkRequest):
     email = payload.email.strip().lower()
 
     if email not in ADMIN_EMAILS:
+        # Registrado: é alguém pedindo acesso ao painel com um email que
+        # não é admin. Uma vez é engano; repetido, do mesmo IP, é sondagem.
+        seguranca.warning(
+            "magic-link NEGADO email=%s ip=%s", email, ip_do_pedido(request))
         raise HTTPException(status_code=403, detail="Email não autorizado.")
 
     try:
@@ -113,9 +118,17 @@ def _guardar(token: str, email: str) -> None:
         _tokens_validos[_chave(token)] = (agora, email)
 
 
-def require_admin(authorization: str = Header(None)) -> str:
-    """Valida o token Supabase (Bearer) e garante que o email está em ADMIN_EMAILS."""
+def require_admin(request: Request, authorization: str = Header(None)) -> str:
+    """Valida o token Supabase (Bearer) e garante que o email está em ADMIN_EMAILS.
+
+    Toda recusa daqui é registrada (ver logs.py). O 403 é o evento que
+    mais importa: quem chega nele tem uma conta Supabase VÁLIDA e está
+    pedindo o painel de admin — é a diferença entre um visitante e uma
+    tentativa de escalada de privilégio.
+    """
     if not authorization or not authorization.lower().startswith("bearer "):
+        seguranca.info(
+            "401 sem token rota=%s ip=%s", request.url.path, ip_do_pedido(request))
         raise HTTPException(status_code=401, detail="Token de autenticação ausente.")
 
     token = authorization.split(" ", 1)[1].strip()
@@ -127,15 +140,26 @@ def require_admin(authorization: str = Header(None)) -> str:
     try:
         resposta = supabase.auth.get_user(token)
     except Exception:
+        seguranca.warning(
+            "401 token recusado pelo Supabase rota=%s ip=%s",
+            request.url.path, ip_do_pedido(request))
         raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
 
     user = resposta.user if resposta else None
     if not user or not user.email:
+        seguranca.warning(
+            "401 token sem usuário rota=%s ip=%s", request.url.path, ip_do_pedido(request))
         raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
 
     email = user.email.strip().lower()
     if email not in ADMIN_EMAILS:
+        seguranca.warning(
+            "403 NAO-ADMIN email=%s rota=%s ip=%s",
+            email, request.url.path, ip_do_pedido(request))
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
+    # Só no acerto que passou pelo Supabase (o cache sai antes daqui), pra
+    # não escrever uma linha por chamada: abrir uma tela dispara ~10.
+    seguranca.info("admin autenticado email=%s ip=%s", email, ip_do_pedido(request))
     _guardar(token, user.email)
     return user.email

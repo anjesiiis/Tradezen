@@ -30,6 +30,7 @@ import threading
 import time
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Literal, Optional
 
 # Valores aceitos pelo yfinance de verdade — travar aqui em vez de "str"
@@ -44,6 +45,8 @@ from typing import Literal, Optional
 PeriodoAtivo = Literal["5d", "1mo", "60d", "3mo", "6mo", "1y", "2y", "3y", "5y", "max"]
 IntervaloAtivo = Literal["1m", "5m", "15m", "60m", "1d", "1wk"]
 import uvicorn
+
+from logs import erro as log_erro, ip_do_pedido
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -145,6 +148,27 @@ async def adicionar_headers_seguranca(request: Request, call_next):
     # isso de graça).
     resposta.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return resposta
+
+
+# Exceção que ninguém tratou: antes virava um 500 genérico e MORRIA ali —
+# nenhum rastro, nada pra investigar depois. Agora o traceback inteiro vai
+# pro log (que no Render é a aba Logs) e o cliente recebe só uma frase.
+#
+# A separação é o ponto: o traceback é o que CONSERTA o bug, e também é o
+# que entrega caminho de arquivo, versão de biblioteca e nome de coluna pra
+# quem estiver sondando. Um lado só nosso, o outro só o necessário.
+#
+# HTTPException não cai aqui: o FastAPI já tem handler próprio pra ela, e
+# é ela que carrega as mensagens que a tela mostra de propósito.
+@app.exception_handler(Exception)
+async def erro_nao_tratado(request: Request, exc: Exception):
+    log_erro.exception(
+        "500 nao tratado %s %s ip=%s", request.method, request.url.path,
+        ip_do_pedido(request))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno no servidor. Tente de novo em instantes."},
+    )
 
 
 app.include_router(admin_auth_router)

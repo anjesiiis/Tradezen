@@ -1,0 +1,88 @@
+// VIGIA DA TELA BRANCA
+//
+// Roda ANTES do bundle e sem depender dele: é escrito em ES5 de propósito,
+// porque o caso que ele existe pra cobrir é justamente o navegador não
+// conseguir ler o bundle (sintaxe que ele não entende, arquivo que não
+// baixou, cache velho). Nessa situação o React nunca sobe, o ErrorBoundary
+// nunca roda, e o usuário fica com a página branca sem uma palavra de
+// explicação — foi o que aconteceu no Safari do iPhone.
+//
+// O que ele faz: guarda o primeiro erro que a página soltar e, 9 segundos
+// depois, se #root ainda estiver vazio, escreve o erro na tela. Se o app
+// subiu normalmente, ele não faz nada.
+//
+// POR QUE É UM ARQUIVO E NÃO UM <script> INLINE NO index.html:
+// a Content-Security-Policy do site é `script-src 'self'`, que bloqueia
+// script inline. A alternativa seria 'unsafe-inline', que liberaria também
+// qualquer script que um XSS injetasse — ou seja, desligaria exatamente a
+// proteção que a CSP existe pra dar. Externo custa uma requisição de mesma
+// origem e não custa proteção nenhuma.
+
+(function () {
+  var primeiroErro = null;
+  function guardar(texto) { if (!primeiroErro && texto) primeiroErro = String(texto); }
+  window.addEventListener("error", function (e) {
+    // erro de script externo vem sem mensagem por política de origem
+    guardar(e && e.message ? e.message : "falha ao carregar um arquivo do site");
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    guardar(e && e.reason && (e.reason.message || e.reason));
+  });
+
+  // Versão velha no cache pedindo arquivo que o deploy novo apagou.
+  // É a causa número um de "tava funcionando e ficou branco": o nome
+  // dos arquivos leva hash, e o Safari guarda o index.html com
+  // vontade. Antes de acusar erro, tenta recarregar furando o cache —
+  // uma vez só, com marca na sessão pra não virar laço.
+  function versaoVelha(texto) {
+    var t = (texto || "").toLowerCase();
+    return t.indexOf("module") >= 0 || t.indexOf("importing") >= 0 ||
+           t.indexOf("fetch") >= 0 || t.indexOf("load") >= 0 ||
+           t.indexOf("falha ao carregar") >= 0;
+  }
+
+  setTimeout(function () {
+    var root = document.getElementById("root");
+    if (!root || root.children.length > 0) return;   // app subiu: nada a fazer
+
+    var jaTentou = true;
+    try {
+      jaTentou = !!sessionStorage.getItem("tradezen_recarregou_por_chunk");
+      if (!jaTentou) sessionStorage.setItem("tradezen_recarregou_por_chunk", "1");
+    } catch (e) { jaTentou = true; }   // sem sessionStorage, não arrisca o laço
+
+    if (!jaTentou && versaoVelha(primeiroErro)) {
+      location.replace(location.pathname + "?v=" + Date.now().toString(36) + location.hash);
+      return;
+    }
+
+    var escuro = document.documentElement.getAttribute("data-theme") !== "light";
+    root.innerHTML =
+      '<div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;' +
+      'padding:28px 20px;min-height:100vh;box-sizing:border-box;' +
+      'background:' + (escuro ? "#16171d" : "#fff") + ';color:' + (escuro ? "#d1d4dc" : "#1b1c20") + '">' +
+      '<div style="font-weight:800;letter-spacing:-.5px;font-size:20px;margin-bottom:18px">' +
+      'TRADE<span style="color:#2962ff">ZEN</span></div>' +
+      '<h2 style="font-size:17px;margin:0 0 10px">O site não conseguiu abrir neste navegador</h2>' +
+      '<p style="font-size:13px;line-height:1.5;margin:0 0 14px;color:' + (escuro ? "#787b86" : "#5b5f6b") + '">' +
+      'Já tentei recarregar buscando a versão nova e não resolveu. ' +
+      'No iPhone: Ajustes → Safari → Limpar Histórico e Dados. ' +
+      'Se insistir, mande o texto abaixo pro suporte.</p>' +
+      '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;background:' +
+      (escuro ? "#0f1118" : "#f4f5f7") + ';border:1px solid ' + (escuro ? "#1e222d" : "#e3e5ea") +
+      ';border-radius:8px;padding:10px;margin:0 0 16px">' +
+      (primeiroErro || "sem mensagem de erro — o navegador parou antes de executar o site") +
+      '\n\n' + navigator.userAgent + '</pre>' +
+      '<button id="tz-recarregar" style="font:inherit;font-size:14px;font-weight:600;' +
+      'background:#2962ff;color:#fff;border:none;border-radius:28px;padding:12px 28px">Recarregar</button>' +
+      '</div>';
+
+    // O botão é ligado por addEventListener, e não por atributo de
+    // evento no HTML: atributo de evento inline não executa sob
+    // Content-Security-Policy, e o botão ficaria morto justamente na
+    // tela de emergência.
+    var botao = document.getElementById("tz-recarregar");
+    if (botao) botao.addEventListener("click", function () { location.reload(); });
+  }, 9000);
+})();
+    
