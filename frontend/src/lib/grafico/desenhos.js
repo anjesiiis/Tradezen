@@ -1,4 +1,4 @@
-import { FIBO_NIVEIS } from "./padroes.js";
+import { FIBO_NIVEIS, corDoNivel } from "./padroes.js";
 import { FERRAMENTAS_PERSONALIZAVEIS, TRACOS, fonteDoCanvas, ladoDosRotulos, normalizarEstilo } from "./estiloDesenho.js";
 import { fmtP } from "../mercado.js";
 
@@ -398,7 +398,11 @@ export function _desenharNivel(ctx, toX, toY, p, isSel){
   // bate com "sucesso"/"falhou"), então o marcador sempre cai no caso
   // padrão (bolinha), que combina mais com "nível de preço visado" do que
   // com "aguardando resultado".
-  const cor = p.tipo === "resistencia" ? "#00D68F" : "#FF4560";
+  // Vem de padroes.js, a mesma fonte das LINHAS do nível. Aqui havia uma
+  // segunda cópia das duas cores, com os valores trocados — suporte saía
+  // com o vermelho da resistência, e a faixa sombreada aparecia como um
+  // retângulo vermelho atrás das velas.
+  const cor = corDoNivel(p.tipo);
   const lampC = coords[coords.length - 1];
 
   if(!isSel){

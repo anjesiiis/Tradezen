@@ -77,9 +77,31 @@ export const FIBO_NIVEIS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
 
 // ── Estilo das linhas de Suporte/Resistência (rank mais forte = mais nítido) ──
 const NIVEL_COR = { suporte: "0,214,143", resistencia: "255,69,96" };
+
+/**
+ * Cor de um nível — FONTE ÚNICA.
+ *
+ * Existia só aqui dentro, para as linhas. A FAIXA sombreada do nível
+ * (_desenharNivel, em desenhos.js) tinha a própria cópia dos dois valores
+ * — e com eles TROCADOS: pintava suporte com o vermelho da resistência.
+ * Era o retângulo vermelho que aparecia no fundo do gráfico.
+ *
+ * O tipo é normalizado porque é assim que o resto do gráfico o compara
+ * (ver normalizarTipo): a comparação crua mandava "Suporte" com maiúscula
+ * para o caso de fallback, mudando a cor por causa da caixa da letra.
+ */
+export const corDoNivel = (tipo) => {
+  const rgb = NIVEL_COR[normalizarTipo(tipo)];
+  // Cinza do design system: tipo desconhecido não pode virar "resistência"
+  // por descarte — cor errada aqui é informação errada no gráfico.
+  return rgb ? `rgb(${rgb})` : "#787b86";
+};
+
 export const nivelChave = (nivel) => `${nivel.tipo}:${nivel.preco}`;
 export const estiloNivel = (nivel, selecionado) => {
-  const rgb = NIVEL_COR[nivel.tipo];
+  // Sem o fallback, um tipo fora da lista virava `rgba(undefined,1)` — que
+  // não é cor, e o canvas simplesmente não desenhava a linha.
+  const rgb = NIVEL_COR[normalizarTipo(nivel.tipo)] || "120,123,134";
   if(selecionado) return { color:`rgba(${rgb},1)`, lineWidth:3 };
   const alpha = nivel.rank===0 ? 0.9 : 0.4;
   const lineWidth = nivel.rank===0 ? 2 : 1;
