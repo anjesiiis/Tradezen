@@ -115,6 +115,36 @@ export function problemaNoTemplate(t) {
 }
 
 /**
+ * O template tem pontos, mas NENHUM deles é reconhecido pela tela?
+ *
+ * Existe um caso que passava calado e era o pior de diagnosticar: a linha
+ * tem `pontos` (então problemaNoTemplate deixa abrir), mas as chaves não
+ * batem com nenhum formato conhecido — nem os 4 pares, nem o antigo de 6,
+ * nem canal. Aí configDoTemplate cai no fallback legado, nenhum `step`
+ * encontra o seu ponto, e o gráfico desenha SÓ OS CANDLES. A tela não
+ * dizia nada: parecia que o desenho "não apareceu", sem pista nenhuma de
+ * por quê.
+ *
+ * Esta função transforma esse silêncio em frase, e a frase inclui as
+ * chaves que REALMENTE estão gravadas — que é exatamente o dado que falta
+ * pra saber o que aconteceu com aquela marcação.
+ */
+export function pontosNaoReconhecidos(pontos, steps) {
+  if (!pontos || typeof pontos !== "object" || Array.isArray(pontos)) return null;
+  const chaves = Object.keys(pontos);
+  if (chaves.length === 0) return null;          // vazio é outro caso (ver acima)
+  const esperadas = (steps || []).map((s) => s?.key).filter(Boolean);
+  if (esperadas.length === 0) return null;       // tela sem steps: não é sobre isto
+  if (esperadas.some((k) => pontos[k])) return null;   // ao menos um casou: desenha
+
+  return (
+    "Os pontos deste template estão gravados num formato que esta tela não "
+    + `reconhece, então não há o que desenhar. Chaves gravadas: ${chaves.join(", ")}. `
+    + `Esta tela espera: ${esperadas.join(", ")}.`
+  );
+}
+
+/**
  * Registra no console o bastante pra entender sem reproduzir: o id, o
  * status e o corpo que o servidor mandou.
  */

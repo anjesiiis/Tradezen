@@ -25,7 +25,7 @@ import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
-import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
+import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha, pontosNaoReconhecidos } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
 import { useStatusRevisao } from "./useStatusRevisao.js";
@@ -452,6 +452,11 @@ export default function PainelMarcacao({ padraoInicial }) {
 
   const padraoEmEdicao = (editando && PADROES[editando.tipoEdit]) || padrao;
   const configEdicao = editando ? configDoTemplate(editando.pontos, padraoEmEdicao) : null;
+  // Pontos gravados que a tela não reconhece: antes isto abria o gráfico
+  // com os candles e MAIS NADA, sem uma palavra. Ver pontosNaoReconhecidos.
+  const avisoDePontos = editando
+    ? pontosNaoReconhecidos(editando.pontos, configEdicao?.steps)
+    : null;
 
   // Em que pé está cada marcação na revisão (ver useStatusRevisao).
   // `aoFalhar` em vez de engolir: um selo que não gravou e não avisa é
@@ -510,6 +515,10 @@ export default function PainelMarcacao({ padraoInicial }) {
               qualidadeMotivo={qualidadeRev.motivo}
               aoFechar={() => { setEditando(null); escreverModoNaUrl(null); }}
             />
+
+            {avisoDePontos && (
+              <div className="admin-msg admin-msg-aviso">{avisoDePontos}</div>
+            )}
 
             <TemplateMarkerChart
               /* tipoEdit na key: trocar o padrão redesenha com as cores e
