@@ -101,13 +101,43 @@ def _falta_coluna(erro: Exception, coluna: str) -> bool:
     return coluna in texto and ("does not exist" in texto or "Could not find" in texto)
 
 
+def _trava_da_escala(erro: Exception) -> bool:
+    """O banco recusou a nota por causa da trava de faixa (check constraint).
+
+    23514 é `check_violation` no Postgres. Chega aqui quando a coluna
+    ainda está na escala antiga (0 a 4, migration 026) e a tela já manda a
+    escala com meia estrela (0 a 8, migration 029).
+
+    O valor em si não pode ser o culpado: `QualidadePayload` já barra
+    qualquer coisa fora de 0..8 com um 422 do pydantic, antes de o pedido
+    chegar ao banco. Se a trava reclamou, é a trava que está velha.
+    """
+    texto = str(erro)
+    return "23514" in texto or ("_qualidade_ck" in texto and "check constraint" in texto)
+
+
 def _traduzir(erro: Exception, tabela: str):
     """Transforma o erro do Supabase na providência que ele pede.
 
-    Duas faltas diferentes, e o recado precisa distinguir: a COLUNA não
-    existe (migration 026) ou a TABELA do padrão não existe (migration do
-    padrão). Sem isso a tela mandaria rodar o arquivo errado.
+    Três faltas diferentes, e o recado precisa distinguir: a COLUNA não
+    existe (migration 026), a TABELA do padrão não existe (migration do
+    padrão) ou a coluna existe mas a TRAVA é a da escala antiga
+    (migration 029). Sem isso a tela mandaria rodar o arquivo errado — ou,
+    pior, devolveria o erro cru do Postgres, que não diz o que fazer.
     """
+    if _trava_da_escala(erro):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "O banco ainda está na escala antiga de qualidade (0 a 4) e a "
+                "tela já usa meia estrela (0 a 8). Rode "
+                "backend/sql/029_meia_estrela.sql no SQL Editor do Supabase — "
+                "ela converte as avaliações que já existem, sem perder nenhuma. "
+                "Se você JÁ rodou, o cache de schema está velho: rode "
+                "`notify pgrst, 'reload schema';` e recarregue a página."
+            ),
+        ) from erro
+
     if _falta_coluna(erro, "qualidade"):
         raise HTTPException(
             status_code=503,

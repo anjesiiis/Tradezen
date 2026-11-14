@@ -187,3 +187,52 @@ describe('a conta das estrelas é a mesma dos dois lados', () => {
     expect(SQL029()).toMatch(/8=Otimo\(5 estrelas\)/);
   });
 });
+
+
+// O ERRO CRU DO POSTGRES NÃO DIZ O QUE FAZER
+// ==========================================
+//
+// Com a tela na escala nova (0..8) e o banco ainda na antiga (0..4), toda
+// nota acima de Média volta como `violates check constraint
+// "..._qualidade_ck"`, código 23514. Foi exatamente isso que chegou na
+// tela do dono do projeto: um erro de banco, sem providência nenhuma.
+//
+// 23514 não pode ser culpa do valor: o pydantic já barra fora de 0..8 com
+// 422 antes de chegar ao banco. Se a trava reclamou, a trava está velha.
+describe('o backend traduz a trava velha em providência', () => {
+  it('reconhece a violação de check pelo código e pelo nome da trava', () => {
+    const py = PY();
+    expect(py).toMatch(/_trava_da_escala/);
+    expect(py).toMatch(/23514/);
+    expect(py).toMatch(/_qualidade_ck/);
+  });
+
+  it('manda rodar a 029, e não a 026', () => {
+    const trecho = PY().slice(PY().indexOf('_trava_da_escala'));
+    const ate = trecho.slice(0, trecho.indexOf('_falta_coluna'));
+    expect(ate).toMatch(/029_meia_estrela\.sql/);
+    expect(ate).not.toMatch(/026_qualidade/);
+  });
+
+  // A trava é testada ANTES da coluna faltando: a coluna existe nesse
+  // caso, então o teste de coluna não pegaria, e o erro cairia no 500
+  // genérico com o texto do Postgres.
+  it('testa a trava antes de qualquer outra causa', () => {
+    const py = PY();
+    expect(py.indexOf('if _trava_da_escala(erro)'))
+      .toBeLessThan(py.indexOf('if _falta_coluna(erro, "qualidade")'));
+  });
+
+  it('diz o que fazer se a migration já rodou mas o cache está velho', () => {
+    const trecho = PY().slice(PY().indexOf('_trava_da_escala'));
+    expect(trecho.slice(0, 2000)).toMatch(/reload schema/);
+  });
+
+  // Violação de UNIQUE também é 235xx. Confundir as duas mandaria rodar
+  // uma migration que não tem nada a ver com o problema.
+  it('não confunde check com outras violações de constraint', () => {
+    const py = PY();
+    expect(py).not.toMatch(/23505/);
+    expect(py).toMatch(/check constraint/);
+  });
+});
