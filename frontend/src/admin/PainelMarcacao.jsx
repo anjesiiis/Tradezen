@@ -543,7 +543,11 @@ export default function PainelMarcacao({ padraoInicial }) {
                 acima: ficaAcima(padraoEmEdicao.id),
                 modo: editando.readOnly ? "visualizar" : "editar",
               }}
-              enquadrarPontos={editando.readOnly}
+              /* Enquadra nos dois modos. Antes era só no visualizar, e
+                 abrir pra EDITAR jogava o contexto inteiro na tela: o
+                 desenho ocupava ~10% da largura em vez de ~40%, e dava a
+                 impressão de um zoom pra fora do nada. */
+              enquadrarPontos
               readOnly={editando.readOnly}
             />
 

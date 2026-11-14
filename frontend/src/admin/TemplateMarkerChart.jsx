@@ -37,7 +37,7 @@ function GraficoDeMarcacao({
   aoMudarFaixa,            // avisa a faixa visível a cada rolagem/zoom
   padraoMarcado,           // { id, ancora, acima } — emoji do padrão em cima da marcação
   instrucao,               // uma linha de ajuda do padrão, acima do gráfico
-  enquadrarPontos,         // true: abre já enquadrado nos pontos (modo visualizar)
+  enquadrarPontos,         // true: abre já enquadrado nos pontos (template salvo)
   limparEm = 0,            // muda de valor = apaga os pontos marcados sem recriar o gráfico
   initialPontos, onChange, readOnly = false,
 }) {
@@ -422,9 +422,20 @@ function GraficoDeMarcacao({
     });
   }
 
-  // Modo visualizar: abre já enquadrado no padrão, com contexto em volta.
+  // Template salvo: abre já enquadrado no padrão, com contexto em volta.
   // Sem isso, um padrão de 2023 abria com o gráfico inteiro na tela e era
   // preciso procurá-lo.
+  //
+  // Vale para VISUALIZAR e para EDITAR. Só no visualizar era meia
+  // correção: abrir pra editar jogava os ~300 candles do contexto na tela
+  // de uma vez, e o desenho que se foi editar ficava com ~10% da largura
+  // em vez de ~40% — parecia que o gráfico tinha dado um zoom pra fora
+  // sozinho, e era preciso ir fechando à mão pra achar o padrão.
+  //
+  // As dependências são de propósito só `enquadrarPontos` e `candles`:
+  // enquadrar é coisa de ABERTURA. Pôr os pontos aqui faria o gráfico
+  // pular de volta a cada ponto arrastado, desfazendo o zoom de quem está
+  // marcando — o oposto do que isto existe pra resolver.
   useEffect(() => {
     if (!enquadrarPontos || !candles?.length || !chartRef.current) return;
     const indices = Object.values(initialPontos || {}).map((pt) => pt?.i).filter((i) => candles[i]);

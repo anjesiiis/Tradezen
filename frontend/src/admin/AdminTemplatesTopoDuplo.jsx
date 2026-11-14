@@ -345,7 +345,11 @@ export default function AdminTemplatesTopoDuplo() {
               key={`${editando.id}-${editando.readOnly}`}
               padraoMarcado={{ id: "topo_duplo", ancora: "topo1", acima: true,
                 modo: editando.readOnly ? "visualizar" : "editar" }}
-              enquadrarPontos={editando.readOnly}
+              /* Enquadra nos dois modos. Antes era só no visualizar, e
+                 abrir pra EDITAR jogava o contexto inteiro na tela: o
+                 desenho ocupava ~10% da largura em vez de ~40%, e dava a
+                 impressão de um zoom pra fora do nada. */
+              enquadrarPontos
               candles={editando.candles}
               steps={STEPS}
               initialPontos={editando.pontos}
