@@ -2,7 +2,8 @@
  * TRADEZEN — QUALIDADE DA MARCAÇÃO
  * ================================
  *
- * Quão bom EXEMPLO DA FORMA é o desenho, de 0 a 4.
+ * Quão bom EXEMPLO DA FORMA é o desenho: de 1 a 5 estrelas, de
+ * meia em meia (nove passos). Ver a seção A ESCALA abaixo.
  *
  * NÃO é o `resultado`. São eixos diferentes, e misturá-los corrompe dado:
  *   `resultado` → o DESFECHO (texto livre, digitado na tela de marcação)
@@ -22,39 +23,96 @@
  * conta 4 de 5 cheias e sabe o nível igual.
  */
 
+// ── A ESCALA ──────────────────────────────────────────────────
+//
+// Nove passos, de 1 a 5 estrelas de meia em meia. Guardados no banco como
+// SMALLINT de 0 a 8, não como 1.0–5.0 em decimal:
+//
+//   valor 0 1 2 3 4 5 6 7 8
+//   ★     1 1,5 2 2,5 3 3,5 4 4,5 5
+//
+// Inteiro porque a coluna já era inteira, porque `order by` e `>= 6` são
+// o que a tela e o treino fazem o tempo todo, e porque comparar decimal
+// por igualdade (`qualidade === 3.5`) é pedir para um 3.4999 aparecer
+// algum dia. A conta é `estrelas = valor / 2 + 1`, e `valor` par é nível
+// com NOME.
+//
+// Os cinco nomes seguem exatamente onde estavam — a escala dobrou, não
+// mudou de significado. Os valores antigos 0..4 viram 0,2,4,6,8 na
+// migration 029, então quem tinha 3 estrelas continua com 3 estrelas.
+//
+// AS CORES são as variáveis do tema de admin (--up, --down, --text2,
+// --text3 em theme.jsx), não uma paleta nova. Os meios-passos são a
+// mistura dos vizinhos, o que mantém o degradê monótono do vermelho ao
+// verde; a informação ORDINAL fica nas ESTRELAS, e quem não distingue os
+// tons conta 4,5 de 5 e sabe o nível igual.
+
+const VERDE = "var(--up)";
+const VERMELHO = "var(--down)";
+const mistura = (cor, pct) => `color-mix(in srgb, ${cor} ${pct}%, var(--text2))`;
+
 export const NIVEIS = [
   {
-    valor: 4, rotulo: "Ótimo", cor: "var(--up)",
+    valor: 8, estrelas: 5, nome: "Ótimo", rotulo: "Ótimo", cor: VERDE,
     dica: "Exemplo de livro: a forma é inequívoca",
   },
   {
-    valor: 3, rotulo: "Alta", cor: "color-mix(in srgb, var(--up) 55%, var(--text2))",
+    valor: 7, estrelas: 4.5, nome: null, rotulo: "4,5", cor: mistura(VERDE, 78),
+    dica: "Entre Alta e Ótimo: quase de livro, falta pouco",
+  },
+  {
+    valor: 6, estrelas: 4, nome: "Alta", rotulo: "Alta", cor: mistura(VERDE, 55),
     dica: "Forma clara, com um detalhe fora do ideal",
   },
   {
-    valor: 2, rotulo: "Média", cor: "var(--text3)",
+    valor: 5, estrelas: 3.5, nome: null, rotulo: "3,5", cor: mistura(VERDE, 28),
+    dica: "Entre Média e Alta: boa, mas a ressalva ainda pesa",
+  },
+  {
+    valor: 4, estrelas: 3, nome: "Média", rotulo: "Média", cor: "var(--text3)",
     dica: "Dá pra reconhecer, mas tem ressalva",
   },
   {
-    valor: 1, rotulo: "Baixa", cor: "color-mix(in srgb, var(--down) 55%, var(--text2))",
+    valor: 3, estrelas: 2.5, nome: null, rotulo: "2,5", cor: mistura(VERMELHO, 28),
+    dica: "Entre Baixa e Média: reconhecível no limite",
+  },
+  {
+    valor: 2, estrelas: 2, nome: "Baixa", rotulo: "Baixa", cor: mistura(VERMELHO, 55),
     dica: "Duvidoso: mais contra do que a favor",
   },
   {
-    // Avaliar 0 é dizer "não é o padrão", que é o que as tabelas
+    valor: 1, estrelas: 1.5, nome: null, rotulo: "1,5", cor: mistura(VERMELHO, 78),
+    dica: "Entre Falha e Baixa: quase não é o padrão",
+  },
+  {
+    // Avaliar o mínimo é dizer "não é o padrão", que é o que as tabelas
     // `*_fracasso` guardam. A dica aponta o passo seguinte em vez de a
     // tela mover sozinha: mover tiraria a marcação da lista sem pedido.
-    valor: 0, rotulo: "Falha", cor: "var(--down)",
+    valor: 0, estrelas: 1, nome: "Falha", rotulo: "Falha", cor: VERMELHO,
     dica: "Não é o padrão. Depois disto, mova para fracasso",
   },
 ];
 
-export const TOTAL_DE_ESTRELAS = NIVEIS.length;
+export const TOTAL_DE_ESTRELAS = 5;
 
-/** Quantas estrelas cheias um nível tem. Falha(0) tem UMA, não zero:
- *  zero estrela cheia é a aparência de "não avaliado", e os dois não
- *  podem ter o mesmo desenho — um é julgamento, o outro é a falta dele. */
+/** O maior valor que o banco aceita (ver a trava da migration 029). */
+export const QUALIDADE_MAXIMA = 8;
+
+/** Só os níveis com nome — os cinco de sempre, pra quem precisa agrupar. */
+export const NIVEIS_COM_NOME = NIVEIS.filter((n) => n.nome !== null);
+
+/** Quantas estrelas um valor vale: 1 a 5, de meia em meia.
+ *
+ *  Falha vale UMA estrela, não zero: zero estrela cheia é a aparência de
+ *  "não avaliado", e os dois não podem ter o mesmo desenho — um é
+ *  julgamento, o outro é a falta dele. */
 export function estrelasCheias(valor) {
-  return valor + 1;
+  return valor / 2 + 1;
+}
+
+/** "4,5" / "3" — como o número aparece escrito, com vírgula. */
+export function estrelasEmTexto(valor) {
+  return String(estrelasCheias(valor)).replace(".", ",");
 }
 
 export function nivelDe(valor) {
@@ -88,12 +146,17 @@ export function proximaQualidade(atual, clicado) {
 // número no botão "Todas" continua dizendo o total.
 export const FILTRO_QUALIDADE_PADRAO = "sem_nota";
 
+// Com meia estrela, cada grupo passa a pegar TAMBÉM o meio-passo acima
+// do seu nível nomeado — ou seja, agrupa-se pelo nome de baixo. "Ótimos e
+// Alta" é q >= 6 (Alta, 4,5 e Ótimo), "Média" é 4 e 5, "Baixa e Falha" é
+// 0 a 3. Os cinco botões e o que cada um quer dizer continuam os mesmos;
+// só não há mais nota que fique fora de todos eles.
 export const FILTROS_QUALIDADE = [
   { id: "todos", rotulo: "Todas", cabe: () => true },
   { id: "sem_nota", rotulo: "Sem avaliação", cabe: (q) => q === null },
-  { id: "bons", rotulo: "Ótimos e Alta", cabe: (q) => q === 4 || q === 3 },
-  { id: "media", rotulo: "Média", cabe: (q) => q === 2 },
-  { id: "ruins", rotulo: "Baixa e Falha", cabe: (q) => q === 1 || q === 0 },
+  { id: "bons", rotulo: "Ótimos e Alta", cabe: (q) => q !== null && q >= 6 },
+  { id: "media", rotulo: "Média", cabe: (q) => q === 4 || q === 5 },
+  { id: "ruins", rotulo: "Baixa e Falha", cabe: (q) => q !== null && q <= 3 },
 ];
 
 export function contarPorQualidade(templates, mapa) {

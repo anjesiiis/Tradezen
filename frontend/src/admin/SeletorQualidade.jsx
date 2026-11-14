@@ -1,8 +1,9 @@
-import { NIVEIS, TOTAL_DE_ESTRELAS, estrelasCheias, nivelDe, proximaQualidade } from "./qualidade.js";
+import { NIVEIS, TOTAL_DE_ESTRELAS, estrelasCheias, estrelasEmTexto, nivelDe, proximaQualidade } from "./qualidade.js";
 import Estrelas from "./Estrelas.jsx";
 
 /**
- * Os cinco níveis de qualidade, no topo do visualizador.
+ * Os nove passos de qualidade, no topo do visualizador — de 1 a 5
+ * estrelas, de meia em meia.
  *
  * GRUPO DE RÁDIO, igual à barra de status e pelo mesmo motivo: uma
  * marcação tem uma nota só. Caixinha que desmarca as outras mente sobre
@@ -11,8 +12,13 @@ import Estrelas from "./Estrelas.jsx";
  *
  * As estrelas carregam o nível sem depender de cor: 5 de 5 cheias é
  * Ótimo, 1 de 5 é Falha. Quem não distingue os tons conta e sabe. São
- * `aria-hidden` porque o rótulo já diz o nome do nível — um leitor de
- * tela lendo "estrela estrela estrela" antes de "Alta" só atrasa.
+ * `aria-hidden` porque o botão tem `aria-label` — um leitor de tela
+ * lendo "estrela estrela estrela" antes de "Alta" só atrasa.
+ *
+ * O meio-passo não tem nome: o rótulo dele é o próprio número ("4,5").
+ * No `aria-label` isso sozinho não diria nada, então lá vai sempre
+ * "<rótulo> — X de 5 estrelas", com a dica explicando entre quais nomes
+ * o passo fica.
  *
  * NÃO desabilita os botões enquanto grava. A gravação é otimista (ver
  * useQualidade): desabilitar daria um piscar de botão morto a cada
@@ -64,6 +70,13 @@ export default function SeletorQualidade({ qualidade, aoMudar, indisponivel = fa
               className={`sq-chip${aceso ? " aceso" : ""}`}
               style={{ "--sq-cor": n.cor }}
               title={n.dica}
+              // O nome acessível não repete a dica de propósito: a dica cita
+              // os níveis vizinhos ("Entre Alta e Ótimo"), e com ela aqui
+              // dois botões passavam a responder por "Ótimo". A dica fica no
+              // `title` e, pro nível aceso, escrita na tela em .sq-dica.
+              aria-label={n.nome
+                ? `${n.nome} — ${estrelasEmTexto(n.valor)} de ${TOTAL_DE_ESTRELAS} estrelas`
+                : `${estrelasEmTexto(n.valor)} de ${TOTAL_DE_ESTRELAS} estrelas`}
               onClick={() => aoMudar(proximaQualidade(qualidade, n.valor))}
               onKeyDown={(e) => aoTeclar(e, i)}
             >

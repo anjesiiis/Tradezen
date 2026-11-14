@@ -163,7 +163,11 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 /* O criterio do nivel aceso, visivel: quem avalia 212 marcacoes seguidas
    precisa dele na frente, nao a cada passada de mouse. */
 .sq-dica{font:400 11px var(--font-b);color:var(--text3);line-height:1.3}
-.sq-grupo{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+/* Nove passos (meia estrela), e nao cinco: auto-fit em vez de
+   repeat(9,...) porque nove colunas em 375px dariam 32px de chip.
+   Assim quebra em duas fileiras no telefone e cabe numa só no
+   desktop, sem o número de níveis estar escrito no CSS. */
+.sq-grupo{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:7px}
 .sq-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 6px;background:var(--s2);border:1px solid var(--border);border-radius:9px;color:var(--text2);font-family:var(--font-b);cursor:pointer;transition:background .15s,border-color .15s,color .15s}
 .sq-chip:hover{background:color-mix(in srgb,var(--text) 8%,var(--s2));color:var(--text)}
 .sq-chip:active{transform:scale(.97)}
@@ -178,6 +182,15 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sq-estrelas{display:inline-flex;font-size:13px;line-height:1;letter-spacing:-.5px}
 .sq-estrelas .cheia{color:currentColor}
 .sq-estrelas .vazia{color:currentColor;opacity:.25}
+/* MEIA ESTRELA: o ☆ vazio no lugar normal, e o ★ cheio por cima cortado
+   ao meio. Mesmo glifo das outras, logo mesma largura e mesma altura — e
+   sem depender de um caractere de meia estrela que falta em muita fonte
+   de sistema. O width de .5em com overflow hidden faz o corte; o vazio
+   fica com a mesma opacidade das vazias pra a metade da direita ler como
+   "falta isto". */
+.sq-estrelas .meia{position:relative;display:inline-block}
+.sq-estrelas .meia .meia-vazia{color:currentColor;opacity:.25}
+.sq-estrelas .meia .meia-cheia{position:absolute;left:0;top:0;width:.5em;overflow:hidden;color:currentColor}
 .lt-recem{margin:0;font:400 11px var(--font-b);color:var(--text3);line-height:1.4}
 .sq-indisponivel{grid-column:1/-1;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font:400 11px var(--font-b);color:var(--gold);line-height:1.35}
 

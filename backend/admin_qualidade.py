@@ -2,8 +2,9 @@
 TRADEZEN — QUALIDADE DA MARCAÇÃO
 ================================
 
-Quão bom EXEMPLO DA FORMA é cada marcação, de 0 a 4. Os níveis estão
-explicados em sql/026_qualidade_da_marcacao.sql.
+Quão bom EXEMPLO DA FORMA é cada marcação: de 1 a 5 estrelas, de meia
+em meia (nove passos, guardados como 0 a 8). Os níveis estão explicados
+em sql/026_qualidade_da_marcacao.sql e a escala dobrou na 029.
 
 NÃO MEXE NA COLUNA `resultado`. São eixos diferentes: `resultado` é o
 desfecho (texto livre, digitado na tela), `qualidade` é quão bom exemplo
@@ -30,14 +31,41 @@ from admin_status_revisao import TABELAS
 from rate_limit import limiter
 from supabase_client import supabase
 
-# Rótulo de cada nível, pro backend falar a mesma língua da tela.
-ROTULOS = {0: "Falha", 1: "Baixa", 2: "Média", 3: "Alta", 4: "Ótimo"}
+# ESCALA: smallint de 0 a 8 = 1 a 5 estrelas, de meia em meia.
+#
+#   valor    0   1    2   3    4   5    6   7    8
+#   estrelas 1  1,5   2  2,5   3  3,5   4  4,5   5
+#
+# Valor PAR é nível com nome; ímpar é o meio-passo entre dois nomes. A
+# escala dobrou na migration 029 (os antigos 0..4 viraram 0,2,4,6,8), e os
+# nomes seguem exatamente onde estavam. Inteiro e não decimal: `order by`
+# e `>= 6` são o que a tela e o treino fazem, e comparar decimal por
+# igualdade é pedir pra um 3.4999 aparecer algum dia.
+#
+# A tela tem esta mesma tabela em frontend/src/admin/qualidade.js, e um
+# teste lê os dois arquivos pra elas não saírem de sincronia.
+QUALIDADE_MAXIMA = 8
+
+# Rótulo de cada nível, pro backend falar a mesma língua da tela. O
+# meio-passo não tem nome próprio: é o número de estrelas.
+ROTULOS = {
+    0: "Falha", 1: "1,5", 2: "Baixa", 3: "2,5", 4: "Média",
+    5: "3,5", 6: "Alta", 7: "4,5", 8: "Ótimo",
+}
 
 # Alvo contínuo pra quando houver treino. Fica em FUNÇÃO e não em coluna
 # gravada: é derivado de `qualidade`, e guardar derivado é criar duas
 # fontes pra mesma verdade — basta alguém mexer na escala pra elas
 # discordarem em silêncio.
-_SCORE = {0: 0.0, 1: 0.3, 2: 0.6, 3: 0.8, 4: 1.0}
+#
+# Os cinco valores nomeados são os mesmos de antes (0.0 / 0.3 / 0.6 / 0.8
+# / 1.0, agora nos índices pares). Cada meio-passo é o ponto médio dos
+# vizinhos, que é a única escolha que não reordena nada: a curva continua
+# monótona e nenhum par de notas troca de lugar por causa da mudança.
+_SCORE = {
+    0: 0.0, 1: 0.15, 2: 0.3, 3: 0.45, 4: 0.6,
+    5: 0.7, 6: 0.8, 7: 0.9, 8: 1.0,
+}
 
 
 def score_ml(qualidade: Optional[int]) -> Optional[float]:
@@ -54,9 +82,11 @@ _COLUNAS = "id,qualidade,qualidade_em,qualidade_por"
 
 
 class QualidadePayload(BaseModel):
-    # ge/le na borda: 7 ou -1 param aqui, com mensagem do pydantic, em vez
-    # de chegar ao banco e voltar como violação de constraint.
-    qualidade: Optional[int] = Field(default=None, ge=0, le=4)
+    # ge/le na borda: 9 ou -1 param aqui, com mensagem do pydantic, em vez
+    # de chegar ao banco e voltar como violação de constraint. O teto é o
+    # mesmo da trava do banco (ver 029) — dois números diferentes aqui e
+    # lá dariam um 500 em vez de um 422.
+    qualidade: Optional[int] = Field(default=None, ge=0, le=QUALIDADE_MAXIMA)
 
 
 def _tabela(rota: str) -> str:
