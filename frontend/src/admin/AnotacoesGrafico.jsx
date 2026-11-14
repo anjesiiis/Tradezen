@@ -112,6 +112,14 @@ export default function AnotacoesGrafico({
       onPointerCancel={encerrarGesto}
     >
       {anotacoes.map((a) => {
+        // Anotação sem texto não tem o que mostrar, e no modo de leitura
+        // ela não tem nem ✕ nem canto de arrastar — virava um retângulo
+        // escuro anônimo por cima do gráfico (o fundo de `.anotacao`),
+        // sem nada que a identificasse e sem jeito de tirar da frente.
+        // Em EDIÇÃO continua aparecendo: lá ela é o passo intermediário
+        // de escrever uma, com o texto de ajuda e o botão de excluir.
+        if (somenteLeitura && !a.texto?.trim()) return null;
+
         const pos = paraPixel(a.ancora);
         if (!pos) return null; // ficou fora da parte visível do gráfico
         const emEdicao = editando === a.id;
