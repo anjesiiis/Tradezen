@@ -49,6 +49,14 @@ class TemplateCreate(BaseModel):
 
 class TemplateUpdate(BaseModel):
     pontos: Optional[PontosOCO] = None
+    # O RECORTE vem junto com os pontos, e os dois precisam ser gravados
+    # na mesma transação de update. Motivo: a tela abre o template sobre o
+    # contexto inteiro, então os índices que ela devolve são índices do
+    # contexto. Aceitar `pontos` sem aceitar `candles` era o bug do desenho
+    # que sumia — o banco ficava com pontos de um array sobre o outro, e ao
+    # reabrir nenhum ponto achava candle. Ver camposDaEdicao em
+    # frontend/src/admin/janela.js.
+    candles: Optional[List[Dict[str, Any]]] = None
     resultado: Optional[str] = None
     observacao: Optional[str] = None
     anotacoes: Optional[List[Dict[str, Any]]] = None

@@ -63,3 +63,39 @@ export function dataDoPrimeiroPonto(candlesContexto, pontos) {
   const candle = candlesContexto?.[Math.min(...indices)];
   return candle ? new Date(candle.timestamp).toISOString() : null;
 }
+
+/**
+ * Campos de pontos/candles/etiquetas prontos pra GRAVAR uma edição.
+ *
+ * Existe por causa de um bug que apagava o desenho de quem só queria
+ * reavaliar um template: a tela abre o template sobre o CONTEXTO inteiro
+ * (ver comContextoLargo), então os índices dos pontos no gráfico são
+ * índices do contexto — enquanto a coluna `candles` do banco continua
+ * sendo o RECORTE estreito. Gravar só `pontos` punha coordenadas de um
+ * array sobre o outro, e ao reabrir todo ponto caía fora dos candles: o
+ * gráfico desenhava os candles e mais nada, sem uma palavra.
+ *
+ * A correção é gravar os dois juntos e consistentes. Quando o template foi
+ * aberto em contexto, refazemos o recorte com `janelaDoPadrao` — o MESMO
+ * caminho de quando se salva uma marcação nova, o que também resolve o
+ * caso de arrastar um ponto pra fora do recorte antigo. Quando não foi
+ * (template sem contexto guardado), os índices já são do recorte e nada
+ * precisa mudar.
+ */
+export function camposDaEdicao(editando, pontos, anotacoes) {
+  const indices = Object.values(pontos || {})
+    .map((p) => p?.i)
+    .filter((i) => Number.isInteger(i));
+
+  // Sem contexto, ou sem ponto nenhum pra delimitar a janela: grava como
+  // antes. Reservar a janela pra quem tem ponto evita um recorte vazio
+  // (Math.min de lista vazia é Infinity).
+  if (!editando?.emContexto || !indices.length) {
+    return { pontos, anotacoes: anotacoesParaSalvar(anotacoes) };
+  }
+
+  const { candles, pontosAjustados, anotacoesAjustadas } = janelaDoPadrao(
+    editando.candles, pontos, anotacoes || [],
+  );
+  return { pontos: pontosAjustados, candles, anotacoes: anotacoesAjustadas };
+}

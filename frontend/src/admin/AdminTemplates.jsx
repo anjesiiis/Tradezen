@@ -16,7 +16,7 @@ import { iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
-import { anotacoesParaSalvar, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
+import { anotacoesParaSalvar, camposDaEdicao, dataDoPrimeiroPonto, janelaDoPadrao } from "./janela.js";
 import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
@@ -278,11 +278,12 @@ export default function AdminTemplates() {
     setSalvando(true);
     setMensagem(null);
     try {
+      // pontos E candles juntos — ver camposDaEdicao: o template foi
+      // aberto sobre o contexto, e gravar só os pontos apagava o desenho.
       await templatesOcoApi.update(editando.id, {
-        pontos: editando.pontosEdit,
+        ...camposDaEdicao(editando, editando.pontosEdit, editando.anotacoesEdit),
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
-        anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
       });
       setMensagem({ tipo: "ok", texto: "Template atualizado." });
       setEditando(null);

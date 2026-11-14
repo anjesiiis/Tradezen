@@ -21,11 +21,11 @@ import { ficaAcima } from "../lib/iconesPadroes.js";
 import { TIPOS_FRACASSO } from "../lib/tiposFracasso.js";
 import { API_DO_PADRAO, fetchAtivoCandles, clearAdminToken } from "./adminApi";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
-import { anotacoesParaSalvar, janelaDoPadrao } from "./janela.js";
+import { anotacoesParaSalvar, camposDaEdicao, janelaDoPadrao } from "./janela.js";
 import { candlesGuardados, esquecerCandles, estadoDoGrafico, guardarGrafico } from "./estadoGrafico.js";
 import FiltroPadroes from "./FiltroPadroes.jsx";
 import { filtroInicial } from "../lib/filtroPadroes.js";
-import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha, pontosNaoReconhecidos } from "./diagnosticoTemplate.js";
+import { explicarFalha, explicarFalhaAoAbrir, problemaNoTemplate, registrarFalha, pontosNaoReconhecidos, pontosForaDosCandles } from "./diagnosticoTemplate.js";
 import { chaveDoAberto, useSubirAoAbrir } from "./subirAoAbrir.js";
 import BarraStatusRevisao from "./BarraStatusRevisao.jsx";
 import { useStatusRevisao } from "./useStatusRevisao.js";
@@ -376,11 +376,13 @@ export default function PainelMarcacao({ padraoInicial }) {
     setSalvando(true);
     setMensagem(null);
 
+    // pontos E candles juntos: a tela abriu o template sobre o contexto
+    // inteiro, então gravar só os pontos deixaria coordenadas de um array
+    // sobre o outro — e o desenho sumiria ao reabrir. Ver camposDaEdicao.
     const campos = {
-      pontos: pontosEmOrdem,
+      ...camposDaEdicao(editando, pontosEmOrdem, editando.anotacoesEdit),
       resultado: editando.resultado?.trim() || null,
       observacao: editando.observacao?.trim() || null,
-      anotacoes: anotacoesParaSalvar(editando.anotacoesEdit),
     };
 
     try {
@@ -455,7 +457,8 @@ export default function PainelMarcacao({ padraoInicial }) {
   // Pontos gravados que a tela não reconhece: antes isto abria o gráfico
   // com os candles e MAIS NADA, sem uma palavra. Ver pontosNaoReconhecidos.
   const avisoDePontos = editando
-    ? pontosNaoReconhecidos(editando.pontos, configEdicao?.steps)
+    ? (pontosNaoReconhecidos(editando.pontos, configEdicao?.steps)
+       || pontosForaDosCandles(editando.pontos, editando.candles))
     : null;
 
   // Em que pé está cada marcação na revisão (ver useStatusRevisao).

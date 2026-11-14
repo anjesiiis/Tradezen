@@ -157,3 +157,30 @@ export function registrarFalha(onde, id, erro) {
     erro,
   });
 }
+
+/**
+ * Os pontos existem e têm as chaves certas, mas apontam pra fora dos
+ * candles carregados — então o gráfico desenha os candles e mais nada.
+ *
+ * Era assim que o bug das coordenadas aparecia pra quem usava a tela: o
+ * desenho simplesmente não estava lá, sem erro, sem aviso, sem nada. A
+ * causa está corrigida (ver camposDaEdicao em janela.js), e isto fica
+ * como rede: se acontecer de novo, a tela diz o que está fora de lugar em
+ * vez de abrir muda.
+ */
+export function pontosForaDosCandles(pontos, candles) {
+  if (!pontos || typeof pontos !== "object" || Array.isArray(pontos)) return null;
+  if (!candles?.length) return null;
+
+  const fora = Object.entries(pontos)
+    .filter(([, p]) => Number.isInteger(p?.i) && !candles[p.i])
+    .map(([chave, p]) => `${chave} (candle ${p.i})`);
+  if (!fora.length) return null;
+
+  return (
+    `${fora.length} ponto(s) desta marcação apontam pra um candle que não `
+    + `existe no trecho carregado (são ${candles.length} candles), então não `
+    + `há onde desenhá-los: ${fora.join(", ")}. Não salve por cima — isso `
+    + `gravaria o desenho incompleto.`
+  );
+}
