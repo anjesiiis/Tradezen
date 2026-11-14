@@ -33,6 +33,15 @@
 -- próprio update (4*2=8) seria recusado pela constraint velha.
 --
 -- Só leitura de confirmação no fim. Rodar no SQL Editor do Supabase.
+--
+-- TUDO OU NADA: begin/commit em volta das 21 tabelas. Sem isso, um erro
+-- na décima tabela deixaria nove convertidas e doze na escala velha — e o
+-- marcador de idempotência faria a segunda tentativa pular justamente as
+-- nove que deram certo. Com a transação, ou o banco inteiro muda, ou nada
+-- muda. O `notify` fica DENTRO: o Postgres só entrega a notificação no
+-- commit, então ela nunca avisa de uma conversão que foi desfeita.
+
+begin;
 
 do $$
 declare
@@ -116,6 +125,8 @@ end $$;
 -- definição antiga da coluna, e o sintoma fica idêntico a migration não
 -- rodada.
 notify pgrst, 'reload schema';
+
+commit;
 
 -- ── Confirmação (só leitura) ────────────────────────────────
 -- Esperado: toda nota entre 0 e 8, e `impares` > 0 só depois de alguém

@@ -173,6 +173,21 @@ describe('a 029 dobra a escala sem perder avaliação', () => {
   it('recarrega o schema do PostgREST no fim', () => {
     expect(SQL029()).toMatch(/notify pgrst, 'reload schema'/);
   });
+
+  // TUDO OU NADA. Converter 21 tabelas sem transação é o pior caso
+  // possível deste arquivo: um erro no meio deixa parte das tabelas em
+  // 0..8 e parte em 0..4, e o marcador de idempotência faz a segunda
+  // tentativa PULAR exatamente as que já tinham dado certo — então não
+  // existe "rodar de novo pra terminar".
+  it('converte tudo dentro de uma transação', () => {
+    const sql = SQL029_CODIGO();
+    expect(sql).toMatch(/^\s*begin;/im);
+    expect(sql).toMatch(/^\s*commit;/im);
+    // A ordem é begin → dobra → notify → commit.
+    expect(sql.indexOf('begin;')).toBeLessThan(sql.indexOf('qualidade * 2'));
+    expect(sql.indexOf('qualidade * 2')).toBeLessThan(sql.indexOf('notify pgrst'));
+    expect(sql.indexOf('notify pgrst')).toBeLessThan(sql.indexOf('commit;'));
+  });
 });
 
 describe('a conta das estrelas é a mesma dos dois lados', () => {
