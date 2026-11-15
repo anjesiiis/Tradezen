@@ -201,6 +201,25 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
    cima a baixo sem contar cards, e o que falta se ve de longe. */
 .sq-selo.sq-pendente{color:var(--text3);border-color:var(--border);background:var(--s2)}
 
+/* DESFECHO DA MARCACAO (resultado): sucesso verde, falha vermelho.
+   As cores sao --up e --down, as mesmas do candle de alta e de baixa, e
+   nao um par novo: quem usa a tela ja leu essas duas cores com esse
+   significado. Indefinido fica cinza porque e a falta de resposta, nao
+   uma terceira resposta. */
+.res-selo-linha{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.res-selo{display:inline-block;padding:2px 7px;border:1px solid;border-radius:999px;font:600 10px var(--font-b);letter-spacing:.3px}
+.res-selo.sucesso{color:var(--up);border-color:color-mix(in srgb,var(--up) 55%,transparent);background:color-mix(in srgb,var(--up) 14%,transparent)}
+.res-selo.falha{color:var(--down);border-color:color-mix(in srgb,var(--down) 55%,transparent);background:color-mix(in srgb,var(--down) 14%,transparent)}
+.res-selo.indefinido{color:var(--text3);border-color:var(--border);background:var(--s2)}
+.res-original{color:var(--text2);font-size:11px}
+
+/* O placar. Tabular-nums pra os numeros nao dancarem quando mudam. */
+.res-contas{display:flex;gap:8px;flex-wrap:wrap}
+.res-conta{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid var(--border);border-radius:999px;font:500 11px var(--font-b);color:var(--text2);background:var(--s2)}
+.res-conta strong{font-variant-numeric:tabular-nums;font-weight:700}
+.res-conta.sucesso{color:var(--up);border-color:color-mix(in srgb,var(--up) 45%,transparent)}
+.res-conta.falha{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,transparent)}
+
 /* Celular: o titulo fica numa linha, os chips rolam na seguinte. Grid de
    tres colunas num celular cortava os chips pela metade. */
 @media (max-width:767px){

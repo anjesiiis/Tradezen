@@ -5,6 +5,7 @@ import {
   FILTROS_QUALIDADE, FILTRO_QUALIDADE_PADRAO, TOTAL_DE_ESTRELAS, contarPorQualidade,
   estrelasCheias, filtrarPorQualidade, nivelDe, qualidadeDe,
 } from "./qualidade.js";
+import { ROTULO_RESULTADO, classificarResultado, contarResultados } from "./resultado.js";
 import Estrelas from "./Estrelas.jsx";
 
 // Marcações salvas em cards — um por template, com o que interessa relembrar
@@ -112,6 +113,8 @@ export default function ListaTemplates({
     alvo.scrollIntoView({ behavior: quieto ? "auto" : "smooth", block: "center" });
   }, [abertoId]);
 
+  const contasRes = contarResultados(todos);
+
   const posicaoDoUltimo = posicaoNaLista(templates, ultimoVisto);
   // Posição 0 = o marcado não está mais na lista (apagado, ou movido pro
   // outro lado). Melhor não mostrar marcador nenhum que apontar pro card
@@ -137,6 +140,18 @@ export default function ListaTemplates({
         Marcados em {rotulo} ({templates.length}
         {templates.length !== todos.length ? ` de ${todos.length}` : ""})
       </h2>
+
+      {/* Quantos deram certo e quantos não, do conjunto INTEIRO (`todos`) e
+          não do que o filtro deixou na tela: é o placar do trabalho, e ele
+          mudar de valor porque alguém filtrou por status tiraria dele
+          justamente a utilidade. */}
+      <div className="res-contas" aria-label="Desfecho das marcações">
+        {["sucesso", "falha", "indefinido"].map((tipo) => (
+          <span key={tipo} className={`res-conta ${tipo}`}>
+            {ROTULO_RESULTADO[tipo]} <strong>{contasRes[tipo]}</strong>
+          </span>
+        ))}
+      </div>
 
       {/* Filtros por status. Primeiro o que falta decidir: é o que se
           procura quando se senta pra revisar. */}
@@ -252,7 +267,14 @@ export default function ListaTemplates({
                   <dd>{t.data_p1 ? new Date(t.data_p1).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</dd>
                 </div>
                 <div><dt>Timeframe</dt><dd>{t.timeframe}</dd></div>
-                <div><dt>Resultado</dt><dd>{t.resultado || "—"}</dd></div>
+                <div>
+                  <dt>Resultado</dt>
+                  {/* O selo colorido primeiro e o texto que a pessoa digitou
+                      ao lado, nunca em vez dele: a classificação é leitura, e
+                      se ela errar o original tem de estar na tela pra ser
+                      corrigido. */}
+                  <dd><SeloResultado texto={t.resultado} /></dd>
+                </div>
                 <div><dt>Salvo em</dt><dd>{new Date(t.criado_em).toLocaleDateString("pt-BR")}</dd></div>
               </dl>
               {t.observacao && <p className="admin-card-nota">{t.observacao}</p>}
@@ -294,6 +316,29 @@ export default function ListaTemplates({
  * de longe. Sem ele, a ausência de selo se confundia com card que ainda
  * não carregou.
  */
+/**
+ * O desfecho da marcação em uma palavra, colorida, mais o texto original.
+ *
+ * Verde e vermelho vêm de --up/--down, as mesmas variáveis do candle de
+ * alta e de baixa: quem olha a tela todo dia já leu essas duas cores mil
+ * vezes com esse significado. "Indefinido" fica cinza em vez de uma
+ * terceira cor forte — ele é a ausência de resposta, não uma resposta.
+ */
+function SeloResultado({ texto }) {
+  const tipo = classificarResultado(texto);
+  const original = (texto || "").trim();
+  // Texto ao lado só quando ele acrescenta: "Sucesso · sucesso" é ruído.
+  const mostrarOriginal = original
+    && original.toLowerCase() !== ROTULO_RESULTADO[tipo].toLowerCase();
+  return (
+    <span className="res-selo-linha">
+      <span className={`res-selo ${tipo}`}>{ROTULO_RESULTADO[tipo]}</span>
+      {mostrarOriginal && <span className="res-original">{original}</span>}
+    </span>
+  );
+}
+
+
 function SeloQualidade({ qualidade }) {
   const nivel = nivelDe(qualidade);
   if (!nivel) {

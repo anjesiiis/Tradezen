@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ICONE_GENERICO, classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { VISIVEIS_NO_FILTRO } from "../lib/filtroPadroes.js";
+import { ROTULO_RESULTADO, classificarResultado } from "./resultado.js";
 
 // Sidebar do gráfico de marcação: escolhe quais padrões já salvos ficam
 // visíveis no gráfico e lista os que existem neste ativo.
@@ -27,19 +28,11 @@ function formatarData(data) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
-function rotuloDoResultado(resultado) {
-  const r = (resultado || "").toLowerCase();
-  if (r.startsWith("suc")) return "Sucesso";
-  if (r.startsWith("fal")) return "Falha";
-  return "Indefinido";
-}
-
-function classeDoResultado(resultado) {
-  const r = (resultado || "").toLowerCase();
-  if (r.startsWith("suc")) return "sucesso";
-  if (r.startsWith("fal")) return "falha";
-  return "indefinido";
-}
+// A classificação mora em resultado.js — era duplicada aqui com regras
+// mais pobres (só os prefixos "suc" e "fal"), e isso fazia a MESMA
+// marcação aparecer como Falha na sidebar e Indefinido no card.
+const rotuloDoResultado = (resultado) => ROTULO_RESULTADO[classificarResultado(resultado)];
+const classeDoResultado = (resultado) => classificarResultado(resultado);
 
 export default function FiltroPadroes({ ligados, aoMudar, contagem = {}, salvos = [], destacado = null, foraDaFaixa = new Set() }) {
   const [abertoNoCelular, setAberto] = useState(false);
