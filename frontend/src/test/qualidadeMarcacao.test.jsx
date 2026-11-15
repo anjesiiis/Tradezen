@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import {
   FILTROS_QUALIDADE, FILTRO_QUALIDADE_PADRAO, NIVEIS, NIVEIS_COM_NOME,
   QUALIDADE_MAXIMA, TOTAL_DE_ESTRELAS, contarPorQualidade, estrelasCheias,
@@ -441,5 +441,53 @@ describe("card avaliado agora não sai da lista", () => {
     // não à lista de "acabei de avaliar"
     expect(screen.queryByText("PETR4")).toBeNull();
     expect(screen.getByText("VALE3")).toBeTruthy();
+  });
+});
+
+// ── A MEIA ESTRELA NA LISTAGEM ──────────────────────────────
+//
+// Relato: "na listagem as estrelas NÃO aparecem como meias, só
+// inteiras". O selo do card e o seletor usam o MESMO componente, então
+// não havia como divergirem — o que faltava era nota ímpar no banco,
+// porque a trava de lá recusa 1, 3, 5 e 7. Estes testes travam isso: se
+// alguém trocar o selo por um render próprio que arredonde, quebram.
+describe("o selo do card desenha meia estrela", () => {
+  const TEMPLATES = [{ id: 1, ticker: "PETR4", timeframe: "1d" }];
+
+  // O filtro nasce em "Sem avaliação", então um card COM nota começa fora
+  // da lista — por isso o clique em "Todas" antes de procurar o selo.
+  const selo = (qualidade) => {
+    const { container } = render(
+      <ListaTemplates templates={TEMPLATES} rotulo="OCO"
+        qualidadeMapa={{ 1: { qualidade } }} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Todas/ }));
+    const achado = container.querySelector(".sq-selo");
+    expect(achado).not.toBeNull();
+    return achado;
+  };
+
+  it("4,5 (valor 7) rende 4 cheias, 1 meia e nenhuma vazia", () => {
+    const s = selo(7);
+    expect(s.querySelectorAll(".cheia")).toHaveLength(4);
+    expect(s.querySelectorAll(".meia")).toHaveLength(1);
+    expect(s.querySelectorAll(".vazia")).toHaveLength(0);
+  });
+
+  it("1,5 (valor 1) rende 1 cheia, 1 meia e 3 vazias", () => {
+    const s = selo(1);
+    expect(s.querySelectorAll(".cheia")).toHaveLength(1);
+    expect(s.querySelectorAll(".meia")).toHaveLength(1);
+    expect(s.querySelectorAll(".vazia")).toHaveLength(3);
+  });
+
+  // Nota PAR não pode ganhar meia estrela de brinde: é o erro que a
+  // conta errada (valor/2, sem o +1) produziria.
+  it("nota de nível nomeado não tem meia nenhuma", () => {
+    for (const valor of [0, 2, 4, 6, 8]) {
+      // uma lista por vez: duas na tela e o "Todas" fica ambíguo
+      cleanup();
+      expect(selo(valor).querySelectorAll(".meia")).toHaveLength(0);
+    }
   });
 });
