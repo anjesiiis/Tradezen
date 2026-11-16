@@ -18,13 +18,41 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from admin_auth import require_admin
-from ml.bandeira import storage, trainer
 from rate_limit import limiter
+
+# IMPORT PREGUIÇOSO DO ML, e isto não é estilo: é o conserto de uma queda.
+#
+# `ml.bandeira` arrasta sklearn, numpy e joblib. Importado aqui no topo,
+# esse peso entra na SUBIDA do processo — e no Render (plano free, 512MB)
+# a subida falhou. O efeito não foi "a tela de modelos não abre": foi
+# `main.py` não conseguir importar este módulo, o app não subir, e TODAS
+# as rotas devolverem 503. O gráfico, a lista de ativos, o login.
+#
+# Dentro da função, o custo só aparece para quem chama a rota de modelos,
+# e um ambiente sem sklearn perde o treino em vez de perder o site.
 
 router = APIRouter(prefix="/admin/modelos", tags=["admin-modelos"],
                    dependencies=[Depends(require_admin)])
 
-PADROES = tuple(trainer.TABELAS)
+# Escrito à mão em vez de lido de trainer.TABELAS: ler de lá obrigaria a
+# importar o módulo aqui no topo, que é exatamente o que derrubou o app.
+# Um teste garante que as duas listas não divirjam.
+PADROES = ("bandeira_alta", "bandeira_baixa")
+
+
+def _ml():
+    """Carrega o pipeline sob demanda. Se sklearn não estiver no ambiente,
+    o recado diz o que falta em vez de estourar um 500 opaco."""
+    try:
+        from ml.bandeira import storage, trainer
+        return storage, trainer
+    except ImportError as erro:
+        raise HTTPException(
+            status_code=503,
+            detail=("O treino de modelos não está disponível neste servidor: "
+                    f"falta uma dependência de ML ({erro}). O resto do "
+                    "sistema funciona normalmente."),
+        ) from erro
 
 
 def _validar(padrao: str) -> str:
@@ -57,6 +85,7 @@ def status(request: Request, padrao: str) -> Dict[str, Any]:
     """Bloco 1: quantos templates existem, quantos dão pra usar, e o
     histórico de modelos. É o que a tela mostra antes de alguém clicar."""
     _validar(padrao)
+    storage, trainer = _ml()
     contagem = trainer.contagem(padrao)
     try:
         modelos = storage.listar(padrao)
@@ -73,6 +102,7 @@ def status(request: Request, padrao: str) -> Dict[str, Any]:
 @limiter.limit("30/minute")
 def listar(request: Request, padrao: str) -> Dict[str, Any]:
     _validar(padrao)
+    storage, _ = _ml()
     try:
         modelos = storage.listar(padrao)
     except Exception as erro:
@@ -89,6 +119,7 @@ def treinar(request: Request, padrao: str) -> Dict[str, Any]:
     insuficiente não é defeito, é o estado do trabalho, e a mensagem diz
     quantos faltam."""
     _validar(padrao)
+    _, trainer = _ml()
     try:
         saida = trainer.treinar(padrao)
     except Exception as erro:
@@ -103,6 +134,7 @@ def treinar(request: Request, padrao: str) -> Dict[str, Any]:
 @router.post("/{modelo_id}/ativar")
 @limiter.limit("20/minute")
 def ativar(request: Request, modelo_id: str) -> Dict[str, Any]:
+    storage, _ = _ml()
     try:
         return {"modelo": storage.ativar(modelo_id)}
     except LookupError:

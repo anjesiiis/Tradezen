@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const api = {
   fetchStatusModelos: vi.fn(),
@@ -149,5 +151,50 @@ describe("a tela de modelos", () => {
     const valores = [...container.querySelector(".mdl-ultimo").querySelectorAll("dd")]
       .map((d) => d.textContent);
     expect(valores).toEqual(["80%", "—", "—", "80%", "—"]);
+  });
+});
+
+// O IMPORT DE ML NÃO PODE SER DE TOPO — e este teste existe porque a
+// versão anterior derrubou o backend em produção.
+//
+// `main.py` importa admin_modelos. Se admin_modelos importa ml.bandeira no
+// topo, sklearn/numpy/joblib entram na SUBIDA do processo, e no Render a
+// subida falhou: 503 em TODAS as rotas, não só nas de modelo. O gráfico, a
+// lista de ativos, o login. Um teste de frontend é o único lugar deste
+// projeto que consegue olhar o arquivo Python e avisar.
+describe("o backend não carrega sklearn ao subir", () => {
+  const rotas = readFileSync(
+    resolve(process.cwd(), "..", "backend/admin_modelos.py"), "utf8");
+
+  // Linhas de import no nível do módulo: sem indentação nenhuma.
+  const importsDeTopo = rotas.split("\n")
+    .filter((l) => /^(from|import)\s/.test(l));
+
+  it("admin_modelos.py não importa ml.bandeira no topo", () => {
+    expect(importsDeTopo.join("\n")).not.toMatch(/ml\.bandeira|ml import/);
+  });
+
+  it("nem sklearn, numpy ou joblib", () => {
+    expect(importsDeTopo.join("\n")).not.toMatch(/sklearn|joblib|numpy/);
+  });
+
+  it("carrega sob demanda, com recado quando a dependência falta", () => {
+    expect(rotas).toMatch(/def _ml\(\)/);
+    expect(rotas).toMatch(/from ml\.bandeira import storage, trainer/);
+    expect(rotas).toMatch(/except ImportError/);
+    expect(rotas).toMatch(/status_code=503/);
+  });
+
+  // PADROES foi escrito à mão justamente pra não precisar importar o
+  // trainer no topo. Se as duas listas divergirem, uma rota existente
+  // passa a responder 404.
+  it("a lista de padrões não divergiu do trainer", () => {
+    const doTrainer = readFileSync(
+      resolve(process.cwd(), "..", "backend/ml/bandeira/trainer.py"), "utf8");
+    const chaves = [...doTrainer.slice(doTrainer.indexOf("TABELAS = {"))
+      .matchAll(/"(bandeira_[a-z]+)":/g)].map((m) => m[1]).sort();
+    const naRota = [...rotas.slice(rotas.indexOf("PADROES = ("))
+      .matchAll(/"(bandeira_[a-z]+)"/g)].map((m) => m[1]).sort();
+    expect(naRota).toEqual(chaves);
   });
 });

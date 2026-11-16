@@ -7,6 +7,17 @@ python-dotenv==1.0.1
 supabase==2.31.0
 email-validator==2.3.0
 slowapi==0.1.10
-# Random Forest da bandeira (ml/bandeira). joblib vem junto, e e o que
-# serializa o modelo; nao precisa de linha propria.
-scikit-learn==1.6.1
+# scikit-learn FORA DAQUI POR ENQUANTO, de proposito.
+#
+# Acrescentar sklearn==1.6.1 derrubou o backend em producao: 503 em TODAS
+# as rotas, nao so nas de modelo. Nao sabemos ainda se foi o build ou a
+# memoria na subida (Render free, 512MB; numpy+sklearn custam uns 100MB de
+# RSS so pra importar). Ate olharmos o log do Render, o site de pe vale
+# mais que o treino em producao.
+#
+# O treino roda localmente (backend/venv tem sklearn 1.6.1). As rotas de
+# /admin/modelos ficam devolvendo 503 com o recado explicando que falta a
+# dependencia -- comportamento previsto em admin_modelos._ml().
+#
+# Pra religar: por scikit-learn==1.6.1 aqui de volta E confirmar no log do
+# Render que o deploy subiu. Nessa ordem.
