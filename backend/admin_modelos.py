@@ -13,9 +13,10 @@ gráfico continua sendo trabalho de pessoa.
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 
 from admin_auth import require_admin
 from rate_limit import limiter
@@ -37,7 +38,8 @@ router = APIRouter(prefix="/admin/modelos", tags=["admin-modelos"],
 # Escrito à mão em vez de lido de trainer.TABELAS: ler de lá obrigaria a
 # importar o módulo aqui no topo, que é exatamente o que derrubou o app.
 # Um teste garante que as duas listas não divirjam.
-PADROES = ("bandeira_alta", "bandeira_baixa")
+PADROES = ("bandeira_alta", "bandeira_baixa",
+           "bandeira_alta_qualidade", "bandeira_baixa_qualidade")
 
 
 def _ml():
@@ -46,7 +48,7 @@ def _ml():
     try:
         from ml.bandeira import storage, trainer
         return storage, trainer
-    except ImportError as erro:
+    except ImportError as erro:  # noqa: F841 (tratado abaixo)
         raise HTTPException(
             status_code=503,
             detail=("O treino de modelos não está disponível neste servidor: "
@@ -129,6 +131,43 @@ def treinar(request: Request, padrao: str) -> Dict[str, Any]:
         raise HTTPException(status_code=409, detail=saida.get("motivo"),
                             headers={"X-Tradezen-Motivo": "acervo-insuficiente"})
     return saida
+
+
+class TestePayload(BaseModel):
+    modelo_id: Optional[str] = None
+    # Padrão é REUSAR o cache. Quem acabou de remarcar um template força,
+    # porque aí o resultado guardado descreve um acervo que já mudou.
+    forcar: bool = False
+
+
+@router.post("/testar/{padrao}")
+@limiter.limit("10/minute")
+def testar(request: Request, padrao: str,
+           payload: TestePayload = TestePayload()) -> Dict[str, Any]:
+    """Roda o modelo sobre TODOS os templates marcados e devolve onde ele
+    acerta e onde erra, template por template.
+
+    SÍNCRONO: sem buscar candles na internet (eles estão no template), 216
+    extrações levam menos de um segundo. Uma fila com barra de progresso
+    resolveria um problema que este endpoint não tem — e traria estado,
+    broker e uma tela a mais pra manter.
+    """
+    _validar(padrao)
+    storage, _ = _ml()
+    from ml.bandeira import predictor
+
+    try:
+        if not payload.forcar:
+            guardado = storage.teste_guardado(padrao, payload.modelo_id)
+            if guardado:
+                return {**guardado, "do_cache": True}
+        saida = predictor.testar(padrao, payload.modelo_id)
+        storage.guardar_teste(saida)
+        return {**saida, "do_cache": False}
+    except LookupError as erro:
+        raise HTTPException(status_code=409, detail=str(erro)) from erro
+    except Exception as erro:
+        raise _traduzir(erro) from erro
 
 
 @router.post("/{modelo_id}/ativar")

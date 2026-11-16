@@ -120,6 +120,15 @@ export function ativarModelo(modeloId) {
   return adminFetch(`/admin/modelos/${modeloId}/ativar`, { method: "POST" });
 }
 
+/** Roda o modelo sobre todos os templates marcados. Reusa o resultado
+ *  guardado; `forcar` recalcula (use depois de remarcar algo). */
+export function testarModelo(padrao, { modeloId = null, forcar = false } = {}) {
+  return adminFetch(`/admin/modelos/testar/${padrao}`, {
+    method: "POST",
+    body: JSON.stringify({ modelo_id: modeloId, forcar }),
+  });
+}
+
 export function requestMagicLink(email) {
   return adminFetch("/admin/auth/magic-link", {
     method: "POST",

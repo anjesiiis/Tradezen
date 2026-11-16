@@ -389,6 +389,84 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .mdl-historico button{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:2px 8px;font:inherit;font-size:10px;cursor:pointer}
 .mdl-tag{color:var(--up);font-size:10px;font-weight:600}
 
+/* ABAS da tela de modelos */
+.mdl-abas{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.mdl-aba{background:none;border:0;border-bottom:2px solid transparent;color:var(--text2);font:600 13px var(--font-b);padding:7px 14px;cursor:pointer}
+.mdl-aba.aceso{color:var(--text);border-bottom-color:var(--accent)}
+
+/* LABORATORIO DE VALIDACAO (aba Testar) */
+.mt-bloco{display:flex;flex-direction:column;gap:11px}
+.mt-controles{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.mt-controles label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--text2)}
+.mt-controles select{background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 8px;font:inherit;font-size:12px}
+.mt-forcar{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 13px;font:600 12px var(--font-b);cursor:pointer}
+.mt-pergunta{margin:0;font-size:12px;color:var(--text2)}
+.mt-pergunta strong{color:var(--text)}
+.mt-calmo{margin:0;font-size:11px;color:var(--text2)}
+
+.mt-matrizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.mt-matriz{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--s2)}
+.mt-matriz h4{margin:0 0 3px;font:600 12px var(--font-b);color:var(--text)}
+.mt-aviso{margin:0 0 7px;font-size:10px;color:var(--gold)}
+.mt-matriz table{border-collapse:collapse;font-size:11px}
+.mt-matriz th{color:var(--text3);font-weight:500;padding:3px 7px;text-align:left}
+.mt-matriz td{padding:3px 9px;font-variant-numeric:tabular-nums;font-weight:600;text-align:center}
+.mt-matriz td.vp,.mt-matriz td.vn{color:var(--up)}
+.mt-matriz td.fp{color:var(--gold)}
+.mt-matriz td.fn{color:var(--down)}
+.mt-lado{color:var(--text2)!important;font-weight:400!important;white-space:nowrap}
+.mt-total{margin:6px 0 0;font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
+
+.mt-falhas{font-size:11px;color:var(--text2)}
+.mt-falhas summary{cursor:pointer;color:var(--gold)}
+.mt-falhas ul{margin:6px 0 0;padding-left:18px}
+.mt-filtros{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.mt-sonovos{display:flex;gap:5px;align-items:center;font-size:11px;color:var(--text2);cursor:pointer}
+.mt-contagem{margin:0;font-size:11px;color:var(--text3)}
+
+.mt-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:1100px){.mt-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.mt-grade{grid-template-columns:minmax(0,1fr)}}
+.mt-card{border:1px solid var(--border);border-left-width:3px;border-radius:10px;padding:9px 10px;background:var(--s2);display:flex;flex-direction:column;gap:7px;font-size:11px}
+.mt-card header{font:600 11px var(--font-m);color:var(--text)}
+.mt-card.vp{border-left-color:var(--up)}
+.mt-card.vn{border-left-color:var(--accent)}
+.mt-card.fp{border-left-color:var(--gold)}
+.mt-card.fn{border-left-color:var(--down)}
+.mt-veredicto{margin:0;color:var(--text2);line-height:1.6}
+.mt-ver{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:4px 10px;font:inherit;font-size:11px;cursor:pointer}
+
+.mt-mini{width:100%;height:auto;display:block}
+.mt-mini-vazio{font-size:10px;color:var(--text3);padding:10px 0}
+.mt-mini-linha{fill:none;stroke-width:1.6;stroke-linejoin:round}
+.mt-mini-ponto{stroke:var(--s1);stroke-width:1}
+.mt-mini.vp .mt-mini-linha,.mt-mini.vp .mt-mini-ponto{stroke:var(--up);fill:var(--up)}
+.mt-mini.vn .mt-mini-linha,.mt-mini.vn .mt-mini-ponto{stroke:var(--accent);fill:var(--accent)}
+.mt-mini.fp .mt-mini-linha,.mt-mini.fp .mt-mini-ponto{stroke:var(--gold);fill:var(--gold)}
+.mt-mini.fn .mt-mini-linha,.mt-mini.fn .mt-mini-ponto{stroke:var(--down);fill:var(--down)}
+.mt-mini.vp .mt-mini-linha,.mt-mini.vn .mt-mini-linha,.mt-mini.fp .mt-mini-linha,.mt-mini.fn .mt-mini-linha{fill:none}
+.mt-mini.grande{max-height:160px}
+
+.mt-features{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px 12px;font-size:10px}
+.mt-features div{display:flex;justify-content:space-between;gap:8px}
+.mt-features dt{color:var(--text3);margin:0}
+.mt-features dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+
+.mt-modal-fundo{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.mt-modal{background:var(--s1);border:1px solid var(--border);border-left-width:3px;border-radius:12px;padding:14px;max-width:620px;width:100%;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.mt-modal.vp{border-left-color:var(--up)}
+.mt-modal.vn{border-left-color:var(--accent)}
+.mt-modal.fp{border-left-color:var(--gold)}
+.mt-modal.fn{border-left-color:var(--down)}
+.mt-modal header{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--text)}
+.mt-modal header button{background:none;border:0;color:var(--text3);font-size:15px;cursor:pointer}
+.mt-modal h4{margin:4px 0 0;font:600 11px var(--font-b);color:var(--text2)}
+.mt-modal-dados{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:3px 14px;font-size:11px}
+.mt-modal-dados div{display:flex;justify-content:space-between;gap:8px}
+.mt-modal-dados dt{color:var(--text2);margin:0}
+.mt-modal-dados dd{margin:0;color:var(--text);text-align:right}
+.mt-modal-nota{margin:0;font-size:10px;color:var(--text3);line-height:1.5}
+
 /* CEREBRO DE DETECCOES — o painel de panorama. Quatro lobos recortados
    pela silhueta, cada um numa das quatro variaveis de cor do tema. */
 .cerebro{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;display:flex;flex-direction:column;gap:11px;align-self:start;position:sticky;top:70px}

@@ -188,13 +188,15 @@ describe("o backend não carrega sklearn ao subir", () => {
   // PADROES foi escrito à mão justamente pra não precisar importar o
   // trainer no topo. Se as duas listas divergirem, uma rota existente
   // passa a responder 404.
-  it("a lista de padrões não divergiu do trainer", () => {
+  it("a lista de padrões não divergiu dos ALVOS do trainer", () => {
     const doTrainer = readFileSync(
       resolve(process.cwd(), "..", "backend/ml/bandeira/trainer.py"), "utf8");
-    const chaves = [...doTrainer.slice(doTrainer.indexOf("TABELAS = {"))
-      .matchAll(/"(bandeira_[a-z]+)":/g)].map((m) => m[1]).sort();
-    const naRota = [...rotas.slice(rotas.indexOf("PADROES = ("))
-      .matchAll(/"(bandeira_[a-z]+)"/g)].map((m) => m[1]).sort();
+    // ALVOS, não TABELAS: TABELAS tem só os dois alvos de fracasso, e os
+    // de qualidade também têm rota.
+    const chaves = [...doTrainer.slice(doTrainer.indexOf("ALVOS = {"))
+      .matchAll(/^    "(bandeira_[a-z_]+)":/gm)].map((m) => m[1]).sort();
+    const naRota = [...rotas.slice(rotas.indexOf("PADROES = ("), rotas.indexOf("def _validar"))
+      .matchAll(/"(bandeira_[a-z_]+)"/g)].map((m) => m[1]).sort();
     expect(naRota).toEqual(chaves);
   });
 });

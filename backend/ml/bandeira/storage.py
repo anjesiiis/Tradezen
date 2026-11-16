@@ -24,7 +24,10 @@ from supabase_client import supabase
 TABELA = "modelos_treinados"
 PASTA = os.path.join(os.path.dirname(__file__), "modelos")
 
-PADROES_VALIDOS = ("bandeira_alta", "bandeira_baixa")
+# Lido do trainer pra as duas listas nunca divergirem: um alvo que treina
+# e não salva seria um treino que se perde no fim.
+PADROES_VALIDOS = ("bandeira_alta", "bandeira_baixa",
+                   "bandeira_alta_qualidade", "bandeira_baixa_qualidade")
 
 
 def _caminho(padrao: str, versao: int) -> str:
@@ -102,6 +105,89 @@ def ativar(modelo_id: str) -> dict:
     supabase.table(TABELA).update({"ativo": False}).eq("padrao", padrao).execute()
     feito = supabase.table(TABELA).update({"ativo": True}).eq("id", modelo_id).execute()
     return (feito.data or [{}])[0]
+
+
+TABELA_TESTES = "testes_modelo"
+
+
+def teste_guardado(padrao: str, modelo_id: Optional[str] = None) -> Optional[dict]:
+    """O último teste gravado deste modelo, ou None.
+
+    Sem `modelo_id`, procura o teste do modelo que o laboratório usaria
+    (o ativo, ou o mais recente) — senão o cache de um modelo antigo
+    responderia por um modelo novo, com a cara de resultado atual.
+    """
+    if not modelo_id:
+        registro, _ = carregar_para_teste(padrao, None)
+        modelo_id = registro.get("id")
+        if not modelo_id:
+            return None
+    resp = (supabase.table(TABELA_TESTES)
+            .select("resultado_json,criado_em")
+            .eq("modelo_id", modelo_id).order("criado_em", desc=True)
+            .limit(1).execute())
+    linhas = resp.data or []
+    if not linhas:
+        return None
+    return {**(linhas[0]["resultado_json"] or {}),
+            "guardado_em": linhas[0].get("criado_em")}
+
+
+def guardar_teste(saida: dict) -> None:
+    """Grava o resultado. Falha aqui NÃO derruba o teste: o laboratório
+    acabou de calcular tudo, e perder a resposta por causa do cache seria
+    jogar fora o trabalho pra proteger a otimização dele."""
+    try:
+        supabase.table(TABELA_TESTES).insert({
+            "modelo_id": (saida.get("modelo") or {}).get("id"),
+            "padrao": saida.get("padrao"),
+            "n_templates": len(saida.get("linhas") or []),
+            "resumo": saida.get("resumo"),
+            "resultado_json": saida,
+        }).execute()
+    except Exception:
+        pass
+
+
+def carregar_para_teste(padrao: str, modelo_id: Optional[str] = None):
+    """Devolve (registro, modelo) de um id específico ou do ativo.
+
+    Sem modelo ativo, cai no mais recente em vez de devolver nada: quem
+    abre o laboratório quer ver o último treino, e "nenhum ativo" é um
+    estado comum (treinar não promove, de propósito).
+    """
+    consulta = (supabase.table(TABELA)
+                .select("id,padrao,versao,ativo,treinado_em,f1,accuracy,"
+                        "arquivo_pkl,modelo_b64,detalhes"))
+    if modelo_id:
+        linhas = consulta.eq("id", modelo_id).limit(1).execute().data or []
+    else:
+        linhas = (consulta.eq("padrao", padrao).eq("ativo", True)
+                  .limit(1).execute().data or [])
+        if not linhas:
+            linhas = (consulta.eq("padrao", padrao).order("versao", desc=True)
+                      .limit(1).execute().data or [])
+    if not linhas:
+        return {}, None
+
+    linha = linhas[0]
+    modelo = _desserializar(linha)
+    registro = {k: v for k, v in linha.items() if k != "modelo_b64"}
+    return registro, modelo
+
+
+def _desserializar(linha: dict):
+    caminho = _caminho(linha["padrao"], linha["versao"])
+    if os.path.exists(caminho):
+        return joblib.load(caminho)
+    b64 = linha.get("modelo_b64")
+    if not b64:
+        return None
+    dados = base64.b64decode(b64)
+    os.makedirs(PASTA, exist_ok=True)
+    with open(caminho, "wb") as arquivo:
+        arquivo.write(dados)
+    return joblib.load(io.BytesIO(dados))
 
 
 def carregar_ativo(padrao: str):

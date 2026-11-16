@@ -36,6 +36,51 @@ TABELAS = {
     "bandeira_baixa": ("templates_bandeira_baixa", "templates_bandeira_baixa_fracasso"),
 }
 
+# ALVOS — o que o modelo aprende a separar. São DOIS eixos diferentes, e
+# misturá-los é o erro mais fácil de cometer aqui:
+#
+#   fracasso  → "isto É a bandeira?"  Positivo: templates_*. Negativo:
+#               templates_*_fracasso, que guarda o que PARECE e não é.
+#               É o alvo que interessa no fim, e hoje não treina: existem
+#               4 fracassos de alta e 0 de baixa.
+#
+#   qualidade → "este desenho é um BOM EXEMPLAR da forma?" Rótulo vindo
+#               das estrelas que a pessoa deu (coluna `qualidade`, escala
+#               0..8 da migration 029). Positivo: >= 7, ou seja 4,5 e 5
+#               estrelas. Treina hoje, porque 212 de 212 bandeiras de alta
+#               têm nota e elas se dividem em 94 contra 118.
+#
+# O alvo da qualidade existe pra haver o que medir enquanto faltam
+# fracassos marcados. Ele NÃO responde "vai dar certo" — nenhum modelo
+# treinado em estrelas responde isso, e o painel diz essa frase na tela
+# pra ninguém confundir os dois.
+CORTE_QUALIDADE = 7
+
+ALVOS = {
+    "bandeira_alta": {
+        "tipo": "fracasso", "rotulo": "Bandeira de Alta",
+        "pergunta": "isto é uma bandeira de alta?",
+        "tabelas": TABELAS["bandeira_alta"],
+    },
+    "bandeira_baixa": {
+        "tipo": "fracasso", "rotulo": "Bandeira de Baixa",
+        "pergunta": "isto é uma bandeira de baixa?",
+        "tabelas": TABELAS["bandeira_baixa"],
+    },
+    "bandeira_alta_qualidade": {
+        "tipo": "qualidade", "rotulo": "Bandeira de Alta — qualidade da forma",
+        "pergunta": "este desenho é 4,5 estrelas ou mais?",
+        "tabelas": ("templates_bandeira_alta",),
+        "corte": CORTE_QUALIDADE,
+    },
+    "bandeira_baixa_qualidade": {
+        "tipo": "qualidade", "rotulo": "Bandeira de Baixa — qualidade da forma",
+        "pergunta": "este desenho é 4,5 estrelas ou mais?",
+        "tabelas": ("templates_bandeira_baixa",),
+        "corte": CORTE_QUALIDADE,
+    },
+}
+
 # Abaixo disto não se treina. Não é número mágico: com menos de 30 exemplos
 # de uma classe, os 15% de teste viram 4 linhas, e uma métrica medida em 4
 # linhas varia 25% por acerto — o painel mostraria ruído com cara de
@@ -45,7 +90,8 @@ MINIMO_POR_CLASSE = 30
 
 GRADE = {"max_depth": [6, 10, None], "min_samples_leaf": [1, 2, 4]}
 
-COLUNAS = "id,ticker,timeframe,pontos,candles,candles_contexto,criado_em"
+COLUNAS = ("id,ticker,timeframe,pontos,candles,candles_contexto,"
+           "qualidade,resultado,criado_em")
 
 
 def _carregar(tabela: str) -> List[dict]:
@@ -57,19 +103,43 @@ def _carregar(tabela: str) -> List[dict]:
 
 
 def montar_conjunto(padrao: str) -> Dict[str, Any]:
-    """Features + rótulos + o relatório do que foi pulado e por quê."""
-    if padrao not in TABELAS:
+    """Features + rótulos + o relatório do que foi pulado e por quê.
+
+    Os dois tipos de alvo (ver ALVOS) diferem SÓ na origem do rótulo: no
+    `fracasso` ele vem da tabela em que a linha está; na `qualidade`, da
+    estrela que a pessoa deu. O resto — extração, pulados, contagem — é o
+    mesmo caminho, de propósito: dois caminhos divergiriam, e aí o treino
+    e o teste mediriam coisas diferentes.
+    """
+    alvo = ALVOS.get(padrao)
+    if alvo is None:
         raise ValueError(f"padrão desconhecido: {padrao}")
-    tabela_ok, tabela_falha = TABELAS[padrao]
 
     X: List[List[float]] = []
     y: List[int] = []
     usados: List[dict] = []
     pulados: List[dict] = []
 
-    for tabela, rotulo in ((tabela_ok, 1), (tabela_falha, 0)):
+    if alvo["tipo"] == "qualidade":
+        corte = alvo["corte"]
+        # Sem nota não entra: `qualidade` nula é "ninguém avaliou", e
+        # chamar isso de exemplar ruim inventaria um julgamento.
+        fontes = [(t, None) for t in alvo["tabelas"]]
+    else:
+        corte = None
+        tabela_ok, tabela_falha = alvo["tabelas"]
+        fontes = [(tabela_ok, 1), (tabela_falha, 0)]
+
+    for tabela, rotulo_fixo in fontes:
         for linha in _carregar(tabela):
             try:
+                if rotulo_fixo is None:
+                    nota = linha.get("qualidade")
+                    if nota is None:
+                        continue
+                    rotulo = 1 if nota >= corte else 0
+                else:
+                    rotulo = rotulo_fixo
                 feats = extrair(linha)
                 X.append(em_linha(feats))
                 y.append(rotulo)
@@ -94,18 +164,24 @@ def montar_conjunto(padrao: str) -> Dict[str, Any]:
     return {
         "X": X, "y": y, "usados": usados, "pulados": pulados,
         "n_sucesso": sum(y), "n_falha": len(y) - sum(y),
-        "features": NOMES_FEATURES,
+        "features": NOMES_FEATURES, "alvo": padrao, "tipo": alvo["tipo"],
     }
 
 
-def _dividir(X, y) -> Tuple[Any, ...]:
-    """70/15/15 estratificado. Stratify só é possível com as duas classes
-    presentes em quantidade suficiente; o chamador já garantiu o mínimo."""
-    X_treino, X_resto, y_treino, y_resto = train_test_split(
-        X, y, test_size=0.30, random_state=42, stratify=y)
-    X_val, X_teste, y_val, y_teste = train_test_split(
-        X_resto, y_resto, test_size=0.50, random_state=42, stratify=y_resto)
-    return X_treino, y_treino, X_val, y_val, X_teste, y_teste
+def _dividir_indices(y) -> Tuple[List[int], List[int], List[int]]:
+    """70/15/15 estratificado, devolvendo ÍNDICES e não as fatias.
+
+    Índices porque o laboratório de teste precisa saber QUAIS templates
+    entraram no treino: rodar o modelo em cima do que ele já viu dá um
+    número melhor que a realidade, e sem essa lista o painel não teria
+    como avisar. Fatiar X e y direto perderia essa informação.
+    """
+    todos = list(range(len(y)))
+    treino, resto = train_test_split(
+        todos, test_size=0.30, random_state=42, stratify=y)
+    val, teste = train_test_split(
+        resto, test_size=0.50, random_state=42, stratify=[y[i] for i in resto])
+    return treino, val, teste
 
 
 def treinar(padrao: str) -> Dict[str, Any]:
@@ -143,7 +219,12 @@ def ajustar(conjunto: Dict[str, Any]) -> Dict[str, Any]:
             "pulados": conjunto.get("pulados", []),
         }
 
-    X_tr, y_tr, X_val, y_val, X_te, y_te = _dividir(conjunto["X"], conjunto["y"])
+    X, y = conjunto["X"], conjunto["y"]
+    i_tr, i_val, i_te = _dividir_indices(y)
+    pega = lambda indices: ([X[i] for i in indices], [y[i] for i in indices])  # noqa: E731
+    X_tr, y_tr = pega(i_tr)
+    X_val, y_val = pega(i_val)
+    X_te, y_te = pega(i_te)
 
     # GRID SEARCH À MÃO, treinando no TREINO e escolhendo pelo F1 no
     # VALIDAÇÃO. É literalmente o que "afina no val" quer dizer, e é
@@ -193,6 +274,11 @@ def ajustar(conjunto: Dict[str, Any]) -> Dict[str, Any]:
             zip(NOMES_FEATURES, (float(v) for v in final.feature_importances_)),
             key=lambda par: par[1], reverse=True)),
         "pulados": conjunto.get("pulados", []),
+        # QUEM ENTROU NO TREINO (treino + validação). O laboratório lê isto
+        # pra separar "o modelo já viu" de "nunca viu" — sem a lista, o
+        # resumo do teste sai inflado e ninguém percebe.
+        "usados": [conjunto["usados"][i] for i in (i_tr + i_val)
+                   if i < len(conjunto.get("usados", []))],
     }
     return {"treinou": True, "modelo_treinado": final,
             "metricas": metricas, "detalhes": extras}
@@ -201,9 +287,17 @@ def ajustar(conjunto: Dict[str, Any]) -> Dict[str, Any]:
 def contagem(padrao: str) -> Dict[str, Any]:
     """Quantos templates existem e quantos dão pra usar — é o Bloco 1 (status).
     Separado do treino porque a tela abre com isto antes de alguém clicar."""
+    alvo = ALVOS[padrao]
     conjunto = montar_conjunto(padrao)
     return {
         "padrao": padrao,
+        "tipo": alvo["tipo"],
+        "rotulo": alvo["rotulo"],
+        # A pergunta vai pra tela porque "88% de acurácia" sem a pergunta
+        # ao lado é um número que a pessoa completa de cabeça — e completa
+        # com "vai dar certo", que é justamente o que o alvo da qualidade
+        # NÃO responde.
+        "pergunta": alvo["pergunta"],
         "n_sucesso": conjunto["n_sucesso"],
         "n_falha": conjunto["n_falha"],
         "minimo_por_classe": MINIMO_POR_CLASSE,

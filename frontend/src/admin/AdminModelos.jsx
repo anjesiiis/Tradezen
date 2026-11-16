@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell, { AdminPatternNav } from "./theme.jsx";
+import AdminModelosTeste from "./AdminModelosTeste.jsx";
 import { ativarModelo, fetchStatusModelos, treinarModelo } from "./adminApi.js";
 
 /**
@@ -17,9 +18,21 @@ import { ativarModelo, fetchStatusModelos, treinarModelo } from "./adminApi.js";
  * bandeira no gráfico continua sendo trabalho de pessoa.
  */
 
+// OS QUATRO ALVOS, e a ordem é intencional: primeiro os dois que
+// respondem "isto é a bandeira?" (o que interessa no fim), depois os dois
+// da qualidade da forma. Os de qualidade existem porque são os que treinam
+// hoje — faltam fracassos marcados pros primeiros. Ver ALVOS em
+// backend/ml/bandeira/trainer.py.
 const PADROES = [
   { id: "bandeira_alta", rotulo: "Bandeira de Alta" },
   { id: "bandeira_baixa", rotulo: "Bandeira de Baixa" },
+  { id: "bandeira_alta_qualidade", rotulo: "Bandeira de Alta — qualidade" },
+  { id: "bandeira_baixa_qualidade", rotulo: "Bandeira de Baixa — qualidade" },
+];
+
+const ABAS = [
+  { id: "treinar", rotulo: "Treinar" },
+  { id: "testar", rotulo: "Testar" },
 ];
 
 const pct = (v) => (v === null || v === undefined ? "—" : `${Math.round(v * 100)}%`);
@@ -232,6 +245,8 @@ function Bloco({ padrao, rotulo }) {
 }
 
 export default function AdminModelos() {
+  const [aba, setAba] = useState("treinar");
+
   return (
     <AdminShell titulo="Modelos de ML">
       <AdminPatternNav active="modelos" />
@@ -241,7 +256,25 @@ export default function AdminModelos() {
           O modelo opina sobre a forma de uma bandeira que alguém já marcou.
           Quem acha a bandeira no gráfico continua sendo você.
         </p>
-        {PADROES.map((p) => <Bloco key={p.id} padrao={p.id} rotulo={p.rotulo} />)}
+
+        <div className="mdl-abas" role="tablist" aria-label="Seções">
+          {ABAS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              aria-selected={aba === a.id}
+              className={`mdl-aba${aba === a.id ? " aceso" : ""}`}
+              onClick={() => setAba(a.id)}
+            >
+              {a.rotulo}
+            </button>
+          ))}
+        </div>
+
+        {aba === "treinar"
+          ? PADROES.map((p) => <Bloco key={p.id} padrao={p.id} rotulo={p.rotulo} />)
+          : <AdminModelosTeste padroes={PADROES} />}
       </main>
     </AdminShell>
   );
