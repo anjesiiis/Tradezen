@@ -7,17 +7,16 @@ python-dotenv==1.0.1
 supabase==2.31.0
 email-validator==2.3.0
 slowapi==0.1.10
-# scikit-learn FORA DAQUI POR ENQUANTO, de proposito.
+# Random Forest da bandeira (ml/bandeira). joblib vem junto e e o que
+# serializa o modelo, por isso nao tem linha propria.
 #
-# Acrescentar sklearn==1.6.1 derrubou o backend em producao: 503 em TODAS
-# as rotas, nao so nas de modelo. Nao sabemos ainda se foi o build ou a
-# memoria na subida (Render free, 512MB; numpy+sklearn custam uns 100MB de
-# RSS so pra importar). Ate olharmos o log do Render, o site de pe vale
-# mais que o treino em producao.
+# HISTORICO, pra nao se repetir: eu tirei esta linha achando que ela tinha
+# derrubado o backend. Nao tinha — o 503 em tudo era o Render no meio do
+# deploy, e o build COM sklearn subiu normalmente. Tirar a dependencia foi
+# o que realmente quebrou /admin/modelos, porque admin_modelos._ml() passa
+# a devolver 503 "falta uma dependencia de ML" em todas as rotas.
 #
-# O treino roda localmente (backend/venv tem sklearn 1.6.1). As rotas de
-# /admin/modelos ficam devolvendo 503 com o recado explicando que falta a
-# dependencia -- comportamento previsto em admin_modelos._ml().
-#
-# Pra religar: por scikit-learn==1.6.1 aqui de volta E confirmar no log do
-# Render que o deploy subiu. Nessa ordem.
+# Se um dia o backend cair de novo logo apos um deploy: medir antes de
+# mexer. `curl /ativos` responder 200 significa que subiu, e deploy em
+# andamento devolve 503 por um ou dois minutos sem nada estar errado.
+scikit-learn==1.6.1
