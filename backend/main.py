@@ -75,6 +75,7 @@ from admin_templates_mover import ROUTERS as admin_templates_mover_routers
 from admin_status_revisao import router as admin_status_revisao_router
 from admin_qualidade import router as admin_qualidade_router
 from admin_panorama import router as admin_panorama_router
+from admin_modelos import router as admin_modelos_router
 from admin_templates_canal_baixa import router as admin_templates_canal_baixa_router
 from admin_usuarios import router as admin_usuarios_router
 from padroes_marcados import router as padroes_marcados_router
@@ -214,6 +215,7 @@ app.include_router(admin_status_revisao_router)
 # desfecho — ver o cabeçalho de admin_qualidade.py.
 app.include_router(admin_qualidade_router)
 app.include_router(admin_panorama_router)
+app.include_router(admin_modelos_router)
 
 # ── CACHE EM MEMÓRIA ───────────────────────────────────────────
 # Estrutura: { "chave": (timestamp, dados) }

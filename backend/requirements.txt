@@ -7,3 +7,6 @@ python-dotenv==1.0.1
 supabase==2.31.0
 email-validator==2.3.0
 slowapi==0.1.10
+# Random Forest da bandeira (ml/bandeira). joblib vem junto, e e o que
+# serializa o modelo; nao precisa de linha propria.
+scikit-learn==1.6.1

@@ -351,6 +351,44 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-nav-lateral.recolhida .admin-nav-rotulo{display:none}
 :root[data-admin-nav="recolhida"] .admin-main{padding-left:80px}
 
+/* MODELOS DE ML — tela minima por pedido: numeros legiveis, sem firula.
+   O cuidado esta no que informa decisao: a comparacao com o modelo
+   anterior (sobe verde, desce vermelho) e o motivo do botao desabilitado. */
+.mdl-titulo{margin:0;font:600 18px var(--font-b);color:var(--text)}
+.mdl-sub{margin:0;font-size:12px;color:var(--text2);line-height:1.5;max-width:62ch}
+.mdl-bloco{display:flex;flex-direction:column;gap:10px}
+.mdl-bloco h2{margin:0;font:600 14px var(--font-b);color:var(--text)}
+.mdl-bloco h3{margin:0;font:600 12px var(--font-b);color:var(--text2)}
+.mdl-erro{margin:0;font-size:12px;color:var(--down)}
+.mdl-calmo{margin:0;font-size:12px;color:var(--text2)}
+.mdl-acervo{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);align-items:center}
+.mdl-acervo strong{color:var(--text);font-variant-numeric:tabular-nums;margin-left:3px}
+.mdl-aviso{color:var(--gold)}
+.mdl-pulados{font-size:11px;color:var(--text2)}
+.mdl-pulados summary{cursor:pointer}
+.mdl-pulados ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.mdl-treinar{align-self:flex-start;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:600 13px var(--font-b);cursor:pointer}
+.mdl-treinar:disabled{background:var(--s2);color:var(--text3);cursor:not-allowed}
+.mdl-ativar{align-self:flex-start;background:var(--up);color:#06241c;border:0;border-radius:8px;padding:7px 13px;font:600 12px var(--font-b);cursor:pointer}
+.mdl-recem{border:1px solid color-mix(in srgb,var(--up) 40%,transparent);background:color-mix(in srgb,var(--up) 8%,transparent);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:12px}
+.mdl-ultimo{display:flex;flex-direction:column;gap:6px}
+.mdl-metricas{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 14px}
+.mdl-metricas div{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.mdl-metricas dt{color:var(--text2);margin:0}
+.mdl-metricas dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+.mdl-delta{font-variant-numeric:tabular-nums;color:var(--text2)}
+.mdl-delta strong{color:var(--text)}
+.mdl-delta.sobe{color:var(--up)}
+.mdl-delta.desce{color:var(--down)}
+.mdl-quando,.mdl-status{margin:0;font-size:11px;color:var(--text2)}
+.mdl-historico{width:100%;border-collapse:collapse;font-size:11px}
+.mdl-historico caption{text-align:left;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding-bottom:4px}
+.mdl-historico th{text-align:left;color:var(--text3);font-weight:500;padding:4px 6px;border-bottom:1px solid var(--border)}
+.mdl-historico td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--text);font-variant-numeric:tabular-nums}
+.mdl-historico tr.ativo td{background:color-mix(in srgb,var(--up) 8%,transparent)}
+.mdl-historico button{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:2px 8px;font:inherit;font-size:10px;cursor:pointer}
+.mdl-tag{color:var(--up);font-size:10px;font-weight:600}
+
 /* CEREBRO DE DETECCOES — o painel de panorama. Quatro lobos recortados
    pela silhueta, cada um numa das quatro variaveis de cor do tema. */
 .cerebro{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;display:flex;flex-direction:column;gap:11px;align-self:start;position:sticky;top:70px}
@@ -747,10 +785,19 @@ export function AdminPatternNav({ active, aoTrocar }) {
       </div>
       )}
 
-      {/* Fora dos grupos: não é padrão pra marcar, é administração da
-          conta dos usuários. Fica aqui porque esta barra é o único lugar
-          presente em todas as telas do admin. */}
+      {/* Fora dos grupos: não são padrões pra marcar. Ficam aqui porque
+          esta barra é o único lugar presente em todas as telas do admin.
+          Modelos de ML vem antes de Usuários por ser do mesmo ofício de
+          quem marca — usuários é administração de conta. */}
       <div className="admin-nav-extra">
+        <Link
+          to="/admin/modelos"
+          className={active === "modelos" ? "active" : ""}
+          title="Modelos de ML"
+        >
+          <span aria-hidden="true">🧠</span>
+          <span className="admin-nav-rotulo">Modelos de ML</span>
+        </Link>
         <Link
           to="/admin/usuarios"
           className={active === "usuarios" ? "active" : ""}

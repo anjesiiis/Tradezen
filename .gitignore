@@ -11,3 +11,10 @@ frontend/dist/
 
 .DS_Store
 detectar_e_salvar.log
+
+# Modelos treinados: o .pkl em disco e CACHE, nao a fonte. O original fica
+# em modelos_treinados.modelo_b64 no Supabase (ver 030 e ml/bandeira/
+# storage.py), porque o disco do Render morre a cada deploy. Versionar
+# binario de 100 arvores a cada treino encheria o repositorio de arquivos
+# que ninguem le num diff.
+backend/ml/bandeira/modelos/*.pkl

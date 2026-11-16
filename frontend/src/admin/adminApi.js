@@ -101,6 +101,25 @@ export function fetchPanorama() {
   return adminFetch("/admin/panorama");
 }
 
+/* ── MODELOS DE ML (Random Forest da bandeira) ───────────── */
+
+/** Status do acervo + histórico de modelos de um padrão. */
+export function fetchStatusModelos(padrao) {
+  return adminFetch(`/admin/modelos/${padrao}/status`);
+}
+
+/** Dispara o treino. Síncrono e pode levar alguns segundos — quem chama
+ *  precisa mostrar que está trabalhando. 409 = acervo insuficiente, e aí
+ *  o `detail` diz quantos faltam. */
+export function treinarModelo(padrao) {
+  return adminFetch(`/admin/modelos/treinar/${padrao}`, { method: "POST" });
+}
+
+/** Promove um modelo a produção. Desativa os outros do mesmo padrão. */
+export function ativarModelo(modeloId) {
+  return adminFetch(`/admin/modelos/${modeloId}/ativar`, { method: "POST" });
+}
+
 export function requestMagicLink(email) {
   return adminFetch("/admin/auth/magic-link", {
     method: "POST",
