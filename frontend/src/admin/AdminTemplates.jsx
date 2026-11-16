@@ -285,7 +285,11 @@ export default function AdminTemplates() {
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
       });
-      setMensagem({ tipo: "ok", texto: "Template atualizado." });
+      // Toast flutuante de 3s em vez do banner fixo: "deu certo" é um aviso
+      // de passagem, e como banner ele empurrava a lista pra baixo e ficava
+      // na tela até a próxima ação. Erro continua banner, porque erro tem
+      // de esperar ser lido.
+      mostrarToasts(["Template atualizado."], "ok", 3000);
       setEditando(null);
       escreverModoNaUrl(null);
       carregarTemplates();

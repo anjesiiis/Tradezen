@@ -35,7 +35,7 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-center{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
 .admin-main{flex:1;padding:24px;padding-left:264px;max-width:1764px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
 
-.admin-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:left}
+.admin-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;text-align:left}
 .admin-card h1{font-size:17px;font-weight:600;margin:0 0 4px;color:var(--text)}
 .admin-card h2{font-size:15px;font-weight:600;margin:0;color:var(--text)}
 .admin-card p.hint{color:var(--text2);font-size:13px;margin:0 0 20px}
@@ -131,6 +131,17 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .sr-fechar:hover{background:color-mix(in srgb,var(--down) 22%,transparent);color:var(--down)}
 
 .sr-filtros{display:flex;gap:7px;flex-wrap:wrap}
+
+/* A FILEIRA UNICA do topo da lista: placar, status e qualidade lado a
+   lado, rolando na horizontal quando nao cabem. Dentro dela os grupos
+   NAO quebram linha (nowrap) — quebrar aqui devolveria a altura que a
+   fusao foi feita pra tirar. */
+.lt-barra{display:flex;align-items:center;gap:9px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin}
+.lt-barra .sr-filtros,.lt-barra .res-contas{flex-wrap:nowrap;flex:0 0 auto}
+.lt-barra .sr-filtro,.lt-barra .res-conta{white-space:nowrap}
+.lt-div{flex:0 0 auto;width:1px;align-self:stretch;background:var(--border);margin:2px 1px}
+.lt-barra::-webkit-scrollbar{height:5px}
+.lt-barra::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .sr-filtro{background:var(--s2);border:1px solid var(--border);border-radius:999px;padding:6px 12px;color:var(--text2);font:500 12px var(--font-b);cursor:pointer;white-space:nowrap}
 .sr-filtro:hover{color:var(--text)}
 .sr-filtro.aceso{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
@@ -253,8 +264,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 @keyframes ltPulsa{0%,100%{opacity:1}50%{opacity:.72}}
 @media (prefers-reduced-motion:reduce){.lt-selo{animation:none}}
 
-.lt-retomar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:color-mix(in srgb,var(--gold) 10%,transparent);border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);border-radius:10px}
-.lt-retomar-btn{background:var(--gold);color:#1a1205;border:0;padding:9px 16px;border-radius:8px;font:600 13px var(--font-b);cursor:pointer}
+.lt-retomar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 10px;background:color-mix(in srgb,var(--gold) 10%,transparent);border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);border-radius:10px}
+.lt-retomar-btn{background:var(--gold);color:#1a1205;border:0;padding:5px 12px;border-radius:8px;font:600 13px var(--font-b);cursor:pointer}
 .lt-retomar-btn:hover{filter:brightness(1.08)}
 .lt-retomar-limpar{background:none;border:0;color:var(--text2);font:inherit;font-size:11px;text-decoration:underline;cursor:pointer;padding:4px}
 .lt-retomar-limpar:hover{color:var(--text)}

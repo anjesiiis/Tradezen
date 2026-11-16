@@ -141,53 +141,61 @@ export default function ListaTemplates({
         {templates.length !== todos.length ? ` de ${todos.length}` : ""})
       </h2>
 
-      {/* Quantos deram certo e quantos não, do conjunto INTEIRO (`todos`) e
-          não do que o filtro deixou na tela: é o placar do trabalho, e ele
-          mudar de valor porque alguém filtrou por status tiraria dele
-          justamente a utilidade. */}
-      <div className="res-contas" aria-label="Desfecho das marcações">
-        {["sucesso", "falha", "indefinido"].map((tipo) => (
-          <span key={tipo} className={`res-conta ${tipo}`}>
-            {ROTULO_RESULTADO[tipo]} <strong>{contasRes[tipo]}</strong>
-          </span>
-        ))}
+      {/* UMA FILEIRA SÓ. Antes eram três empilhadas (placar, status,
+          qualidade) e o topo empurrava a lista pra fora da tela — no
+          celular sobrava uma faixa de cards. Agora rolam na horizontal,
+          e os separadores dizem onde um grupo acaba e o outro começa. */}
+      <div className="lt-barra">
+        <div className="res-contas" aria-label="Desfecho das marcações">
+          {["sucesso", "falha", "indefinido"].map((tipo) => (
+            <span key={tipo} className={`res-conta ${tipo}`}>
+              {ROTULO_RESULTADO[tipo]} <strong>{contasRes[tipo]}</strong>
+            </span>
+          ))}
+        </div>
+
+        {/* Filtros por status. Primeiro o que falta decidir: é o que se
+            procura quando se senta pra revisar. */}
+        {temStatus && (
+          <>
+            <span className="lt-div" aria-hidden="true" />
+            <div className="sr-filtros" role="group" aria-label="Filtrar por status">
+              {FILTROS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={filtro === f.id}
+                  className={`sr-filtro${filtro === f.id ? " aceso" : ""}`}
+                  onClick={() => setFiltro(f.id)}
+                >
+                  {f.rotulo} <span className="sr-filtro-n">{contas[f.id]}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Filtros por qualidade da forma. "Sem nota" vem logo depois de
+            "Todas" por ser a fila de trabalho de quem está avaliando. */}
+        {temQualidade && (
+          <>
+            <span className="lt-div" aria-hidden="true" />
+            <div className="sr-filtros" role="group" aria-label="Filtrar por qualidade da forma">
+              {FILTROS_QUALIDADE.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={filtroQ === f.id}
+                  className={`sr-filtro${filtroQ === f.id ? " aceso" : ""}`}
+                  onClick={() => setFiltroQ(f.id)}
+                >
+                  {f.rotulo} <span className="sr-filtro-n">{contasQ[f.id]}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Filtros por status. Primeiro o que falta decidir: é o que se
-          procura quando se senta pra revisar. */}
-      {temStatus && (
-        <div className="sr-filtros" role="group" aria-label="Filtrar por status">
-          {FILTROS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filtro === f.id}
-              className={`sr-filtro${filtro === f.id ? " aceso" : ""}`}
-              onClick={() => setFiltro(f.id)}
-            >
-              {f.rotulo} <span className="sr-filtro-n">{contas[f.id]}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Filtros por qualidade da forma. "Sem nota" vem logo depois de
-          "Todas" por ser a fila de trabalho de quem está avaliando. */}
-      {temQualidade && (
-        <div className="sr-filtros" role="group" aria-label="Filtrar por qualidade da forma">
-          {FILTROS_QUALIDADE.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filtroQ === f.id}
-              className={`sr-filtro${filtroQ === f.id ? " aceso" : ""}`}
-              onClick={() => setFiltroQ(f.id)}
-            >
-              {f.rotulo} <span className="sr-filtro-n">{contasQ[f.id]}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* A lista sem nenhum selo de qualidade e sem UMA PALAVRA de
           explicação era um buraco meu: quem avaliava via as estrelas
