@@ -9,6 +9,7 @@ import { useToasts } from "./toastsAdmin.js";
 import { comContextoLargo } from "./contextoTemplate.js";
 import { escreverModoNaUrl, lerModoDaUrl } from "./modoTemplate.js";
 import ListaTemplates from "./ListaTemplates.jsx";
+import CerebroDeteccoes from "./CerebroDeteccoes.jsx";
 import ModalMoverMarcacao from "./ModalMoverMarcacao.jsx";
 import {
   PADROES, areasDoPadrao, avisosDoPadrao, configDoTemplate, ehFracasso,
@@ -765,6 +766,10 @@ export default function PainelMarcacao({ padraoInicial }) {
           </section>
         )}
 
+        {/* Lista à esquerda, Cérebro à direita. Abaixo de 1200px o CSS
+            empilha: em coluna estreita o painel roubaria a largura dos
+            cards, e os cards são o trabalho. */}
+        <div className="lt-com-cerebro">
         <ListaTemplates
           templates={templates}
           abertoId={editando?.id ?? null}
@@ -778,6 +783,8 @@ export default function PainelMarcacao({ padraoInicial }) {
           aoMover={podeMover ? setMovendo : undefined}
           destinoDoMover={destinoDoMover}
         />
+        <CerebroDeteccoes />
+        </div>
 
       </main>
 

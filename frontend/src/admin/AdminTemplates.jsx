@@ -4,6 +4,7 @@ import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
 import TemplateMarkerChart from "./TemplateMarkerChart.jsx";
 import ListaTemplates from "./ListaTemplates.jsx";
+import CerebroDeteccoes from "./CerebroDeteccoes.jsx";
 import { LINE_PAIRS_OCO as LINE_PAIRS, STEPS_OCO as STEPS } from "./padroesClassicos.js";
 import { APIS_DE_TEMPLATE, montarDesenhoSalvo, useDesenhosSalvos, useLampadas } from "./lampadas.js";
 import AtivoPicker from "./AtivoPicker.jsx";
@@ -537,6 +538,7 @@ export default function AdminTemplates() {
           </section>
         )}
 
+        <div className="lt-com-cerebro">
         <ListaTemplates
           templates={templates}
           abertoId={editando?.id ?? null}
@@ -548,6 +550,8 @@ export default function AdminTemplates() {
           aoEditar={iniciarEdicao}
           aoExcluir={remover}
         />
+        <CerebroDeteccoes />
+        </div>
       </main>
       <AdminToast avisos={avisos} onFechar={fecharAviso} />
     </AdminShell>

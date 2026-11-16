@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { classeDoPadrao, iconeDoPadrao } from "../lib/iconesPadroes.js";
 import { GRUPOS_DE_PADRAO, grupoDoPadrao } from "./gruposDePadrao.js";
@@ -336,6 +336,71 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
    conteúdo principal ganha o recuo. */
 .admin-nav-lateral{position:fixed;left:0;top:57px;bottom:0;width:240px;background:var(--s1);border-right:1px solid var(--border);padding:12px 10px;overflow-y:auto;scrollbar-width:thin;z-index:40;display:flex;flex-direction:column;gap:10px}
 .admin-nav-atual{display:none}
+
+/* BARRA RECOLHIDA: 56px, só ícones. O conteúdo recua junto pelo atributo
+   no <html> — a barra e o .admin-main são irmãos, então um não enxerga a
+   classe do outro. */
+.admin-nav-hamburguer{align-self:flex-start;background:var(--s2);border:1px solid var(--border);color:var(--text2);width:30px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.admin-nav-hamburguer:hover{color:var(--text);border-color:var(--text3)}
+.admin-nav-lateral.recolhida{width:56px;padding:12px 8px;align-items:center}
+.admin-nav-icones{display:flex;flex-direction:column;gap:5px;align-items:center}
+.admin-nav-so-icone{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;text-decoration:none}
+.admin-nav-so-icone:hover{background:var(--s2)}
+.admin-nav-so-icone.active{background:color-mix(in srgb,var(--accent) 18%,transparent);outline:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+.admin-nav-lateral.recolhida .admin-nav-extra a{justify-content:center}
+.admin-nav-lateral.recolhida .admin-nav-rotulo{display:none}
+:root[data-admin-nav="recolhida"] .admin-main{padding-left:80px}
+
+/* CEREBRO DE DETECCOES — o painel de panorama. Quatro lobos recortados
+   pela silhueta, cada um numa das quatro variaveis de cor do tema. */
+.cerebro{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;display:flex;flex-direction:column;gap:11px;align-self:start;position:sticky;top:70px}
+.cerebro-cabeca h3{margin:0;font:600 13px var(--font-b);color:var(--text)}
+.cerebro-cabeca p{margin:2px 0 0;font-size:11px;color:var(--text2);line-height:1.4}
+.cerebro-erro{margin:0;font-size:11px;color:var(--down)}
+.cerebro-carregando{margin:0;font-size:11px;color:var(--text2)}
+.cerebro-desenho{display:flex;flex-direction:column;gap:9px}
+.cerebro-desenho svg{width:100%;max-width:210px;margin:0 auto;display:block;overflow:visible}
+
+.cerebro-lobo{opacity:.55;transition:opacity .22s ease;transform-origin:center;animation:cerebro-pulsa 3s ease-in-out infinite}
+.cerebro-lobo.aceso{opacity:.95}
+@keyframes cerebro-pulsa{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+
+.cerebro-fissura{fill:none;stroke:var(--bg);stroke-width:2.5;opacity:.7}
+.cerebro-sulco{fill:none;stroke:var(--bg);stroke-width:1.6;opacity:.45}
+.cerebro-contorno{fill:none;stroke:rgba(255,255,255,.22);stroke-width:1.4}
+.cerebro-sinapses path{fill:none;stroke:rgba(255,255,255,.3);stroke-width:1;stroke-dasharray:3 7;animation:cerebro-sinapse 2.6s linear infinite}
+@keyframes cerebro-sinapse{to{stroke-dashoffset:-20}}
+
+.cerebro-botoes{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cerebro-botao{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 7px;color:var(--text2);font:500 11px var(--font-b);cursor:pointer;text-align:left}
+.cerebro-botao.aceso{color:var(--text);border-color:color-mix(in srgb,var(--lobo-cor) 55%,transparent);background:color-mix(in srgb,var(--lobo-cor) 12%,transparent)}
+.cerebro-botao strong{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--lobo-cor)}
+.cerebro-bolinha{width:8px;height:8px;border-radius:50%;background:var(--lobo-cor);flex:0 0 auto}
+
+.cerebro-ficha{border-top:1px solid var(--border);padding-top:9px;display:flex;flex-direction:column;gap:7px}
+.cerebro-ficha-nome{font:600 12px var(--font-b);color:var(--text)}
+.cerebro-ficha dl{margin:0;display:flex;flex-direction:column;gap:3px}
+.cerebro-ficha dl div{display:flex;justify-content:space-between;gap:10px;font-size:11px}
+.cerebro-ficha dt{color:var(--text2);margin:0}
+.cerebro-ficha dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+.cerebro-barra{height:6px;background:var(--s2);border-radius:999px;overflow:hidden}
+.cerebro-barra-cheia{display:block;height:100%;border-radius:999px;transition:width .3s ease}
+.cerebro-meta{margin:0;font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
+.cerebro-ir{font-size:11px;color:var(--accent);text-decoration:none;font-weight:600}
+.cerebro-ir:hover{text-decoration:underline}
+
+/* O par lista + cerebro. Abaixo de 1200px o cerebro vai pra baixo da
+   lista: em coluna estreita ele roubaria a largura dos cards, e os cards
+   sao o trabalho. */
+.lt-com-cerebro{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;align-items:start}
+@media (max-width:1200px){
+  .lt-com-cerebro{grid-template-columns:minmax(0,1fr)}
+  .cerebro{position:static}
+}
+@media (prefers-reduced-motion:reduce){
+  .cerebro-lobo,.cerebro-sinapses path{animation:none}
+  .cerebro-barra-cheia{transition:none}
+}
 .admin-nav-grupos{display:flex;flex-direction:column;gap:6px}
 .admin-nav-grupo{display:flex;flex-direction:column;gap:2px}
 .admin-nav-grupo-titulo{display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;padding:7px 8px;border-radius:7px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);cursor:pointer;text-align:left}
@@ -404,6 +469,14 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
   .admin-nav-atual::after{content:"▾";margin-left:auto;color:var(--text3)}
   .admin-nav-atual-rotulo{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)}
   .admin-nav-lateral:not(.aberto) .admin-nav-grupos{display:none}
+  /* Abaixo de 900px a barra ja colapsa no botao "Padroes" acima: o
+     hamburguer seria um segundo controle de abrir/fechar na mesma tela,
+     dizendo outra coisa. E a barra recolhida nao se aplica — aqui ela e
+     horizontal, nao lateral. */
+  .admin-nav-hamburguer{display:none}
+  .admin-nav-lateral.recolhida{width:100%;padding:8px 12px;align-items:stretch}
+  .admin-nav-lateral.recolhida .admin-nav-icones{flex-direction:row;flex-wrap:wrap;margin-top:8px}
+  :root[data-admin-nav="recolhida"] .admin-main{padding-left:24px}
   .admin-nav-grupos{margin-top:8px;max-height:60vh;overflow-y:auto}
   .admin-main{padding-left:24px}
 }
@@ -531,6 +604,21 @@ export default function AdminShell({ children, tema }) {
 // lugar (devolvendo true), em vez de navegar e recarregar tudo. É o que
 // mantém o gráfico no mesmo zoom quando se percebe que a bandeira de alta
 // era, na verdade, de baixa.
+// A barra lateral lembra se foi recolhida, entre telas e entre sessões:
+// quem recolheu pra ganhar espaço não quer recolher de novo a cada troca
+// de padrão. localStorage pode estourar (janela privada, dados
+// bloqueados), e aí o padrão é "aberta" — barra sumida sem explicação
+// seria pior que barra ocupando espaço.
+const CHAVE_RECOLHIDA = "tradezen:admin-nav-recolhida";
+
+function lerRecolhida() {
+  try { return localStorage.getItem(CHAVE_RECOLHIDA) === "1"; } catch { return false; }
+}
+
+function gravarRecolhida(valor) {
+  try { localStorage.setItem(CHAVE_RECOLHIDA, valor ? "1" : "0"); } catch { /* segue sem lembrar */ }
+}
+
 export function AdminPatternNav({ active, aoTrocar }) {
   const grupoAtual = grupoDoPadrao(active);
   const itemAtual = grupoAtual?.itens.find((i) => i.key === active);
@@ -538,6 +626,29 @@ export function AdminPatternNav({ active, aoTrocar }) {
   // lista não nasce com 19 linhas abertas.
   const [abertos, setAbertos] = useState(() => new Set(grupoAtual ? [grupoAtual.id] : []));
   const [abertoNoCelular, setAbertoNoCelular] = useState(false);
+  const [recolhida, setRecolhida] = useState(lerRecolhida);
+
+  // A barra e o conteúdo são irmãos no DOM, então o padding do conteúdo
+  // não consegue reagir à classe da barra. O atributo no <html> é o
+  // caminho honesto: um lugar só, lido pelo CSS dos dois.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (recolhida) raiz.setAttribute("data-admin-nav", "recolhida");
+    else raiz.removeAttribute("data-admin-nav");
+    return () => raiz.removeAttribute("data-admin-nav");
+  }, [recolhida]);
+
+  function alternarRecolhida() {
+    setRecolhida((v) => { gravarRecolhida(!v); return !v; });
+  }
+
+  // Recolhida, a lista vira UMA fileira de ícones, sem grupos: o título
+  // do grupo é texto, e texto é justamente o que não cabe. A categoria
+  // continua legível pela cor do ícone e pelo tooltip, que diz o grupo
+  // junto do nome ("Continuação · Bandeira de Alta").
+  const todosOsItens = GRUPOS_DE_PADRAO.filter((g) => !g.oculto).flatMap(
+    (g) => g.itens.filter((l) => !l.oculto).map((l) => ({ ...l, grupo: g.nome })),
+  );
 
   function alternarGrupo(id) {
     setAbertos((atuais) => {
@@ -548,7 +659,21 @@ export function AdminPatternNav({ active, aoTrocar }) {
   }
 
   return (
-    <nav className={`admin-nav-lateral${abertoNoCelular ? " aberto" : ""}`}>
+    <nav className={`admin-nav-lateral${abertoNoCelular ? " aberto" : ""}${recolhida ? " recolhida" : ""}`}>
+      {/* Hambúrguer: só no desktop. No celular a barra já colapsa sozinha
+          no botão "Padrões" abaixo, e dois controles de abrir/fechar na
+          mesma tela se contradizem. */}
+      <button
+        type="button"
+        className="admin-nav-hamburguer"
+        onClick={alternarRecolhida}
+        aria-expanded={!recolhida}
+        aria-label={recolhida ? "Expandir menu de padrões" : "Recolher menu de padrões"}
+        title={recolhida ? "Expandir menu" : "Recolher menu"}
+      >
+        <span aria-hidden="true">{recolhida ? "»" : "☰"}</span>
+      </button>
+
       {/* No celular a barra vira um botão no topo que abre a lista */}
       <button
         type="button"
@@ -560,6 +685,24 @@ export function AdminPatternNav({ active, aoTrocar }) {
         <strong>{itemAtual?.label || "Escolher padrão"}</strong>
       </button>
 
+      {recolhida ? (
+        <div className="admin-nav-icones">
+          {todosOsItens.map((l) => (
+            <Link
+              key={l.key}
+              to={l.href}
+              className={`admin-nav-so-icone${active === l.key ? " active" : ""}`}
+              title={`${l.grupo} · ${l.label}`}
+              aria-label={`${l.grupo} · ${l.label}`}
+              onClick={(e) => { if (aoTrocar?.(l.key, l.href)) e.preventDefault(); }}
+            >
+              <span className={`admin-nav-icone ${classeDoPadrao(l.id)}`} aria-hidden="true">
+                {iconeDoPadrao(l.id)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : (
       <div className="admin-nav-grupos">
         {GRUPOS_DE_PADRAO.filter((g) => !g.oculto).map((grupo) => {
           const aberto = abertos.has(grupo.id);
@@ -602,14 +745,21 @@ export function AdminPatternNav({ active, aoTrocar }) {
           );
         })}
       </div>
+      )}
 
       {/* Fora dos grupos: não é padrão pra marcar, é administração da
           conta dos usuários. Fica aqui porque esta barra é o único lugar
           presente em todas as telas do admin. */}
       <div className="admin-nav-extra">
-        <Link to="/admin/usuarios" className={active === "usuarios" ? "active" : ""}>
+        <Link
+          to="/admin/usuarios"
+          className={active === "usuarios" ? "active" : ""}
+          title="Usuários e planos"
+        >
           <span aria-hidden="true">👤</span>
-          Usuários e planos
+          {/* O rótulo num span pra poder sumir quando a barra está
+              recolhida — texto solto não se esconde por CSS. */}
+          <span className="admin-nav-rotulo">Usuários e planos</span>
         </Link>
       </div>
     </nav>

@@ -95,6 +95,12 @@ async function adminFetch(path, options = {}) {
   return data;
 }
 
+/** Placar por família de padrão, num pedido só — alimenta o Cérebro.
+ *  Sem isto o painel faria 21 chamadas, uma por tabela. */
+export function fetchPanorama() {
+  return adminFetch("/admin/panorama");
+}
+
 export function requestMagicLink(email) {
   return adminFetch("/admin/auth/magic-link", {
     method: "POST",
