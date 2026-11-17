@@ -94,11 +94,42 @@ COLUNAS = ("id,ticker,timeframe,pontos,candles,candles_contexto,"
            "qualidade,resultado,criado_em")
 
 
+# Quantas linhas por pedido ao ler os candles. Cada template guarda
+# `candles` E `candles_contexto` em jsonb — centenas de candles cada —, e
+# pedir 212 de uma vez estoura o tempo máximo de consulta do Supabase:
+# "canceling statement due to statement timeout" (erro 57014). O sintoma
+# na tela era a página de modelos não carregar.
+POR_PAGINA = 25
+
+
 def _carregar(tabela: str) -> List[dict]:
+    """Lê a tabela inteira EM PÁGINAS. Página que falha não derruba o
+    resto: melhor treinar com 200 templates e dizer que 12 não vieram do
+    que não treinar."""
+    linhas: List[dict] = []
+    inicio = 0
+    while True:
+        try:
+            pagina = (supabase.table(tabela).select(COLUNAS)
+                      .order("id")
+                      .range(inicio, inicio + POR_PAGINA - 1)
+                      .execute().data) or []
+        except Exception as erro:  # tabela não existe, timeout, sem acesso…
+            log.warning("não deu pra ler %s a partir de %s: %s", tabela, inicio, erro)
+            break
+        linhas += pagina
+        if len(pagina) < POR_PAGINA:
+            break
+        inicio += POR_PAGINA
+    return linhas
+
+
+def _contar(tabela: str, colunas: str = "id,qualidade") -> List[dict]:
+    """Só as colunas leves, pra contar. Sem os candles, cabe num pedido."""
     try:
-        return (supabase.table(tabela).select(COLUNAS).execute().data) or []
-    except Exception as erro:  # tabela ainda não existe, chave sem acesso…
-        log.warning("não deu pra ler %s: %s", tabela, erro)
+        return (supabase.table(tabela).select(colunas).execute().data) or []
+    except Exception as erro:
+        log.warning("não deu pra contar %s: %s", tabela, erro)
         return []
 
 
@@ -285,10 +316,33 @@ def ajustar(conjunto: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def contagem(padrao: str) -> Dict[str, Any]:
-    """Quantos templates existem e quantos dão pra usar — é o Bloco 1 (status).
-    Separado do treino porque a tela abre com isto antes de alguém clicar."""
+    """Quantos templates existem — o Bloco 1 (status), e a primeira coisa
+    que a tela pede ao abrir.
+
+    LÊ SÓ `id,qualidade`, sem os candles. A versão anterior extraía as
+    features de todos os templates só pra contar quantos eram
+    "utilizáveis", e isso significava ler centenas de candles de 212
+    linhas: o Supabase cortava por tempo (57014) e a página não carregava.
+    Contar é pergunta leve e tem de ter resposta leve.
+
+    O preço é que a contagem não sabe quantos templates são impossíveis de
+    medir — isso só aparece no treino e no teste, que leem os candles de
+    qualquer maneira. É o preço certo: a tela abre.
+    """
     alvo = ALVOS[padrao]
-    conjunto = montar_conjunto(padrao)
+    if alvo["tipo"] == "qualidade":
+        corte = alvo["corte"]
+        notas = [r.get("qualidade") for t in alvo["tabelas"] for r in _contar(t)]
+        com_nota = [n for n in notas if n is not None]
+        n_sucesso = sum(1 for n in com_nota if n >= corte)
+        n_falha = len(com_nota) - n_sucesso
+        extra = {"sem_nota": len(notas) - len(com_nota)}
+    else:
+        tabela_ok, tabela_falha = alvo["tabelas"]
+        n_sucesso = len(_contar(tabela_ok, "id"))
+        n_falha = len(_contar(tabela_falha, "id"))
+        extra = {}
+
     return {
         "padrao": padrao,
         "tipo": alvo["tipo"],
@@ -298,9 +352,9 @@ def contagem(padrao: str) -> Dict[str, Any]:
         # com "vai dar certo", que é justamente o que o alvo da qualidade
         # NÃO responde.
         "pergunta": alvo["pergunta"],
-        "n_sucesso": conjunto["n_sucesso"],
-        "n_falha": conjunto["n_falha"],
+        "n_sucesso": n_sucesso,
+        "n_falha": n_falha,
         "minimo_por_classe": MINIMO_POR_CLASSE,
-        "pode_treinar": min(conjunto["n_sucesso"], conjunto["n_falha"]) >= MINIMO_POR_CLASSE,
-        "pulados": conjunto["pulados"],
+        "pode_treinar": min(n_sucesso, n_falha) >= MINIMO_POR_CLASSE,
+        **extra,
     }
