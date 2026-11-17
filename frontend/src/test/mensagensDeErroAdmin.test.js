@@ -123,3 +123,31 @@ describe("o backend tem rota de saúde sem autenticação", () => {
     expect(bloco).not.toMatch(/require_admin|Depends/);
   });
 });
+
+// O /openapi.json FAZ PARTE DO CONTRATO desta sessão de trabalho: é por
+// ele que se confere qual commit o Render está rodando. Ele caiu em
+// produção (500) por causa de um default de modelo pydantic na rota de
+// teste, e nenhuma rota quebrou junto — ou seja, o sintoma não apareceu
+// em lugar nenhum até alguém ir olhar.
+describe("a rota de teste declara o corpo como body, não como query", () => {
+  const rotas = readFileSync(
+    resolve(process.cwd(), "..", "backend/admin_modelos.py"), "utf8");
+
+  // `payload: TestePayload = TestePayload()` fazia o FastAPI classificar
+  // o parâmetro como QUERY: o `forcar` nunca chegava, e a geração do
+  // OpenAPI estourava com PydanticUserError.
+  it("não usa instância de modelo como default", () => {
+    expect(rotas).not.toMatch(/:\s*TestePayload\s*=\s*TestePayload\(\)/);
+  });
+
+  it("usa Body explícito", () => {
+    expect(rotas).toMatch(/payload:\s*Optional\[TestePayload\]\s*=\s*Body\(default=None\)/);
+  });
+
+  // `from __future__ import annotations` transforma as anotações em
+  // string, e este FastAPI não resolve a ForwardRef do modelo — cai pra
+  // Query mesmo com Body. Foi a causa raiz.
+  it("não tem o future import de annotations", () => {
+    expect(rotas).not.toMatch(/from __future__ import annotations/);
+  });
+});

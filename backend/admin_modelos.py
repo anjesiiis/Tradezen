@@ -11,11 +11,9 @@ Nenhuma rota aqui DETECTA padrão. Elas contam templates marcados à mão,
 treinam, registram métricas e promovem um modelo. Achar bandeira no
 gráfico continua sendo trabalho de pessoa.
 """
-from __future__ import annotations
-
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from admin_auth import require_admin
@@ -143,7 +141,7 @@ class TestePayload(BaseModel):
 @router.post("/testar/{padrao}")
 @limiter.limit("10/minute")
 def testar(request: Request, padrao: str,
-           payload: TestePayload = TestePayload()) -> Dict[str, Any]:
+           payload: Optional[TestePayload] = Body(default=None)) -> Dict[str, Any]:
     """Roda o modelo sobre TODOS os templates marcados e devolve onde ele
     acerta e onde erra, template por template.
 
@@ -153,6 +151,13 @@ def testar(request: Request, padrao: str,
     broker e uma tela a mais pra manter.
     """
     _validar(padrao)
+    # CORPO OPCIONAL COM `None`, nunca `= TestePayload()`. Um modelo
+    # pydantic com instância como default faz o FastAPI classificar o
+    # parâmetro como QUERY em vez de body: o `forcar` do corpo nunca
+    # chegaria, e a geração do /openapi.json estoura com
+    # PydanticUserError "is not fully defined" — o que derrubou o
+    # /openapi.json e o /docs em produção, sem derrubar as rotas.
+    payload = payload or TestePayload()
     storage, _ = _ml()
     from ml.bandeira import predictor
 
