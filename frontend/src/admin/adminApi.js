@@ -45,6 +45,21 @@ export async function sincronizarTokenAdmin() {
 // um minuto, e um teto curto transformaria espera honesta em erro.
 const ESPERA_MAXIMA = 70000;
 
+/** O embrulho de um erro de rede. Exportado pra ser testável de verdade —
+ *  teste que confere o texto lendo o fonte quebra quando a frase é
+ *  partida em duas linhas, e aí mede a formatação em vez do comportamento. */
+export function erroDeRede(original) {
+  const rede = new Error(
+    "Não deu pra falar com o servidor. Ou ele está reiniciando (o Render dorme "
+    + "no plano free e leva até um minuto pra acordar), ou a sua conexão caiu, "
+    + "ou o endereço da API está errado nas variáveis de ambiente. "
+    + `Mensagem do navegador: ${original?.message || original}`,
+  );
+  rede.semResposta = true;
+  rede.causaOriginal = original;
+  return rede;
+}
+
 async function enviar(path, options, token) {
   const headers = { ...(options.headers || {}) };
   if (options.body) headers["Content-Type"] = "application/json";
@@ -54,16 +69,48 @@ async function enviar(path, options, token) {
   try {
     return await fetch(`${API}${path}`, { ...options, headers, signal: controle.signal });
   } catch (erro) {
-    if (erro?.name !== "AbortError") throw erro;
-    const calado = new Error(
-      "O servidor não respondeu. Ele pode estar reiniciando ou fora do ar — "
-      + "tente de novo em um minuto.",
-    );
-    calado.semResposta = true;   // não é tabela faltando, e não é lista vazia
-    throw calado;
+    if (erro?.name === "AbortError") {
+      const calado = new Error(
+        "O servidor não respondeu em 70 segundos. Ele pode estar reiniciando "
+        + "ou fora do ar — tente de novo em um minuto.",
+      );
+      calado.semResposta = true;   // não é tabela faltando, e não é lista vazia
+      throw calado;
+    }
+    // ERRO DE REDE CRU NÃO PODE CHEGAR À TELA. `fetch` que não completa
+    // lança TypeError, e a mensagem dele é do navegador: "Load failed" no
+    // Safari, "Failed to fetch" no Chrome. Isso apareceu na tela deste
+    // projeto e custou horas de investigação do lado errado, porque não
+    // diz nem quem falhou nem o que fazer. Aqui vira uma frase que diz as
+    // três causas possíveis, na ordem de probabilidade.
+    throw erroDeRede(erro);
   } finally {
     clearTimeout(relogio);
   }
+}
+
+// O QUE A TELA MOSTRA PARA CADA STATUS.
+//
+// Quando o backend manda `detail`, ele ganha — é lá que moram os recados
+// que dizem qual migration rodar, quantos fracassos faltam, qual tabela
+// não existe. Trocar isso por "Erro no servidor" apagaria a única
+// instrução útil da resposta.
+//
+// As exceções são 401, 403 e 404, onde o `detail` é jargão de API ("Token
+// de autenticação ausente", "Not Found") e a pessoa precisa saber o que
+// FAZER, não o que a especificação chama aquilo.
+const GENERICA = {
+  401: "Sessão expirada. Faça login novamente.",
+  403: "Você não tem permissão para acessar esta página.",
+  404: "Rota não encontrada no servidor. Isso costuma ser frontend novo "
+     + "falando com backend antigo — confira se o deploy do backend subiu.",
+};
+
+export function mensagemDoStatus(status, detail) {
+  if (status === 401 || status === 403 || status === 404) return GENERICA[status];
+  if (detail) return detail;
+  if (status >= 500) return `Erro no servidor (${status}).`;
+  return `Erro ${status}.`;
 }
 
 async function adminFetch(path, options = {}) {
@@ -87,9 +134,10 @@ async function adminFetch(path, options = {}) {
   try { data = await res.json(); } catch { /* corpo vazio */ }
 
   if (!res.ok) {
-    const erro = new Error(data?.detail || `Erro ${res.status}`);
+    const erro = new Error(mensagemDoStatus(res.status, data?.detail));
     erro.status = res.status;
     erro.data = data;
+    erro.detalheDoServidor = data?.detail || null;
     throw erro;
   }
   return data;

@@ -311,9 +311,18 @@ ATIVOS_DISPONIVEIS = ATIVOS
 # HEAD também: monitores de uptime (UptimeRobot, cron do GitHub) costumam
 # bater com HEAD, e só GET devolveria 405 — o monitor acharia que caiu.
 # Essa rota é o alvo do keep-alive: leve, sem yfinance nem Supabase.
+# /health é APELIDO de "/", na mesma função. Dois handlers devolvendo
+# "estou de pé" divergiriam no dia em que um deles passasse a checar algo
+# (banco, cache) e o outro não — e aí o monitor apontaria pro que mente.
+#
+# O apelido existe porque "/" não é onde se procura: todo monitor de
+# uptime, todo runbook e todo `curl` de depuração tentam /health primeiro,
+# e receber "Not Found" ali faz parecer que o servidor caiu. Foi o que
+# aconteceu numa investigação deste projeto.
 @app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
 def raiz():
-    return {"status": "online", "produto": "TradeZen API", "versao": "1.2.0"}
+    return {"status": "ok", "produto": "TradeZen API", "versao": "1.2.0"}
 
 
 @app.get("/mercado")
