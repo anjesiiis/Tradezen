@@ -59,9 +59,59 @@ export async function carregarDaConta(userId) {
   }
 }
 
-/** Grava a configuração de UM ativo. Devolve false quando não deu. */
+/**
+ * Por que a falha precisa ter MOTIVO.
+ *
+ * Isto devolvia `false` e engolia o erro num `catch` vazio. A tela então
+ * só podia dizer "Não salvou na conta" — frase que não diz a causa, não
+ * diz o que fazer, e não diz a coisa mais importante: que o trabalho
+ * está salvo no navegador e não se perdeu.
+ *
+ * E a causa, no caso real deste projeto, era uma frase só: a tabela
+ * `graficos_usuario` não existe no Supabase, porque a migration 020
+ * nunca foi rodada. O erro vinha com o código PGRST205 e o nome da
+ * tabela dentro, e o `catch` vazio jogava isso fora.
+ */
+export function motivoDaFalha(erro) {
+  const texto = String(erro?.message || erro || "");
+  const codigo = erro?.code || "";
+
+  // Tabela inexistente: migration não rodada. É acionável e específico.
+  if (codigo === "PGRST205" || /Could not find the table/i.test(texto)) {
+    return {
+      tipo: "tabela",
+      texto: "O lugar onde seus gráficos ficam guardados ainda não existe "
+        + "no banco. Falta rodar a migration 020_graficos_do_usuario.sql.",
+    };
+  }
+  if (codigo === "42501" || /row-level security|permission denied/i.test(texto)) {
+    return { tipo: "permissao", texto: "Você não tem permissão para gravar aqui." };
+  }
+  if (/jwt|token|expired|not authenticated/i.test(texto)) {
+    return { tipo: "sessao", texto: "Sua sessão expirou. Entre de novo para voltar a salvar na conta." };
+  }
+  // `fetch` que não completa: "Load failed" no Safari, "Failed to fetch"
+  // no Chrome. Nenhuma das duas serve de recado.
+  if (/load failed|failed to fetch|network/i.test(texto)) {
+    return { tipo: "rede", texto: "Sem conexão com o servidor. Salvaremos na conta quando a conexão voltar." };
+  }
+  if (/5\d\d/.test(String(erro?.status || "")) || /internal|unavailable/i.test(texto)) {
+    return { tipo: "servidor", texto: "O servidor está instável. Vamos tentar de novo sozinhos." };
+  }
+  return { tipo: "desconhecido", texto: texto || "Não deu pra gravar na conta." };
+}
+
+/**
+ * Grava a configuração de UM ativo.
+ *
+ * Devolve `{ ok: true }` ou `{ ok: false, motivo }`. Não devolve mais
+ * booleano: quem chama precisa do motivo pra decidir se vale tentar de
+ * novo (rede, servidor) ou se insistir é inútil (tabela não existe).
+ */
 export async function salvarNaConta(userId, ticker, config) {
-  if (!userId || !ticker) return false;
+  if (!userId || !ticker) {
+    return { ok: false, motivo: { tipo: "sem_conta", texto: "Sem conta conectada." } };
+  }
   try {
     const supabase = await cliente();
     // upsert pela chave (user_id, ticker): a mesma pessoa no mesmo ativo
@@ -70,10 +120,16 @@ export async function salvarNaConta(userId, ticker, config) {
       .from("graficos_usuario")
       .upsert({ user_id: userId, ticker, config }, { onConflict: "user_id,ticker" });
     if (error) throw error;
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (erro) {
+    return { ok: false, motivo: motivoDaFalha(erro), erro };
   }
+}
+
+/** Vale tentar de novo? Tabela que não existe e sessão vencida não se
+ *  resolvem esperando — insistir só gastaria pedido e tempo. */
+export function valeTentarDeNovo(motivo) {
+  return ["rede", "servidor", "desconhecido"].includes(motivo?.tipo);
 }
 
 /** Apaga o que estava salvo daquele ativo (usado ao limpar o gráfico). */

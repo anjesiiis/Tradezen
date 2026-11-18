@@ -15,11 +15,11 @@ import { SkeletonGraficoLinha, SkeletonSecao, SkeletonValor } from "../component
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import { useSessaoTelas } from "../hooks/useSessaoTelas.js";
 import IndicadorSalvamento from "../components/IndicadorSalvamento.jsx";
-import { anunciarStatus } from "../lib/statusSalvamento.js";
+import { anunciarStatus, registrarTentativa } from "../lib/statusSalvamento.js";
 import { API } from "../lib/api.js";
 import { CSS } from "../styles/appCss.js";
 import ModalAdicionarGrafico from "../components/ModalAdicionarGrafico.jsx";
-import { carregarDaConta, faltandoNaConta, gravarLocal, juntar, lerLocal, salvarNaConta } from "../lib/graficosSalvos.js";
+import { carregarDaConta, faltandoNaConta, gravarLocal, juntar, lerLocal, salvarNaConta, valeTentarDeNovo } from "../lib/graficosSalvos.js";
 
 // Seções carregadas sob demanda (code splitting): cada uma vira um chunk
 // próprio e só é baixada quando o usuário abre a tela. O gráfico de
@@ -151,6 +151,44 @@ function AppInner(){
   const ativoConfigRef = useRef(ativoConfig);
   useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
 
+  // TENTAR DE NOVO ANTES DE RECLAMAR.
+  //
+  // A gravação falha por motivos que passam sozinhos — Render acordando,
+  // wi-fi oscilando, 500 momentâneo — e também por motivos que não passam
+  // nunca: a tabela não existe, a sessão venceu. Insistir no segundo caso
+  // só gasta pedido e atrasa o aviso, então `valeTentarDeNovo` separa os
+  // dois e só os primeiros ganham as três tentativas (1s, 3s, 9s).
+  //
+  // Nada disso bloqueia a tela: o trabalho já está no navegador desde o
+  // primeiro milissegundo, e a pessoa segue desenhando enquanto isto
+  // acontece atrás.
+  const ESPERAS = [1000, 3000, 9000];
+  const tentativaPendente = useRef({});
+
+  const gravarComTentativas = async (ticker, config, tentativa = 0) => {
+    anunciarStatus("salvando");
+    const r = await salvarNaConta(user.id, ticker, config);
+    if(r?.ok){ anunciarStatus("salvo"); return; }
+
+    const motivo = r?.motivo;
+    if(valeTentarDeNovo(motivo) && tentativa < ESPERAS.length){
+      clearTimeout(tentativaPendente.current[ticker]);
+      tentativaPendente.current[ticker] = setTimeout(
+        ()=>gravarComTentativas(ticker, config, tentativa + 1), ESPERAS[tentativa]);
+      return;
+    }
+    ultimaFalha.current = { ticker, config };
+    anunciarStatus("erro", { motivo });
+  };
+
+  // O botão "Tentar agora" do selo. Registrado aqui porque é aqui que se
+  // sabe o que estava sendo gravado — o selo mora do outro lado da árvore.
+  const ultimaFalha = useRef(null);
+  useEffect(()=>registrarTentativa(()=>{
+    const alvo = ultimaFalha.current;
+    if(alvo) gravarComTentativas(alvo.ticker, alvo.config);
+  }), []);
+
   const salvarConfigAtivo = (ticker, config) => {
     // Abrir um ativo já dispara esta função: restaurar o que estava
     // salvo mexe no estado, e mexer no estado chama aqui. Sem comparar,
@@ -170,11 +208,8 @@ function AppInner(){
     // dizer "salvando" seria encenar uma espera que não existe.
     if(!user?.id){ anunciarStatus("salvo"); return; }
     clearTimeout(gravacaoPendente.current[ticker]);
-    gravacaoPendente.current[ticker] = setTimeout(()=>{
-      anunciarStatus("salvando");
-      salvarNaConta(user.id, ticker, config)
-        .then(deu=>anunciarStatus(deu ? "salvo" : "erro"));
-    }, 1200);
+    gravacaoPendente.current[ticker] = setTimeout(
+      ()=>gravarComTentativas(ticker, config), 1200);
   };
 
   // Multitelas: até 4 telas no total (1 principal + até 3 extras). A

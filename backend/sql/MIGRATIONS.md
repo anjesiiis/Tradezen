@@ -30,7 +30,7 @@ select
     when to_regclass('public.profiles') is null                   then '002/017 FALTA'
     else '002/017 ok' end                                         as perfis,
   case
-    when to_regclass('public.graficos_do_usuario') is null        then '020 FALTA'
+    when to_regclass('public.graficos_usuario') is null           then '020 FALTA'
     else '020 ok' end                                             as graficos,
   case
     when to_regclass('public.sessao_telas') is null               then '022 FALTA'

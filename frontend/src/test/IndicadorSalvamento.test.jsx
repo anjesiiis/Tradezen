@@ -1,7 +1,8 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import IndicadorSalvamento from '../components/IndicadorSalvamento.jsx';
 import {
-  ESPERA_SUMIR_MS, anunciarStatus, assinarStatus, statusAtual, zerarStatus,
+  ESPERA_SUMIR_MS, anunciarStatus, assinarStatus, registrarTentativa,
+  statusAtual, zerarStatus,
 } from '../lib/statusSalvamento.js';
 
 /**
@@ -20,10 +21,16 @@ describe('Quadro de avisos da gravação', () => {
   it('avisa quem está ouvindo, e já diz como está agora', () => {
     const ouviu = vi.fn();
     assinarStatus(ouviu);
-    expect(ouviu).toHaveBeenCalledWith('oculto');
+    // o motivo vai junto do estado: é o que o selo precisa pra dizer a causa
+    expect(ouviu).toHaveBeenCalledWith('oculto', null);
 
     anunciarStatus('salvando');
-    expect(ouviu).toHaveBeenCalledWith('salvando');
+    expect(ouviu).toHaveBeenCalledWith('salvando', null);
+
+    // e no erro o motivo viaja junto, que é o ponto de ele existir
+    const motivo = { tipo: 'rede', texto: 'Sem conexão.' };
+    anunciarStatus('erro', { motivo });
+    expect(ouviu).toHaveBeenCalledWith('erro', motivo);
   });
 
   it('deixar de ouvir para de receber', () => {
@@ -81,11 +88,61 @@ describe('Selo na tela', () => {
     ['editando', 'Editando…'],
     ['salvando', 'Salvando…'],
     ['salvo', 'Salvo'],
-    ['erro', 'Não salvou na conta'],
   ])('mostra o recado de %s', async (estado, texto) => {
     render(<IndicadorSalvamento/>);
     act(() => anunciarStatus(estado));
     expect(await screen.findByText(texto)).toBeInTheDocument();
+  });
+
+  // O ERRO É OUTRA COISA, e por isso saiu da lista acima. Antes ele dizia
+  // só "Não salvou na conta": nem a causa, nem o que fazer, nem o que
+  // mais importa pra quem vê um aviso vermelho — que o trabalho NÃO se
+  // perdeu. As três partes abaixo são o conserto disso.
+  describe('o aviso de erro', () => {
+    const MOTIVO = {
+      tipo: 'tabela',
+      texto: 'O lugar onde seus gráficos ficam guardados ainda não existe no banco.',
+    };
+
+    it('primeiro garante que o trabalho está salvo no navegador', async () => {
+      render(<IndicadorSalvamento/>);
+      act(() => anunciarStatus('erro', { motivo: MOTIVO }));
+      expect(await screen.findByText(/Salvo neste navegador/)).toBeInTheDocument();
+      expect(screen.getByText(/não perde nada neste dispositivo/)).toBeInTheDocument();
+    });
+
+    it('depois diz a causa real', async () => {
+      render(<IndicadorSalvamento/>);
+      act(() => anunciarStatus('erro', { motivo: MOTIVO }));
+      expect(await screen.findByText(new RegExp(MOTIVO.texto.slice(0, 30)))).toBeInTheDocument();
+    });
+
+    it('oferece tentar de novo quando há quem tente', async () => {
+      const tentar = vi.fn();
+      registrarTentativa(tentar);
+      render(<IndicadorSalvamento/>);
+      act(() => anunciarStatus('erro', { motivo: MOTIVO }));
+      fireEvent.click(await screen.findByText('Tentar agora'));
+      expect(tentar).toHaveBeenCalled();
+    });
+
+    it('sem quem tente, não mostra botão morto', async () => {
+      render(<IndicadorSalvamento/>);
+      act(() => anunciarStatus('erro', { motivo: MOTIVO }));
+      await screen.findByText(/Salvo neste navegador/);
+      expect(screen.queryByText('Tentar agora')).not.toBeInTheDocument();
+    });
+
+    // Voltar a salvar tem de apagar o motivo: mostrar a causa de um
+    // problema já resolvido seria assustar por nada.
+    it('o motivo não sobrevive ao próximo sucesso', async () => {
+      render(<IndicadorSalvamento/>);
+      act(() => anunciarStatus('erro', { motivo: MOTIVO }));
+      await screen.findByText(/Salvo neste navegador/);
+      act(() => anunciarStatus('salvo'));
+      expect(screen.queryByText(/Salvo neste navegador/)).not.toBeInTheDocument();
+      expect(await screen.findByText('Salvo')).toBeInTheDocument();
+    });
   });
 
   // Quem usa leitor de tela também precisa saber que salvou

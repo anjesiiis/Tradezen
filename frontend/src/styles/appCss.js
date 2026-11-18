@@ -529,6 +529,17 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   box-shadow:0 6px 20px rgba(0,0,0,.35);animation:indSalvoEntra .18s ease-out}
 .ind-salvo-salvo{color:var(--up);border-color:rgba(38,199,123,.35)}
 .ind-salvo-erro{color:var(--down);border-color:rgba(232,93,93,.4)}
+
+/* O AVISO DE ERRO e mais largo que os outros selos de proposito: ele nao
+   e um selo, e um recado de tres partes (o que esta garantido, o que
+   falhou, o que fazer). Caber numa pilula de uma linha foi o que fez a
+   versao anterior dizer so "Nao salvou na conta". */
+.ind-salvo-erro{align-items:flex-start;max-width:min(360px,calc(100vw - 32px));text-align:left;flex-wrap:wrap}
+.ind-salvo-erro-texto{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ind-salvo-erro-texto strong{color:var(--texto-primario);font-weight:600}
+.ind-salvo-erro-texto span{color:var(--texto-secundario);font-size:11px;line-height:1.45}
+.ind-salvo-tentar{margin-left:auto;background:none;border:1px solid rgba(232,93,93,.45);color:var(--down);border-radius:7px;padding:4px 10px;font:inherit;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ind-salvo-tentar:hover{background:rgba(232,93,93,.12)}
 .ind-salvo-salvando{color:var(--blue)}
 .ind-salvo-salvando .ind-salvo-icone{display:inline-block;animation:indSalvoGira 1s linear infinite}
 @keyframes indSalvoEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
