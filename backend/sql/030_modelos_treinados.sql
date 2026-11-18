@@ -50,8 +50,15 @@ create table if not exists modelos_treinados (
   ativo                boolean not null default false,
   treinado_em          timestamptz not null default now(),
 
+  -- OS QUATRO ALVOS (ver ALVOS em backend/ml/bandeira/trainer.py). Os dois
+  -- de qualidade nasceram depois desta migration e eu tinha esquecido de
+  -- os acrescentar aqui: salvar um modelo de qualidade falharia com erro
+  -- 23514, a trava recusando um valor que o codigo considera valido. Um
+  -- teste compara esta lista com storage.PADROES_VALIDOS justamente pra
+  -- as duas nao divergirem de novo.
   constraint modelos_treinados_padrao_ck
-    check (padrao in ('bandeira_alta', 'bandeira_baixa')),
+    check (padrao in ('bandeira_alta', 'bandeira_baixa',
+                      'bandeira_alta_qualidade', 'bandeira_baixa_qualidade')),
   -- Duas linhas com a mesma versão do mesmo padrão fariam "v3" significar
   -- dois modelos diferentes.
   constraint modelos_treinados_versao_uk unique (padrao, versao)

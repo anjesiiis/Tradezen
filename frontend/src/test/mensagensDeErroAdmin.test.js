@@ -151,3 +151,44 @@ describe("a rota de teste declara o corpo como body, não como query", () => {
     expect(rotas).not.toMatch(/from __future__ import annotations/);
   });
 });
+
+// AS TRÊS LISTAS DE PADRÃO têm de ser a mesma. Elas moram em lugares
+// diferentes de propósito (o SQL não importa Python, e a rota não pode
+// importar o trainer no topo), e foi exatamente por isso que divergiram:
+// a 030 nasceu com dois alvos, os de qualidade chegaram depois, e salvar
+// um modelo de qualidade falharia com 23514 — a trava do banco recusando
+// um valor que o código considera válido.
+describe("os alvos de modelo são os mesmos no banco, no código e na rota", () => {
+  const ler = (c) => readFileSync(resolve(process.cwd(), "..", c), "utf8");
+  const alvos = (texto, marcador, fim) => {
+    const bloco = texto.slice(texto.indexOf(marcador));
+    return [...bloco.slice(0, bloco.indexOf(fim))
+      .matchAll(/bandeira_[a-z_]+/g)].map((m) => m[0]).sort();
+  };
+
+  const noSql = alvos(ler("backend/sql/030_modelos_treinados.sql"),
+    "modelos_treinados_padrao_ck", "),");
+  const noStorage = alvos(ler("backend/ml/bandeira/storage.py"),
+    "PADROES_VALIDOS = (", ")");
+  const naRota = alvos(ler("backend/admin_modelos.py"), "PADROES = (", ")");
+
+  it("são quatro", () => {
+    expect(noSql).toHaveLength(4);
+  });
+
+  it("o CHECK da 030 bate com storage.PADROES_VALIDOS", () => {
+    expect(noSql).toEqual(noStorage);
+  });
+
+  it("e com a lista da rota", () => {
+    expect(naRota).toEqual(noStorage);
+  });
+
+  it("e com os ALVOS do trainer", () => {
+    const doTrainer = ler("backend/ml/bandeira/trainer.py");
+    const bloco = doTrainer.slice(doTrainer.indexOf("ALVOS = {"));
+    const chaves = [...bloco.matchAll(/^    "(bandeira_[a-z_]+)":/gm)]
+      .map((m) => m[1]).sort();
+    expect(chaves).toEqual(noStorage);
+  });
+});
