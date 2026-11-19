@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { CandleChart } from "../components/CandleChart.jsx";
@@ -996,9 +996,45 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 }
 
 // Dropdown de busca pra trocar de ativo
+/**
+ * A troca de ativo DENTRO da mesa.
+ *
+ * Ela recebia `mercado`, que é a resposta de /mercado — o resumo da tela
+ * inicial, com os ativos marcados `resumo: True` no catálogo. São 69 dos
+ * 283. Ou seja: a busca de dentro do gráfico enxergava menos de um quarto
+ * do que existe, e ativos com padrão já marcado simplesmente não
+ * apareciam. A busca do topo nunca teve esse problema porque usa /ativos.
+ *
+ * Agora o catálogo inteiro é buscado na primeira abertura e fica
+ * guardado. `mercado` continua entrando como rede de segurança (e é dele
+ * que vem a variação do dia, que /ativos não traz).
+ */
 function AssetSwitcher({mercado, onSelect}){
   const [q,setQ] = useState("");
-  const filtered = mercado.filter(a=>{
+  const [catalogo,setCatalogo] = useState([]);
+
+  useEffect(()=>{
+    let vivo = true;
+    fetch(`${API}/ativos`)
+      .then(r=>r.json())
+      .then(d=>{ if(vivo) setCatalogo(d.ativos||[]); })
+      .catch(()=>{ /* fica com `mercado`: menos ativos, mas a tela funciona */ });
+    return ()=>{ vivo = false; };
+  },[]);
+
+  // Os dois juntos, sem repetir: o catálogo manda (tem todos) e o resumo
+  // completa com preço e variação de quem está nele.
+  const lista = useMemo(()=>{
+    const porTicker = new Map();
+    for(const a of catalogo) porTicker.set(a.ticker, a);
+    for(const m of mercado){
+      const base = porTicker.get(m.ticker);
+      porTicker.set(m.ticker, base ? { ...base, ...m } : m);
+    }
+    return [...porTicker.values()];
+  },[catalogo, mercado]);
+
+  const filtered = lista.filter(a=>{
     if(!q) return true;
     const lower = q.toLowerCase();
     return a.simbolo?.toLowerCase().includes(lower) || a.nome?.toLowerCase().includes(lower) || a.ticker?.toLowerCase().includes(lower);
@@ -1021,9 +1057,14 @@ function AssetSwitcher({mercado, onSelect}){
               <span style={{fontWeight:600,color:"var(--text)"}}>{a.simbolo}</span>
               <span style={{fontSize:10,color:"var(--text2)"}}>{a.nome} · {a.mercado}</span>
             </span>
-            <span className={a.alta?"bup":"bdn"} style={{fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>
-              {a.alta?"▲":"▼"}{Math.abs(a.variacao_pct||0).toFixed(2)}%
-            </span>
+            {/* Variação só pra quem veio do resumo. Mostrar "▼0.00%" num
+                ativo sem cotação carregada seria afirmar que ele não se
+                mexeu hoje, o que é diferente de não termos o número. */}
+            {Number.isFinite(a.variacao_pct) && (
+              <span className={a.alta?"bup":"bdn"} style={{fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>
+                {a.alta?"▲":"▼"}{Math.abs(a.variacao_pct).toFixed(2)}%
+              </span>
+            )}
           </div>
         ))}
       </div>
