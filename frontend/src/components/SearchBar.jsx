@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { API } from "../lib/api.js";
 import { IconeAtivo } from "./IconeAtivo.jsx";
 import {
-  CATEGORIAS, COR_DA_CATEGORIA, categoriaDoAtivo, destaquesDaCategoria,
-  filtrarPorCategoria, iniciaisDoAtivo, ordenarPorRelevancia, rotuloDaCategoria,
+  CATEGORIAS, COR_DA_CATEGORIA, LIMITE_LISTA, categoriaDoAtivo, destaquesDaCategoria,
+  filtrarPorCategoria, iniciaisDoAtivo, relevantes, rotuloDaCategoria,
 } from "../lib/buscaAtivos.js";
 import {
   GRUPO_DA_CATEGORIA, buscarTopVolateis, precoComMoeda,
@@ -154,7 +154,7 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
 
   // O que a lista mostra: o resultado da busca, ou o ranking do dia
   // quando ninguém digitou nada ainda.
-  const lista = useMemo(() => {
+  const todosRelevantes = useMemo(() => {
     const base = catalogo.length ? catalogo : mercado;
     // Sem texto: o ranking da categoria, com os destaques como rede de
     // segurança (servidor fora do ar, categoria sem ranking, catálogo
@@ -171,8 +171,17 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
     // Digitar busca em TUDO, sem filtro de categoria. Antes a pílula
     // escolhida continuava valendo, e agora que a busca abre em "Ações
     // BR" isso significaria digitar AAPL e não achar nada.
-    return ordenarPorRelevancia([...porTicker.values()], q);
+    return relevantes([...porTicker.values()], q);
   }, [buscando, res, mercado, catalogo, categoria, rankingDaCategoria, q]);
+
+  // A LISTA MOSTRADA e QUANTOS FICARAM DE FORA.
+  //
+  // O corte era invisível: a função devolvia 20 e ninguém dizia que havia
+  // mais. "usd" casa com 48 ativos e "a" com 228, então o sintoma era a
+  // busca parecer não ter o ativo que existe. Agora cabem 60 e, quando
+  // sobra, a lista diz quantos e o que fazer.
+  const lista = useMemo(() => todosRelevantes.slice(0, LIMITE_LISTA), [todosRelevantes]);
+  const sobrando = Math.max(0, todosRelevantes.length - lista.length);
 
   // Agrupar por mercado só faz sentido em "Todos": dentro de uma
   // categoria todos os itens teriam o mesmo cabeçalho.
@@ -325,6 +334,18 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
                 </div>
               ))
             : lista.map(renderItem)}
+
+          {/* O CORTE DEIXA DE SER SILENCIOSO. Antes a lista parava em 20
+              sem dizer nada, e quem procurava um ativo que existe
+              concluía que o TradeZen não tinha. Agora diz quantos
+              sobraram e o que fazer com isso. */}
+          {sobrando > 0 && (
+            <div className="search-sobrando">
+              Mostrando {lista.length} de {todosRelevantes.length} ativos que
+              casam com <strong>{q.trim()}</strong>. Digite mais letras para
+              chegar no que você procura.
+            </div>
+          )}
         </div>
       )}
     </div>

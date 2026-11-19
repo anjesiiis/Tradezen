@@ -125,14 +125,31 @@ function pontuacao(ativo, termo) {
  * Empate vai pro nome mais curto: entre "Vale ON" e "Vale Indicadores
  * Ltda", quem procurou "vale" quase sempre quer o primeiro.
  */
-export function ordenarPorRelevancia(resultados = [], termo = "", limite = 20) {
-  if (!termo.trim()) return resultados.slice(0, limite);
+/** Quantos resultados a lista mostra de uma vez.
+ *
+ *  Era 20, e 20 é pouco: "usd" casa com 48 ativos do catálogo e "a" com
+ *  228. O corte acontecia em silêncio — sem aviso, sem contagem, sem jeito
+ *  de ver o resto —, e o sintoma era "a busca não mostra todos os ativos
+ *  que temos". Quem digita um termo largo precisa ver que há mais.
+ *
+ *  Não é ilimitado porque a lista não é virtualizada: 283 linhas no
+ *  dropdown pesam na rolagem do celular. 60 cabe com folga e cobre todos
+ *  os termos de 2+ letras do catálogo atual. */
+export const LIMITE_LISTA = 60;
+
+/** TODOS os relevantes, ordenados, sem corte. Quem chama decide quantos
+ *  mostrar — e, sabendo o total, consegue dizer que há mais. */
+export function relevantes(resultados = [], termo = "") {
+  if (!termo.trim()) return [...resultados];
   return resultados
     .map((a) => ({ a, p: pontuacao(a, termo) }))
     .filter((x) => x.p > 0)
     .sort((x, y) => y.p - x.p || (x.a.nome || "").length - (y.a.nome || "").length)
-    .map((x) => x.a)
-    .slice(0, limite);
+    .map((x) => x.a);
+}
+
+export function ordenarPorRelevancia(resultados = [], termo = "", limite = LIMITE_LISTA) {
+  return relevantes(resultados, termo).slice(0, limite);
 }
 
 /** Mantém só os ativos da categoria escolhida. */

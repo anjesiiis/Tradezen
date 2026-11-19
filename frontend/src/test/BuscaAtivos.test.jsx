@@ -1,9 +1,10 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SearchBar } from '../components/SearchBar.jsx';
 import {
   CATEGORIAS, DESTAQUES, categoriaDoAtivo, destaquesDaCategoria, filtrarPorCategoria,
-  ordenarPorRelevancia, sugestoesDoMercado,
+  LIMITE_LISTA, ordenarPorRelevancia, relevantes, sugestoesDoMercado,
 } from '../lib/buscaAtivos.js';
 
 const ativo = (ticker, nome, simbolo, mercado) => ({ ticker, nome, simbolo, mercado });
@@ -106,9 +107,29 @@ describe('Busca — relevância', () => {
     expect(ordenarPorRelevancia(CATALOGO, 'ibovespa')[0].simbolo).toBe('IBOV');
   });
 
-  it('corta em 20 resultados', () => {
-    const muitos = Array.from({ length: 50 }, (_, i) => ativo(`A${i}.SA`, `Ativo ${i}`, `A${i}`, 'B3'));
-    expect(ordenarPorRelevancia(muitos, 'ativo')).toHaveLength(20);
+  // O LIMITE ERA 20, e cortava em silêncio: "usd" casa com 48 ativos do
+  // catálogo e "a" com 228. Sem aviso e sem contagem, o sintoma era "a
+  // busca não mostra todos os ativos que temos".
+  it('mostra até LIMITE_LISTA resultados', () => {
+    const muitos = Array.from({ length: 200 }, (_, i) => ativo(`A${i}.SA`, `Ativo ${i}`, `A${i}`, 'B3'));
+    expect(ordenarPorRelevancia(muitos, 'ativo')).toHaveLength(LIMITE_LISTA);
+    expect(LIMITE_LISTA).toBeGreaterThanOrEqual(60);
+  });
+
+  // `relevantes` existe pra quem chama poder DIZER que há mais: sem o
+  // total, a tela não tem como avisar que cortou.
+  it('relevantes devolve tudo, sem corte', () => {
+    const muitos = Array.from({ length: 200 }, (_, i) => ativo(`A${i}.SA`, `Ativo ${i}`, `A${i}`, 'B3'));
+    expect(relevantes(muitos, 'ativo')).toHaveLength(200);
+  });
+
+  it('relevantes mantém a mesma ordem do que é mostrado', () => {
+    const dez = relevantes(CATALOGO, 'a').slice(0, 5).map((x) => x.ticker);
+    expect(ordenarPorRelevancia(CATALOGO, 'a').slice(0, 5).map((x) => x.ticker)).toEqual(dez);
+  });
+
+  it('sem termo, relevantes não descarta ninguém', () => {
+    expect(relevantes(CATALOGO, '')).toHaveLength(CATALOGO.length);
   });
 
   it('o que não casa fica de fora', () => {
@@ -253,5 +274,58 @@ describe('Busca — a tela', () => {
     await user.click(screen.getByLabelText('Limpar busca'));
 
     expect(input).toHaveValue('');
+  });
+});
+
+// O CORTE NÃO PODE SER SILENCIOSO.
+//
+// A lista parava em 20 sem dizer nada. "usd" casa com 48 ativos do
+// catálogo e "a" com 228, então quem procurava um ativo que EXISTE
+// concluía que o TradeZen não tinha — foi o relato. O aviso de rodapé é
+// o que transforma um limite técnico em informação.
+describe('Busca — o aviso de que há mais', () => {
+  const muitos = Array.from({ length: 120 }, (_, i) =>
+    ({ ticker: `A${i}.SA`, nome: `Ativo ${i}`, simbolo: `A${i}`, mercado: 'B3', moeda: 'BRL' }));
+
+  beforeEach(() => {
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/ativos/buscar')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ resultados: muitos }) });
+      }
+      if (String(url).includes('/ativos')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ativos: muitos }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+  });
+
+  it('diz quantos achou e quantos está mostrando', async () => {
+    const { container } = render(<SearchBar mercado={muitos} />);
+    fireEvent.focus(container.querySelector('input'));
+    fireEvent.change(container.querySelector('input'), { target: { value: 'ativo' } });
+
+    const aviso = await waitFor(() => {
+      const el = container.querySelector('.search-sobrando');
+      expect(el).not.toBeNull();
+      return el;
+    }, { timeout: 3000 });
+
+    expect(aviso.textContent).toMatch(new RegExp(`Mostrando ${LIMITE_LISTA} de 120`));
+    expect(aviso.textContent).toMatch(/Digite mais letras/);
+  });
+
+  it('não avisa quando tudo cabe', async () => {
+    const poucos = muitos.slice(0, 3);
+    global.fetch = vi.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ resultados: poucos, ativos: poucos }) }));
+    // `mercado` com os três também: ele é a rede de segurança quando o
+    // catálogo não chegou, e passar os 120 aqui faria a lista ser longa
+    // de qualquer jeito.
+    const { container } = render(<SearchBar mercado={poucos} />);
+    fireEvent.focus(container.querySelector('input'));
+    fireEvent.change(container.querySelector('input'), { target: { value: 'ativo' } });
+    await waitFor(() => expect(container.querySelectorAll('.search-item').length).toBeGreaterThan(0),
+      { timeout: 3000 });
+    expect(container.querySelector('.search-sobrando')).toBeNull();
   });
 });

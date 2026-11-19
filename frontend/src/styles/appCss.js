@@ -132,6 +132,10 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .selo-indices{background:rgba(139,148,158,.15);color:#8B949E}
 .search-mercado{font-size:10px;color:var(--text3);font-weight:700;font-family:var(--font-m)}
 .search-vazio{padding:22px 16px;text-align:center;font-size:12.5px;color:var(--text2)}
+/* Aviso de que a lista foi cortada. Cinza e pequeno: e informacao de
+   rodape, nao erro — o resultado certo pode estar logo acima. */
+.search-sobrando{padding:9px 14px;font-size:11px;line-height:1.5;color:var(--texto-secundario);border-top:1px solid var(--borda);background:rgba(255,255,255,.02)}
+.search-sobrando strong{color:var(--texto-primario)}
 .search-item{gap:11px}
 @media (max-width:640px){
   .search-dd{max-height:70vh}
