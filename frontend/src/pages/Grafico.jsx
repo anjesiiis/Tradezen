@@ -20,6 +20,10 @@ import { fmtP } from "../lib/mercado.js";
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
+// Quais ids que passam por `toggleTool` são FILTRO DE PADRÃO e não
+// indicador técnico. TOOLS é exatamente essa lista.
+const IDS_DE_PADRAO = new Set(TOOLS.map(t=>t.id));
+
 function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial, aoTrocarTempo }){
   const navigate = useNavigate();
   // `tempoInicial` vem do modal do "+": a 2ª mesa do mesmo ativo abre num
@@ -46,6 +50,13 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const { aparencia, definirAparencia } = usePreferenciasGrafico();
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
+  // Os ids de TOOLS SÃO os filtros de padrão (ver lib/grafico/config.js);
+  // INDICADORES é outra lista. É o que permite tratar os dois diferente.
+  // Em módulo, não dentro do componente: é constante e não precisa ser
+  // recalculada por mesa aberta.
+  const [padroesOcultos,setPadroesOcultos] = useState(new Set());
+  const padroesOcultosRef = useRef(padroesOcultos);
+  useEffect(()=>{ padroesOcultosRef.current = padroesOcultos; },[padroesOcultos]);
   const [selPat,setSelPat]    = useState(null);
   const [lampPos,setLampPos]  = useState(null);   // {x,y} em pixels na tela
   const [tooltipAberto,setTooltipAberto] = useState(false);
@@ -287,6 +298,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     const configSalva = ativoConfigRef.current?.[ticker];
     setTools(new Set(configSalva?.tools||[]));
     setDesenhos(configSalva?.desenhos||[]);
+    setPadroesOcultos(new Set(configSalva?.padroesOcultos||[]));
     const guardadas = configSalva?.faixas && typeof configSalva.faixas === "object"
       ? configSalva.faixas : {};
     faixasRef.current = guardadas;
@@ -299,12 +311,50 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     setTickerCarregado(ticker);
   },[ticker, user, tf.intervalo]);
 
+  // PADRÃO DETECTADO NASCE VISÍVEL.
+  //
+  // Era o contrário, e esse era o bug: o desenho só saía se o tipo
+  // estivesse em `tools`, e `tools` vem da configuração salva POR ATIVO.
+  // A mesa principal mostrava as bandeiras porque aquele ticker já tinha
+  // o filtro ligado de alguma sessão antiga; qualquer mesa nova, com
+  // ativo sem configuração, abria com `tools` vazio e não desenhava nada.
+  // Quem abre um gráfico quer ver o que foi detectado nele — esconder por
+  // padrão é esconder o produto.
+  //
+  // Ligar só o que o ativo TEM: um tipo sem nenhum padrão aqui não entra
+  // em `tools`, pra a barra de ferramentas não acender filtros vazios.
+  useEffect(()=>{
+    if(!padroes.length) return;
+    setTools(prev=>{
+      const n = new Set(prev);
+      let mudou = false;
+      for(const p of padroes){
+        const tipo = normalizarTipo(p.tipo);
+        if(!tipo || n.has(tipo) || padroesOcultosRef.current.has(tipo)) continue;
+        n.add(tipo);
+        mudou = true;
+      }
+      return mudou ? n : prev;
+    });
+  },[padroes]);
+
   const toggleTool=id=>{
     // Só entra no histórico de desfazer/refazer quando é de fato "adicionar
     // um indicador/linha" (indicador técnico ou Fibonacci) — os outros ids
     // que passam por aqui são filtros de visibilidade dos padrões já
     // detectados na legenda, não conteúdo criado pelo usuário.
     if(INDICADORES.some(i=>i.id===id)) registrarHistorico();
+    // Desligar um padrão é ESCOLHA, e tem de sobreviver ao efeito acima,
+    // que religaria o tipo no próximo carregamento. Por isso a lista de
+    // ocultos: ela guarda o "não quero ver este", e é só ela que precisa
+    // ir pro banco — a visibilidade normal é o padrão e não ocupa espaço.
+    if(IDS_DE_PADRAO.has(id)){
+      setPadroesOcultos(prev=>{
+        const n = new Set(prev);
+        n.has(id) ? n.delete(id) : n.add(id);
+        return n;
+      });
+    }
     setTools(prev=>{
       const n=new Set(prev);
       n.has(id) ? n.delete(id) : n.add(id);
@@ -338,7 +388,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     const limpos = desenhos.filter(d=>d.tipo!=="regua");
     // Tela vazia de ativo que nunca teve nada salvo não vira registro:
     // senão cada ativo só de passagem deixaria uma linha vazia no banco.
-    if(!tools.size && !limpos.length && !ativoConfigRef.current?.[ticker]) return;
+    // A checagem está logo abaixo, já com a lista filtrada.
     // `faixas` vai em toda gravação: sem isto, mexer num desenho apagaria
     // a posição guardada, porque o objeto salvo substitui o anterior.
     //
@@ -348,11 +398,25 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // fazia a comparação diferir, e abrir um ativo com desenhos salvos
     // anunciava "Editando…" e gravava de novo sem ninguém ter tocado em
     // nada.
-    const campos = { tools:[...tools], desenhos: limpos };
+    // SÓ OS INDICADORES VÃO EM `tools`. Os filtros de padrão não: agora
+    // eles nascem ligados conforme o que foi detectado no ativo, então
+    // gravá-los criaria registro pra todo ativo que tem padrão — só de ser
+    // aberto. A escolha que precisa ser guardada é a contrária, de
+    // ESCONDER, e ela vai em `padroesOcultos`.
+    const indicadores = [...tools].filter(id=>!IDS_DE_PADRAO.has(id));
+    const ocultos = [...padroesOcultos];
+    if(!indicadores.length && !limpos.length && !ocultos.length
+       && !ativoConfigRef.current?.[ticker]) return;
+
+    const campos = { tools: indicadores, desenhos: limpos };
+    if(ocultos.length) campos.padroesOcultos = ocultos;
     const faixas = faixasRef.current;
     if(faixas && Object.keys(faixas).length) campos.faixas = faixas;
     salvarConfigAtivo?.(ticker, campos);
-  },[tools, desenhos, user, ticker, tickerCarregado]);
+    // `padroesOcultos` nas dependências: esconder um padrão é escolha e
+    // tem de ser gravada na hora. Sem ele, a escolha só subiria junto com
+    // a próxima mudança de desenho — ou nunca.
+  },[tools, desenhos, padroesOcultos, user, ticker, tickerCarregado]);
 
   // Busca a página anterior e a coloca na frente do array. O gráfico
   // recoloca a faixa visível no lugar (ver anteriorRef no CandleChart)
