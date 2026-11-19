@@ -79,6 +79,46 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [tickerCarregado,setTickerCarregado] = useState(null);
   const ativoConfigRef = useRef(ativoConfig);
   useEffect(()=>{ ativoConfigRef.current = ativoConfig; },[ativoConfig]);
+
+  // ── ONDE A PESSOA PAROU, POR TIMEFRAME ─────────────────────
+  //
+  // Uma faixa por intervalo, e não uma só: posição no diário não quer
+  // dizer nada no gráfico de 1 minuto. São dois números por intervalo
+  // (dois timestamps), então o custo é algumas dezenas de bytes por
+  // ativo — nada perto dos desenhos que já vão no mesmo registro.
+  //
+  // `faixaInicial` é state porque o CandleChart precisa dela no render em
+  // que o ativo troca; `faixasRef` é ref porque a gravação lê o conjunto
+  // inteiro sem querer disparar re-render a cada arrastada.
+  const [faixaInicial, setFaixaInicial] = useState(null);
+  const faixasRef = useRef({});
+
+  // TETO DE FAIXAS POR ATIVO. Cada uma é só dois números, mas sem teto o
+  // registro do ativo cresceria pra sempre com intervalos que a pessoa
+  // visitou uma vez. 8 cobre os seis intervalos que a tela oferece com
+  // folga, e as mais antigas saem primeiro.
+  const MAX_FAIXAS = 8;
+
+  const guardarFaixa = useCallback((faixa)=>{
+    if(!ticker || !faixa) return;
+    const atuais = faixasRef.current || {};
+    const anterior = atuais[tf.intervalo];
+    // Movimento de menos de um candle não é movimento: sem esta checagem,
+    // o arredondamento do eixo geraria gravação a cada repintura.
+    if(anterior && Math.abs(anterior.de - faixa.de) < 1 && Math.abs(anterior.ate - faixa.ate) < 1) return;
+
+    const juntas = { ...atuais, [tf.intervalo]: faixa };
+    const chaves = Object.keys(juntas);
+    if(chaves.length > MAX_FAIXAS){
+      for(const velha of chaves.slice(0, chaves.length - MAX_FAIXAS)) delete juntas[velha];
+    }
+    faixasRef.current = juntas;
+    // Grava junto do resto do registro do ativo — é o mesmo caminho dos
+    // desenhos, que já guarda no navegador na hora e manda pra conta
+    // depois (ver salvarConfigAtivo no Dashboard).
+    const configAtual = ativoConfigRef.current?.[ticker] || {};
+    salvarConfigAtivo?.(ticker, { ...configAtual, faixas: juntas });
+  },[ticker, tf.intervalo, salvarConfigAtivo]);
   useEffect(()=>{ candlesRef.current = candles; },[candles]);
 
   // Desfazer/Refazer (Ctrl+Z) — cobre indicadores (tools) e linhas (desenhos)
@@ -247,6 +287,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     const configSalva = ativoConfigRef.current?.[ticker];
     setTools(new Set(configSalva?.tools||[]));
     setDesenhos(configSalva?.desenhos||[]);
+    const guardadas = configSalva?.faixas && typeof configSalva.faixas === "object"
+      ? configSalva.faixas : {};
+    faixasRef.current = guardadas;
+    setFaixaInicial(guardadas[tf.intervalo] || null);
     // Marca de que o estado desta tela já é o DESTE ativo. É state, e não
     // ref, de propósito: o React junta as três trocas num render só, então
     // quando esta marca chega `desenhos` já é o do ativo certo. Com ref, a
@@ -295,7 +339,19 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // Tela vazia de ativo que nunca teve nada salvo não vira registro:
     // senão cada ativo só de passagem deixaria uma linha vazia no banco.
     if(!tools.size && !limpos.length && !ativoConfigRef.current?.[ticker]) return;
-    salvarConfigAtivo?.(ticker, { tools:[...tools], desenhos: limpos });
+    // `faixas` vai em toda gravação: sem isto, mexer num desenho apagaria
+    // a posição guardada, porque o objeto salvo substitui o anterior.
+    //
+    // SÓ QUANDO HÁ ALGUMA, e isso não é detalhe: `salvarConfigAtivo`
+    // compara o objeto novo com o guardado pra não gravar à toa (ver
+    // Dashboard). Mandar `faixas: {}` num registro que nunca teve a chave
+    // fazia a comparação diferir, e abrir um ativo com desenhos salvos
+    // anunciava "Editando…" e gravava de novo sem ninguém ter tocado em
+    // nada.
+    const campos = { tools:[...tools], desenhos: limpos };
+    const faixas = faixasRef.current;
+    if(faixas && Object.keys(faixas).length) campos.faixas = faixas;
+    salvarConfigAtivo?.(ticker, campos);
   },[tools, desenhos, user, ticker, tickerCarregado]);
 
   // Busca a página anterior e a coloca na frente do array. O gráfico
@@ -566,6 +622,8 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               aoChegarNoComeco={carregarMaisCandles}
               estiloDe={estiloDe}
               aparencia={aparencia}
+              faixaSalva={faixaInicial}
+              aoMudarFaixa={guardarFaixa}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip

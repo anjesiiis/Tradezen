@@ -9,7 +9,12 @@ import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia}){
+// Atraso antes de gravar a faixa visível. A faixa muda a cada pixel de
+// rolagem: sem atraso, uma arrastada de dois segundos geraria centenas de
+// gravações. Depois do dedo parar, e antes de qualquer F5 humano.
+const ESPERA_FAIXA = 900;
+
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia, faixaSalva=null, aoMudarFaixa}){
   const isMobile = useIsMobile();
   // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
   // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
@@ -58,6 +63,26 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // o que havia antes da última troca de candles — serve pra saber se o
   // array CRESCEU PELO COMEÇO (lazy loading) e segurar a tela no lugar
   const anteriorRef = useRef({primeiro:null, total:0});
+
+  // ── ONDE A PESSOA ESTAVA OLHANDO ───────────────────────────
+  //
+  // A faixa é guardada em TIMESTAMPS, não em índices de vela. Índice
+  // depende de quantas velas o array tem, e o array muda: chega vela
+  // nova no fechamento, chega histórico antigo na rolagem, troca o
+  // timeframe. "Índice 120" amanhã aponta pra outro dia; "12 de março"
+  // aponta pro mesmo dia sempre.
+  //
+  // `aoMudarFaixa` é chamado com atraso (ver ESPERA_FAIXA): a faixa muda
+  // a cada pixel de rolagem, e gravar em cada quadro escreveria centenas
+  // de vezes por arrastada.
+  const faixaSalvaRef = useRef(faixaSalva);
+  useEffect(()=>{ faixaSalvaRef.current = faixaSalva; },[faixaSalva]);
+  const aoMudarFaixaRef = useRef(aoMudarFaixa);
+  useEffect(()=>{ aoMudarFaixaRef.current = aoMudarFaixa; },[aoMudarFaixa]);
+  // Enquanto true, a faixa que chegar é a que ACABAMOS de repor — não é
+  // movimento de quem está olhando, e gravá-la de volta seria só ruído.
+  const repondoFaixaRef = useRef(false);
+  const relogioFaixaRef = useRef(null);
   // A escala de preço nasce automática (enquadra os candles sozinha) e é
   // SOLTA no primeiro arrasto dentro do gráfico. Enquanto está automática
   // ela reenquadra a cada quadro, e o arrastar pra cima/baixo não sai do
@@ -276,6 +301,25 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       // buscar é o pai (ele é dono do array de candles). 50 candles de
       // antecedência pra o próximo lote chegar antes da borda aparecer.
       if(faixa && faixa.from < 50) aoChegarNoCoRef.current?.();
+
+      // Avisa o pai ONDE a pessoa está olhando, com atraso. A faixa muda
+      // a cada pixel de arrastada; sem o atraso seriam centenas de
+      // gravações por gesto. 900ms é depois do dedo parar e antes de
+      // qualquer F5 humanamente possível.
+      if(repondoFaixaRef.current) return;
+      clearTimeout(relogioFaixaRef.current);
+      relogioFaixaRef.current = setTimeout(()=>{
+        const avisar = aoMudarFaixaRef.current;
+        if(!avisar || !chartRef.current) return;
+        let visivel = null;
+        try { visivel = chartRef.current.timeScale().getVisibleRange(); }
+        catch { return; }   // gráfico sem dado: não há faixa
+        // `getVisibleRange` devolve o TEMPO das velas das pontas, que é
+        // justamente o que sobrevive à troca de dado.
+        const de = Number(visivel?.from), ate = Number(visivel?.to);
+        if(!Number.isFinite(de) || !Number.isFinite(ate) || ate <= de) return;
+        avisar({ de, ate });
+      }, ESPERA_FAIXA);
     });
 
     const ro = new ResizeObserver(()=>{
@@ -450,6 +494,27 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       try { candleRef.current.priceScale().applyOptions({ autoScale: true }); } catch { /* ignora */ }
       escalaSoltaRef.current = false;
       setEscalaSolta(false);
+
+      // CARGA NOVA É A ÚNICA HORA DE REPOR a faixa guardada. Repor a cada
+      // chegada de dado desfaria a rolagem de quem está navegando o
+      // histórico — e o histórico chega justamente enquanto a pessoa rola.
+      const guardada = faixaSalvaRef.current;
+      if(guardada && Number.isFinite(guardada.de) && Number.isFinite(guardada.ate)){
+        repondoFaixaRef.current = true;
+        try {
+          chartRef.current?.timeScale().setVisibleRange({ from: guardada.de, to: guardada.ate });
+        } catch {
+          // Faixa fora do dado atual (ativo com menos histórico, troca de
+          // timeframe): deixa o gráfico abrir como abriria sem nada
+          // guardado. Melhor o começo que uma tela vazia.
+        }
+        // Dois quadros: o setVisibleRange dispara o callback da faixa, e
+        // só depois dele a trava pode sair — senão a faixa reposta seria
+        // gravada de volta como se a pessoa tivesse mexido.
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          repondoFaixaRef.current = false;
+        }));
+      }
     }
     anteriorRef.current = {primeiro: candles[0].timestamp, total: candles.length};
 
