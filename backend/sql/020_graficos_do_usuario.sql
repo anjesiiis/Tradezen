@@ -56,3 +56,17 @@ end $$;
 drop trigger if exists graficos_usuario_tocar on graficos_usuario;
 create trigger graficos_usuario_tocar before update on graficos_usuario
   for each row execute function tocar_grafico_usuario();
+
+-- O PostgREST guarda cache do schema: sem isto ele pode continuar
+-- respondendo "tabela nao encontrada" por alguns minutos depois de ela
+-- existir, e o sintoma fica idêntico a migration não rodada.
+notify pgrst, 'reload schema';
+
+-- ── Confirmação (só leitura) ────────────────────────────────
+-- ATENÇÃO AO NOME: o arquivo chama-se 020_graficos_do_usuario.sql, mas a
+-- TABELA é `graficos_usuario`, sem o "do". É o nome que o frontend
+-- consulta; criar uma `graficos_do_usuario` não resolveria nada.
+select case
+  when to_regclass('public.graficos_usuario') is null then 'FALTA: a tabela nao existe'
+  else 'ok: graficos_usuario existe'
+end as situacao;

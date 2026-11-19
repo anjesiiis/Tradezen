@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { motivoDaFalha, valeTentarDeNovo } from "../lib/graficosSalvos.js";
 
 vi.mock("../lib/supabaseClient.js", () => ({ supabase: null }));
@@ -21,6 +23,11 @@ describe("o motivo da falha de gravação", () => {
     });
     expect(m.tipo).toBe("tabela");
     expect(m.texto).toMatch(/020_graficos_do_usuario\.sql/);
+    // O NOME DA TABELA junto, e não só o do arquivo: eles são diferentes
+    // (arquivo com "do", tabela sem), e citar só o arquivo já levou a
+    // criarem `graficos_do_usuario` — tabela que o app não lê, e o aviso
+    // continuaria aparecendo.
+    expect(m.texto).toMatch(/graficos_usuario/);
   });
 
   it("reconhece a tabela faltando mesmo sem o código", () => {
@@ -71,5 +78,43 @@ describe("quando vale tentar de novo", () => {
   it("motivo ausente não trava a lógica", () => {
     expect(valeTentarDeNovo(null)).toBe(false);
     expect(valeTentarDeNovo(undefined)).toBe(false);
+  });
+});
+
+// O NOME DA TABELA É O MESMO EM TODO LUGAR.
+//
+// O arquivo chama-se 020_graficos_do_usuario.sql e a tabela é
+// `graficos_usuario`, sem o "do". Essa diferença já custou caro: a
+// conferência do MIGRATIONS.md procurava a tabela pelo nome do arquivo e
+// diria "020 FALTA" pra sempre, e a mensagem da tela citava só o arquivo.
+describe("a migration, o código e o aviso falam da MESMA tabela", () => {
+  const ler = (c) => readFileSync(resolve(process.cwd(), "..", c), "utf8");
+
+  it("a 020 cria graficos_usuario", () => {
+    expect(ler("backend/sql/020_graficos_do_usuario.sql"))
+      .toMatch(/create table if not exists graficos_usuario/);
+  });
+
+  it("o código consulta graficos_usuario", () => {
+    const codigo = ler("frontend/src/lib/graficosSalvos.js");
+    expect([...codigo.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]))
+      .toEqual(["graficos_usuario", "graficos_usuario", "graficos_usuario"]);
+  });
+
+  it("ninguém cria a tabela com o nome do arquivo", () => {
+    expect(ler("backend/sql/020_graficos_do_usuario.sql"))
+      .not.toMatch(/create table[^;]*graficos_do_usuario/);
+  });
+
+  it("a conferência do MIGRATIONS.md procura a tabela certa", () => {
+    expect(ler("backend/sql/MIGRATIONS.md"))
+      .toMatch(/to_regclass\('public\.graficos_usuario'\)/);
+  });
+
+  // Sem o reload, o PostgREST pode responder "tabela não encontrada" por
+  // minutos depois de ela existir — sintoma idêntico a não ter rodado.
+  it("a 020 recarrega o cache de schema", () => {
+    expect(ler("backend/sql/020_graficos_do_usuario.sql"))
+      .toMatch(/notify pgrst, 'reload schema'/);
   });
 });

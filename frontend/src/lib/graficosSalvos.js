@@ -80,8 +80,14 @@ export function motivoDaFalha(erro) {
   if (codigo === "PGRST205" || /Could not find the table/i.test(texto)) {
     return {
       tipo: "tabela",
+      // O NOME DA TABELA VAI JUNTO, e não só o do arquivo: eles são
+      // diferentes (arquivo 020_graficos_do_usuario.sql, tabela
+      // `graficos_usuario`, sem o "do"), e citar só o arquivo já levou a
+      // criarem uma tabela com o nome errado — que o app não lê, e o
+      // aviso continuaria aparecendo.
       texto: "O lugar onde seus gráficos ficam guardados ainda não existe "
-        + "no banco. Falta rodar a migration 020_graficos_do_usuario.sql.",
+        + "no banco: falta a tabela `graficos_usuario`. Rode "
+        + "backend/sql/020_graficos_do_usuario.sql no SQL Editor do Supabase.",
     };
   }
   if (codigo === "42501" || /row-level security|permission denied/i.test(texto)) {
