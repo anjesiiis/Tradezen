@@ -125,9 +125,9 @@ describe('Popup do Premium — promete o que a página de vendas vende', () => {
   });
 
   it('o preço é o mesmo da página de vendas', () => {
-    expect(screen.getByText('R$ 49')).toBeInTheDocument();
-    expect(vendas).toMatch(/valor: "49"/);
-    expect(vendas).toMatch(/periodo: ",90\/mês"/);
+    expect(screen.getByText('R$ 67')).toBeInTheDocument();
+    expect(vendas).toMatch(/valor: "67"/);
+    expect(vendas).toMatch(/periodo: ",00\/mês"/);
   });
 
   // Não inventar recurso: "Score de Confluência" não é vendido em lugar

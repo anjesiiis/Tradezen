@@ -62,7 +62,7 @@ const CONTEUDO = {
     ],
     // Mesmo valor e mesmo período da página de vendas. Se mudar lá, muda
     // aqui — dois preços diferentes no mesmo produto é o pior dos mundos.
-    preco: { valor: "R$ 49", centavos: ",90", periodo: "/mês" },
+    preco: { valor: "R$ 67", centavos: ",00", periodo: "/mês" },
     principal: { texto: "Ver o Premium", para: "/pagina-de-vendas#precos" },
     secundario: null,
   },

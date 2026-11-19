@@ -16,7 +16,7 @@ describe('Página de vendas', () => {
     expect(screen.getByText('A vantagem operacional que faltava no seu arsenal.')).toBeInTheDocument();
     expect(screen.getByText('Três passos simples.')).toBeInTheDocument();
     expect(screen.getByText('Escolha seu plano.')).toBeInTheDocument();
-    expect(screen.getByText('49')).toBeInTheDocument();
+    expect(screen.getByText('67')).toBeInTheDocument();
   });
 
   it('não traz o header nem a navegação do app', async () => {
@@ -86,7 +86,7 @@ describe('Página de vendas — os dois planos', () => {
     expect(cards[0]).toHaveClass('lp-preco-gratis');
     expect(cards[1]).toHaveClass('lp-preco-premium');
     expect(within(cards[0]).getByText('0')).toBeInTheDocument();
-    expect(within(cards[1]).getByText('49')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('67')).toBeInTheDocument();
   });
 
   it('o destaque é do premium: selo, borda azul e botão principal', async () => {

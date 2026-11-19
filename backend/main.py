@@ -51,7 +51,7 @@ from logs import erro as log_erro, ip_do_pedido
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from ativos import ATIVOS
+from ativos import ATIVOS, por_ticker
 from data.fetcher import _eh_cripto, buscar_candles, buscar_candles_em_lote, buscar_pagina_cripto, buscar_resumo_mercado, buscar_ativo_info, limpar_cache_fetcher
 from patterns.classicos import detectar_padroes_classicos
 from patterns.consolidacao import detectar_consolidacoes
@@ -387,6 +387,25 @@ def dados_ativo(
     try:
         candles = buscar_candles(ticker, periodo, intervalo)
         if not candles:
+            # 404 SÓ PARA TICKER QUE NÃO EXISTE DE VERDADE.
+            #
+            # Antes todo resultado vazio virava 404, e isso era mentira na
+            # maioria das vezes: o Yahoo, estrangulado por pedidos
+            # simultâneos, devolve quadro vazio em vez de erro. Com oito
+            # gráficos abertos, três de oito davam "Ativo não encontrado"
+            # para PETR4 e ITUB4 — medido em produção.
+            #
+            # E a mentira tinha consequência: 404 é permanente, então o
+            # frontend não repetia. Virava slot vazio definitivo.
+            #
+            # Se o ticker está no nosso catálogo, "vazio" é falha de
+            # momento: 503, que o frontend repete com recuo.
+            if por_ticker(ticker):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(f"A fonte de dados não respondeu para '{ticker}' agora. "
+                            "É momentâneo — tente de novo em instantes."),
+                )
             raise HTTPException(status_code=404, detail=f"Ativo '{ticker}' não encontrado.")
 
         info = buscar_ativo_info(ticker)

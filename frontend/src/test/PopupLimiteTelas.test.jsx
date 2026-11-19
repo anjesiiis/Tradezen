@@ -34,7 +34,7 @@ describe('Popup do limite de telas', () => {
     // mostrar o produto.
     it('não mostra preço nenhum', () => {
       montar('cadastrado');
-      expect(document.body.textContent).not.toMatch(/R\$|49/);
+      expect(document.body.textContent).not.toMatch(/R\$|67/);
       expect(screen.queryByText('PREMIUM')).not.toBeInTheDocument();
     });
 
@@ -61,10 +61,10 @@ describe('Popup do limite de telas', () => {
 
     // O preço e o número de telas são os MESMOS da página de vendas. Dois
     // preços pro mesmo produto é o pior dos mundos.
-    it('mostra o preço da página de vendas: R$ 49,90/mês', () => {
+    it('mostra o preço da página de vendas: R$ 67,00/mês', () => {
       montar('upgrade');
-      expect(screen.getByText('R$ 49')).toBeInTheDocument();
-      expect(document.body.textContent).toMatch(/,90/);
+      expect(screen.getByText('R$ 67')).toBeInTheDocument();
+      expect(document.body.textContent).toMatch(/,00/);
       expect(document.body.textContent).toMatch(/\/mês/);
     });
 

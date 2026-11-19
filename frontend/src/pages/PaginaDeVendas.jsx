@@ -69,8 +69,8 @@ const PLANOS = [
     id: "premium",
     selo: "RECOMENDADO",
     nome: "TradeZen Premium",
-    valor: "49",
-    periodo: ",90/mês",
+    valor: "67",
+    periodo: ",00/mês",
     compara: "Equivale a menos de R$ 1,70 por dia",
     itens: [
       "Tudo do plano grátis",

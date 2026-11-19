@@ -14,6 +14,20 @@ import pandas as pd
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+
+# QUANTAS IDAS AO YAHOO AO MESMO TEMPO.
+#
+# Oito gráficos abertos viram oito pedidos simultâneos, e o Yahoo responde
+# a isso estrangulando: devolve quadro vazio em vez de erro. O backend
+# lia "vazio" como "ativo não existe" e respondia 404 — três de oito
+# davam 404 para tickers óbvios como PETR4 e ITUB4, medido em produção.
+#
+# Três de cada vez: as idas continuam em paralelo (abrir oito gráficos
+# não vira fila de oito esperas), mas não todas de uma vez. O cache de
+# 5 minutos absorve a repetição, então na prática isto só morde no
+# primeiro carregamento.
+_PORTEIRO_YAHOO = threading.Semaphore(3)
 
 # Os ativos vêm todos do catálogo central (backend/ativos.py). Aqui fica
 # só o subconjunto do resumo da home: é a lista que o aquecimento busca
@@ -402,7 +416,15 @@ def buscar_candles(ticker, periodo="5y", intervalo="1d"):
 
     # Pedir mais histórico do que o provedor dá de graça volta VAZIO (não
     # dá erro): 60m com 5y, por exemplo. O corte é aqui, num lugar só.
-    candles = _buscar_yahoo(ticker, periodo_valido(intervalo, periodo), intervalo)
+    # UMA SEGUNDA CHANCE, sob o porteiro. O Yahoo estrangulado devolve
+    # quadro VAZIO, não erro — e vazio aqui vira "ativo não encontrado"
+    # lá na rota. Uma espera curta e outra tentativa resolvem a maioria
+    # desses casos, que são de disputa e não de ticker inexistente.
+    with _PORTEIRO_YAHOO:
+        candles = _buscar_yahoo(ticker, periodo_valido(intervalo, periodo), intervalo)
+        if not candles:
+            time.sleep(0.6)
+            candles = _buscar_yahoo(ticker, periodo_valido(intervalo, periodo), intervalo)
     candles = _refinar_ultima_vela(ticker, candles, intervalo)
     if candles:
         _cache_set(chave, candles)
