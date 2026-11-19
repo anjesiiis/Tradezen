@@ -287,7 +287,27 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       if(!chartRef.current || !containerRef.current) return;
       const l = containerRef.current.clientWidth, a = containerRef.current.clientHeight;
       if(l <= 0 || a <= 0) return;
+
+      // A FAIXA VISÍVEL TEM DE SOBREVIVER AO REDIMENSIONAMENTO.
+      //
+      // Largura nova sem repor a faixa faz o Lightweight Charts manter o
+      // espaçamento das velas e ancorar na borda direita — ou seja, muda
+      // QUAIS velas aparecem. O sintoma: abrir uma mesa nova muda a
+      // largura das vizinhas, o observer dispara, e o gráfico do lado
+      // "salta" pra uma posição que ninguém pediu, perdendo o zoom e o
+      // trecho que a pessoa estava olhando.
+      //
+      // A faixa é LÓGICA (índices de vela, não pixels), então repô-la
+      // depois do resize mantém exatamente as mesmas velas em tela, só
+      // mais largas ou mais estreitas — que é o comportamento esperado.
+      let faixa = null;
+      try { faixa = chartRef.current.timeScale().getVisibleLogicalRange(); }
+      catch { /* gráfico ainda sem dado: não há faixa a preservar */ }
       chartRef.current.applyOptions({ width:l, height:a });
+      if(faixa){
+        try { chartRef.current.timeScale().setVisibleLogicalRange(faixa); }
+        catch { /* faixa inválida pro dado atual: deixa como o gráfico pôs */ }
+      }
       redrawRef.current?.();
     });
     ro.observe(containerRef.current);

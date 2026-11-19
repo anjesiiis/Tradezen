@@ -1,36 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { SearchBar } from "./SearchBar.jsx";
 
 /**
  * TRADEZEN — ADICIONAR UMA MESA
  * =============================
  *
- * O "+" abria uma mesa nova com o MESMO ativo, sempre. Serve pra comparar
- * dois tempos do mesmo papel — mas quem queria olhar outro ativo tinha
- * que abrir a mesa e trocar o ticker dentro dela, o que não é óbvio.
- * Agora a escolha é feita antes, com as duas intenções no mesmo lugar.
+ * O "+" abre direto a busca de ativos. Antes havia um passo intermediário
+ * com duas opções, "Mesmo ativo" e "Outro ativo", e ele saiu por pedido
+ * do dono: duas intenções numa tela fazem a pessoa escolher antes de
+ * poder fazer o que veio fazer, e abrir outro ativo é o que se quer na
+ * esmagadora maioria das vezes.
+ *
+ * Quem quer o MESMO papel em outro tempo não perdeu nada: basta buscar o
+ * mesmo ticker e trocar o tempo na mesa nova, que é um clique na barra
+ * dela — e o tempo de cada mesa já é guardado na bancada.
  */
-
-// Qual tempo sugerir pra segunda mesa do mesmo ativo: sempre um degrau
-// mais de perto, que é o uso real (ver o diário e o intraday lado a lado).
-// Do 1m, o único lugar pra ir é pra trás.
-const MAIS_PERTO = { "1S":"1D", "1D":"60m", "60m":"15m", "15m":"5m", "5m":"1m", "1m":"15m" };
-
-export function tempoSugerido(atual) {
-  return MAIS_PERTO[atual] || "60m";
-}
-
-export default function ModalAdicionarGrafico({ ticker, simbolo, tempoAtual, mercado = [], aoFechar, aoEscolher }) {
-  const [buscando, setBuscando] = useState(false);
-
-  // Esc fecha — em qualquer um dos dois passos.
+export default function ModalAdicionarGrafico({ mercado = [], aoFechar, aoEscolher }) {
+  // Esc fecha. `stopPropagation` porque a tela do gráfico também escuta
+  // Esc (pra sair de ferramenta de desenho), e as duas reagindo ao mesmo
+  // toque fariam o Esc fechar o modal E cancelar o desenho atrás dele.
   useEffect(() => {
     const tecla = (e) => { if (e.key === "Escape") { e.stopPropagation(); aoFechar?.(); } };
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
   }, [aoFechar]);
-
-  const sugerido = tempoSugerido(tempoAtual);
 
   return (
     <div className="mag-fundo" onMouseDown={aoFechar} role="presentation">
@@ -42,40 +35,17 @@ export default function ModalAdicionarGrafico({ ticker, simbolo, tempoAtual, mer
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mag-topo">
-          <h3 id="mag-titulo">{buscando ? "Escolher outro ativo" : "Adicionar uma mesa"}</h3>
+          <h3 id="mag-titulo">Escolher o ativo da nova mesa</h3>
           <button className="mag-fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
         </div>
 
-        {buscando ? (
-          <div className="mag-busca">
-            <SearchBar
-              mercado={mercado}
-              autoFoco
-              onSelect={(a) => aoEscolher?.({ ticker: a.ticker })}
-            />
-            <button className="mag-voltar" onClick={() => setBuscando(false)}>← Voltar</button>
-          </div>
-        ) : (
-          <div className="mag-opcoes">
-            <button className="mag-opcao" onClick={() => aoEscolher?.({ ticker, tempo: sugerido })}>
-              <span className="mag-icone" aria-hidden="true">📊</span>
-              <span className="mag-titulo">Mesmo ativo</span>
-              <span className="mag-desc">
-                Ver <strong>{simbolo || ticker}</strong> em outro tempo, lado a lado — abre em <strong>{sugerido}</strong>.
-              </span>
-              <span className="mag-cta">Adicionar</span>
-            </button>
-
-            <button className="mag-opcao" onClick={() => setBuscando(true)}>
-              <span className="mag-icone" aria-hidden="true">🔍</span>
-              <span className="mag-titulo">Outro ativo</span>
-              <span className="mag-desc">
-                Procurar ação, moeda, cripto, commodity ou índice.
-              </span>
-              <span className="mag-cta">Buscar</span>
-            </button>
-          </div>
-        )}
+        <div className="mag-busca">
+          <SearchBar
+            mercado={mercado}
+            autoFoco
+            onSelect={(a) => aoEscolher?.({ ticker: a.ticker })}
+          />
+        </div>
       </div>
     </div>
   );

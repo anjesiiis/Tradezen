@@ -707,6 +707,11 @@ function AppInner(){
               tempoInicial={mesa.tempo}
               aoTrocarTempo={(tempo)=>setTelasExtras(prev=>prev.map((t,i)=> i===idx ? {...t, tempo} : t))}
               onTickerChange={novo=>trocarTela(idx, novo)}
+              // O "+" também nas mesas extras, ao lado do ✕: antes ele só
+              // existia na mesa principal, e quem estava com três mesas
+              // abertas tinha de voltar à primeira pra abrir a quarta.
+              // Mesma função, mesmo bloqueio no teto.
+              onAddSplit={(tempo)=> noTeto ? pedirMaisTelas() : setModalAdicionar({tempo})}
               onClose={()=>fecharTelaMobile(idx)}
               ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
               tema={tema}
@@ -729,9 +734,6 @@ function AppInner(){
           )}
           {modalAdicionar && (
             <ModalAdicionarGrafico
-              ticker={tickerUrl}
-              simbolo={labelMesa(tickerUrl)}
-              tempoAtual={modalAdicionar.tempo}
               mercado={mercado}
               aoFechar={()=>setModalAdicionar(null)}
               aoEscolher={({ticker, tempo})=>{ setModalAdicionar(null); adicionarTelaEIrPara(ticker, tempo); }}

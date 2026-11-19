@@ -1,67 +1,89 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ModalAdicionarGrafico, { tempoSugerido } from '../components/ModalAdicionarGrafico.jsx';
+import ModalAdicionarGrafico from '../components/ModalAdicionarGrafico.jsx';
 
-describe('Adicionar mesa — qual tempo sugerir', () => {
-  // o uso real é ver o diário e o intraday lado a lado
-  it('sugere sempre um degrau mais de perto', () => {
-    expect(tempoSugerido('1S')).toBe('1D');
-    expect(tempoSugerido('1D')).toBe('60m');
-    expect(tempoSugerido('60m')).toBe('15m');
-    expect(tempoSugerido('15m')).toBe('5m');
-    expect(tempoSugerido('5m')).toBe('1m');
+/**
+ * O "+" ABRE DIRETO A BUSCA.
+ *
+ * Antes havia um passo intermediário com duas opções, "Mesmo ativo" e
+ * "Outro ativo". Saiu por pedido do dono: duas intenções numa tela fazem
+ * a pessoa escolher antes de poder fazer o que veio fazer, e abrir outro
+ * ativo é o que se quer quase sempre.
+ *
+ * Quem quer o mesmo papel noutro tempo não perdeu nada — busca o mesmo
+ * ticker e troca o tempo na mesa nova, que é um clique na barra dela.
+ */
+
+const MERCADO = [
+  { ticker: 'PETR4.SA', nome: 'Petrobras PN', simbolo: 'PETR4', mercado: 'B3' },
+  { ticker: 'VALE3.SA', nome: 'Vale ON', simbolo: 'VALE3', mercado: 'B3' },
+];
+
+describe('Adicionar mesa', () => {
+  it('abre na busca, sem passo intermediário', () => {
+    render(<ModalAdicionarGrafico mercado={MERCADO} />);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/Escolher o ativo da nova mesa/)).toBeInTheDocument();
+    // o campo de busca já está na tela
+    expect(document.querySelector('.mag-busca input')).toBeInTheDocument();
   });
 
-  // do 1m não há pra onde ir mais perto
-  it('do 1m, volta pra trás', () => {
-    expect(tempoSugerido('1m')).toBe('15m');
+  // Travas contra a volta do passo que foi removido.
+  it('não oferece mais as duas intenções', () => {
+    render(<ModalAdicionarGrafico mercado={MERCADO} />);
+    expect(screen.queryByText('Mesmo ativo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Outro ativo')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.mag-opcao')).toHaveLength(0);
   });
 
-  it('sem saber o tempo atual, cai num intraday útil', () => {
-    expect(tempoSugerido(undefined)).toBe('60m');
-    expect(tempoSugerido('inventado')).toBe('60m');
+  it('não tem "Voltar", porque não há passo anterior', () => {
+    render(<ModalAdicionarGrafico mercado={MERCADO} />);
+    expect(document.querySelector('.mag-voltar')).toBeNull();
   });
-});
 
-describe('Adicionar mesa — a tela', () => {
-  const abrir = (props = {}) => {
+  it('escolher um ativo devolve o ticker', async () => {
     const aoEscolher = vi.fn();
+    render(<ModalAdicionarGrafico mercado={MERCADO} aoEscolher={aoEscolher} />);
+
+    const campo = document.querySelector('.mag-busca input');
+    await userEvent.type(campo, 'vale');
+    const item = await waitFor(() => {
+      const achado = screen.getByText('Vale ON');
+      expect(achado).toBeInTheDocument();
+      return achado;
+    });
+    await userEvent.click(item);
+
+    expect(aoEscolher).toHaveBeenCalledWith({ ticker: 'VALE3.SA' });
+  });
+
+  it('o ✕ fecha', async () => {
     const aoFechar = vi.fn();
-    render(
-      <ModalAdicionarGrafico
-        ticker="PETR4.SA" simbolo="PETR4" tempoAtual="1D" mercado={[]}
-        aoEscolher={aoEscolher} aoFechar={aoFechar} {...props}
-      />,
-    );
-    return { aoEscolher, aoFechar };
-  };
-
-  it('mostra as duas intenções e o tempo que vai abrir', () => {
-    abrir();
-    expect(screen.getByText('Mesmo ativo')).toBeInTheDocument();
-    expect(screen.getByText('Outro ativo')).toBeInTheDocument();
-    expect(screen.getByText(/PETR4/)).toBeInTheDocument();
-    expect(screen.getByText('60m')).toBeInTheDocument();
-  });
-
-  it('"Mesmo ativo" devolve o mesmo ticker, noutro tempo', async () => {
-    const { aoEscolher } = abrir();
-    await userEvent.click(screen.getByText('Mesmo ativo'));
-    expect(aoEscolher).toHaveBeenCalledWith({ ticker: 'PETR4.SA', tempo: '60m' });
-  });
-
-  it('"Outro ativo" leva pra busca, com volta', async () => {
-    abrir();
-    await userEvent.click(screen.getByText('Outro ativo'));
-    expect(screen.getByLabelText('Buscar ativo')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText('← Voltar'));
-    expect(screen.getByText('Mesmo ativo')).toBeInTheDocument();
-  });
-
-  it('Esc fecha', async () => {
-    const { aoFechar } = abrir();
-    await userEvent.keyboard('{Escape}');
+    render(<ModalAdicionarGrafico mercado={MERCADO} aoFechar={aoFechar} />);
+    await userEvent.click(screen.getByLabelText('Fechar'));
     expect(aoFechar).toHaveBeenCalled();
+  });
+
+  // Esc tem de fechar, e `stopPropagation` evita que o mesmo toque
+  // cancele a ferramenta de desenho na tela de trás.
+  it('Esc fecha', () => {
+    const aoFechar = vi.fn();
+    render(<ModalAdicionarGrafico mercado={MERCADO} aoFechar={aoFechar} />);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(aoFechar).toHaveBeenCalled();
+  });
+
+  it('clicar no fundo fecha', async () => {
+    const aoFechar = vi.fn();
+    render(<ModalAdicionarGrafico mercado={MERCADO} aoFechar={aoFechar} />);
+    await userEvent.click(document.querySelector('.mag-fundo'));
+    expect(aoFechar).toHaveBeenCalled();
+  });
+
+  it('clicar dentro do card NÃO fecha', async () => {
+    const aoFechar = vi.fn();
+    render(<ModalAdicionarGrafico mercado={MERCADO} aoFechar={aoFechar} />);
+    await userEvent.click(document.querySelector('.mag-card'));
+    expect(aoFechar).not.toHaveBeenCalled();
   });
 });
