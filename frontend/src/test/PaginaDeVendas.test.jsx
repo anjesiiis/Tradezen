@@ -109,12 +109,12 @@ describe('Página de vendas — os dois planos', () => {
     expect(within(premium).getByRole('link')).toHaveAttribute('href', '/cadastro?plano=premium');
   });
 
-  it('o grátis mostra 2 telas e o premium 4 — é a comparação que vende', async () => {
+  it('o grátis mostra 4 telas e o Pro 8 — é a comparação que vende', async () => {
     await abrir();
     const [gratis, premium] = document.querySelectorAll('.lp-preco-card');
 
-    expect(within(gratis).getByText('2 telas simultâneas')).toBeInTheDocument();
-    expect(within(premium).getByText('4 telas simultâneas (o dobro do grátis)')).toBeInTheDocument();
+    expect(within(gratis).getByText('4 telas simultâneas')).toBeInTheDocument();
+    expect(within(premium).getByText('8 telas simultâneas (o dobro do grátis)')).toBeInTheDocument();
   });
 
   // no celular empilham: grátis em cima, premium embaixo

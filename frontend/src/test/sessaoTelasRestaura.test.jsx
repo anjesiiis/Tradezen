@@ -77,20 +77,20 @@ describe('A bancada depois do F5', () => {
   // Mantém a primeira que ela montou e descarta o resto, em vez de montar
   // quatro telas e deixar o limite valendo só pro botão "+".
   it('bancada maior que o plano é cortada na restauração', async () => {
-    useAuth.mockReturnValue(LOGADO);           // grátis: 2 telas no total
+    useAuth.mockReturnValue(LOGADO);           // grátis: 4 telas no total
     carregarSessao.mockResolvedValue({
-      extras: [{ ticker: 'VALE3.SA' }, { ticker: 'BBAS3.SA', tempo: '60m' }],
+      extras: Array.from({ length: 6 }, (_, i) => ({ ticker: `X${i}.SA` })),
       tempoPrincipal: null,
       ativa: 0,
     });
 
     renderApp('/ativo/PETR4.SA');
     await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
-    await waitFor(() => expect(mesas()).toHaveLength(2), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(4), { timeout: 5000 });
 
-    // e continua em duas: não é uma corrida que se resolve sozinha depois
+    // e continua em quatro: não é corrida que se resolve sozinha depois
     await new Promise((r) => setTimeout(r, 50));
-    expect(mesas()).toHaveLength(2);
+    expect(mesas()).toHaveLength(4);
   });
 
   // Por pedido do dono: sem conta, a bancada abre do zero
@@ -150,19 +150,29 @@ describe('A bancada do admin', () => {
 
   const extras = (n) => Array.from({ length: n }, (_, i) => ({ ticker: `A${i}.SA` }));
 
-  it('restaura 12 mesas', async () => {
+  it('restaura 8 mesas', async () => {
     useAuth.mockReturnValue(ADMIN);
-    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+    carregarSessao.mockResolvedValue({ extras: extras(7), tempoPrincipal: null, ativa: 0 });
 
     renderApp('/ativo/PETR4.SA');
     await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
-    await waitFor(() => expect(mesas()).toHaveLength(12), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(8), { timeout: 5000 });
   });
 
-  // O corte pelo plano continua valendo: premium que não é admin para em 4.
-  it('premium sem admin continua em 4', async () => {
-    useAuth.mockReturnValue({ ...PREMIUM, isAdmin: false });
-    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+  // Admin e Pro têm o MESMO teto: oito gráficos vivos já são oito séries
+  // na memória, e o teto existe por isso, não por plano.
+  it('Pro sem admin também chega a 8', async () => {
+    useAuth.mockReturnValue({ ...PREMIUM, plano: 'pro', isAdmin: false });
+    carregarSessao.mockResolvedValue({ extras: extras(7), tempoPrincipal: null, ativa: 0 });
+
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(mesas()).toHaveLength(8), { timeout: 5000 });
+  });
+
+  // O corte pelo plano continua valendo: grátis para em 4.
+  it('conta grátis para em 4', async () => {
+    useAuth.mockReturnValue({ ...PREMIUM, plano: 'free', isAdmin: false });
+    carregarSessao.mockResolvedValue({ extras: extras(7), tempoPrincipal: null, ativa: 0 });
 
     renderApp('/ativo/PETR4.SA');
     await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
@@ -174,14 +184,14 @@ describe('A bancada do admin', () => {
   // colunas agora vem do JS.
   it('a grade ganha colunas conforme o número de mesas', async () => {
     useAuth.mockReturnValue(ADMIN);
-    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+    carregarSessao.mockResolvedValue({ extras: extras(7), tempoPrincipal: null, ativa: 0 });
 
     renderApp('/ativo/PETR4.SA');
-    await waitFor(() => expect(mesas()).toHaveLength(12), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(8), { timeout: 5000 });
 
     const grade = document.querySelector('.analysis-row');
     expect(grade.className).toMatch(/\bgrade\b/);
-    // 12 mesas → 4 colunas, e a classe que libera a rolagem vertical
+    // 8 mesas → 4 colunas em 2 fileiras, e a classe que libera a rolagem
     expect(grade.style.getPropertyValue('--mesas-col')).toBe('4');
     expect(grade.className).toMatch(/\bmuitas\b/);
   });
@@ -216,7 +226,7 @@ describe('a bancada espera o plano antes de cortar', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    carregarSessao.mockResolvedValue({ extras: extras(4), tempoPrincipal: null, ativa: 3 });
+    carregarSessao.mockResolvedValue({ extras: extras(7), tempoPrincipal: null, ativa: 6 });
   });
 
   it('sem o plano pronto, não monta nada da bancada', async () => {
@@ -240,20 +250,20 @@ describe('a bancada espera o plano antes de cortar', () => {
     expect(salvarSessao).not.toHaveBeenCalled();
   });
 
-  it('com o plano pronto, as cinco voltam', async () => {
-    useAuth.mockReturnValue({ ...AINDA_SEM_PLANO, plano: 'premium', isAdmin: true, planoPronto: true });
+  it('com o plano pronto, as oito voltam', async () => {
+    useAuth.mockReturnValue({ ...AINDA_SEM_PLANO, plano: 'pro', isAdmin: true, planoPronto: true });
     renderApp('/ativo/PETR4.SA');
-    await waitFor(() => expect(mesas()).toHaveLength(5), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(8), { timeout: 5000 });
   });
 
   // Índice da aba fora da lista deixa TODAS as mesas com `ocultoMobile`:
   // tela sem gráfico nenhum, e sem erro. Foi o segundo sintoma.
   it('aba da frente nunca aponta pra mesa que não veio', async () => {
     useAuth.mockReturnValue({ ...AINDA_SEM_PLANO, plano: 'free', planoPronto: true });
-    // 4 extras guardadas, aba 3 — mas o grátis só cabe 1 extra
+    // 7 extras guardadas, aba 6 — mas o grátis só cabe 3 extras
     renderApp('/ativo/PETR4.SA');
-    await waitFor(() => expect(mesas()).toHaveLength(2), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(4), { timeout: 5000 });
     // nenhuma mesa pode ficar escondida por índice inválido
-    expect(document.querySelectorAll('.analysis')).toHaveLength(2);
+    expect(document.querySelectorAll('.analysis')).toHaveLength(4);
   });
 });

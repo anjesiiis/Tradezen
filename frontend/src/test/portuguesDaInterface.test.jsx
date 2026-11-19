@@ -79,7 +79,7 @@ describe('Popup de cadastro — o texto que o visitante lê', () => {
 
   it('fala em analisar, não em ver', () => {
     montar('cadastrado');
-    expect(screen.getByRole('heading', { name: 'Quer analisar dois ativos lado a lado?' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quer analisar quatro ativos lado a lado?' })).toBeInTheDocument();
   });
 
   it('a frase de privacidade usa "compartilhamento" e não repete "suas"', () => {
@@ -118,10 +118,10 @@ describe('Popup do Premium — promete o que a página de vendas vende', () => {
   // O limite aplicado no app é 4 (decisão do dono, e é o que a página de
   // vendas anuncia). Prometer 6 aqui faria o popup vender o que o app
   // não entrega.
-  it('fala em 4 telas, igual ao limite e à página de vendas', () => {
-    expect(screen.getByRole('heading', { name: /até 4 ativos ao mesmo tempo/i })).toBeInTheDocument();
+  it('fala em 8 telas, igual ao limite e à página de vendas', () => {
+    expect(screen.getByRole('heading', { name: /até 8 ativos ao mesmo tempo/i })).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/6 telas|6 ativos/);
-    expect(vendas).toMatch(/4 telas simultâneas/);
+    expect(vendas).toMatch(/8 telas simultâneas/);
   });
 
   it('o preço é o mesmo da página de vendas', () => {

@@ -38,10 +38,10 @@ export function marcarVistoNaSessao(motivo) {
 const CONTEUDO = {
   cadastrado: {
     etiqueta: null,
-    titulo: "Quer analisar dois ativos lado a lado?",
-    frase: "Criar conta é grátis e libera a segunda tela — além de guardar todos os seus desenhos automaticamente.",
+    titulo: "Quer analisar quatro ativos lado a lado?",
+    frase: "Criar conta é grátis e libera até quatro telas — além de guardar todos os seus desenhos automaticamente.",
     ganhos: [
-      "2 telas simultâneas",
+      "4 telas simultâneas",
       "Desenhos salvos automaticamente",
       "Mesmas análises em qualquer dispositivo",
       "Até 10 ativos na lista de favoritos",
@@ -52,10 +52,10 @@ const CONTEUDO = {
   },
   upgrade: {
     etiqueta: "PREMIUM",
-    titulo: "Analise até 4 ativos ao mesmo tempo",
+    titulo: "Analise até 8 ativos ao mesmo tempo",
     frase: "Monte sua lista operacional completa, com o dobro de telas do plano grátis e detecção de padrões por Machine Learning.",
     ganhos: [
-      "4 telas simultâneas (o dobro do grátis)",
+      "8 telas simultâneas (o dobro do grátis)",
       "Detecção automática de padrões via Machine Learning",
       "Alertas em formação, desenvolvimento e confirmação",
       "Até 50 ativos na lista de favoritos",

@@ -15,7 +15,7 @@ import { VENDAS_CSS } from "../styles/vendasCss.js";
  */
 
 const RECURSOS = [
-  { icone: "🖥️", titulo: "2 telas simultâneas", texto: "Acompanhe dois ativos lado a lado no mesmo monitor — já no plano grátis." },
+  { icone: "🖥️", titulo: "4 telas simultâneas", texto: "Acompanhe quatro ativos lado a lado no mesmo monitor — já no plano grátis." },
   { icone: "📱", titulo: "Acesso de qualquer lugar", texto: "Desktop, tablet ou celular — sua análise acompanha você." },
   { icone: "📊", titulo: "Todos os mercados", texto: "Ativos da B3, criptomoedas e principais mercados globais num só lugar." },
   { icone: "📈", titulo: "Indicadores e timeframes", texto: "Volume, RSI, médias móveis, MACD e todos os timeframes personalizáveis." },
@@ -54,7 +54,7 @@ const PLANOS = [
     periodo: ",00/mês",
     compara: "Perfeito pra começar a usar hoje",
     itens: [
-      "2 telas simultâneas",
+      "4 telas simultâneas",
       "Acesso a ativos da B3, cripto e mercados globais",
       "Indicadores e timeframes personalizáveis",
       "Ferramentas de desenho (linhas, Fibonacci, canais)",
@@ -74,7 +74,7 @@ const PLANOS = [
     compara: "Equivale a menos de R$ 1,70 por dia",
     itens: [
       "Tudo do plano grátis",
-      "4 telas simultâneas (o dobro do grátis)",
+      "8 telas simultâneas (o dobro do grátis)",
       "Detecção automática de padrões via Machine Learning",
       "Alertas em 3 estágios: formação, desenvolvimento e confirmação",
       "Notificações por push, email e WhatsApp",

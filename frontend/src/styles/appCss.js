@@ -338,6 +338,23 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    de vela. Entao cada mesa ganha um chao de 260px e a grade rola. */
 .analysis-row.grade.muitas{grid-auto-rows:minmax(260px,1fr);overflow-y:auto;overflow-x:hidden}
 .atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:20}
+/* OS BOTOES DA DIREITA NAO PODEM ROLAR PRA FORA.
+   A barra da mesa rola na horizontal (ela tem muita coisa: ticker,
+   tempos, indicadores, regua, desfazer). Com 5+ mesas cada uma fica
+   estreita, e o grupo da direita — o "+" de somar mesa e o "X" de fechar
+   — simplesmente saia da area visivel. O usuario ficava sem conseguir
+   adicionar nem fechar nada, sem nenhum sinal de que os botoes existiam.
+   Grudados na direita, eles ficam sempre a um clique. */
+.atb-acoes{position:sticky;right:0;z-index:2;background:var(--s1);padding-left:6px;box-shadow:-8px 0 8px -6px rgba(0,0,0,.55)}
+
+/* Mesa sem dado: diz o motivo e oferece saida. Centralizado na area do
+   grafico, discreto — nao e erro de sistema, e quase sempre excesso de
+   pedidos ou periodo sem pregao. */
+.graf-sem-dado{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center}
+.graf-sem-dado-icone{font-size:26px;opacity:.5}
+.graf-sem-dado p{margin:0;max-width:34ch;font-size:12px;line-height:1.5;color:var(--text2)}
+.graf-sem-dado button{background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 14px;font:inherit;font-size:12px;cursor:pointer}
+.graf-sem-dado button:hover{color:var(--text);border-color:var(--text3)}
 /* A barra de rolagem some de vista mas a rolagem continua: numa toolbar de
    44px de altura ela comeria metade do espaço dos botões. */
 .atb::-webkit-scrollbar{display:none}

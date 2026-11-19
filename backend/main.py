@@ -354,8 +354,18 @@ def resumo_mercado(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 120/min, e não 30: UMA pessoa com a bancada cheia já faz 8 pedidos por
+# carregamento, e dois F5 seguidos passavam dos 30. O sintoma não era um
+# erro — a tela mostrava o cabeçalho do ticker com a área em branco,
+# porque o frontend tratava a resposta de erro como "zero candles". O
+# frontend agora mostra o motivo e tenta de novo, mas o teto também
+# estava apertado demais pro uso legítimo.
+#
+# Continua havendo teto porque esta rota vai ao Yahoo: sem ele, um script
+# qualquer usaria o TradeZen de proxy e quem levaria o bloqueio da fonte
+# seríamos nós. O cache de 5min absorve a maior parte da repetição.
 @app.get("/ativo/{ticker}")
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def dados_ativo(
     request: Request,
     ticker: str,

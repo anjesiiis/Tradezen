@@ -6,13 +6,23 @@ import {
 } from '../lib/limitesTelas.js';
 
 // Os números são oferta publicada, não detalhe de implementação: o 2 do
-// grátis e o 4 do premium estão escritos na página de vendas. Se mudarem
+// grátis e o 8 do Pro estão escritos na página de vendas. Se mudarem
 // aqui sem mudar lá, o app passa a contradizer o que foi vendido.
 const COM_CONTA = { id: 'u1' };
 
 describe('Limites de telas por plano', () => {
-  it('os números são 1 (sem conta), 2 (grátis), 4 (premium) e 12 (admin)', () => {
-    expect(LIMITES_TELAS).toEqual({ visitante: 1, free: 2, premium: 4, admin: 12 });
+  it('os números são 1 (sem conta), 4 (grátis), 8 (Pro) e 8 (admin)', () => {
+    expect(LIMITES_TELAS).toEqual({ visitante: 1, free: 4, pro: 8, admin: 8 });
+  });
+
+  // "premium" era o nome do Pro antes da troca, e há conta gravada com
+  // ele. Traduzir é mais barato e mais seguro que reescrever linha de
+  // gente que já pagou.
+  it('o nome antigo do plano continua valendo', () => {
+    const user = { id: 'u1' };
+    expect(limiteDeTelas(user, 'premium')).toBe(8);
+    expect(nivelDoUsuario(user, 'premium')).toBe('pro');
+    expect(nivelDoUsuario(user, 'trader')).toBe('pro');
   });
 
   // O ADMIN PRECISA DO TERCEIRO ARGUMENTO. A rota /eu entrega
@@ -21,26 +31,28 @@ describe('Limites de telas por plano', () => {
   // sem o `ehAdmin` o admin ficaria com 4 telas.
   it('admin só é admin quando a flag chega', () => {
     const user = { id: 'u1' };
-    expect(limiteDeTelas(user, 'premium', true)).toBe(12);
-    expect(limiteDeTelas(user, 'premium', false)).toBe(4);
-    expect(nivelDoUsuario(user, 'premium', true)).toBe('admin');
+    expect(limiteDeTelas(user, 'pro', true)).toBe(8);
+    expect(limiteDeTelas(user, 'free', false)).toBe(4);
+    expect(nivelDoUsuario(user, 'pro', true)).toBe('admin');
   });
 
   it('sem conta, a flag de admin não vale nada', () => {
-    expect(limiteDeTelas(null, 'premium', true)).toBe(1);
-    expect(nivelDoUsuario(null, 'premium', true)).toBe('visitante');
+    expect(limiteDeTelas(null, 'pro', true)).toBe(1);
+    expect(nivelDoUsuario(null, 'pro', true)).toBe('visitante');
   });
 
   it('o teto é o maior limite que existe', () => {
-    expect(TETO_DE_TELAS).toBe(12);
+    expect(TETO_DE_TELAS).toBe(8);
     expect(TETO_DE_TELAS).toBe(Math.max(...Object.values(LIMITES_TELAS)));
   });
 
   // A GRADE É O TETO REAL. Antes era fixa em 2 colunas e 2 linhas: com 5
   // mesas, as de baixo eram espremidas até o gráfico virar um risco.
   it('a grade fica o mais quadrada possível', () => {
-    expect([1, 2, 3, 4, 5, 6, 9, 10, 12].map(colunasDaGrade))
-      .toEqual([1, 2, 2, 2, 3, 3, 3, 4, 4]);
+    // 3 numa fileira, 4 em 2x2, 6 em 3x2, 8 em 4x2. Raiz quadrada
+    // sozinha poria 8 em 3x3, com buraco na grade.
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(colunasDaGrade))
+      .toEqual([1, 2, 3, 2, 3, 3, 4, 4]);
   });
 
   it('a grade nunca devolve zero nem lixo', () => {
@@ -56,10 +68,10 @@ describe('Limites de telas por plano', () => {
 
   it.each([
     [null, 'free', 'visitante', 1],
-    [undefined, 'premium', 'visitante', 1],   // sem conta, premium não existe
-    [COM_CONTA, 'free', 'free', 2],
-    [COM_CONTA, undefined, 'free', 2],        // plano ainda não chegou do /eu
-    [COM_CONTA, 'premium', 'premium', 4],
+    [undefined, 'pro', 'visitante', 1],   // sem conta, Pro não existe
+    [COM_CONTA, 'free', 'free', 4],
+    [COM_CONTA, undefined, 'free', 4],        // plano ainda não chegou do /eu
+    [COM_CONTA, 'pro', 'pro', 8],
   ])('user=%o plano=%s → %s, %i telas', (user, plano, nivel, telas) => {
     expect(nivelDoUsuario(user, plano)).toBe(nivel);
     expect(limiteDeTelas(user, plano)).toBe(telas);
@@ -68,14 +80,14 @@ describe('Limites de telas por plano', () => {
   // A principal vem da URL e não dá pra fechar — ela nunca conta como extra.
   it('a tela principal não conta como extra', () => {
     expect(limiteDeTelasExtras(null, 'free')).toBe(0);
-    expect(limiteDeTelasExtras(COM_CONTA, 'free')).toBe(1);
-    expect(limiteDeTelasExtras(COM_CONTA, 'premium')).toBe(3);
+    expect(limiteDeTelasExtras(COM_CONTA, 'free')).toBe(3);
+    expect(limiteDeTelasExtras(COM_CONTA, 'pro')).toBe(7);
   });
 
   // Plano inventado (banco com dado estranho) cai no grátis, não no
   // premium: o padrão errado tem que ser o barato, nunca o caro.
   it('plano desconhecido cai no grátis', () => {
-    expect(limiteDeTelas(COM_CONTA, 'ouro')).toBe(2);
+    expect(limiteDeTelas(COM_CONTA, 'ouro')).toBe(4);
   });
 });
 
@@ -85,7 +97,7 @@ describe('Quem vê qual convite', () => {
   // pode receber convite pra se cadastrar.
   it('sem conta vê cadastro, nunca preço', () => {
     expect(motivoDoBloqueio(null, 'free')).toBe('cadastrado');
-    expect(motivoDoBloqueio(null, 'premium')).toBe('cadastrado');
+    expect(motivoDoBloqueio(null, 'pro')).toBe('cadastrado');
   });
 
   it('conta grátis vê upgrade, nunca cadastro', () => {
@@ -94,8 +106,8 @@ describe('Quem vê qual convite', () => {
 
   // Premium está no teto do que existe: não há o que vender, então não
   // há popup — só aviso.
-  it('premium não recebe oferta nenhuma', () => {
-    expect(motivoDoBloqueio(COM_CONTA, 'premium')).toBe('teto');
+  it('Pro não recebe oferta nenhuma', () => {
+    expect(motivoDoBloqueio(COM_CONTA, 'pro')).toBe('teto');
   });
 });
 
@@ -103,7 +115,7 @@ describe('Bancada que já não cabe', () => {
   const extras = [{ ticker: 'A' }, { ticker: 'B' }, { ticker: 'C' }];
 
   it('premium mantém as três extras', () => {
-    expect(cortarExtras(extras, COM_CONTA, 'premium')).toHaveLength(3);
+    expect(cortarExtras(extras, COM_CONTA, 'pro')).toHaveLength(extras.length);
   });
 
   // O caso real: abriu 4 telas com conta, saiu da conta, deu F5.
@@ -111,8 +123,9 @@ describe('Bancada que já não cabe', () => {
     expect(cortarExtras(extras, null, 'free')).toEqual([]);
   });
 
-  it('conta grátis fica com uma extra, a primeira que ela montou', () => {
-    expect(cortarExtras(extras, COM_CONTA, 'free')).toEqual([{ ticker: 'A' }]);
+  it('conta grátis fica com três extras, as primeiras que ela montou', () => {
+    expect(cortarExtras([...extras, { ticker: 'E' }, { ticker: 'F' }], COM_CONTA, 'free'))
+      .toEqual([{ ticker: 'A' }, { ticker: 'B' }, { ticker: 'C' }]);
   });
 
   it('quem está dentro do limite não perde nada e mantém a mesma lista', () => {

@@ -39,7 +39,7 @@ describe('Bancada guardada — o que entra', () => {
     const muitas = Array.from({ length: 30 }, (_, i) => ({ ticker: `T${i}` }));
     expect(normalizarSessao({ extras: muitas }).extras).toHaveLength(MAX_EXTRAS);
     expect(MAX_EXTRAS).toBe(TETO_DE_TELAS - 1);
-    expect(MAX_EXTRAS).toBeGreaterThanOrEqual(11);
+    expect(MAX_EXTRAS).toBe(7);   // 8 mesas - a principal
   });
 });
 

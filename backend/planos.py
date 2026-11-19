@@ -25,11 +25,19 @@ from rate_limit import limiter
 from supabase_client import supabase
 
 FREE = "free"
-PREMIUM = "premium"
+PRO = "pro"
 ADMIN = "admin"
 
+# "premium" era o nome antigo do Pro, e há contas gravadas com ele. Fica
+# aceito pra sempre: renomear linha de gente que já pagou é risco sem
+# retorno, e a tradução custa um dicionário.
+APELIDOS = {"premium": PRO, "trader": PRO}
+
 # Quem vê as detecções.
-PLANOS_COM_ACESSO = (PREMIUM, ADMIN)
+PLANOS_COM_ACESSO = (PRO, ADMIN)
+
+# Mantido pra quem importa daqui — PREMIUM era o nome exportado antes.
+PREMIUM = PRO
 
 
 def _token_do_header(authorization: Optional[str]) -> Optional[str]:
@@ -74,7 +82,8 @@ def plano_do_token(authorization: Optional[str]) -> str:
 
     if not resp.data:
         return FREE
-    return (resp.data[0].get("plano") or FREE).strip().lower()
+    bruto = (resp.data[0].get("plano") or FREE).strip().lower()
+    return APELIDOS.get(bruto, bruto)
 
 
 def tem_acesso(plano: str) -> bool:

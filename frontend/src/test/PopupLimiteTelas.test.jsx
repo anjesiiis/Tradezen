@@ -44,9 +44,9 @@ describe('Popup do limite de telas', () => {
       expect(screen.getByRole('link', { name: /já tenho conta/i })).toHaveAttribute('href', '/login');
     });
 
-    it('fala da segunda tela, que é o que ele ganha', () => {
+    it('fala das quatro telas, que é o que ele ganha', () => {
       montar('cadastrado');
-      expect(screen.getByText(/2 telas simultâneas/i)).toBeInTheDocument();
+      expect(screen.getByText(/4 telas simultâneas/i)).toBeInTheDocument();
     });
   });
 
@@ -68,9 +68,9 @@ describe('Popup do limite de telas', () => {
       expect(document.body.textContent).toMatch(/\/mês/);
     });
 
-    it('fala em 4 telas, que é o que o Premium vende', () => {
+    it('fala em 8 telas, que é o que o Pro vende', () => {
       montar('upgrade');
-      expect(screen.getByText(/4 telas simultâneas/i)).toBeInTheDocument();
+      expect(screen.getByText(/8 telas simultâneas/i)).toBeInTheDocument();
       // 6 era o número do pedido original; a página de vendas diz 4
       expect(document.body.textContent).not.toMatch(/6 telas/);
     });

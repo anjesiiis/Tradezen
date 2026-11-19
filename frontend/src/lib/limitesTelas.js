@@ -2,14 +2,15 @@
  * TRADEZEN — QUANTAS TELAS CADA UM PODE ABRIR
  * ===========================================
  *
- * Sem conta 1, com conta grátis 2, premium 4. Os números saem daqui e de
+ * Sem conta 1, com conta grátis 4, Pro 8 (e admin igual ao Pro). Os
+ * números saem daqui e de
  * mais nenhum lugar: a contagem na tela, o bloqueio do "+" e o corte na
  * carga leem todos esta mesma tabela, senão um deles fica para trás numa
  * mudança de preço.
  *
- * O 4 do premium é o que a página de vendas anuncia ("4 telas
- * simultâneas, o dobro do grátis"). Se este número subir, o texto de lá
- * sobe junto — é oferta publicada, não detalhe de implementação.
+ * O 8 do Pro é oferta publicada, não detalhe de implementação: se este
+ * número mudar, o texto da página de vendas muda junto. Um teste compara
+ * os dois justamente pra não divergirem.
  *
  * ONDE O PLANO É DECIDIDO: no servidor. O `plano` chega do /eu pelo
  * AuthContext, com o token da sessão. Ler `profiles` direto do navegador
@@ -21,17 +22,20 @@
 
 export const LIMITES_TELAS = {
   visitante: 1,
-  free: 2,
-  premium: 4,
-  // ADMIN tem 12, e não é generosidade: é bancada de trabalho. Quem marca
-  // templates compara o mesmo padrão em vários ativos e vários tempos ao
-  // mesmo tempo, e 4 obriga a fechar uma mesa pra abrir outra.
-  //
-  // 12 e não "sem limite" porque o limite existe de verdade: são 12
-  // gráficos vivos, 12 séries de candles na memória e 12 pedidos ao abrir.
-  // Número redondo é melhor que descobrir o teto travando a aba.
-  admin: 12,
+  free: 4,
+  pro: 8,
+  // Admin tem o mesmo teto do Pro: 8. Não é generosidade nem castigo —
+  // oito gráficos vivos já são oito séries de candles na memória e oito
+  // pedidos ao abrir, e o teto existe por causa disso, não por plano.
+  admin: 8,
 };
+
+// "premium" era o nome antigo do Pro. Contas gravadas antes da troca
+// continuam com ele no banco, e traduzir aqui é mais barato e mais
+// seguro que uma migration que reescreve linhas de gente pagante.
+const APELIDOS = { premium: "pro", trader: "pro" };
+
+const normalizarPlano = (plano) => APELIDOS[plano] || plano;
 
 /** Em que degrau esta pessoa está. Sem conta é visitante, sempre.
  *
@@ -42,7 +46,7 @@ export const LIMITES_TELAS = {
 export function nivelDoUsuario(user, plano, ehAdmin = false) {
   if (!user?.id) return "visitante";
   if (ehAdmin) return "admin";
-  return plano === "premium" ? "premium" : "free";
+  return normalizarPlano(plano) === "pro" ? "pro" : "free";
 }
 
 /** Quantas telas, no total, incluindo a principal. */
@@ -67,10 +71,14 @@ export const TETO_DE_TELAS = Math.max(...Object.values(LIMITES_TELAS));
  * espremidas até o gráfico virar um risco — era o teto REAL do layout,
  * independente do limite do plano.
  */
+const COLUNAS = { 1: 1, 2: 2, 3: 3, 4: 2, 5: 3, 6: 3, 7: 4, 8: 4 };
+
 export function colunasDaGrade(total) {
   const n = Number.isFinite(total) && total > 0 ? Math.floor(total) : 1;
-  if (n <= 2) return n;
-  return Math.ceil(Math.sqrt(n));
+  // Tabela até 8, que é o teto: 3 numa fileira, 4 em 2x2, 6 em 3x2, 8 em
+  // 4x2. Raiz quadrada sozinha poria 8 em 3x3, com um buraco na grade e
+  // três mesas mais estreitas do que precisam ser.
+  return COLUNAS[n] || Math.ceil(Math.sqrt(n));
 }
 
 /**

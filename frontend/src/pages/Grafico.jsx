@@ -24,6 +24,20 @@ import { fmtP } from "../lib/mercado.js";
 // indicador técnico. TOOLS é exatamente essa lista.
 const IDS_DE_PADRAO = new Set(TOOLS.map(t=>t.id));
 
+// O QUE DIZER QUANDO O GRÁFICO NÃO VEM.
+//
+// Cada causa pede uma frase diferente, e nenhuma delas é "erro": 429 é
+// excesso de pedidos (some sozinho), 404 é ticker que a fonte não tem
+// (não adianta esperar), 204 é resposta boa e vazia — fim de semana, ou
+// período sem pregão naquele intervalo.
+function recadoDeCandles(status){
+  if(status === 429) return "Muitos gráficos pedidos de uma vez. Esperando a vez deste…";
+  if(status === 404) return "A fonte de dados não tem este ativo neste período.";
+  if(status === 204) return "Nenhum candle neste período. Tente outro tempo.";
+  if(status >= 500)  return "O servidor de dados falhou. Tente de novo em instantes.";
+  return "Não deu pra carregar este gráfico.";
+}
+
 function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial, aoTrocarTempo }){
   const navigate = useNavigate();
   // `tempoInicial` vem do modal do "+": a 2ª mesa do mesmo ativo abre num
@@ -50,6 +64,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const { aparencia, definirAparencia } = usePreferenciasGrafico();
   const [loading,setLoading]  = useState(false);
   const [tools,setTools]      = useState(new Set());
+  // Por que o gráfico não veio. `null` = veio, ou ainda está vindo.
+  const [erroCandles,setErroCandles] = useState(null);
+  // Mexer nisto refaz a busca — é o que o botão "Tentar de novo" faz.
+  const [tentativaCandles,setTentativaCandles] = useState(0);
   // Os ids de TOOLS SÃO os filtros de padrão (ver lib/grafico/config.js);
   // INDICADORES é outra lista. É o que permite tratar os dois diferente.
   // Em módulo, não dentro do componente: é constante e não precisa ser
@@ -236,11 +254,36 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // token vai no fetch e a resposta volta vazia pra quem é free.
     const padroesPromise = (user ? tokenDaSessao() : Promise.resolve(null))
       .then(token => fetchPadroesMarcados(ativo.ticker, tf.intervalo, token));
-    fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`)
-      .then(r=>r.json())
-      .then(d=>{
+    // RESPOSTA DE ERRO NÃO PODE VIRAR GRÁFICO VAZIO.
+    //
+    // Isto fazia `.then(r=>r.json())` direto: um 429, 404 ou 500 vinha
+    // como `{detail: ...}`, `d.candles||[]` dava lista vazia, e a mesa
+    // ficava com o cabeçalho do ticker e área em branco — sem aviso, sem
+    // erro no console, sem jeito de tentar de novo. Com 5 mesas abertas
+    // e um F5, o limite de pedidos por minuto é fácil de alcançar, e o
+    // sintoma era "alguns gráficos não carregam".
+    //
+    // Três tentativas com recuo: 429 e 5xx passam sozinhos em segundos.
+    // 404 não passa nunca (ticker que a fonte não tem), e insistir nele
+    // só atrasaria o recado.
+    const buscarCandles = async (tentativa = 0) => {
+      const ESPERAS = [700, 2000, 5000];
+      try {
+        const r = await fetch(`${API}/ativo/${ativo.ticker}?periodo=${tf.periodo}&intervalo=${tf.intervalo}`);
+        if(!r.ok){
+          const repetivel = r.status === 429 || r.status >= 500;
+          if(repetivel && tentativa < ESPERAS.length){
+            await new Promise(ok=>setTimeout(ok, ESPERAS[tentativa]));
+            if(cancelado) return;
+            return buscarCandles(tentativa + 1);
+          }
+          throw Object.assign(new Error(`http ${r.status}`), { status: r.status });
+        }
+        const d = await r.json();
         if(cancelado) return;
         const candlesRecebidos = d.candles||[];
+        if(!candlesRecebidos.length) throw Object.assign(new Error("sem candles"), { status: 204 });
+        setErroCandles(null);
         setCandles(candlesRecebidos);
         setNiveis(d.niveis||[]);
         if(d.info){
@@ -252,11 +295,17 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           setPlanoDetec(marcados.plano);
           setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
         });
-      })
-      .catch(()=>{ if(!cancelado) setLoading(false); });
+      } catch(erro) {
+        if(cancelado) return;
+        setLoading(false);
+        setErroCandles(recadoDeCandles(erro?.status));
+      }
+    };
+    setErroCandles(null);
+    buscarCandles();
 
     return () => { cancelado = true; };
-  },[ticker, tf.intervalo]);
+  },[ticker, tf.intervalo, tentativaCandles]);
 
   // As detecções entram em effect próprio por causa do token: num reload
   // direto na URL do ativo, o fetch de cima já saiu antes do Supabase
@@ -612,7 +661,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           </svg>
         </button>
 
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+        {/* `atb-acoes` gruda este grupo na direita da barra — ver o CSS.
+            Sem isso, com 5+ mesas a barra fica estreita, rola, e o "+" e o
+            "X" saem de vista: a pessoa fica sem poder somar nem fechar
+            mesa, e sem sinal de que os botões existem. */}
+        <div className="atb-acoes" style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           {onAddSplit && (
             <button className="pane-btn" onClick={()=>onAddSplit(tf.label)} title="Adicionar mesa">+</button>
           )}
@@ -643,6 +696,20 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
+
+          {/* SLOT VAZIO NÃO: quando o gráfico não vem, a mesa diz por quê
+              e oferece tentar de novo. Antes ficava só o cabeçalho do
+              ticker com a área em branco, indistinguível de "ainda
+              carregando" e de "este ativo não tem dado". */}
+          {!loading && !candles.length && erroCandles && (
+            <div className="graf-sem-dado" role="status">
+              <span className="graf-sem-dado-icone" aria-hidden="true">📉</span>
+              <p>{erroCandles}</p>
+              <button type="button" onClick={()=>setTentativaCandles(n=>n+1)}>
+                Tentar de novo
+              </button>
+            </div>
+          )}
           {/* Só com ferramenta armada: fora disso é um painel ocupando
               canto de gráfico sem ter o que configurar. */}
           {ferramentaAtiva&&prefs[ferramentaAtiva]&&(
