@@ -322,11 +322,21 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    iguais — o chão só servia pra estourar. */
 .analysis-row .analysis{flex:1;min-width:0;height:100%}
 .analysis-row .analysis:not(:last-child){border-right:1px solid var(--border)}
-.analysis-row.grid4{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
-.analysis-row.grid4 .analysis{min-width:0}
-.analysis-row.grid4 .analysis:not(:last-child){border-right:1px solid var(--border)}
-.analysis-row.grid4 .analysis:nth-child(even){border-right:none}
-.analysis-row.grid4 .analysis:nth-child(-n+2){border-bottom:1px solid var(--border)}
+/* GRADE ADAPTATIVA. O numero de colunas vem do JS (--mesas-col, de
+   colunasDaGrade): 4 mesas em 2x2, 6 em 3x2, 9 em 3x3, 12 em 4x3.
+   Antes isso era a classe grid4, fixa em 2 colunas e 2 LINHAS declaradas — com 5
+   mesas a terceira linha nao tinha altura e as de baixo eram espremidas
+   ate o grafico virar um risco. Era o teto real do layout. */
+.analysis-row.grade{display:grid;grid-template-columns:repeat(var(--mesas-col,2),minmax(0,1fr));grid-auto-rows:minmax(0,1fr)}
+.analysis-row.grade .analysis{min-width:0;min-height:0}
+/* Bordas por grade: o nth-child(even) de antes so servia pra 2 colunas. A
+   borda agora e o contorno de cada mesa, sem depender do numero de colunas. */
+.analysis-row.grade .analysis{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+
+/* Acima de 6 mesas a altura da janela nao da conta: 12 gráficos de 1fr
+   numa tela de 900px dariam 280px cada, e com a toolbar sobra quase nada
+   de vela. Entao cada mesa ganha um chao de 260px e a grade rola. */
+.analysis-row.grade.muitas{grid-auto-rows:minmax(260px,1fr);overflow-y:auto;overflow-x:hidden}
 .atb{height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:20}
 /* A barra de rolagem some de vista mas a rolagem continua: numa toolbar de
    44px de altura ela comeria metade do espaço dos botões. */

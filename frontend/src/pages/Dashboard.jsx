@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import PopupLimiteTelas, { foiVistoNaSessao, marcarVistoNaSessao } from "../components/PopupLimiteTelas.jsx";
-import { cortarExtras, limiteDeTelas, limiteDeTelasExtras, motivoDoBloqueio } from "../lib/limitesTelas.js";
+import { colunasDaGrade, cortarExtras, limiteDeTelas, limiteDeTelasExtras, motivoDoBloqueio } from "../lib/limitesTelas.js";
 import { AssetCard, SkeletonCard } from "../components/AssetCard.jsx";
 import { MaisAtivos } from "../components/MaisAtivos.jsx";
 import { TopAtivosMobile } from "../components/TopAtivosMobile.jsx";
@@ -41,7 +41,7 @@ import { fmtP } from "../lib/mercado.js";
 function AppInner(){
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, plano, planoPronto } = useAuth();
+  const { user, plano, planoPronto, isAdmin } = useAuth();
   const [drawerAberto,setDrawerAberto] = useState(false); // menu hambúrguer (mobile) — sidebar + conta
 
   const [mercado,setMercado] = useState([]);
@@ -224,8 +224,8 @@ function AppInner(){
   // na carga leem o mesmo número). Era 4 fixo pra todo mundo, sem olhar
   // conta nem plano — o grátis estava recebendo o que a página de vendas
   // promete ao premium.
-  const MAX_TELAS_EXTRAS = limiteDeTelasExtras(user, plano);
-  const limiteTelas = limiteDeTelas(user, plano);
+  const MAX_TELAS_EXTRAS = limiteDeTelasExtras(user, plano, isAdmin);
+  const limiteTelas = limiteDeTelas(user, plano, isAdmin);
   const [telasExtras,setTelasExtras] = useState([]);
   // Já está no máximo do plano? É o que decide se o "+" abre o seletor
   // de ativo ou o convite.
@@ -259,6 +259,20 @@ function AppInner(){
   const isMobile = useIsMobile();
   const [telaAtivaMobile, setTelaAtivaMobile] = useState(0);
 
+  const totalDeMesas = 1 + telasExtras.length;
+
+  // A ABA ATIVA TEM DE EXISTIR.
+  //
+  // `fecharTelaMobile` já ajusta o índice, mas fechar mesa pelo DESKTOP
+  // não ajustava nada. Quem fechava a terceira mesa no desktop e depois
+  // estreitava a janela (ou girava o celular) ficava com `telaAtivaMobile`
+  // apontando pra uma mesa que não existe mais — e aí TODAS as mesas
+  // ficam com `ocultoMobile`, ou seja, tela em branco sem nenhum erro.
+  // Com 12 mesas isso passaria a acontecer muito mais.
+  useEffect(() => {
+    if (telaAtivaMobile > totalDeMesas - 1) setTelaAtivaMobile(0);
+  }, [telaAtivaMobile, totalDeMesas]);
+
   // ── A bancada sobrevive ao F5 ──────────────────────────────────
   //
   // Só com conta, por pedido do dono. A mesa principal continua vindo da
@@ -272,7 +286,7 @@ function AppInner(){
     // A bancada volta do banco como estava. Se o limite baixou desde
     // então (saiu da conta, ou o premium venceu), ela não cabe mais —
     // corta aqui, antes de montar, em vez de montar e piscar.
-    const cabem = cortarExtras(restaurada.extras, user, plano);
+    const cabem = cortarExtras(restaurada.extras, user, plano, isAdmin);
     if(cabem.length) setTelasExtras(cabem);
     if(restaurada.tempoPrincipal){
       setTempoPrincipal(restaurada.tempoPrincipal);
@@ -292,7 +306,7 @@ function AppInner(){
   useEffect(()=>{
     if(!planoPronto) return;
     setTelasExtras(atual=>{
-      const cabem = cortarExtras(atual, user, plano);
+      const cabem = cortarExtras(atual, user, plano, isAdmin);
       if(cabem.length === atual.length) return atual;
       // No celular só uma mesa aparece por vez. Se a que estava na frente
       // foi cortada, o índice aponta pro vazio e a tela fica em branco —
@@ -324,7 +338,7 @@ function AppInner(){
   // oferecer. Fica o aviso de texto, que some sozinho.
   const [avisoTeto,setAvisoTeto] = useState(false);
   const pedirMaisTelas = () => {
-    const motivo = motivoDoBloqueio(user, plano);
+    const motivo = motivoDoBloqueio(user, plano, isAdmin);
     if(motivo === "teto"){
       setAvisoTeto(true);
       setTimeout(()=>setAvisoTeto(false), 4000);
@@ -665,7 +679,10 @@ function AppInner(){
               está guardado. Fica fora da linha das mesas porque vale pra
               todas — a gravação é por ativo, mas o aviso é um só. */}
           <IndicadorSalvamento/>
-          <div className={`analysis-row ${!isMobile && (1+telasExtras.length)>2 ? "grid4" : ""}`}>
+          <div
+            className={`analysis-row${!isMobile && totalDeMesas > 2 ? " grade" : ""}${!isMobile && totalDeMesas > 6 ? " muitas" : ""}`}
+            style={!isMobile && totalDeMesas > 2 ? { "--mesas-col": colunasDaGrade(totalDeMesas) } : undefined}
+          >
           <ChartPane
             key={`primary-${tempoAberturaPrincipal || "padrao"}`}
             mercado={mercado}

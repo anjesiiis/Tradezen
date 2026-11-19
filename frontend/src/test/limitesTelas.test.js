@@ -1,6 +1,8 @@
 import {
   LIMITES_TELAS, cortarExtras, limiteDeTelas, limiteDeTelasExtras,
   motivoDoBloqueio, nivelDoUsuario,
+  TETO_DE_TELAS,
+  colunasDaGrade,
 } from '../lib/limitesTelas.js';
 
 // Os números são oferta publicada, não detalhe de implementação: o 2 do
@@ -9,8 +11,47 @@ import {
 const COM_CONTA = { id: 'u1' };
 
 describe('Limites de telas por plano', () => {
-  it('os números são 1 (sem conta), 2 (grátis) e 4 (premium)', () => {
-    expect(LIMITES_TELAS).toEqual({ visitante: 1, free: 2, premium: 4 });
+  it('os números são 1 (sem conta), 2 (grátis), 4 (premium) e 12 (admin)', () => {
+    expect(LIMITES_TELAS).toEqual({ visitante: 1, free: 2, premium: 4, admin: 12 });
+  });
+
+  // O ADMIN PRECISA DO TERCEIRO ARGUMENTO. A rota /eu entrega
+  // `plano: "premium"` pra quem é admin, porque o resto da tela só precisa
+  // saber se tem acesso — então o plano sozinho não distingue os dois, e
+  // sem o `ehAdmin` o admin ficaria com 4 telas.
+  it('admin só é admin quando a flag chega', () => {
+    const user = { id: 'u1' };
+    expect(limiteDeTelas(user, 'premium', true)).toBe(12);
+    expect(limiteDeTelas(user, 'premium', false)).toBe(4);
+    expect(nivelDoUsuario(user, 'premium', true)).toBe('admin');
+  });
+
+  it('sem conta, a flag de admin não vale nada', () => {
+    expect(limiteDeTelas(null, 'premium', true)).toBe(1);
+    expect(nivelDoUsuario(null, 'premium', true)).toBe('visitante');
+  });
+
+  it('o teto é o maior limite que existe', () => {
+    expect(TETO_DE_TELAS).toBe(12);
+    expect(TETO_DE_TELAS).toBe(Math.max(...Object.values(LIMITES_TELAS)));
+  });
+
+  // A GRADE É O TETO REAL. Antes era fixa em 2 colunas e 2 linhas: com 5
+  // mesas, as de baixo eram espremidas até o gráfico virar um risco.
+  it('a grade fica o mais quadrada possível', () => {
+    expect([1, 2, 3, 4, 5, 6, 9, 10, 12].map(colunasDaGrade))
+      .toEqual([1, 2, 2, 2, 3, 3, 3, 4, 4]);
+  });
+
+  it('a grade nunca devolve zero nem lixo', () => {
+    for (const entrada of [0, -3, null, undefined, NaN, 'oito']) {
+      expect(colunasDaGrade(entrada)).toBe(1);
+    }
+  });
+
+  it('todas as mesas do maior plano cabem na grade', () => {
+    const col = colunasDaGrade(TETO_DE_TELAS);
+    expect(col * Math.ceil(TETO_DE_TELAS / col)).toBeGreaterThanOrEqual(TETO_DE_TELAS);
   });
 
   it.each([

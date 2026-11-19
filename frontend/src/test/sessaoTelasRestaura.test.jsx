@@ -133,3 +133,65 @@ describe('A bancada depois do F5', () => {
     resolver(null);
   });
 });
+
+// O ADMIN TEM BANCADA DE 12.
+//
+// O /eu entrega `plano: "premium"` pra quem é admin (o resto da tela só
+// precisa saber se tem acesso), então o plano sozinho não distingue os
+// dois — é o `isAdmin` que faz a diferença. Sem ele, quem marca templates
+// ficaria com 4 mesas e teria de fechar uma pra abrir outra.
+describe('A bancada do admin', () => {
+  const ADMIN = { ...LOGADO, plano: 'premium', isAdmin: true };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    carregarSessao.mockResolvedValue(null);
+  });
+
+  const extras = (n) => Array.from({ length: n }, (_, i) => ({ ticker: `A${i}.SA` }));
+
+  it('restaura 12 mesas', async () => {
+    useAuth.mockReturnValue(ADMIN);
+    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(12), { timeout: 5000 });
+  });
+
+  // O corte pelo plano continua valendo: premium que não é admin para em 4.
+  it('premium sem admin continua em 4', async () => {
+    useAuth.mockReturnValue({ ...PREMIUM, isAdmin: false });
+    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+    await waitFor(() => expect(mesas()).toHaveLength(4), { timeout: 5000 });
+  });
+
+  // A GRADE É O TETO REAL DO LAYOUT: fixa em 2 colunas, a quinta mesa em
+  // diante era espremida até o gráfico virar um risco. O número de
+  // colunas agora vem do JS.
+  it('a grade ganha colunas conforme o número de mesas', async () => {
+    useAuth.mockReturnValue(ADMIN);
+    carregarSessao.mockResolvedValue({ extras: extras(11), tempoPrincipal: null, ativa: 0 });
+
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(mesas()).toHaveLength(12), { timeout: 5000 });
+
+    const grade = document.querySelector('.analysis-row');
+    expect(grade.className).toMatch(/\bgrade\b/);
+    // 12 mesas → 4 colunas, e a classe que libera a rolagem vertical
+    expect(grade.style.getPropertyValue('--mesas-col')).toBe('4');
+    expect(grade.className).toMatch(/\bmuitas\b/);
+  });
+
+  it('com 2 mesas não vira grade — continua linha única', async () => {
+    useAuth.mockReturnValue(ADMIN);
+    carregarSessao.mockResolvedValue({ extras: extras(1), tempoPrincipal: null, ativa: 0 });
+
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(mesas()).toHaveLength(2), { timeout: 5000 });
+    expect(document.querySelector('.analysis-row').className).not.toMatch(/\bgrade\b/);
+  });
+});

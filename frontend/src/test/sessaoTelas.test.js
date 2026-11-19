@@ -1,3 +1,4 @@
+import { TETO_DE_TELAS } from '../lib/limitesTelas.js';
 import { MAX_EXTRAS, normalizarSessao, temAlgoAGuardar,
   gravarBancadaLocal,
   lerBancadaLocal,
@@ -30,9 +31,15 @@ describe('Bancada guardada — o que entra', () => {
     expect(normalizarSessao({ tempoPrincipal: '1S' }).tempoPrincipal).toBe('1S');
   });
 
-  it('respeita o teto de mesas extras', () => {
-    const muitas = Array.from({ length: 10 }, (_, i) => ({ ticker: `T${i}` }));
+  // O TETO DO ARMAZENAMENTO é o do MAIOR plano, não o de quem está
+  // logado. Era 3 na mão, de quando o máximo eram 4 telas: com o admin em
+  // 12, a bancada guardaria 3 extras e o F5 devolveria 4 mesas de 12 —
+  // sem aviso. Quem corta pelo plano é cortarExtras, na montagem da tela.
+  it('guarda tudo que o maior plano permite', () => {
+    const muitas = Array.from({ length: 30 }, (_, i) => ({ ticker: `T${i}` }));
     expect(normalizarSessao({ extras: muitas }).extras).toHaveLength(MAX_EXTRAS);
+    expect(MAX_EXTRAS).toBe(TETO_DE_TELAS - 1);
+    expect(MAX_EXTRAS).toBeGreaterThanOrEqual(11);
   });
 });
 

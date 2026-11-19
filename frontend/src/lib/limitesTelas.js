@@ -23,25 +23,62 @@ export const LIMITES_TELAS = {
   visitante: 1,
   free: 2,
   premium: 4,
+  // ADMIN tem 12, e não é generosidade: é bancada de trabalho. Quem marca
+  // templates compara o mesmo padrão em vários ativos e vários tempos ao
+  // mesmo tempo, e 4 obriga a fechar uma mesa pra abrir outra.
+  //
+  // 12 e não "sem limite" porque o limite existe de verdade: são 12
+  // gráficos vivos, 12 séries de candles na memória e 12 pedidos ao abrir.
+  // Número redondo é melhor que descobrir o teto travando a aba.
+  admin: 12,
 };
 
-/** Em que degrau esta pessoa está. Sem conta é visitante, sempre. */
-export function nivelDoUsuario(user, plano) {
+/** Em que degrau esta pessoa está. Sem conta é visitante, sempre.
+ *
+ *  `ehAdmin` vem separado DE PROPÓSITO: a rota /eu entrega `plano:
+ *  "premium"` pra quem é admin (ver planos.py), porque o resto da tela só
+ *  precisa saber se tem acesso. Então o plano sozinho não distingue admin
+ *  de premium, e sem este terceiro argumento o admin ficaria com 4. */
+export function nivelDoUsuario(user, plano, ehAdmin = false) {
   if (!user?.id) return "visitante";
+  if (ehAdmin) return "admin";
   return plano === "premium" ? "premium" : "free";
 }
 
 /** Quantas telas, no total, incluindo a principal. */
-export function limiteDeTelas(user, plano) {
-  return LIMITES_TELAS[nivelDoUsuario(user, plano)] ?? LIMITES_TELAS.visitante;
+export function limiteDeTelas(user, plano, ehAdmin = false) {
+  return LIMITES_TELAS[nivelDoUsuario(user, plano, ehAdmin)] ?? LIMITES_TELAS.visitante;
+}
+
+/** O MAIOR limite que existe. Quem guarda bancada precisa deste número e
+ *  não do limite da pessoa: cortar na gravação faria o admin perder mesas
+ *  ao recarregar, e foi exatamente esse o bug do MAX_EXTRAS = 3. */
+export const TETO_DE_TELAS = Math.max(...Object.values(LIMITES_TELAS));
+
+/**
+ * Quantas colunas a grade usa para N mesas.
+ *
+ * Raiz quadrada arredondada pra cima: 2 mesas em 1 linha, 4 em 2×2, 6 em
+ * 3×2, 9 em 3×3, 12 em 4×3. Mantém cada mesa o mais quadrada possível, e
+ * gráfico muito largo e baixo é o que fica ilegível primeiro.
+ *
+ * Antes a grade era fixa em 2 colunas e 2 linhas (`grid4`). Com 5 mesas a
+ * terceira linha não tinha altura declarada e as mesas de baixo eram
+ * espremidas até o gráfico virar um risco — era o teto REAL do layout,
+ * independente do limite do plano.
+ */
+export function colunasDaGrade(total) {
+  const n = Number.isFinite(total) && total > 0 ? Math.floor(total) : 1;
+  if (n <= 2) return n;
+  return Math.ceil(Math.sqrt(n));
 }
 
 /**
  * Quantas telas EXTRAS cabem (a principal não conta: ela vem da URL e
  * não dá pra fechar).
  */
-export function limiteDeTelasExtras(user, plano) {
-  return Math.max(0, limiteDeTelas(user, plano) - 1);
+export function limiteDeTelasExtras(user, plano, ehAdmin = false) {
+  return Math.max(0, limiteDeTelas(user, plano, ehAdmin) - 1);
 }
 
 /**
@@ -53,8 +90,8 @@ export function limiteDeTelasExtras(user, plano) {
  * "teto" pro premium, que já está no limite do que existe — não há o que
  *  vender, então é só um aviso.
  */
-export function motivoDoBloqueio(user, plano) {
-  const nivel = nivelDoUsuario(user, plano);
+export function motivoDoBloqueio(user, plano, ehAdmin = false) {
+  const nivel = nivelDoUsuario(user, plano, ehAdmin);
   if (nivel === "visitante") return "cadastrado";
   if (nivel === "free") return "upgrade";
   return "teto";
@@ -68,8 +105,8 @@ export function motivoDoBloqueio(user, plano) {
  * Corta as de trás e mantém as da frente — as primeiras são as que a
  * pessoa montou primeiro.
  */
-export function cortarExtras(extras, user, plano) {
-  const cabe = limiteDeTelasExtras(user, plano);
+export function cortarExtras(extras, user, plano, ehAdmin = false) {
+  const cabe = limiteDeTelasExtras(user, plano, ehAdmin);
   const lista = Array.isArray(extras) ? extras : [];
   return lista.length <= cabe ? lista : lista.slice(0, cabe);
 }

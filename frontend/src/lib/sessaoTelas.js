@@ -19,7 +19,16 @@
  * Perder o arranjo é chato; derrubar a tela por causa dele é pior.
  */
 
-export const MAX_EXTRAS = 3;
+// O TETO DO MAIOR PLANO, não o do plano de quem está logado.
+//
+// Era 3 na mão, e isso vinha de quando o máximo era 4 telas. Com o admin
+// em 12, cortar aqui faria a bancada guardar 3 extras e devolver 4 mesas
+// no F5 — a pessoa montaria 12 e voltaria com 4, sem aviso. Quem corta
+// pelo plano é `cortarExtras`, na hora de montar a tela; o armazenamento
+// guarda tudo que o maior plano permite.
+import { TETO_DE_TELAS } from "./limitesTelas.js";
+
+export const MAX_EXTRAS = TETO_DE_TELAS - 1;
 
 // ── A RESERVA NO NAVEGADOR ──────────────────────────────────
 //
