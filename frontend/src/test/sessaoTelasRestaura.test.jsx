@@ -195,3 +195,65 @@ describe('A bancada do admin', () => {
     expect(document.querySelector('.analysis-row').className).not.toMatch(/\bgrade\b/);
   });
 });
+
+// O QUADRO ENTRE O LOGIN E A VOLTA DO /eu.
+//
+// `plano` nasce "free" e `isAdmin` nasce false: os dois só viram verdade
+// quando o /eu responde. A restauração não esperava por isso, então ela
+// cortava a bancada pelo limite do GRÁTIS — quem tinha cinco mesas abria
+// com duas. E, como a trava `jaRestaurou` já estava marcada, não havia
+// segunda chance: a bancada truncada era gravada por cima da verdadeira
+// poucos quadros depois, tornando a perda permanente.
+//
+// Os testes acima não pegaram porque todos passavam `planoPronto: true`.
+describe('a bancada espera o plano antes de cortar', () => {
+  const extras = (n) => Array.from({ length: n }, (_, i) => ({ ticker: `A${i}.SA` }));
+  // Como chega de verdade antes do /eu responder.
+  const AINDA_SEM_PLANO = {
+    user: { id: 'u1', email: 'anjesis@hotmail.com' },
+    plano: 'free', isAdmin: false, planoPronto: false, carregando: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    carregarSessao.mockResolvedValue({ extras: extras(4), tempoPrincipal: null, ativa: 3 });
+  });
+
+  it('sem o plano pronto, não monta nada da bancada', async () => {
+    useAuth.mockReturnValue(AINDA_SEM_PLANO);
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Só a principal, que vem da URL. Antes montava 2: a principal mais
+    // UMA extra, porque o corte usou o limite do grátis.
+    expect(mesas()).toHaveLength(1);
+  });
+
+  // A metade mais grave: gravar a bancada truncada apaga a verdadeira.
+  it('sem o plano pronto, não grava por cima da bancada guardada', async () => {
+    useAuth.mockReturnValue(AINDA_SEM_PLANO);
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(createChart).toHaveBeenCalled(), { timeout: 5000 });
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(salvarSessao).not.toHaveBeenCalled();
+  });
+
+  it('com o plano pronto, as cinco voltam', async () => {
+    useAuth.mockReturnValue({ ...AINDA_SEM_PLANO, plano: 'premium', isAdmin: true, planoPronto: true });
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(mesas()).toHaveLength(5), { timeout: 5000 });
+  });
+
+  // Índice da aba fora da lista deixa TODAS as mesas com `ocultoMobile`:
+  // tela sem gráfico nenhum, e sem erro. Foi o segundo sintoma.
+  it('aba da frente nunca aponta pra mesa que não veio', async () => {
+    useAuth.mockReturnValue({ ...AINDA_SEM_PLANO, plano: 'free', planoPronto: true });
+    // 4 extras guardadas, aba 3 — mas o grátis só cabe 1 extra
+    renderApp('/ativo/PETR4.SA');
+    await waitFor(() => expect(mesas()).toHaveLength(2), { timeout: 5000 });
+    // nenhuma mesa pode ficar escondida por índice inválido
+    expect(document.querySelectorAll('.analysis')).toHaveLength(2);
+  });
+});

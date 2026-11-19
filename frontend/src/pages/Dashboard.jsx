@@ -282,6 +282,18 @@ function AppInner(){
   const jaRestaurou = useRef(false);
   useEffect(()=>{
     if(!restaurada || jaRestaurou.current) return;
+    // ESPERA O PLANO. Sem esta linha, a restauração acontecia no quadro
+    // em que `plano` ainda é o padrão "free" e `isAdmin` ainda é false —
+    // porque os dois vêm de uma ida ao /eu que ainda não voltou. O corte
+    // então usava o limite do grátis: quem tinha cinco mesas abria com
+    // duas. E como `jaRestaurou` já estava marcado, não havia segunda
+    // chance; pior, a bancada truncada era gravada por cima da de cinco
+    // alguns quadros depois.
+    //
+    // O efeito do corte no meio da sessão, logo abaixo, já esperava
+    // `planoPronto` e documentava exatamente este risco. A restauração é
+    // que estava sem a mesma proteção.
+    if(!planoPronto) return;
     jaRestaurou.current = true;
     // A bancada volta do banco como estava. Se o limite baixou desde
     // então (saiu da conta, ou o premium venceu), ela não cabe mais —
@@ -292,8 +304,12 @@ function AppInner(){
       setTempoPrincipal(restaurada.tempoPrincipal);
       setTempoAberturaPrincipal(restaurada.tempoPrincipal);
     }
-    setTelaAtivaMobile(restaurada.ativa);
-  },[restaurada]);
+    // A aba da frente não pode apontar pra mesa que não veio: índice fora
+    // da lista deixa TODAS com `ocultoMobile` e a tela fica sem gráfico
+    // nenhum, sem erro. Foi o segundo sintoma do mesmo relato.
+    const ativa = Number.isInteger(restaurada.ativa) ? restaurada.ativa : 0;
+    setTelaAtivaMobile(ativa > cabem.length ? 0 : ativa);
+  },[restaurada, planoPronto, user, plano, isAdmin]);
 
   // Sair da conta solta a trava: entrar de novo restaura outra vez.
   useEffect(()=>{ if(!user?.id) jaRestaurou.current = false; },[user?.id]);
@@ -320,8 +336,13 @@ function AppInner(){
   // do primeiro quadro apagaria a que estava lá.
   useEffect(()=>{
     if(!user?.id || !restaurada) return;
+    // NÃO GRAVA ENQUANTO O PLANO NÃO CHEGOU. É a segunda metade do mesmo
+    // acidente: a bancada cortada pelo limite errado era gravada por cima
+    // da verdadeira, e aí a perda das mesas deixava de ser um susto de
+    // um quadro e passava a ser permanente.
+    if(!planoPronto) return;
     guardar({ extras: telasExtras, tempoPrincipal, ativa: telaAtivaMobile });
-  },[user?.id, restaurada, telasExtras, tempoPrincipal, telaAtivaMobile, guardar]);
+  },[user?.id, restaurada, planoPronto, telasExtras, tempoPrincipal, telaAtivaMobile, guardar]);
   // Cada mesa extra guarda o ticker e com que tempo ela abre: duas mesas
   // do MESMO ativo só fazem sentido em tempos diferentes.
   const adicionarTelaEIrPara = (ticker, tempo) => {
