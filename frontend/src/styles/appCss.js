@@ -783,6 +783,46 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    tema (quase branco no escuro) e vira escuro no tema claro sozinho. */
 .ind-label{font-size:11px;color:var(--text);flex:1}
 .ind-color{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* -- Painel de indicadores (abas + grade de chips) --
+   480x360 no desktop. A altura e MAXIMA, nao fixa: com a aba Medias
+   aberta o painel fica baixinho em vez de deixar meia tela vazia. */
+.pind{display:flex;flex-direction:column;width:480px;max-width:calc(100vw - 16px);max-height:360px;background:var(--card);border:1px solid var(--border);border-radius:12px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.7);animation:indIn .15s ease;overflow:hidden}
+.pind-topo{display:flex;align-items:center;gap:8px;padding:10px 10px 8px;border-bottom:1px solid var(--border)}
+.pind-busca{flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;outline:none}
+.pind-busca:focus{border-color:var(--accent)}
+.pind-x{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:4px 6px;line-height:1}
+.pind-x:hover{color:var(--text)}
+.pind-abas{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);flex-shrink:0}
+.pind-abas::-webkit-scrollbar{display:none}
+.pind-aba{display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;padding:5px 11px;border-radius:14px;cursor:pointer;white-space:nowrap;transition:all .12s}
+.pind-aba:hover{color:var(--text);border-color:var(--text3)}
+.pind-aba.ativa{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.pind-aba-n{background:rgba(255,255,255,.22);border-radius:7px;font-size:9px;font-weight:700;padding:0 5px;line-height:14px}
+.pind-aba:not(.ativa) .pind-aba-n{background:var(--s2);color:var(--text)}
+.pind-corpo{flex:1;overflow-y:auto;padding:4px 10px 8px}
+.pind-secao{margin-top:8px}
+.pind-secao-titulo{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--font-m);padding:4px 2px}
+.pind-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.pind-chip{display:flex;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:all .12s}
+.pind-chip:hover{border-color:var(--text3)}
+.pind-chip.ligado{border-color:var(--accent);background:rgba(41,98,255,.12)}
+.pind-chip.breve{opacity:.45}
+.pind-chip.breve:hover{border-color:var(--border)}
+.pind-chip-btn{flex:1;min-width:0;display:flex;align-items:center;gap:7px;background:none;border:none;color:var(--text);font-size:11px;text-align:left;padding:8px 6px 8px 9px;cursor:pointer}
+.pind-chip-btn:disabled{cursor:default}
+.pind-bolinha{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pind-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pind-breve{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;margin-left:auto}
+.pind-fav{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;padding:8px 8px 8px 2px;line-height:1}
+.pind-fav:hover{color:var(--text)}
+.pind-fav.on{color:#F5A623}
+.pind-vazio{font-size:11px;color:var(--text2);padding:18px 4px;text-align:center}
+.pind-rodape{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--border);flex-shrink:0}
+.pind-conta{font-size:10px;color:var(--text2);font-family:var(--font-m);flex:1}
+.pind-limpar{background:none;border:1px solid var(--border);color:var(--text2);font-size:10px;padding:5px 10px;border-radius:7px;cursor:pointer}
+.pind-limpar:hover:not(:disabled){color:var(--text);border-color:var(--text3)}
+.pind-limpar:disabled{opacity:.4;cursor:default}
+.pind-ok{background:var(--accent);border:none;color:#fff;font-size:10px;font-weight:700;padding:6px 14px;border-radius:7px;cursor:pointer}
 .saiba-mais-btn{position:fixed;transform:translate(-50%,-100%) translateY(-18px);z-index:150;background:linear-gradient(135deg,#F5A623,#e8940f);color:#000;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 4px 16px rgba(245,166,35,.4);animation:smBtnIn .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
 .saiba-mais-btn:hover{filter:brightness(1.1);transform:translate(-50%,-100%) translateY(-18px) scale(1.04)}
 @keyframes smBtnIn{from{opacity:0;transform:translate(-50%,-100%) translateY(-18px) scale(.8)}to{opacity:1;transform:translate(-50%,-100%) translateY(-18px) scale(1)}}
@@ -1516,6 +1556,13 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
     box-shadow:0 -8px 32px rgba(0,0,0,.5);
   }
   .ind-drop-sheet .ind-item{min-height:44px}
+  /* O painel de indicadores vira bottom sheet junto com os outros:
+     largura cheia, altura maior (no celular a grade cai pra 2 colunas) e
+     alvos de 44px. */
+  .pind{width:100%!important;max-width:100%;max-height:78vh}
+  .pind-grade{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  .pind-chip-btn{min-height:44px}
+  .pind-aba{min-height:36px}
   @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 
   /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */

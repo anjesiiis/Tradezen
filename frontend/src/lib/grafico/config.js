@@ -45,23 +45,69 @@ export const TFS=[
 export const TF_PADRAO = TFS.find(t=>t.label==="1D");
 
 export const INDICADORES = [
-  {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},
-  {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
-  {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
+  {id:"sma20",  label:"SMA 20",  cor:"#F5A623", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Simples",     aliases:"media movel simples sma 20"},
+  {id:"sma100", label:"SMA 100", cor:"#9B6DFF", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Simples",     aliases:"media movel simples sma 100"},
+  {id:"sma200", label:"SMA 200", cor:"#3D7EFF", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Simples",     aliases:"media movel simples sma 200"},
   // EMA 9/21/50 — médias EXPONENCIAIS. Reagem mais rápido que a simples
   // porque pesam as velas recentes, e é o que a maioria usa pra swing.
   // Entram liberadas: sem elas a plataforma fica atrás de qualquer
   // concorrente gratuito.
-  {id:"ema9",   label:"EMA 9",   cor:"#FF7AB6", grupo:"Médias Móveis"},
-  {id:"ema21",  label:"EMA 21",  cor:"#A855F7", grupo:"Médias Móveis"},
-  {id:"ema50",  label:"EMA 50",  cor:"#22D3EE", grupo:"Médias Móveis"},
-  {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
-  {id:"atr",    label:"ATR",                cor:"#F5A623", grupo:"Volatilidade"},
-  {id:"rsi",         label:"RSI",         cor:"#3D7EFF", grupo:"Osciladores"},
-  {id:"estocastico", label:"Estocástico", cor:"#9B6DFF", grupo:"Osciladores"},
-  {id:"vwap",      label:"VWAP",          cor:"#F5A623", grupo:"Volume"},
-  {id:"volume_ma", label:"Volume médio",  cor:"#00D68F", grupo:"Volume"},
-  {id:"obv",       label:"OBV",           cor:"#9B6DFF", grupo:"Volume"},
+  {id:"ema9",   label:"EMA 9",   cor:"#FF7AB6", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Exponenciais", aliases:"media movel exponencial ema 9"},
+  {id:"ema21",  label:"EMA 21",  cor:"#A855F7", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Exponenciais", aliases:"media movel exponencial ema 21"},
+  {id:"ema50",  label:"EMA 50",  cor:"#22D3EE", grupo:"Médias Móveis", categoria:"medias",      subgrupo:"Exponenciais", aliases:"media movel exponencial ema 50"},
+  {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade", categoria:"volatilidade", subgrupo:"Bandas",  aliases:"bollinger bandas desvio padrao"},
+  {id:"atr",    label:"ATR",                 cor:"#F5A623", grupo:"Volatilidade", categoria:"volatilidade", subgrupo:"Amplitude", aliases:"atr average true range amplitude"},
+  {id:"rsi",         label:"RSI",         cor:"#3D7EFF", grupo:"Osciladores", categoria:"osciladores", subgrupo:"Força",   aliases:"rsi indice de força relativa sobrecompra sobrevenda"},
+  {id:"estocastico", label:"Estocástico", cor:"#9B6DFF", grupo:"Osciladores", categoria:"osciladores", subgrupo:"Força",   aliases:"estocastico stochastic k d"},
+  {id:"vwap",      label:"VWAP",         cor:"#F5A623", grupo:"Volume", categoria:"volume", subgrupo:"Preço médio", aliases:"vwap preco medio ponderado por volume"},
+  {id:"volume_ma", label:"Volume médio", cor:"#00D68F", grupo:"Volume", categoria:"volume", subgrupo:"Fluxo",       aliases:"volume medio barras"},
+  {id:"obv",       label:"OBV",          cor:"#9B6DFF", grupo:"Volume", categoria:"volume", subgrupo:"Fluxo",       aliases:"obv on balance volume acumulado"},
+];
+
+// AS ABAS DO PAINEL, e a ordem delas.
+// "Todos" não entra aqui: é um caso à parte no painel (mostra o catálogo
+// inteiro) e não tem indicador nenhum marcado com essa categoria.
+export const CATEGORIAS_INDICADOR = [
+  {id:"medias",       label:"Médias"},
+  {id:"tendencia",    label:"Tendência"},
+  {id:"volatilidade", label:"Volatilidade"},
+  {id:"osciladores",  label:"Osciladores"},
+  {id:"volume",       label:"Volume"},
+];
+
+// O QUE AINDA NÃO DESENHA
+// =======================
+// A matemática destes já existe (lib/grafico/indicadoresAvancados.js) e é
+// testada, mas nada deles chega ao gráfico ainda: os de painel próprio
+// (MACD, ADX, MFI...) precisam de sub-painel abaixo das velas, que é
+// mudança de arquitetura, não de catálogo.
+//
+// Eles aparecem no painel DESLIGADOS, com a etiqueta "em breve", e não
+// são clicáveis. A alternativa seria deixá-los clicáveis e não acontecer
+// nada — pior que não listar: a pessoa clica, não vê nada e conclui que a
+// plataforma está quebrada. Listado e marcado é informação; listado e
+// morto é defeito.
+export const INDICADORES_EM_BREVE = [
+  {id:"supertrend", label:"SuperTrend",      cor:"#00D68F", categoria:"tendencia",    subgrupo:"Seguidores de tendência", aliases:"supertrend super trend stop"},
+  {id:"sar",        label:"Parabolic SAR",   cor:"#F5A623", categoria:"tendencia",    subgrupo:"Seguidores de tendência", aliases:"sar parabolico parabolic stop and reverse"},
+  {id:"adx",        label:"ADX",             cor:"#3D7EFF", categoria:"tendencia",    subgrupo:"Força da tendência",      aliases:"adx dmi direcional força de tendencia"},
+  {id:"pivos",      label:"Pivôs do dia",    cor:"#9B6DFF", categoria:"tendencia",    subgrupo:"Níveis calculados",       aliases:"pivot point pivos suporte resistencia classico"},
+  {id:"keltner",    label:"Canais de Keltner", cor:"#22D3EE", categoria:"volatilidade", subgrupo:"Bandas",               aliases:"keltner canal atr"},
+  {id:"macd",       label:"MACD",            cor:"#3D7EFF", categoria:"osciladores",  subgrupo:"Momento",                 aliases:"macd convergencia divergencia media movel histograma"},
+  {id:"ao",         label:"Awesome Oscillator", cor:"#00D68F", categoria:"osciladores", subgrupo:"Momento",              aliases:"awesome oscillator ao bill williams"},
+  {id:"cci",        label:"CCI",             cor:"#F5A623", categoria:"osciladores",  subgrupo:"Força",                   aliases:"cci commodity channel index"},
+  {id:"williams",   label:"Williams %R",     cor:"#FF7AB6", categoria:"osciladores",  subgrupo:"Força",                   aliases:"williams percent r sobrecompra"},
+  {id:"mfi",        label:"MFI",             cor:"#A855F7", categoria:"volume",       subgrupo:"Fluxo",                   aliases:"mfi money flow index fluxo de dinheiro"},
+  {id:"cmf",        label:"Chaikin Money Flow", cor:"#00D68F", categoria:"volume",    subgrupo:"Fluxo",                   aliases:"chaikin money flow cmf"},
+  {id:"acc_dist",   label:"Acumulação/Distribuição", cor:"#9B6DFF", categoria:"volume", subgrupo:"Fluxo",                 aliases:"acumulacao distribuicao accumulation distribution ad"},
+  {id:"volume_profile", label:"Volume Profile", cor:"#F5A623", categoria:"volume",    subgrupo:"Perfil",                  aliases:"volume profile perfil de volume poc"},
+];
+
+// O catálogo que o painel mostra: o que funciona primeiro, o que vem
+// depois marcado. `pronto` é o que decide se o chip é clicável.
+export const CATALOGO_INDICADORES = [
+  ...INDICADORES.map(i => ({...i, pronto:true})),
+  ...INDICADORES_EM_BREVE.map(i => ({...i, pronto:false})),
 ];
 
 // Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo

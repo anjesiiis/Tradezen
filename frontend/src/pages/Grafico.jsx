@@ -11,6 +11,7 @@ import { usePreferenciasGrafico } from "../hooks/usePreferenciasGrafico.js";
 import { SkeletonGraficoArea } from "../components/Skeleton.jsx";
 import { API } from "../lib/api.js";
 import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS } from "../lib/grafico/config.js";
+import PainelIndicadores from "../components/chart/PainelIndicadores.jsx";
 import { buscarPaginaAnterior, temHistoricoSobDemanda } from "../lib/grafico/historico.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp, tokenDaSessao } from "../lib/grafico/padroes.js";
 import { fmtP } from "../lib/mercado.js";
@@ -205,7 +206,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // Fecha dropdown de indicadores ao clicar fora
   useEffect(()=>{
     if(!indOpen) return;
-    const h = e => { if(!e.target.closest(".ind-wrap")) setIndOpen(false); };
+    const h = e => { if(!e.target.closest(".ind-wrap") && !e.target.closest(".pind")) setIndOpen(false); };
     document.addEventListener("mousedown", h);
     return ()=>document.removeEventListener("mousedown", h);
   },[indOpen]);
@@ -603,7 +604,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
             onClick={()=>{
               if(!indOpen && indBtnRef.current){
                 const r = indBtnRef.current.getBoundingClientRect();
-                setIndPos({top: r.bottom+4, left: r.left});
+                // O painel tem 480px: ancorado cru no botao de uma mesa
+                // da direita ele sairia pela borda da tela. Clamp em 8px
+                // de folga nos dois lados (no celular o CSS do bottom
+                // sheet ignora isso e ocupa a largura toda).
+                const LARG = 480;
+                setIndPos({
+                  top: r.bottom+4,
+                  left: Math.max(8, Math.min(r.left, window.innerWidth - LARG - 8)),
+                });
               }
               setIndOpen(v=>!v);
             }}
@@ -1002,36 +1011,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         />
       )}
 
-      {/* ── PORTAL DO DROPDOWN DE INDICADORES ── */}
+      {/* ── PORTAL DO PAINEL DE INDICADORES ── */}
       {indOpen && createPortal(
         <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setIndOpen(false)}>
-          <div
-            className="ind-drop ind-drop-sheet"
-            style={{position:"fixed",top:indPos.top,left:indPos.left}}
-            onMouseDown={e=>e.stopPropagation()}
-          >
-            {[...new Set(INDICADORES.map(i=>i.grupo))].map(grupo=>(
-              <div key={grupo}>
-                <div className="ind-section">{grupo}</div>
-                {INDICADORES.filter(i=>i.grupo===grupo).map(ind=>(
-                  <div
-                    key={ind.id}
-                    className="ind-item"
-                    onMouseDown={e=>{
-                      e.stopPropagation();
-                      toggleTool(ind.id);
-                    }}
-                  >
-                    <div className={`ind-chk ${tools.has(ind.id)?"on":""}`}>
-                      {tools.has(ind.id)&&"✓"}
-                    </div>
-                    <span className="ind-label">{ind.label}</span>
-                    <span className="ind-color" style={{background:ind.cor}}/>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+          <PainelIndicadores
+            tools={tools}
+            aoAlternar={toggleTool}
+            aoFechar={()=>setIndOpen(false)}
+            posicao={indPos}
+          />
         </div>,
         document.body
       )}
