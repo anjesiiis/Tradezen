@@ -163,10 +163,61 @@ describe("rodapé", () => {
     expect(screen.getByText("Limpar todos")).toBeDisabled();
   });
 
-  it("Pronto fecha", () => {
+  it("Aplicar fecha", () => {
     const { aoFechar } = abrir();
-    fireEvent.click(screen.getByText("Pronto"));
+    fireEvent.click(screen.getByText("Aplicar"));
     expect(aoFechar).toHaveBeenCalled();
+  });
+});
+
+// MODAL CENTRAL, NAO POPOVER ANCORADO
+// ===================================
+//
+// O painel sempre nasceu num portal no document.body, entao o grid do
+// multichart nunca o cortou. O que cortava era a JANELA: ancorado em
+// top = (base do botao), nas mesas de baixo ele abria 360px abaixo de um
+// botao que ja esta perto do pe da tela. Estes testes travam que nenhuma
+// posicao volta pro componente.
+describe("posicionamento", () => {
+  it("nao recebe nem aplica coordenada nenhuma", () => {
+    abrir();
+    const caixa = document.querySelector(".pind");
+    expect(caixa.style.top).toBe("");
+    expect(caixa.style.left).toBe("");
+    expect(caixa.style.position).toBe("");
+  });
+
+  it("o fundo escurecido existe e e quem centraliza", () => {
+    abrir();
+    const fundo = document.querySelector(".pind-fundo");
+    expect(fundo).toBeTruthy();
+    expect(fundo.contains(document.querySelector(".pind"))).toBe(true);
+  });
+
+  it("clicar no fundo fecha", () => {
+    const { aoFechar } = abrir();
+    fireEvent.mouseDown(document.querySelector(".pind-fundo"));
+    expect(aoFechar).toHaveBeenCalled();
+  });
+
+  it("clicar DENTRO do painel nao fecha", () => {
+    const { aoFechar } = abrir();
+    fireEvent.mouseDown(document.querySelector(".pind"));
+    fireEvent.mouseDown(screen.getByTitle("RSI"));
+    expect(aoFechar).not.toHaveBeenCalled();
+  });
+
+  it("trava a rolagem do body enquanto esta aberto, e devolve ao fechar", () => {
+    const { unmount } = abrir();
+    expect(document.body.style.overflow).toBe("hidden");
+    unmount();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("tem titulo e e anunciado como dialogo", () => {
+    abrir();
+    expect(screen.getByText("Indicadores")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Indicadores" })).toBeTruthy();
   });
 });
 

@@ -85,7 +85,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [tooltipAberto,setTooltipAberto] = useState(false);
   const [indOpen,setIndOpen]  = useState(false);
   const indBtnRef = useRef(null);
-  const [indPos,setIndPos]    = useState({top:0,left:0});
   const [aparOpen,setAparOpen] = useState(false);
   const aparBtnRef = useRef(null);
   const [aparPos,setAparPos]  = useState({top:0,left:0});
@@ -596,28 +595,20 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
         <div className="sep"/>
 
-        {/* Dropdown Indicadores — via portal pra evitar z-index do .analysis */}
+        {/* Indicadores — modal central, montado no document.body por
+            portal: dentro da mesa ele pegava o z-index do .analysis, e
+            ancorado no botao ele caia fora da janela nas mesas de baixo.
+            Sem a setinha: ela promete "abre aqui embaixo", e nao e mais
+            isso que acontece. */}
         <div className="ind-wrap">
           <button
             ref={indBtnRef}
             className={`ind-btn ${indOpen?"open":""}`}
-            onClick={()=>{
-              if(!indOpen && indBtnRef.current){
-                const r = indBtnRef.current.getBoundingClientRect();
-                // O painel tem 480px: ancorado cru no botao de uma mesa
-                // da direita ele sairia pela borda da tela. Clamp em 8px
-                // de folga nos dois lados (no celular o CSS do bottom
-                // sheet ignora isso e ocupa a largura toda).
-                const LARG = 480;
-                setIndPos({
-                  top: r.bottom+4,
-                  left: Math.max(8, Math.min(r.left, window.innerWidth - LARG - 8)),
-                });
-              }
-              setIndOpen(v=>!v);
-            }}
+            aria-haspopup="dialog"
+            aria-expanded={indOpen}
+            onClick={()=>setIndOpen(v=>!v)}
           >
-            Indicadores <span className="arr">▼</span>
+            Indicadores
             {INDICADORES.filter(i=>tools.has(i.id)).length>0&&(
               <span style={{background:"var(--accent)",color:"#fff",borderRadius:8,padding:"1px 5px",fontSize:9,fontWeight:700}}>
                 {INDICADORES.filter(i=>tools.has(i.id)).length}
@@ -1013,14 +1004,13 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
       {/* ── PORTAL DO PAINEL DE INDICADORES ── */}
       {indOpen && createPortal(
-        <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setIndOpen(false)}>
-          <PainelIndicadores
-            tools={tools}
-            aoAlternar={toggleTool}
-            aoFechar={()=>setIndOpen(false)}
-            posicao={indPos}
-          />
-        </div>,
+        <PainelIndicadores
+          tools={tools}
+          aoAlternar={toggleTool}
+          // Devolve o foco pro botao que abriu: sem isso o teclado volta
+          // pro inicio da pagina depois de fechar.
+          aoFechar={()=>{ setIndOpen(false); indBtnRef.current?.focus(); }}
+        />,
         document.body
       )}
 

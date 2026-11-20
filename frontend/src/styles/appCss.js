@@ -786,9 +786,16 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 /* -- Painel de indicadores (abas + grade de chips) --
    480x360 no desktop. A altura e MAXIMA, nao fixa: com a aba Medias
    aberta o painel fica baixinho em vez de deixar meia tela vazia. */
-.pind{display:flex;flex-direction:column;width:480px;max-width:calc(100vw - 16px);max-height:360px;background:var(--card);border:1px solid var(--border);border-radius:12px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.7);animation:indIn .15s ease;overflow:hidden}
+/* Modal CENTRAL, nao popover ancorado: o botao das mesas de baixo fica
+   perto do pe da tela, e 360px de painel a partir dele caem fora da
+   janela. Centralizado, a posicao nao depende de qual mesa abriu. */
+.pind-fundo{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:pindFundo .2s ease-out}
+@keyframes pindFundo{from{opacity:0}to{opacity:1}}
+.pind{display:flex;flex-direction:column;width:480px;max-width:100%;max-height:min(360px,100%);background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.7);animation:pindEntra .18s cubic-bezier(.25,.46,.45,.94);overflow:hidden}
+@keyframes pindEntra{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.pind-titulo{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap}
 .pind-topo{display:flex;align-items:center;gap:8px;padding:10px 10px 8px;border-bottom:1px solid var(--border)}
-.pind-busca{flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;outline:none}
+.pind-busca{flex:1;min-width:80px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;outline:none}
 .pind-busca:focus{border-color:var(--accent)}
 .pind-x{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:4px 6px;line-height:1}
 .pind-x:hover{color:var(--text)}
@@ -1559,10 +1566,16 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   /* O painel de indicadores vira bottom sheet junto com os outros:
      largura cheia, altura maior (no celular a grade cai pra 2 colunas) e
      alvos de 44px. */
-  .pind{width:100%!important;max-width:100%;max-height:78vh}
+  /* No celular o modal encosta embaixo (bottom sheet): a mao alcanca o
+     rodape, e a grade de chips cai pra 2 colunas. */
+  .pind-fundo{align-items:flex-end;padding:0}
+  .pind{width:100%;max-width:100%;max-height:78vh;border-radius:16px 16px 0 0;border-bottom:none;animation:pindSobe .2s cubic-bezier(.25,.46,.45,.94)}
+  @keyframes pindSobe{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .pind-rodape{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
   .pind-grade{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
   .pind-chip-btn{min-height:44px}
   .pind-aba{min-height:36px}
+  .pind-ok,.pind-limpar{min-height:38px}
   @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 
   /* Painel lateral de padrões (quando ligado) desce pra baixo do gráfico */

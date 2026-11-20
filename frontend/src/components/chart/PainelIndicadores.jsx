@@ -24,6 +24,14 @@ const ROTULO_CATEGORIA = Object.fromEntries(
  * config). Listar MACD e nada acontecer ao clicar faz a pessoa concluir
  * que a plataforma está quebrada — e ela estaria certa.
  *
+ * POR QUE MODAL CENTRAL, e não um popover ancorado no botão: o painel
+ * já nascia num portal no document.body, então o grid do multichart
+ * nunca o cortou. O que cortava era a JANELA. Ancorado, ele abria em
+ * top = (base do botão), e o botão das mesas de baixo fica perto do pé
+ * da tela — 360px de painel a partir dali caem fora do viewport, e no
+ * celular com quatro mesas o painel da última abria quase todo invisível.
+ * Centralizado, a posição não depende de onde está a mesa.
+ *
  * FAVORITOS ficam no navegador (localStorage), não no banco. É
  * preferência de quem está olhando, some junto com o navegador e não
  * vale uma tabela nem uma ida ao Supabase a cada clique.
@@ -76,7 +84,7 @@ export function filtrarIndicadores(lista, { categoria, busca, favoritos }) {
   });
 }
 
-export default function PainelIndicadores({ tools, aoAlternar, aoFechar, posicao }) {
+export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
   const [categoria, setCategoria] = useState("todos");
   const [busca, setBusca] = useState("");
   const [favoritos, setFavoritos] = useState(lerFavoritos);
@@ -92,6 +100,15 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar, posicao
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
   }, [busca, aoFechar]);
+
+  // Trava a rolagem do body enquanto o modal está aberto: sem isso a
+  // roda do mouse sobre o fundo escurecido rola a página atrás, e no
+  // celular o gesto de rolar a grade de chips arrasta a tela inteira.
+  useEffect(() => {
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = antes; };
+  }, []);
 
   const alternarFavorito = (id) => {
     setFavoritos((prev) => {
@@ -134,14 +151,21 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar, posicao
 
   return (
     <div
-      className="pind ind-drop-sheet"
-      style={{ position: "fixed", top: posicao?.top ?? 0, left: posicao?.left ?? 0 }}
-      onMouseDown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Indicadores"
+      className="pind-fundo"
+      // Fecha só no clique no PRÓPRIO fundo. Sem o teste de target, um
+      // clique que começa num chip e solta no fundo fecharia o painel.
+      onMouseDown={(e) => { if (e.target === e.currentTarget) aoFechar?.(); }}
+      role="presentation"
     >
+      <div
+        className="pind"
+        onMouseDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Indicadores"
+      >
       <div className="pind-topo">
+        <span className="pind-titulo">Indicadores</span>
         <input
           ref={buscaRef}
           className="pind-busca"
@@ -242,7 +266,8 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar, posicao
         >
           Limpar todos
         </button>
-        <button type="button" className="pind-ok" onClick={aoFechar}>Pronto</button>
+        <button type="button" className="pind-ok" onClick={aoFechar}>Aplicar</button>
+      </div>
       </div>
     </div>
   );
