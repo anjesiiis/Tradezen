@@ -813,13 +813,9 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .pind-chip{display:flex;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:all .12s}
 .pind-chip:hover{border-color:var(--text3)}
 .pind-chip.ligado{border-color:var(--accent);background:rgba(41,98,255,.12)}
-.pind-chip.breve{opacity:.45}
-.pind-chip.breve:hover{border-color:var(--border)}
 .pind-chip-btn{flex:1;min-width:0;display:flex;align-items:center;gap:7px;background:none;border:none;color:var(--text);font-size:11px;text-align:left;padding:8px 6px 8px 9px;cursor:pointer}
-.pind-chip-btn:disabled{cursor:default}
 .pind-bolinha{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .pind-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pind-breve{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;margin-left:auto}
 .pind-fav{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;padding:8px 8px 8px 2px;line-height:1}
 .pind-fav:hover{color:var(--text)}
 .pind-fav.on{color:#F5A623}

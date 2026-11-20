@@ -17,12 +17,10 @@ const ROTULO_CATEGORIA = Object.fromEntries(
  * abas por categoria em cima, grade de chips embaixo — e o painel inteiro
  * cabe em 480x360 no desktop e num bottom sheet no celular.
  *
- * A REGRA QUE NÃO SE QUEBRA AQUI: chip que não desenha nada não é
- * clicável. Os treze que funcionam ficam ligáveis; os treze cuja
- * matemática já existe mas que ainda não chegam ao gráfico aparecem
- * apagados com a etiqueta "em breve" (ver INDICADORES_EM_BREVE no
- * config). Listar MACD e nada acontecer ao clicar faz a pessoa concluir
- * que a plataforma está quebrada — e ela estaria certa.
+ * A REGRA QUE NÃO SE QUEBRA AQUI: todo chip desenha. O painel mostra o
+ * catálogo inteiro e o catálogo é só o que chega ao gráfico — nada de
+ * chip apagado "em breve", nada de clicar e não acontecer nada. Quem
+ * guarda isso é o teste de catálogo, que exige cada id em CandleChart.
  *
  * POR QUE MODAL CENTRAL, e não um popover ancorado no botão: o painel
  * já nascia num portal no document.body, então o grid do multichart
@@ -214,36 +212,27 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
               {itens.map((ind) => {
                 const ligado = tools.has(ind.id);
                 return (
-                  <div
-                    key={ind.id}
-                    className={`pind-chip${ligado ? " ligado" : ""}${ind.pronto ? "" : " breve"}`}
-                  >
+                  <div key={ind.id} className={`pind-chip${ligado ? " ligado" : ""}`}>
                     <button
                       type="button"
                       className="pind-chip-btn"
-                      disabled={!ind.pronto}
-                      aria-pressed={ind.pronto ? ligado : undefined}
-                      title={ind.pronto ? ind.label : `${ind.label} — em breve`}
-                      onClick={() => ind.pronto && aoAlternar?.(ind.id)}
+                      aria-pressed={ligado}
+                      title={ind.label}
+                      onClick={() => aoAlternar?.(ind.id)}
                     >
                       <span className="pind-bolinha" style={{ background: ind.cor }} />
                       <span className="pind-nome">{ind.label}</span>
-                      {!ind.pronto && <span className="pind-breve">em breve</span>}
                     </button>
-                    {/* Favoritar só o que funciona: guardar atalho pra
-                        algo que não desenha não serve de atalho. */}
-                    {ind.pronto && (
-                      <button
-                        type="button"
-                        className={`pind-fav${favoritos.has(ind.id) ? " on" : ""}`}
-                        onClick={() => alternarFavorito(ind.id)}
-                        aria-label={favoritos.has(ind.id)
-                          ? `Tirar ${ind.label} dos favoritos`
-                          : `Favoritar ${ind.label}`}
-                      >
-                        {favoritos.has(ind.id) ? "★" : "☆"}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className={`pind-fav${favoritos.has(ind.id) ? " on" : ""}`}
+                      onClick={() => alternarFavorito(ind.id)}
+                      aria-label={favoritos.has(ind.id)
+                        ? `Tirar ${ind.label} dos favoritos`
+                        : `Favoritar ${ind.label}`}
+                    >
+                      {favoritos.has(ind.id) ? "★" : "☆"}
+                    </button>
                   </div>
                 );
               })}

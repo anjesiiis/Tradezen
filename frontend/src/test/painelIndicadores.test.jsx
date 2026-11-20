@@ -1,15 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import PainelIndicadores, { filtrarIndicadores, lerFavoritos } from "../components/chart/PainelIndicadores.jsx";
-import { CATALOGO_INDICADORES, INDICADORES, INDICADORES_EM_BREVE, CATEGORIAS_INDICADOR } from "../lib/grafico/config.js";
+import { CATALOGO_INDICADORES, INDICADORES, CATEGORIAS_INDICADOR } from "../lib/grafico/config.js";
 
 // O PAINEL DE INDICADORES
 // =======================
 //
 // A regra que estes testes travam, e é a razão do painel existir assim:
-// chip que não desenha nada não é clicável. O catálogo mostra 26
-// indicadores; 13 funcionam hoje. Se alguém marcar um "em breve" como
-// pronto sem ligar o desenho, o teste de chip desabilitado cai.
+// TODO CHIP DESENHA. O painel mostra o catálogo inteiro, e o catálogo é
+// só o que chega ao gráfico.
+//
+// Isto já foi diferente: por um dia o painel listou treze indicadores
+// apagados com a etiqueta "em breve", e eles saíram por decisão do dono.
+// A guarda que ficou é melhor que a flag que havia antes — em vez de
+// confiar num booleano escrito à mão no catálogo, o teste de catálogo
+// abre CandleChart.jsx e exige o id lá dentro. Indicador listado sem
+// desenho derruba a suíte, e ninguém precisa lembrar de marcar nada.
 
 function abrir(props = {}) {
   const aoAlternar = vi.fn();
@@ -28,10 +36,7 @@ function abrir(props = {}) {
 beforeEach(() => { localStorage.clear(); });
 
 describe("catálogo", () => {
-  it("o pronto e o em breve não se sobrepõem, e todo id é único", () => {
-    const prontos = INDICADORES.map((i) => i.id);
-    const breve = INDICADORES_EM_BREVE.map((i) => i.id);
-    expect(prontos.filter((id) => breve.includes(id))).toEqual([]);
+  it("todo id é único", () => {
     const ids = CATALOGO_INDICADORES.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -43,29 +48,31 @@ describe("catálogo", () => {
     }
   });
 
-  it("os 13 que desenham estão marcados pronto, e só eles", () => {
-    const prontos = CATALOGO_INDICADORES.filter((i) => i.pronto).map((i) => i.id).sort();
-    expect(prontos).toEqual(INDICADORES.map((i) => i.id).sort());
-  });
-});
-
-describe("chip que não desenha não é clicável", () => {
-  it("os em breve vêm desabilitados e com a etiqueta", () => {
-    abrir();
-    for (const ind of INDICADORES_EM_BREVE) {
-      const btn = screen.getByTitle(`${ind.label} — em breve`);
-      expect(btn).toBeDisabled();
+  it("nenhuma aba abre vazia", () => {
+    for (const cat of CATEGORIAS_INDICADOR) {
+      const quantos = CATALOGO_INDICADORES.filter((i) => i.categoria === cat.id).length;
+      expect(quantos, `aba ${cat.label} sem indicador`).toBeGreaterThan(0);
     }
-    expect(screen.getAllByText("em breve").length).toBe(INDICADORES_EM_BREVE.length);
   });
 
-  it("clicar num em breve não liga nada", () => {
-    const { aoAlternar } = abrir();
-    fireEvent.click(screen.getByTitle("MACD — em breve"));
-    expect(aoAlternar).not.toHaveBeenCalled();
+  // A GUARDA PRINCIPAL. Ela é o que permite tirar a flag "pronto": o
+  // chip só existe no painel se o desenho existir no gráfico.
+  it("todo indicador do painel é desenhado por CandleChart", () => {
+    const fonte = readFileSync(resolve(process.cwd(), "src/components/CandleChart.jsx"), "utf8");
+    for (const ind of CATALOGO_INDICADORES) {
+      expect(fonte.includes(ind.id), `${ind.id} no painel mas sem desenho em CandleChart.jsx`).toBe(true);
+    }
   });
 
-  it("clicar num pronto chama aoAlternar com o id", () => {
+  it("o painel mostra o catálogo inteiro, sem chip desabilitado", () => {
+    abrir();
+    for (const ind of CATALOGO_INDICADORES) {
+      expect(screen.getByTitle(ind.label)).not.toBeDisabled();
+    }
+    expect(screen.queryByText("em breve")).toBeNull();
+  });
+
+  it("clicar num chip chama aoAlternar com o id", () => {
     const { aoAlternar } = abrir();
     fireEvent.click(screen.getByTitle("RSI"));
     expect(aoAlternar).toHaveBeenCalledWith("rsi");
@@ -95,11 +102,12 @@ describe("abas", () => {
 });
 
 describe("busca", () => {
-  it("atravessa as abas: na aba Médias, buscar MACD acha MACD", () => {
+  it("atravessa as abas: na aba Médias, buscar RSI acha RSI", () => {
     abrir();
     fireEvent.click(screen.getByRole("tab", { name: "Médias" }));
-    fireEvent.change(screen.getByLabelText("Buscar indicador"), { target: { value: "macd" } });
-    expect(screen.getByTitle("MACD — em breve")).toBeTruthy();
+    expect(screen.queryByTitle("RSI")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Buscar indicador"), { target: { value: "rsi" } });
+    expect(screen.getByTitle("RSI")).toBeTruthy();
   });
 
   it("acha sem acento e pelo alias", () => {
@@ -131,11 +139,6 @@ describe("favoritos", () => {
     unmount();
     abrir();
     expect(screen.getByLabelText("Tirar VWAP dos favoritos")).toBeTruthy();
-  });
-
-  it("indicador em breve não tem estrela", () => {
-    abrir();
-    expect(screen.queryByLabelText("Favoritar MACD")).toBeNull();
   });
 
   it("favorito de id que saiu do catálogo é descartado na leitura", () => {

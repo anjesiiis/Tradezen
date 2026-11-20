@@ -67,48 +67,29 @@ export const INDICADORES = [
 // AS ABAS DO PAINEL, e a ordem delas.
 // "Todos" não entra aqui: é um caso à parte no painel (mostra o catálogo
 // inteiro) e não tem indicador nenhum marcado com essa categoria.
+//
+// NÃO existe aba sem indicador. Havia uma "Tendência" (SuperTrend, SAR,
+// ADX, Pivôs) e ela saiu junto com eles: aba que abre vazia é um beco.
 export const CATEGORIAS_INDICADOR = [
   {id:"medias",       label:"Médias"},
-  {id:"tendencia",    label:"Tendência"},
   {id:"volatilidade", label:"Volatilidade"},
   {id:"osciladores",  label:"Osciladores"},
   {id:"volume",       label:"Volume"},
 ];
 
-// O QUE AINDA NÃO DESENHA
-// =======================
-// A matemática destes já existe (lib/grafico/indicadoresAvancados.js) e é
-// testada, mas nada deles chega ao gráfico ainda: os de painel próprio
-// (MACD, ADX, MFI...) precisam de sub-painel abaixo das velas, que é
-// mudança de arquitetura, não de catálogo.
+// O CATÁLOGO DO PAINEL: só o que desenha.
 //
-// Eles aparecem no painel DESLIGADOS, com a etiqueta "em breve", e não
-// são clicáveis. A alternativa seria deixá-los clicáveis e não acontecer
-// nada — pior que não listar: a pessoa clica, não vê nada e conclui que a
-// plataforma está quebrada. Listado e marcado é informação; listado e
-// morto é defeito.
-export const INDICADORES_EM_BREVE = [
-  {id:"supertrend", label:"SuperTrend",      cor:"#00D68F", categoria:"tendencia",    subgrupo:"Seguidores de tendência", aliases:"supertrend super trend stop"},
-  {id:"sar",        label:"Parabolic SAR",   cor:"#F5A623", categoria:"tendencia",    subgrupo:"Seguidores de tendência", aliases:"sar parabolico parabolic stop and reverse"},
-  {id:"adx",        label:"ADX",             cor:"#3D7EFF", categoria:"tendencia",    subgrupo:"Força da tendência",      aliases:"adx dmi direcional força de tendencia"},
-  {id:"pivos",      label:"Pivôs do dia",    cor:"#9B6DFF", categoria:"tendencia",    subgrupo:"Níveis calculados",       aliases:"pivot point pivos suporte resistencia classico"},
-  {id:"keltner",    label:"Canais de Keltner", cor:"#22D3EE", categoria:"volatilidade", subgrupo:"Bandas",               aliases:"keltner canal atr"},
-  {id:"macd",       label:"MACD",            cor:"#3D7EFF", categoria:"osciladores",  subgrupo:"Momento",                 aliases:"macd convergencia divergencia media movel histograma"},
-  {id:"ao",         label:"Awesome Oscillator", cor:"#00D68F", categoria:"osciladores", subgrupo:"Momento",              aliases:"awesome oscillator ao bill williams"},
-  {id:"cci",        label:"CCI",             cor:"#F5A623", categoria:"osciladores",  subgrupo:"Força",                   aliases:"cci commodity channel index"},
-  {id:"williams",   label:"Williams %R",     cor:"#FF7AB6", categoria:"osciladores",  subgrupo:"Força",                   aliases:"williams percent r sobrecompra"},
-  {id:"mfi",        label:"MFI",             cor:"#A855F7", categoria:"volume",       subgrupo:"Fluxo",                   aliases:"mfi money flow index fluxo de dinheiro"},
-  {id:"cmf",        label:"Chaikin Money Flow", cor:"#00D68F", categoria:"volume",    subgrupo:"Fluxo",                   aliases:"chaikin money flow cmf"},
-  {id:"acc_dist",   label:"Acumulação/Distribuição", cor:"#9B6DFF", categoria:"volume", subgrupo:"Fluxo",                 aliases:"acumulacao distribuicao accumulation distribution ad"},
-  {id:"volume_profile", label:"Volume Profile", cor:"#F5A623", categoria:"volume",    subgrupo:"Perfil",                  aliases:"volume profile perfil de volume poc"},
-];
-
-// O catálogo que o painel mostra: o que funciona primeiro, o que vem
-// depois marcado. `pronto` é o que decide se o chip é clicável.
-export const CATALOGO_INDICADORES = [
-  ...INDICADORES.map(i => ({...i, pronto:true})),
-  ...INDICADORES_EM_BREVE.map(i => ({...i, pronto:false})),
-];
+// Por um dia o painel também listou treze indicadores apagados com a
+// etiqueta "em breve" (MACD, ADX, SuperTrend, SAR, Keltner, Pivôs, MFI,
+// CCI, Williams %R, AO, CMF, Acc/Dist, Volume Profile) — a matemática
+// deles existe e é testada em lib/grafico/indicadoresAvancados.js, mas
+// nada chega ao gráfico ainda. Saiu por decisão do dono: promessa na
+// tela é promessa cobrada, e um chip morto não ajuda quem veio operar.
+//
+// Quando um deles começar a desenhar, ele entra AQUI — e só aqui. O
+// teste de catálogo exige que todo id desta lista apareça em
+// CandleChart.jsx, então indicador listado sem desenho derruba a suíte.
+export const CATALOGO_INDICADORES = INDICADORES;
 
 // Legenda dos indicadores ativos (canto superior esquerdo do gráfico, estilo
 // TradingView) — junta os dois catálogos (indicadores técnicos + padrões de
