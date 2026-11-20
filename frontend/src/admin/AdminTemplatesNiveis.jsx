@@ -51,6 +51,67 @@ function Campo({ label, children }) {
   );
 }
 
+/**
+ * O ÚLTIMO PASSO: que tipo de zona é essa.
+ *
+ * Vem no fim, depois dos três pontos, por decisão do dono: escolher antes
+ * obriga a decidir o que a zona é antes de vê-la desenhada.
+ *
+ * As cores dos botões saem de `corDoNivel`, a mesma fonte do desenho —
+ * então o verde e o vermelho daqui são exatamente os que a zona vai ter.
+ * Suporte é VERMELHO e resistência é VERDE neste produto, o inverso da
+ * convenção de mercado.
+ *
+ * Esc cancela: fechar o modal NÃO apaga a zona marcada, só volta pra
+ * ajustá-la. Apagar o trabalho de três cliques porque alguém apertou Esc
+ * seria castigo.
+ */
+function ModalTipoDaZona({ aoEscolher, aoCancelar, salvando }) {
+  useEffect(() => {
+    const tecla = (e) => { if (e.key === "Escape") { e.stopPropagation(); aoCancelar?.(); } };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [aoCancelar]);
+
+  return (
+    <div className="niv-modal-fundo" role="presentation" onMouseDown={aoCancelar}>
+      <div
+        className="niv-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="niv-modal-titulo"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h3 id="niv-modal-titulo">Que tipo de zona é essa?</h3>
+        <div className="niv-modal-tipos">
+          <button
+            type="button"
+            disabled={salvando}
+            style={{ "--niv-cor": corDoNivel("suporte") }}
+            onClick={() => aoEscolher("suporte")}
+          >
+            <span className="niv-bola" aria-hidden="true" />
+            Suporte
+          </button>
+          <button
+            type="button"
+            disabled={salvando}
+            style={{ "--niv-cor": corDoNivel("resistencia") }}
+            onClick={() => aoEscolher("resistencia")}
+          >
+            <span className="niv-bola" aria-hidden="true" />
+            Resistência
+          </button>
+        </div>
+        <button type="button" className="niv-modal-cancelar" onClick={aoCancelar} disabled={salvando}>
+          {salvando ? "Salvando…" : "Cancelar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function TipoToggle({ value, onChange }) {
   return (
     <div style={{ display: "flex", gap: 8 }}>
@@ -79,7 +140,17 @@ export default function AdminTemplatesNiveis() {
   const [ticker, setTicker] = useState(() => estadoDoGrafico().ticker);
   const [periodo, setPeriodo] = useState(() => estadoDoGrafico().periodo);
   const [intervalo, setIntervalo] = useState(() => estadoDoGrafico().intervalo);
+  // `tipo` deixou de ser escolha PRÉVIA: agora ele chega no fim, pelo
+  // modal, depois dos três pontos. Fica como estado porque é ele que diz
+  // a cor da zona enquanto a pessoa marca (antes da escolha, cinza) e é
+  // o que vai pro banco.
   const [tipo, setTipo] = useState("suporte");
+  // Os três pontos ficam num grupo só: o fluxo novo marca UMA zona por
+  // vez e escolhe o tipo no fim, então não há mais dois grupos abertos.
+  const GRUPO = "zona";
+  // Aberto depois do terceiro ponto. Enquanto está aberto, a zona está
+  // marcada e esperando o tipo — e o clique no gráfico já está travado.
+  const [escolhendoTipo, setEscolhendoTipo] = useState(false);
   // Padrões já marcados neste ativo (de qualquer tipo) — viram emoji
   // O sidebar abre com só o padrão desta tela ligado (filtroPadroes.js)
   const [padroesVisiveis, setPadroesVisiveis] = useState(() => filtroInicial("niveis"));
@@ -170,11 +241,31 @@ export default function AdminTemplatesNiveis() {
     carregarGrafico(novoTicker);
   }
 
-  const toquesAtivos = toquesPorGrupo[tipo] || [];
-  const completo = toquesAtivos.length >= 2;
+  const toquesAtivos = toquesPorGrupo[GRUPO] || [];
+  // TRÊS PONTOS, e os três importam: 1 é o preço e a borda esquerda, 2 é
+  // o preço oposto, 3 é a borda direita. Com menos que isso a zona não
+  // tem altura ou não tem largura.
+  const TOTAL_PONTOS = 3;
+  const completo = toquesAtivos.length === TOTAL_PONTOS;
 
-  async function salvarNovo() {
-    if (!completo || !candlesContexto) return;
+  // As três validações que impedem zona impossível. Elas existem porque
+  // dois cliques no mesmo pixel são fáceis de dar sem perceber, e o
+  // resultado seria um retângulo invisível salvo no banco.
+  function motivoParaNaoSalvar() {
+    if (!candlesContexto) return "Carregue o gráfico primeiro.";
+    if (toquesAtivos.length < TOTAL_PONTOS) {
+      const faltam = TOTAL_PONTOS - toquesAtivos.length;
+      return `Faltam ${faltam} ponto${faltam > 1 ? "s" : ""} pra fechar a zona.`;
+    }
+    const [p1, p2, p3] = toquesAtivos;
+    if (p1.preco === p2.preco) return "Zona sem altura: os pontos 1 e 2 estão no mesmo preço.";
+    if (p1.i === p3.i) return "Zona sem largura: os pontos 1 e 3 estão no mesmo candle.";
+    return null;
+  }
+
+  async function salvarNovo(tipoEscolhido) {
+    const tipoFinal = tipoEscolhido || tipo;
+    if (motivoParaNaoSalvar() || !candlesContexto) return;
     setSalvando(true);
     setMensagem(null);
     try {
@@ -182,13 +273,13 @@ export default function AdminTemplatesNiveis() {
       const salvo = await templatesNiveisApi.create({
         ticker: ticker.trim().toUpperCase(),
         timeframe: intervalo,
-        tipo,
+        tipo: tipoFinal,
         candles,
         candles_contexto: candlesContexto,
         // `faixa` só entra quando foi ajustada: nível sem ajuste continua
         // guardando exatamente o que guardava antes, e reabre igual.
-        pontos: ajustePorGrupo[tipo]
-          ? { toques: toquesAjustados, faixa: ajustePorGrupo[tipo] }
+        pontos: ajustePorGrupo[GRUPO]
+          ? { toques: toquesAjustados, faixa: ajustePorGrupo[GRUPO] }
           : { toques: toquesAjustados },
         // Sem data_p1 o nível fica invisível no gráfico (ver janela.js)
         data_p1: dataDoPrimeiroPonto(candlesContexto, toquesAtivos),
@@ -200,8 +291,13 @@ export default function AdminTemplatesNiveis() {
       // o que acabou de ser salvo precisa aparecer: se o padrão estava
       // desmarcado no sidebar, ele volta ligado
       setPadroesVisiveis((atuais) => (atuais.includes("niveis") ? atuais : [...atuais, "niveis"]));
-      setToquesPorGrupo((prev) => ({ ...prev, [tipo]: [] }));
-      esquecerAjuste(tipo);
+      // RESET COMPLETO, e é aqui que morava o bug de "marcar o segundo
+      // S/R dá errado": sem limpar os três estados, a zona seguinte
+      // nascia com o resto da anterior — pontos velhos, faixa velha, e o
+      // clique travado porque o teto de 3 já estava cheio.
+      setToquesPorGrupo((prev) => ({ ...prev, [GRUPO]: [] }));
+      esquecerAjuste(GRUPO);
+      setEscolhendoTipo(false);
       setResultado("");
       setObservacao("");
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
@@ -422,9 +518,10 @@ export default function AdminTemplatesNiveis() {
                   {INTERVALOS.map((i) => <option key={i} value={i}>{i}</option>)}
                 </select>
               </Campo>
-              <Campo label="Tipo">
-                <TipoToggle value={tipo} onChange={setTipo} />
-              </Campo>
+              {/* O seletor de tipo saiu daqui: ele agora é o último passo,
+                  no modal que abre depois do terceiro ponto. Escolher
+                  antes obrigava a decidir o que a zona é antes de vê-la
+                  desenhada. */}
               <button onClick={() => carregarGrafico()} disabled={carregando || !ticker.trim()} className="admin-btn">
                 Carregar gráfico
               </button>
@@ -444,11 +541,13 @@ export default function AdminTemplatesNiveis() {
                   dual
                   cores={CORES_NIVEL}
                   toquesIniciais={toquesPorGrupo}
-                  grupoAtivo={tipo}
+                  grupoAtivo={GRUPO}
                   limparEm={limpezas}
                   onChange={setToquesPorGrupo}
                   ajustesIniciais={ajustePorGrupo}
                   aoAjustarFaixa={setAjustePorGrupo}
+                  maxToques={TOTAL_PONTOS}
+                  aoCompletar={() => setEscolhendoTipo(true)}
                 />
                   </div>
                   <FiltroPadroes
@@ -480,9 +579,38 @@ export default function AdminTemplatesNiveis() {
                   </Campo>
                 </div>
 
-                <button onClick={salvarNovo} disabled={!completo || salvando} className="admin-btn" style={{ alignSelf: "flex-start" }}>
-                  {salvando ? "Salvando..." : `Salvar ${tipo === "resistencia" ? "Resistência" : "Suporte"}`}
-                </button>
+                {/* O PASSO A PASSO NA TELA. Com três pontos e o tipo no
+                    fim, quem marca precisa saber em que passo está — sem
+                    isso o clique travado no quarto parece defeito. */}
+                <p className="niv-passo" role="status">
+                  {toquesAtivos.length === 0 && "Clique 1: o preço da zona e onde ela começa."}
+                  {toquesAtivos.length === 1 && "Clique 2: o preço oposto — é o que dá altura à zona."}
+                  {toquesAtivos.length === 2 && "Clique 3: até onde a zona vai. Depois dá pra arrastar a faixa."}
+                  {completo && (motivoParaNaoSalvar()
+                    || "Zona fechada. Arraste as bordas pra ajustar, e escolha o tipo.")}
+                </p>
+
+                {/* Fechou a zona e o modal foi fechado sem escolher: o
+                    botão traz a escolha de volta, em vez de obrigar a
+                    apagar tudo e marcar de novo. */}
+                {completo && !escolhendoTipo && (
+                  <button
+                    onClick={() => setEscolhendoTipo(true)}
+                    disabled={salvando || !!motivoParaNaoSalvar()}
+                    className="admin-btn"
+                    style={{ alignSelf: "flex-start" }}
+                  >
+                    Escolher o tipo e salvar
+                  </button>
+                )}
+
+                {escolhendoTipo && (
+                  <ModalTipoDaZona
+                    salvando={salvando}
+                    aoEscolher={(t) => { setTipo(t); salvarNovo(t); }}
+                    aoCancelar={() => setEscolhendoTipo(false)}
+                  />
+                )}
               </>
             )}
           </section>

@@ -351,6 +351,23 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 .admin-nav-lateral.recolhida .admin-nav-rotulo{display:none}
 :root[data-admin-nav="recolhida"] .admin-main{padding-left:80px}
 
+/* MODAL DO TIPO DA ZONA (suporte/resistencia), ultimo passo da marcacao
+   de S/R. As cores dos botoes vem de corDoNivel, a mesma fonte do
+   desenho — o verde e o vermelho daqui sao os que a zona vai ter. */
+.niv-modal-fundo{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.niv-modal{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:18px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.niv-modal h3{margin:0;font:600 14px var(--font-b);color:var(--text)}
+.niv-modal-tipos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.niv-modal-tipos button{display:flex;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--niv-cor) 14%,transparent);border:1px solid color-mix(in srgb,var(--niv-cor) 55%,transparent);color:var(--text);border-radius:10px;padding:12px 10px;font:600 13px var(--font-b);cursor:pointer}
+.niv-modal-tipos button:hover:not(:disabled){background:color-mix(in srgb,var(--niv-cor) 24%,transparent)}
+.niv-modal-tipos button:disabled{opacity:.5;cursor:not-allowed}
+.niv-bola{width:10px;height:10px;border-radius:50%;background:var(--niv-cor);flex:0 0 auto}
+.niv-modal-cancelar{background:none;border:0;color:var(--text2);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}
+.niv-modal-cancelar:disabled{text-decoration:none;cursor:default}
+
+/* O passo a passo da marcacao, logo abaixo do grafico. */
+.niv-passo{margin:0;font-size:12px;color:var(--text2);line-height:1.5}
+
 /* MODELOS DE ML — tela minima por pedido: numeros legiveis, sem firula.
    O cuidado esta no que informa decisao: a comparacao com o modelo
    anterior (sobe verde, desce vermelho) e o motivo do botao desabilitado. */

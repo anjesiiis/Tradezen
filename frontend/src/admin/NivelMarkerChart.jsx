@@ -57,6 +57,12 @@ function GraficoDeNivel({
   // derivada dos toques — nada muda pra quem não arrastar.
   ajustesIniciais,
   aoAjustarFaixa,
+  // ── FLUXO DE 3 PONTOS ───────────────────────────────────────
+  // `maxToques` trava o clique: com 3 marcados, o quarto é ignorado em
+  // vez de virar um toque solto. `aoCompletar` avisa a tela quando o
+  // último ponto entrou, e é ela que abre o modal do tipo.
+  maxToques = 0,            // 0 = sem teto (o comportamento antigo)
+  aoCompletar,
 }) {
   // o gráfico é criado uma vez só; sem o ref, o handler ficaria com a
   // versão antiga da função
@@ -78,6 +84,10 @@ function GraficoDeNivel({
   // O gesto em curso: qual borda está sendo puxada e de onde começou.
   // `arrastou` existe pra o clique que encerra o arrasto NÃO virar um
   // toque novo — sem isso, cada ajuste deixaria um toque solto no nível.
+  const maxToquesRef = useRef(maxToques);
+  useEffect(() => { maxToquesRef.current = maxToques; }, [maxToques]);
+  const aoCompletarRef = useRef(aoCompletar);
+  useEffect(() => { aoCompletarRef.current = aoCompletar; }, [aoCompletar]);
   const gestoRef = useRef(null);
   const arrastouRef = useRef(false);
   const containerRef = useRef();
@@ -185,7 +195,20 @@ function GraficoDeNivel({
 
       const chave = grupoAtivoRef.current;
       const novoToque = { i: idx, preco: Math.round(preco * 10000) / 10000 };
-      setToquesPorGrupo((prev) => ({ ...prev, [chave]: [...(prev[chave] || []), novoToque] }));
+      setToquesPorGrupo((prev) => {
+        const atuais = prev[chave] || [];
+        // TRAVA NO TETO. Sem isto o quarto clique virava um toque solto,
+        // e a zona passava a ter um ponto que não é nem borda nem preço —
+        // era o bug relatado de "deixa continuar clicando".
+        if (maxToquesRef.current > 0 && atuais.length >= maxToquesRef.current) return prev;
+        const proximos = [...atuais, novoToque];
+        if (maxToquesRef.current > 0 && proximos.length === maxToquesRef.current) {
+          // Depois do render, pra a tela já ter os três pontos quando
+          // abrir o modal do tipo.
+          setTimeout(() => aoCompletarRef.current?.(proximos), 0);
+        }
+        return { ...prev, [chave]: proximos };
+      });
     });
 
     const observer = new ResizeObserver(() => {

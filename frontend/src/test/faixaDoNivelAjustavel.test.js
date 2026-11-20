@@ -90,7 +90,7 @@ describe("a marcação guarda o ajuste", () => {
     resolve(process.cwd(), "src/admin/AdminTemplatesNiveis.jsx"), "utf8");
 
   it("salva faixa só quando ela foi ajustada", () => {
-    expect(tela).toMatch(/ajustePorGrupo\[tipo\]\s*\n?\s*\?\s*\{ toques: toquesAjustados, faixa: ajustePorGrupo\[tipo\] \}/);
+    expect(tela).toMatch(/ajustePorGrupo\[GRUPO\]\s*\n?\s*\?\s*\{ toques: toquesAjustados, faixa: ajustePorGrupo\[GRUPO\] \}/);
   });
 
   it("ao editar, carrega a faixa que estava salva", () => {
@@ -100,7 +100,7 @@ describe("a marcação guarda o ajuste", () => {
   // Faixa sem toque nenhum não tem o que a sustente, e sobraria
   // desenhada sobre o próximo nível que a pessoa começasse a marcar.
   it("limpar os toques limpa o ajuste", () => {
-    expect(tela).toMatch(/esquecerAjuste\(tipo\);/);
+    expect(tela).toMatch(/esquecerAjuste\(GRUPO\);/);
   });
 });
 
