@@ -3,6 +3,7 @@ import { dentroDoPeriodo } from "./periodoDoPadrao.js";
 import { dataDoPrimeiroPonto } from "./janela.js";
 import { SkeletonGraficoLinha } from "../components/Skeleton.jsx";
 import AdminShell, { AdminPatternNav, AdminToast } from "./theme.jsx";
+import { corDoNivel } from "../lib/grafico/padroes.js";
 import NivelMarkerChart from "./NivelMarkerChart.jsx";
 import AtivoPicker from "./AtivoPicker.jsx";
 import BotoesPeriodo from "./BotoesPeriodo.jsx";
@@ -25,7 +26,11 @@ const INTERVALOS = ["1d", "1wk", "60m"];
 const PADDING = 15;
 
 // Convenção deste projeto: resistência = verde, suporte = vermelho.
-const corDoTipo = (tipo) => (tipo === "resistencia" ? "#00D68F" : "#FF4560");
+// A COR VEM DA FONTE ÚNICA (lib/grafico/padroes.js). Aqui havia uma
+// cópia, com os mesmos valores — e durante um tempo o gráfico do USUÁRIO
+// usava o inverso: suporte vermelho na marcação e verde pra quem olhava.
+// Duas telas discordando sobre a mesma coisa.
+const corDoTipo = (tipo) => corDoNivel(tipo);
 const CORES_NIVEL = { suporte: corDoTipo("suporte"), resistencia: corDoTipo("resistencia") };
 
 function janelaDoPadrao(candlesContexto, toques) {

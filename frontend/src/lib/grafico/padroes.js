@@ -80,7 +80,16 @@ export function resolverPadroesPorTimestamp(padroesBrutos, candles){
 export const FIBO_NIVEIS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
 
 // ── Estilo das linhas de Suporte/Resistência (rank mais forte = mais nítido) ──
-const NIVEL_COR = { suporte: "0,214,143", resistencia: "255,69,96" };
+// SUPORTE VERMELHO, RESISTÊNCIA VERDE — por decisão do dono, e é o
+// inverso da convenção de mercado (onde suporte costuma ser verde).
+// Está aqui, num lugar só, porque esta é a fonte única da cor de nível:
+// a linha, a faixa sombreada e o selo saem daqui. Já houve o bug de duas
+// cópias com os valores trocados, e o sintoma foi um retângulo vermelho
+// atrás das velas.
+//
+// Trocar estes dois valores troca a cor dos níveis JÁ marcados — é
+// aparência, nenhum dado muda.
+const NIVEL_COR = { suporte: "255,69,96", resistencia: "0,214,143" };
 
 /**
  * Cor de um nível — FONTE ÚNICA.

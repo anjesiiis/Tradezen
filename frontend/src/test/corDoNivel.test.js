@@ -16,18 +16,22 @@ import { corDoNivel, estiloNivel } from "../lib/grafico/padroes.js";
 const VERDE_NIVEL = "rgb(0,214,143)";
 const VERMELHO_NIVEL = "rgb(255,69,96)";
 
+// SUPORTE VERMELHO, RESISTÊNCIA VERDE — decisão do dono, e é o inverso
+// da convenção de mercado. Vale registrar como se chegou aqui: o admin já
+// marcava com suporte vermelho, e o gráfico do USUÁRIO desenhava verde.
+// As duas telas discordavam sobre a mesma coisa. A escolha do dono virou
+// a regra nas duas, e agora saem da mesma fonte.
 describe("significado das cores de nível", () => {
-  it("suporte é verde", () => {
-    expect(corDoNivel("suporte")).toBe(VERDE_NIVEL);
+  it("suporte é VERMELHO", () => {
+    expect(corDoNivel("suporte")).toBe(VERMELHO_NIVEL);
   });
 
-  it("resistência é vermelha", () => {
-    expect(corDoNivel("resistencia")).toBe(VERMELHO_NIVEL);
+  it("resistência é VERDE", () => {
+    expect(corDoNivel("resistencia")).toBe(VERDE_NIVEL);
   });
 
-  it("suporte NÃO é vermelho — era este o bug", () => {
-    expect(corDoNivel("suporte")).not.toBe(VERMELHO_NIVEL);
-    expect(corDoNivel("suporte")).not.toMatch(/255,\s*69,\s*96/);
+  it("os dois tipos nunca compartilham a cor", () => {
+    expect(corDoNivel("suporte")).not.toBe(corDoNivel("resistencia"));
   });
 });
 
@@ -48,9 +52,9 @@ describe("a faixa e a linha concordam", () => {
 
 describe("o tipo é comparado normalizado", () => {
   it("a caixa da letra não muda a cor", () => {
-    expect(corDoNivel("Resistencia")).toBe(VERMELHO_NIVEL);
-    expect(corDoNivel("RESISTENCIA")).toBe(VERMELHO_NIVEL);
-    expect(corDoNivel("Suporte")).toBe(VERDE_NIVEL);
+    expect(corDoNivel("Resistencia")).toBe(VERDE_NIVEL);
+    expect(corDoNivel("RESISTENCIA")).toBe(VERDE_NIVEL);
+    expect(corDoNivel("Suporte")).toBe(VERMELHO_NIVEL);
   });
 
   it("estiloNivel também, e nunca devolve uma cor inválida", () => {
