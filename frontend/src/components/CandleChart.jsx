@@ -6,6 +6,7 @@ import { FERRAMENTA_INFO, PROJETAVEIS, _anchorFechar, _caixaDoTexto, manterLargu
 import { calcularATR, calcularEstocastico, calcularOBV, calcularRSI, calcularVWAP, calcularVolumeMA, toLWCandles } from "../lib/grafico/indicadores.js";
 import { normalizarAparencia, opcoesDaSerieCandle, opcoesDaSerieLinha, paraLinha } from "../lib/grafico/aparencia.js";
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
+import { calcularEMA } from "../lib/grafico/indicadoresAvancados.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
@@ -39,6 +40,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   const sma20Ref     = useRef(null);
   const sma100Ref    = useRef(null);
   const sma200Ref    = useRef(null);
+  const ema9Ref      = useRef(null);
+  const ema21Ref     = useRef(null);
+  const ema50Ref     = useRef(null);
   const bbUpperRef   = useRef(null);
   const bbMidRef     = useRef(null);
   const bbLowerRef   = useRef(null);
@@ -413,6 +417,7 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       sma20Ref.current = null;
       sma100Ref.current = null;
       sma200Ref.current = null;
+      ema9Ref.current = ema21Ref.current = ema50Ref.current = null;
       bbUpperRef.current = bbMidRef.current = bbLowerRef.current = null;
       vwapRef.current = null;
       volMaRef.current = null;
@@ -624,6 +629,24 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
     upsertSMA(sma20Ref,  20,  "#F5A623", activeTools.has("sma20")  && candles.length >= 20);
     upsertSMA(sma100Ref, 100, "#9B6DFF", activeTools.has("sma100") && candles.length >= 100);
     upsertSMA(sma200Ref, 200, "#3D7EFF", activeTools.has("sma200") && candles.length >= 200);
+
+    // EMA — mesma mecânica da SMA, outra conta. O cálculo mora em
+    // lib/grafico/indicadoresAvancados.js, testado com números
+    // conferíveis à mão: fórmula de indicador errada desenha uma linha
+    // plausível e ninguém percebe por meses.
+    const upsertEMA = (ref, periodo, color, condition) => {
+      if(condition){
+        if(!ref.current){
+          ref.current = chartRef.current.addSeries(LineSeries, { color, lineWidth:1.5, priceLineVisible:false, lastValueVisible:false });
+        }
+        ref.current.setData(calcularEMA(candles, periodo));
+      } else {
+        safeRemove(ref);
+      }
+    };
+    upsertEMA(ema9Ref,   9, "#FF7AB6", activeTools.has("ema9")  && candles.length >= 9);
+    upsertEMA(ema21Ref, 21, "#A855F7", activeTools.has("ema21") && candles.length >= 21);
+    upsertEMA(ema50Ref, 50, "#22D3EE", activeTools.has("ema50") && candles.length >= 50);
 
     // Bandas de Bollinger (período 20, 2 desvios)
     const hasBB = activeTools.has("bb") && candles.length >= 20;

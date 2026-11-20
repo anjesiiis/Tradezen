@@ -48,6 +48,13 @@ export const INDICADORES = [
   {id:"sma20",  label:"SMA 20",             cor:"#F5A623", grupo:"Médias Móveis"},
   {id:"sma100", label:"SMA 100",             cor:"#9B6DFF", grupo:"Médias Móveis"},
   {id:"sma200", label:"SMA 200",             cor:"#3D7EFF", grupo:"Médias Móveis"},
+  // EMA 9/21/50 — médias EXPONENCIAIS. Reagem mais rápido que a simples
+  // porque pesam as velas recentes, e é o que a maioria usa pra swing.
+  // Entram liberadas: sem elas a plataforma fica atrás de qualquer
+  // concorrente gratuito.
+  {id:"ema9",   label:"EMA 9",   cor:"#FF7AB6", grupo:"Médias Móveis"},
+  {id:"ema21",  label:"EMA 21",  cor:"#A855F7", grupo:"Médias Móveis"},
+  {id:"ema50",  label:"EMA 50",  cor:"#22D3EE", grupo:"Médias Móveis"},
   {id:"bb",     label:"Bandas de Bollinger", cor:"#00D68F", grupo:"Volatilidade"},
   {id:"atr",    label:"ATR",                cor:"#F5A623", grupo:"Volatilidade"},
   {id:"rsi",         label:"RSI",         cor:"#3D7EFF", grupo:"Osciladores"},
