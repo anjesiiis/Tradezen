@@ -33,14 +33,49 @@ describe('fetchPadroesMarcados — conteúdo premium', () => {
 
     const r = await fetchPadroesMarcados('PETR4.SA', '1d', 'tok-de-free');
 
-    expect(r).toEqual({ padroes: [], niveis: [], plano: 'free' });
+    expect(r).toEqual({ padroes: [], niveis: [], plano: 'free', timeframesComPadrao: [] });
   });
 
   it('erro de rede não quebra o gráfico — volta vazio e sem plano', async () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
 
     expect(await fetchPadroesMarcados('PETR4.SA', '1d', 'tok')).toEqual({
-      padroes: [], niveis: [], plano: null,
+      padroes: [], niveis: [], plano: null, timeframesComPadrao: [],
     });
+  });
+});
+
+// "SÓ APARECE EM 2 GRÁFICOS" — a causa real, e não era bug nenhum.
+//
+// Quatro mesas abertas no 1D: duas mostravam padrão, duas não. Medido
+// contra o banco: os dois ativos "sem padrão" tinham os padrões marcados
+// no 60m e no semanal, não no 1D. O dado não existia naquele tempo.
+//
+// Nada estava quebrado — a tela só não dizia ONDE o padrão estava, e isso
+// é indistinguível de defeito. A rota agora informa em que tempos o ativo
+// tem padrão, e a tela oferece o atalho.
+describe('em que tempos o ativo tem padrão', () => {
+  // `respostaDoBackend` mora dentro do describe de cima; aqui tem a sua.
+  function respostaDoBackend(corpo) {
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => corpo }));
+  }
+
+  it('a rota devolve a lista, e ela chega ao frontend', async () => {
+    respostaDoBackend({
+      padroes: [], niveis: [], plano: 'admin',
+      timeframes_com_padrao: ['1wk', '60m'],
+    });
+
+    const r = await fetchPadroesMarcados('DIRR3.SA', '1d', 'tok');
+    expect(r.padroes).toEqual([]);
+    expect(r.timeframesComPadrao).toEqual(['1wk', '60m']);
+  });
+
+  // Ativo sem padrão em tempo NENHUM é outro caso: aí não há atalho a
+  // oferecer, e a tela não deve sugerir nada.
+  it('ativo sem padrão nenhum devolve lista vazia', async () => {
+    respostaDoBackend({ padroes: [], niveis: [], plano: 'admin' });
+    const r = await fetchPadroesMarcados('XPTO9.SA', '1d', 'tok');
+    expect(r.timeframesComPadrao).toEqual([]);
   });
 });

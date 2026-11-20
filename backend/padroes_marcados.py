@@ -186,6 +186,12 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 COLUNAS_PADRAO = "candles,pontos,resultado,observacao,criado_em"
 COLUNAS_NIVEL = COLUNAS_PADRAO + ",tipo"
 
+# As tabelas que esta rota lê. Em lugar só porque a lista é usada duas
+# vezes: pra buscar os padrões e pra descobrir em que tempos o ativo tem
+# padrão marcado.
+TABELAS_DE_PADRAO = ("templates_oco", "templates_topo_duplo", "templates_niveis",
+                     "templates_bandeira_alta", "templates_bandeira_baixa")
+
 # CACHE CURTO por (ticker, timeframe). Oito mesas do mesmo ativo em
 # tempos diferentes, um F5, duas abas abertas — tudo isso repetia as cinco
 # consultas. 60s é menos que o tempo de marcar um template, então ninguém
@@ -239,7 +245,7 @@ def padroes_marcados(
     chave = f"{ticker_norm}:{timeframe or '*'}"
     guardado = _do_cache(chave)
     if guardado is not None:
-        return {"status": "ok", "padroes": guardado, "niveis": [], "plano": plano, "cache": True}
+        return {"status": "ok", **guardado, "niveis": [], "plano": plano, "cache": True}
 
     padroes: List[Dict[str, Any]] = []
 
@@ -283,5 +289,24 @@ def padroes_marcados(
     # "niveis" fica sempre vazio agora — era o campo do detector automático
     # antigo (reta infinita); os níveis marcados manualmente já vão em
     # "padroes", como faixas limitadas no tempo.
-    _guardar(chave, padroes)
-    return {"status": "ok", "padroes": padroes, "niveis": [], "plano": plano}
+    # EM QUE TEMPOS ESTE ATIVO TEM PADRÃO.
+    #
+    # Sem isto a tela não tinha como distinguir "nenhum padrão marcado
+    # neste ativo" de "marcado, mas em outro timeframe" — e o segundo caso
+    # parecia bug. Foi exatamente o relato: quatro mesas no 1D, duas com
+    # padrão e duas sem, e as duas sem tinham os padrões marcados no 60m e
+    # no semanal.
+    #
+    # Consulta leve de propósito: só a coluna `timeframe`, sem candles.
+    tempos = set()
+    for tabela in TABELAS_DE_PADRAO:
+        try:
+            linhas = (supabase.table(tabela).select("timeframe")
+                      .eq("ticker", ticker_norm).execute().data) or []
+            tempos.update(l.get("timeframe") for l in linhas if l.get("timeframe"))
+        except Exception:
+            pass
+
+    saida = {"padroes": padroes, "timeframes_com_padrao": sorted(tempos)}
+    _guardar(chave, saida)
+    return {"status": "ok", **saida, "niveis": [], "plano": plano}

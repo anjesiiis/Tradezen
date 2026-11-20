@@ -350,6 +350,12 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 /* Mesa sem dado: diz o motivo e oferece saida. Centralizado na area do
    grafico, discreto — nao e erro de sistema, e quase sempre excesso de
    pedidos ou periodo sem pregao. */
+/* "Nada marcado neste tempo, mas tem em outro" — com atalho pra ir.
+   Discreto e no rodape do grafico: e informacao, nao erro. */
+.graf-outro-tempo{position:absolute;left:10px;bottom:10px;z-index:6;display:flex;align-items:center;gap:7px;flex-wrap:wrap;max-width:calc(100% - 20px);padding:6px 11px;border:1px solid var(--borda);border-radius:999px;background:rgba(19,23,34,.92);font-size:11px;color:var(--texto-secundario)}
+.graf-outro-tempo strong{color:var(--texto-primario)}
+.graf-outro-tempo button{background:none;border:1px solid var(--azul-primario);color:var(--azul-claro);border-radius:999px;padding:2px 9px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.graf-outro-tempo button:hover{background:rgba(41,98,255,.16)}
 .graf-sem-dado{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center}
 .graf-sem-dado-icone{font-size:26px;opacity:.5}
 .graf-sem-dado p{margin:0;max-width:34ch;font-size:12px;line-height:1.5;color:var(--text2)}

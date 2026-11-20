@@ -20,11 +20,20 @@ export async function fetchPadroesMarcados(ticker, timeframe, token){
   try {
     const r = await fetch(`${API}/padroes-marcados/${encodeURIComponent(ticker)}?timeframe=${timeframe}`,
       token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
-    if(!r.ok) return { padroes: [], niveis: [], plano: null };
+    if(!r.ok) return { padroes: [], niveis: [], plano: null, timeframesComPadrao: [] };
     const d = await r.json();
-    return { padroes: d.padroes || [], niveis: d.niveis || [], plano: d.plano || null };
+    return {
+      padroes: d.padroes || [],
+      niveis: d.niveis || [],
+      plano: d.plano || null,
+      // Em que tempos este ativo TEM padrão marcado. Serve pra tela
+      // distinguir "nenhum padrão neste ativo" de "marcado, mas em outro
+      // timeframe" — o segundo caso parecia bug, e era o relato de
+      // "só aparece em 2 gráficos".
+      timeframesComPadrao: d.timeframes_com_padrao || [],
+    };
   } catch {
-    return { padroes: [], niveis: [], plano: null };
+    return { padroes: [], niveis: [], plano: null, timeframesComPadrao: [] };
   }
 }
 

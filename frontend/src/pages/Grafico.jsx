@@ -56,6 +56,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // gancho pra quando o aviso voltar em outro formato.
   // eslint-disable-next-line no-unused-vars
   const [planoDetec,setPlanoDetec] = useState(null);
+  // Em que tempos este ativo tem padrão marcado. Vazio = nenhum, em
+  // tempo nenhum. Com itens e `padroes` vazio = marcado, mas noutro
+  // tempo — e é esse caso que parecia bug.
+  const [temposComPadrao,setTemposComPadrao] = useState([]);
   // Cor/espessura/traço de cada ferramenta. Sem conta, valem neste
   // navegador; com conta, acompanham a pessoa (ver usePreferenciasDesenho).
   const { prefs, definirEstilo, estiloDe } = usePreferenciasDesenho();
@@ -293,6 +297,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         padroesPromise.then(marcados=>{
           if(cancelado) return;
           setPlanoDetec(marcados.plano);
+          setTemposComPadrao(marcados.timeframesComPadrao || []);
           setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
         });
       } catch(erro) {
@@ -320,6 +325,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
       .then(marcados=>{
         if(cancelado || !candlesRef.current.length) return;
         setPlanoDetec(marcados.plano);
+        setTemposComPadrao(marcados.timeframesComPadrao || []);
         setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRef.current));
       });
     return ()=>{ cancelado = true; };
@@ -386,6 +392,13 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
       return mudou ? n : prev;
     });
   },[padroes]);
+
+  // Os tempos (com o rótulo da tela) em que este ativo tem padrão, tirando
+  // o que já está aberto. O backend devolve o intervalo cru ("1d"), e a
+  // tela fala em rótulo ("1D") — a tradução é aqui, num lugar só.
+  const outrosTempos = TFS.filter(
+    (t) => temposComPadrao.includes(t.intervalo) && t.intervalo !== tf.intervalo,
+  );
 
   const toggleTool=id=>{
     // Só entra no histórico de desfazer/refazer quando é de fato "adicionar
@@ -696,6 +709,28 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         />
         <div className="achart">
           {loading&&<SkeletonGraficoArea/>}
+
+          {/* PADRÃO MARCADO EM OUTRO TEMPO.
+              Este era o relato de "só aparece em 2 gráficos": quatro
+              mesas no 1D, duas com padrão e duas sem — e as duas sem
+              tinham os padrões marcados no 60m e no semanal. Nada estava
+              quebrado; a tela só não dizia onde o padrão estava.
+              Agora diz, e com um clique pra ir até lá. */}
+          {!loading && candles.length > 0 && padroes.length === 0
+            && outrosTempos.length > 0 && (
+            <div className="graf-outro-tempo" role="status">
+              <span aria-hidden="true">🔎</span>
+              <span>
+                Nada marcado no <strong>{tf.label}</strong>. Este ativo tem
+                padrão em:
+              </span>
+              {outrosTempos.map((t) => (
+                <button key={t.label} type="button" onClick={()=>setTf(t)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* SLOT VAZIO NÃO: quando o gráfico não vem, a mesa diz por quê
               e oferece tentar de novo. Antes ficava só o cabeçalho do
