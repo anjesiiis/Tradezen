@@ -15,7 +15,10 @@ import { clearAdminToken, usuariosApi } from "./adminApi";
  * menu lateral de padrões só confundiria aqui.
  */
 
-const ROTULO_PLANO = { free: "Free", premium: "Premium" };
+// Os dois nomes do plano pago levam ao MESMO rótulo: "pro" é o atual e
+// "premium" é o que ficou gravado antes da troca. Sem o apelido aqui, a
+// linha de quem está como "pro" aparecia sem selo nenhum.
+const ROTULO_PLANO = { free: "Free", pro: "Premium", premium: "Premium" };
 
 function formatarData(iso) {
   if (!iso) return "—";
@@ -48,10 +51,18 @@ export default function AdminUsuarios() {
       (u.email || "").toLowerCase().includes(q) || (u.nome || "").toLowerCase().includes(q));
   }, [usuarios, busca]);
 
-  const premium = usuarios.filter((u) => u.plano === "premium").length;
+  // O plano pago chamava-se "premium" e passou a chamar-se "pro". Há
+  // linha gravada com o nome velho, então a tela reconhece os dois pra
+  // exibir — e grava sempre o novo. Comparar só com "premium" fazia o
+  // contador e o botão errarem em quem já estava como "pro".
+  const PAGO = "pro";
+  const ehPago = (u) => u.plano === PAGO || u.plano === "premium";
+  const premium = usuarios.filter(ehPago).length;
 
   async function trocarPlano(usuario) {
-    const novo = usuario.plano === "premium" ? "free" : "premium";
+    // Grava sempre o nome NOVO. Mandar "premium" dava 422 no backend
+    // (PLANOS_VALIDOS passou a ser free/pro) e o botão não funcionava.
+    const novo = ehPago(usuario) ? "free" : PAGO;
     setSalvando(usuario.id);
     setErro("");
     try {
@@ -124,12 +135,12 @@ export default function AdminUsuarios() {
                   <span className={`usuarios-plano ${u.plano}`}>{ROTULO_PLANO[u.plano] || u.plano}</span>
                   <button
                     type="button"
-                    className={`admin-btn-pequeno${u.plano === "premium" ? " secundario" : ""}`}
+                    className={`admin-btn-pequeno${ehPago(u) ? " secundario" : ""}`}
                     onClick={() => trocarPlano(u)}
                     disabled={salvando === u.id}
-                    title={u.plano === "premium" ? "Voltar para Free" : "Liberar Premium"}
+                    title={ehPago(u) ? "Voltar para Free" : "Liberar Premium"}
                   >
-                    {salvando === u.id ? "Salvando…" : u.plano === "premium" ? "Tornar Free" : "Tornar Premium"}
+                    {salvando === u.id ? "Salvando…" : ehPago(u) ? "Tornar Free" : "Tornar Premium"}
                   </button>
                 </div>
               ))}

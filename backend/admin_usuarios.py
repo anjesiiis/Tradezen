@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from admin_auth import require_admin
-from planos import FREE, PREMIUM
+from planos import APELIDOS, FREE, PREMIUM
 from rate_limit import limiter
 from supabase_client import supabase
 
@@ -39,6 +39,12 @@ class PlanoUpdate(BaseModel):
     @classmethod
     def plano_conhecido(cls, v: str) -> str:
         p = (v or "").strip().lower()
+        # APELIDO ANTIGO ACEITO. O plano pago chamava-se "premium" e passou
+        # a chamar-se "pro"; há linha gravada com o nome velho no banco e
+        # havia tela mandando o nome velho — e o resultado era um 422 que
+        # fazia o botão de liberar plano simplesmente não funcionar.
+        # Traduzir é mais barato que exigir que todo mundo troque junto.
+        p = APELIDOS.get(p, p)
         if p not in PLANOS_VALIDOS:
             raise ValueError(f"plano deve ser um de: {', '.join(PLANOS_VALIDOS)}")
         return p
