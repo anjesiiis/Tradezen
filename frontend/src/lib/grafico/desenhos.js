@@ -382,8 +382,16 @@ export function _desenharNivel(ctx, toX, toY, p, isSel){
   }).filter(Boolean);
   if(coords.length < 2) return;
 
+  // A FAIXA AJUSTADA À MÃO ganha da derivada dos toques. Suporte e
+  // resistência não são uma linha exata, são uma região: dois toques
+  // podem estar no mesmo centavo e a zona ter 2% de altura. Quem marcou
+  // arrasta a faixa até onde ela está, e é isso que tem de aparecer.
+  // Sem ajuste (`p.faixa` ausente), nada muda — min e max dos toques.
+  const ajuste = p.faixa && Number.isFinite(p.faixa.de) && Number.isFinite(p.faixa.ate)
+    && p.faixa.ate > p.faixa.de ? p.faixa : null;
   const precos = coords.map(c => c.preco);
-  const precoMin = Math.min(...precos), precoMax = Math.max(...precos);
+  const precoMin = ajuste ? ajuste.de : Math.min(...precos);
+  const precoMax = ajuste ? ajuste.ate : Math.max(...precos);
   const xMin = Math.min(...coords.map(c => c.x));
   const xMax = Math.max(...coords.map(c => c.x));
   const yTopo = toY(precoMax);

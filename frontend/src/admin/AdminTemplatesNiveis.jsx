@@ -85,6 +85,21 @@ export default function AdminTemplatesNiveis() {
   const faixaRef = useRef(estadoDoGrafico().faixa);
   const [carregando, setCarregando] = useState(false);
   const [toquesPorGrupo, setToquesPorGrupo] = useState({ suporte: [], resistencia: [] });
+  // A faixa ajustada à mão, por tipo. Sem isto, arrastar a faixa e salvar
+  // guardaria só os toques — e ao reabrir a faixa voltaria a ser o
+  // intervalo deles, desfazendo o ajuste em silêncio.
+  const [ajustePorGrupo, setAjustePorGrupo] = useState({});
+
+  // Apagar os toques apaga o ajuste do mesmo tipo: faixa ajustada sem
+  // toque nenhum não tem o que sustentá-la, e sobraria desenhada sobre o
+  // próximo nível que a pessoa começasse a marcar.
+  function esquecerAjuste(tipoAlvo) {
+    setAjustePorGrupo((prev) => {
+      if (!prev[tipoAlvo]) return prev;
+      const { [tipoAlvo]: _fora, ...resto } = prev;
+      return resto;
+    });
+  }
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -165,7 +180,11 @@ export default function AdminTemplatesNiveis() {
         tipo,
         candles,
         candles_contexto: candlesContexto,
-        pontos: { toques: toquesAjustados },
+        // `faixa` só entra quando foi ajustada: nível sem ajuste continua
+        // guardando exatamente o que guardava antes, e reabre igual.
+        pontos: ajustePorGrupo[tipo]
+          ? { toques: toquesAjustados, faixa: ajustePorGrupo[tipo] }
+          : { toques: toquesAjustados },
         // Sem data_p1 o nível fica invisível no gráfico (ver janela.js)
         data_p1: dataDoPrimeiroPonto(candlesContexto, toquesAtivos),
         resultado: resultado.trim() || null,
@@ -177,6 +196,7 @@ export default function AdminTemplatesNiveis() {
       // desmarcado no sidebar, ele volta ligado
       setPadroesVisiveis((atuais) => (atuais.includes("niveis") ? atuais : [...atuais, "niveis"]));
       setToquesPorGrupo((prev) => ({ ...prev, [tipo]: [] }));
+      esquecerAjuste(tipo);
       setResultado("");
       setObservacao("");
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
@@ -205,7 +225,14 @@ export default function AdminTemplatesNiveis() {
         return;
       }
       const completo = cru;
-      setEditando({ ...completo, toquesEdit: completo.pontos?.toques || [], readOnly });
+      setEditando({
+        ...completo,
+        toquesEdit: completo.pontos?.toques || [],
+        // A faixa ajustada volta do banco junto dos toques; sem ela, abrir
+        // pra editar desfaria o ajuste na primeira gravação.
+        faixaEdit: completo.pontos?.faixa || null,
+        readOnly,
+      });
     } catch (erro) {
       // O recado do backend é o que diz o que fazer: tabela que falta,
       // sessão vencida, linha apagada. Engolir isso aqui era o bug.
@@ -229,7 +256,9 @@ export default function AdminTemplatesNiveis() {
     try {
       await templatesNiveisApi.update(editando.id, {
         tipo: editando.tipo,
-        pontos: { toques: editando.toquesEdit },
+        pontos: editando.faixaEdit
+          ? { toques: editando.toquesEdit, faixa: editando.faixaEdit }
+          : { toques: editando.toquesEdit },
         resultado: editando.resultado?.trim() || null,
         observacao: editando.observacao?.trim() || null,
       });
@@ -336,6 +365,8 @@ export default function AdminTemplatesNiveis() {
               cor={corDoTipo(editando.tipo)}
               initialToques={editando.toquesEdit}
               onChange={(t) => setEditando((prev) => ({ ...prev, toquesEdit: t }))}
+              ajustesIniciais={editando.faixaEdit}
+              aoAjustarFaixa={(f) => setEditando((prev) => ({ ...prev, faixaEdit: f }))}
               readOnly={editando.readOnly}
             />
 
@@ -411,6 +442,8 @@ export default function AdminTemplatesNiveis() {
                   grupoAtivo={tipo}
                   limparEm={limpezas}
                   onChange={setToquesPorGrupo}
+                  ajustesIniciais={ajustePorGrupo}
+                  aoAjustarFaixa={setAjustePorGrupo}
                 />
                   </div>
                   <FiltroPadroes

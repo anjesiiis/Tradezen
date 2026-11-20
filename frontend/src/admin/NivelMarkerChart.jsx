@@ -46,6 +46,17 @@ function GraficoDeNivel({
   marcadoresExtras = [],   // padrões já salvos deste ativo: viram emoji no gráfico
   limparEm = 0,            // muda de valor = apaga os toques do grupo ativo sem recriar o gráfico
   aoClicarMarcador,
+  // ── A FAIXA ARRASTÁVEL ──────────────────────────────────────
+  // Até agora a faixa era SÓ o intervalo entre o toque mais baixo e o
+  // mais alto. Isso funciona pra achar o nível, mas não pra desenhá-lo:
+  // suporte e resistência não são uma linha exata, são uma região, e
+  // dois toques raramente delimitam a região que a pessoa está vendo.
+  //
+  // `ajustesIniciais` é a faixa já ajustada (por grupo, no modo dual) e
+  // `aoAjustarFaixa` avisa quem guarda. Sem ajuste, a faixa continua
+  // derivada dos toques — nada muda pra quem não arrastar.
+  ajustesIniciais,
+  aoAjustarFaixa,
 }) {
   // o gráfico é criado uma vez só; sem o ref, o handler ficaria com a
   // versão antiga da função
@@ -53,6 +64,22 @@ function GraficoDeNivel({
   void versaoGrafico;   // só força o recálculo das posições dos emojis
   const aoMudarFaixaRef = useRef(aoMudarFaixa);
   useEffect(() => { aoMudarFaixaRef.current = aoMudarFaixa; }, [aoMudarFaixa]);
+  // Faixa ajustada à mão, por grupo. `null` num grupo = segue derivada
+  // dos toques.
+  const [ajustePorGrupo, setAjustePorGrupo] = useState(() => {
+    if (!ajustesIniciais) return {};
+    return dual ? { ...ajustesIniciais } : { [GRUPO_UNICO]: ajustesIniciais };
+  });
+  const ajusteRef = useRef(ajustePorGrupo);
+  useEffect(() => { ajusteRef.current = ajustePorGrupo; }, [ajustePorGrupo]);
+  const aoAjustarRef = useRef(aoAjustarFaixa);
+  useEffect(() => { aoAjustarRef.current = aoAjustarFaixa; }, [aoAjustarFaixa]);
+
+  // O gesto em curso: qual borda está sendo puxada e de onde começou.
+  // `arrastou` existe pra o clique que encerra o arrasto NÃO virar um
+  // toque novo — sem isso, cada ajuste deixaria um toque solto no nível.
+  const gestoRef = useRef(null);
+  const arrastouRef = useRef(false);
   const containerRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
@@ -147,6 +174,8 @@ function GraficoDeNivel({
 
     chart.subscribeClick((param) => {
       if (readOnly) return;
+      // Veio de um arrasto de faixa: não é pedido de toque novo.
+      if (arrastouRef.current) { arrastouRef.current = false; return; }
       if (!param.point || param.time === undefined) return;
       const idx = timeToIndexRef.current.get(param.time);
       if (idx === undefined) return;
@@ -231,9 +260,10 @@ function GraficoDeNivel({
       if (!bandaSeries) return;
 
       if (ordenados.length >= 2) {
-        const precos = ordenados.map((t) => t.preco);
-        const min = Math.min(...precos);
-        const max = Math.max(...precos);
+        // A FAIXA AJUSTADA GANHA DA DERIVADA. Quem arrastou disse onde a
+        // região está; os toques continuam sendo a prova de que ela
+        // existe, e seguem desenhados onde foram marcados.
+        const { de: min, ate: max } = faixaDoGrupo(g, ordenados);
         bandaSeries.applyOptions({
           baseValue: { type: "price", price: min },
           topLineColor: c,
@@ -256,6 +286,112 @@ function GraficoDeNivel({
     else onChange?.(toquesPorGrupo[GRUPO_UNICO] || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toquesPorGrupo, candles]);
+
+  // A faixa de um grupo: a ajustada à mão, ou o intervalo dos toques.
+  // Em módulo seria melhor, mas ela lê o ajuste do estado — e manter a
+  // leitura num lugar só é o que impede o desenho e o arrasto de
+  // discordarem sobre onde a faixa está.
+  function faixaDoGrupo(g, ordenados) {
+    const ajuste = ajusteRef.current?.[g];
+    if (ajuste && Number.isFinite(ajuste.de) && Number.isFinite(ajuste.ate)) {
+      return { de: Math.min(ajuste.de, ajuste.ate), ate: Math.max(ajuste.de, ajuste.ate) };
+    }
+    const precos = (ordenados || []).map((t) => t.preco);
+    if (precos.length < 2) return null;
+    return { de: Math.min(...precos), ate: Math.max(...precos) };
+  }
+
+  function toquesOrdenados(g) {
+    return (toquesPorGrupo[g] || []).filter((t) => candles[t?.i]).sort((a, b) => a.i - b.i);
+  }
+
+  // ── ARRASTAR A FAIXA ────────────────────────────────────────
+  //
+  // Lightweight Charts não tem objeto arrastável: a faixa é uma série, e
+  // série não recebe gesto. Então o gesto é capturado no contêiner e
+  // traduzido de pixel pra preço com `coordinateToPrice` — a mesma
+  // conversão que o clique de toque já usa, então faixa e toques falam
+  // da mesma escala.
+  //
+  // Três zonas, com 7px de tolerância: a borda de cima move só o teto, a
+  // de baixo só o piso, e o meio move a faixa inteira mantendo a altura.
+  // Fora delas o gesto não é nosso e o clique segue virando toque.
+  const TOLERANCIA = 7;
+
+  function zonaDoPonteiro(y) {
+    if (readOnly) return null;
+    const serie = seriesRef.current;
+    const g = grupoAtivoRef.current;
+    const faixa = faixaDoGrupo(g, toquesOrdenados(g));
+    if (!serie || !faixa) return null;
+    const yTeto = serie.priceToCoordinate(faixa.ate);
+    const yPiso = serie.priceToCoordinate(faixa.de);
+    if (yTeto === null || yPiso === null) return null;
+    if (Math.abs(y - yTeto) <= TOLERANCIA) return { modo: "teto", faixa };
+    if (Math.abs(y - yPiso) <= TOLERANCIA) return { modo: "piso", faixa };
+    if (y > yTeto && y < yPiso) return { modo: "mover", faixa };
+    return null;
+  }
+
+  function aoDescerPonteiro(e) {
+    const caixa = containerRef.current?.getBoundingClientRect();
+    if (!caixa) return;
+    const zona = zonaDoPonteiro(e.clientY - caixa.top);
+    if (!zona) return;
+    const preco = seriesRef.current.coordinateToPrice(e.clientY - caixa.top);
+    if (preco === null || preco === undefined) return;
+    e.preventDefault();
+    gestoRef.current = { ...zona, precoInicial: preco, moveu: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+
+  function aoMoverPonteiro(e) {
+    const caixa = containerRef.current?.getBoundingClientRect();
+    if (!caixa) return;
+    const y = e.clientY - caixa.top;
+    const gesto = gestoRef.current;
+
+    if (!gesto) {
+      // Sem gesto em curso, só o cursor avisa que dá pra pegar.
+      const zona = zonaDoPonteiro(y);
+      if (containerRef.current) {
+        containerRef.current.style.cursor =
+          !zona ? "" : zona.modo === "mover" ? "grab" : "ns-resize";
+      }
+      return;
+    }
+
+    const preco = seriesRef.current?.coordinateToPrice(y);
+    if (preco === null || preco === undefined) return;
+    const delta = preco - gesto.precoInicial;
+    const arredonda = (v) => Math.round(v * 10000) / 10000;
+
+    let nova;
+    if (gesto.modo === "mover") {
+      nova = { de: arredonda(gesto.faixa.de + delta), ate: arredonda(gesto.faixa.ate + delta) };
+    } else if (gesto.modo === "teto") {
+      nova = { de: gesto.faixa.de, ate: arredonda(preco) };
+    } else {
+      nova = { de: arredonda(preco), ate: gesto.faixa.ate };
+    }
+    // Inverter a faixa no meio do gesto é confuso; o mínimo manda.
+    if (nova.ate <= nova.de) return;
+
+    gesto.moveu = true;
+    arrastouRef.current = true;
+    const g = grupoAtivoRef.current;
+    setAjustePorGrupo((prev) => ({ ...prev, [g]: nova }));
+  }
+
+  function aoSoltarPonteiro() {
+    const gesto = gestoRef.current;
+    gestoRef.current = null;
+    if (!gesto?.moveu) { arrastouRef.current = false; return; }
+    const g = grupoAtivoRef.current;
+    const nova = ajusteRef.current?.[g];
+    if (!nova) return;
+    aoAjustarRef.current?.(dual ? { ...ajusteRef.current } : nova);
+  }
 
   function removerUltimo() {
     const chave = grupoAtivoRef.current;
@@ -349,7 +485,19 @@ function GraficoDeNivel({
       </p>
 
       <div style={{ position: "relative" }}>
-        <div ref={containerRef} style={{ padding: "8px" }} />
+        {/* Os gestos são do contêiner, não da série: Lightweight Charts
+            não tem objeto arrastável. O clique do gráfico (que cria
+            toque) continua passando — o arrasto só é "nosso" quando o
+            ponteiro desce em cima da faixa. */}
+        <div
+          ref={containerRef}
+          style={{ padding: "8px", touchAction: "none" }}
+          onPointerDown={aoDescerPonteiro}
+          onPointerMove={aoMoverPonteiro}
+          onPointerUp={aoSoltarPonteiro}
+          onPointerCancel={aoSoltarPonteiro}
+          onPointerLeave={() => { if (!gestoRef.current && containerRef.current) containerRef.current.style.cursor = ""; }}
+        />
 
         {/* Emojis dos padrões já marcados neste ativo — qualquer padrão,
             não só nível. É o aviso de "aqui já tem algo marcado". */}

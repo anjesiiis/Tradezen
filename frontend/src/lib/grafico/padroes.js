@@ -48,6 +48,10 @@ export function resolverPadroesPorTimestamp(padroesBrutos, candles){
       return {
         ...p,
         toquesResolvidos,
+        // A faixa ajustada à mão vem em `pontos.faixa` e sobe um nível,
+        // porque o desenho lê `p.faixa`. Sem ajuste, fica `undefined` e o
+        // desenho deriva dos toques como sempre.
+        faixa: p.pontos.faixa,
         lampada: toquesResolvidos[toquesResolvidos.length - 1],
         intervalo_candles: { inicio: Math.min(...indices), fim: Math.max(...indices) },
       };

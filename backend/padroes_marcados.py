@@ -142,6 +142,23 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
     tipo = row.get("tipo")
     nome = "Resistência" if tipo == "resistencia" else "Suporte"
+
+    # A FAIXA AJUSTADA À MÃO, quando existe. Suporte e resistência não são
+    # uma linha exata, são uma região, e o intervalo entre o toque mais
+    # baixo e o mais alto raramente é a região que o analista está vendo —
+    # dois toques podem estar no mesmo centavo e a zona ter 2% de altura.
+    #
+    # Quando ninguém ajustou, `faixa` não vai na resposta e o desenho
+    # continua derivando dos toques, como sempre fez.
+    faixa_bruta = (row.get("pontos") or {}).get("faixa") or {}
+    pontos: Dict[str, Any] = {"toques": toques_ts}
+    try:
+        de, ate = float(faixa_bruta["de"]), float(faixa_bruta["ate"])
+        if ate > de:
+            pontos["faixa"] = {"de": de, "ate": ate}
+    except (KeyError, TypeError, ValueError):
+        pass   # sem ajuste, ou gravado torto: segue derivada dos toques
+
     return {
         "marcado_em": row.get("criado_em"),
         "tipo": tipo,
@@ -149,7 +166,7 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "resultado": _resultado_normalizado(row.get("resultado")),
         "confiabilidade": 100,
         "explicacao": row.get("observacao") or f"{nome} confirmado manualmente por um analista, com {len(toques_ts)} toques.",
-        "pontos": {"toques": toques_ts},
+        "pontos": pontos,
     }
 
 
