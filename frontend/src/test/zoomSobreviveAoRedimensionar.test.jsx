@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /**
  * ABRIR UMA MESA NÃO PODE MEXER NO GRÁFICO DO LADO.
@@ -126,5 +128,45 @@ describe('o zoom sobrevive ao redimensionamento', () => {
     aoRedimensionar([]);
 
     expect(chamadas).toEqual([]);
+  });
+});
+
+// A MESA QUE FICAVA EM BRANCO AO ABRIR OUTRA.
+//
+// Abrir uma mesa muda a GRADE: de uma coluna pra duas, de duas pra 2x2.
+// Os contêineres das mesas já abertas mudam de tamanho no mesmo quadro — e
+// o ResizeObserver ignora medida 0x0 de propósito (mesa escondida no
+// celular, aba em segundo plano). Se o contêiner passa por 0 nesse
+// instante, o observer pula, e o gráfico fica com o tamanho ANTIGO num
+// espaço novo: as velas saem da área visível e a mesa parece vazia, com o
+// cabeçalho ainda mostrando o preço certo.
+describe('a mesa se remede quando a grade muda', () => {
+  const fonte = readFileSync(
+    resolve(process.cwd(), 'src/components/CandleChart.jsx'), 'utf8');
+  const dash = readFileSync(
+    resolve(process.cwd(), 'src/pages/Dashboard.jsx'), 'utf8');
+
+  it('o pai avisa as duas instâncias de mesa', () => {
+    expect([...dash.matchAll(/redimensionarEm=\{totalDeMesas\}/g)]).toHaveLength(2);
+  });
+
+  // Dois quadros: no primeiro o layout ainda pode estar com as medidas
+  // antigas; no segundo já são as de verdade.
+  it('remede depois de o layout assentar', () => {
+    const bloco = fonte.slice(fonte.indexOf('O GRÁFICO QUE FICAVA EM BRANCO'));
+    expect(bloco.slice(0, 1500))
+      .toMatch(/requestAnimationFrame\(\(\)=>requestAnimationFrame\(/);
+    expect(bloco.slice(0, 1500)).toMatch(/remedirRef\.current\?\.\(\)/);
+  });
+
+  // Reusa `repintar`, que já guarda e repõe a faixa visível — senão a
+  // mesa se remediria e saltaria de posição, trocando um bug por outro.
+  it('reusa o caminho que preserva a faixa', () => {
+    expect(fonte).toMatch(/remedirRef\.current = repintar;/);
+  });
+
+  it('não dispara na montagem, só quando a grade muda', () => {
+    const bloco = fonte.slice(fonte.indexOf('O GRÁFICO QUE FICAVA EM BRANCO'));
+    expect(bloco.slice(0, 1500)).toMatch(/if\(!redimensionarEm\) return;/);
   });
 });

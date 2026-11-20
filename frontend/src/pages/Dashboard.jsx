@@ -704,6 +704,10 @@ function AppInner(){
             className={`analysis-row${!isMobile && totalDeMesas > 2 ? " grade" : ""}${!isMobile && totalDeMesas > 6 ? " muitas" : ""}`}
             style={!isMobile && totalDeMesas > 2 ? { "--mesas-col": colunasDaGrade(totalDeMesas) } : undefined}
           >
+          {/* `redimensionarEm` avisa toda mesa que a GRADE mudou. Sem
+              isso, as mesas já abertas ficavam com o tamanho antigo num
+              espaço novo e as velas saíam da área visível — a mesa
+              parecia vazia, com o cabeçalho ainda certo. */}
           <ChartPane
             key={`primary-${tempoAberturaPrincipal || "padrao"}`}
             mercado={mercado}
@@ -712,6 +716,7 @@ function AppInner(){
             aoTrocarTempo={setTempoPrincipal}
             onTickerChange={t=>navigate(`/ativo/${encodeURIComponent(t)}`)}
             onAddSplit={(tempo)=> noTeto ? pedirMaisTelas() : setModalAdicionar({tempo})}
+            redimensionarEm={totalDeMesas}
             ocultoMobile={isMobile && telaAtivaMobile!==0}
             tema={tema}
             user={user}
@@ -733,6 +738,7 @@ function AppInner(){
               // abertas tinha de voltar à primeira pra abrir a quarta.
               // Mesma função, mesmo bloqueio no teto.
               onAddSplit={(tempo)=> noTeto ? pedirMaisTelas() : setModalAdicionar({tempo})}
+              redimensionarEm={totalDeMesas}
               onClose={()=>fecharTelaMobile(idx)}
               ocultoMobile={isMobile && telaAtivaMobile!==idx+1}
               tema={tema}

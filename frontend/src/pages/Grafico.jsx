@@ -38,7 +38,7 @@ function recadoDeCandles(status){
   return "Não deu pra carregar este gráfico.";
 }
 
-function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial, aoTrocarTempo }){
+function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocultoMobile=false, tema="dark", user, favoritos, toggleFavorito, ativoConfig, salvarConfigAtivo, tempoInicial, aoTrocarTempo, redimensionarEm=0 }){
   const navigate = useNavigate();
   // `tempoInicial` vem do modal do "+": a 2ª mesa do mesmo ativo abre num
   // tempo diferente, que é a razão de existir duas mesas do mesmo papel.
@@ -811,6 +811,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               aparencia={aparencia}
               faixaSalva={faixaInicial}
               aoMudarFaixa={guardarFaixa}
+              redimensionarEm={redimensionarEm}
             />
           )}
           {/* Legenda dos indicadores ativos — estilo TradingView: cada chip

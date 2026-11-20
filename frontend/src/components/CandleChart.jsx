@@ -14,7 +14,7 @@ import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../l
 // gravações. Depois do dedo parar, e antes de qualquer F5 humano.
 const ESPERA_FAIXA = 900;
 
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia, faixaSalva=null, aoMudarFaixa}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia, faixaSalva=null, aoMudarFaixa, redimensionarEm=0}){
   const isMobile = useIsMobile();
   // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
   // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
@@ -63,6 +63,9 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // o que havia antes da última troca de candles — serve pra saber se o
   // array CRESCEU PELO COMEÇO (lazy loading) e segurar a tela no lugar
   const anteriorRef = useRef({primeiro:null, total:0});
+  // Guarda a função que remede o gráfico, pra poder chamá-la de fora do
+  // efeito que cria o gráfico (ver o efeito de `redimensionarEm`).
+  const remedirRef = useRef(null);
 
   // ── ONDE A PESSOA ESTAVA OLHANDO ───────────────────────────
   //
@@ -377,6 +380,8 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       if(faixa){ try { chart.timeScale().setVisibleLogicalRange(faixa); } catch { /* ignora */ } }
       redrawRef.current?.();
     };
+    remedirRef.current = repintar;
+
     // rAF: logo ao voltar, o layout ainda pode estar com as medidas
     // antigas; um quadro depois elas já são as de verdade.
     const aoVoltar = () => {
@@ -460,6 +465,27 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
       timeScale:{ borderColor: corBorda, textColor: corTexto },
     });
   },[tema]);
+
+  // ── O GRÁFICO QUE FICAVA EM BRANCO AO ABRIR OUTRA MESA ──────
+  //
+  // Abrir uma mesa muda a GRADE: de uma coluna pra duas, de duas pra
+  // 2x2. Os contêineres das mesas que já estavam abertas mudam de
+  // tamanho no mesmo quadro — e o ResizeObserver IGNORA medida 0x0 de
+  // propósito (mesa escondida no celular, aba em segundo plano). Se o
+  // contêiner passa por 0 nesse instante, o observer pula, e o gráfico
+  // fica com o tamanho antigo dentro de um espaço novo: as velas saem da
+  // área visível e a mesa parece vazia, com o cabeçalho ainda certo.
+  //
+  // Aqui o pai avisa que a grade mudou e o gráfico se remede, dois
+  // quadros depois — tempo de o layout assentar. `repintar` já preserva
+  // a faixa visível, então nada salta de posição.
+  useEffect(()=>{
+    if(!redimensionarEm) return;
+    const id = requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      remedirRef.current?.();
+    }));
+    return ()=>cancelAnimationFrame(id);
+  },[redimensionarEm]);
 
   // Atualiza candles
   useEffect(()=>{
