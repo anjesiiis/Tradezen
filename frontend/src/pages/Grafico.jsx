@@ -318,7 +318,24 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // `user` resolve, só as detecções são buscadas de novo — os candles, que
   // são o pesado e não dependem de plano, ficam onde estão.
   useEffect(()=>{
-    if(!ticker || !user) return;
+    if(!ticker) return;
+    // SAIR DA CONTA TEM DE APAGAR O QUE JÁ ESTAVA NA TELA.
+    //
+    // Antes este efeito saía cedo quando `user` era nulo, e ninguém
+    // limpava os padrões desenhados: quem estava logado num plano com
+    // acesso, deslogava e continuava vendo as detecções até recarregar a
+    // página. Conteúdo pago na tela de quem já não tem conta.
+    //
+    // O mesmo vale pra troca de conta: a busca abaixo refaz e o backend
+    // devolve vazio pra quem não tem acesso, mas o vazio só chega depois
+    // da ida ao servidor — e até lá a tela mostraria o antigo.
+    if(!user){
+      setPadroes([]);
+      setTemposComPadrao([]);
+      setPlanoDetec(null);
+      setSelPat(null);
+      return;
+    }
     let cancelado = false;
     tokenDaSessao()
       .then(token => fetchPadroesMarcados(ticker, tf.intervalo, token))
@@ -326,7 +343,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         if(cancelado || !candlesRef.current.length) return;
         setPlanoDetec(marcados.plano);
         setTemposComPadrao(marcados.timeframesComPadrao || []);
+        // Lista vazia TAMBÉM é resposta: quem perdeu o acesso (plano
+        // vencido, conta trocada) tem de ver a tela limpar, não o
+        // desenho antigo sobrevivendo porque "não veio nada novo".
         setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRef.current));
+        if(!marcados.padroes?.length) setSelPat(null);
       });
     return ()=>{ cancelado = true; };
   },[ticker, user, tf.intervalo]);

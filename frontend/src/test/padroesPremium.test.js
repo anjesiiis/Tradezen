@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fetchPadroesMarcados } from '../lib/grafico/padroes.js';
 
 // O gate de premium é decidido no backend. O que se testa aqui é o lado do
@@ -77,5 +79,37 @@ describe('em que tempos o ativo tem padrão', () => {
     respostaDoBackend({ padroes: [], niveis: [], plano: 'admin' });
     const r = await fetchPadroesMarcados('XPTO9.SA', '1d', 'tok');
     expect(r.timeframesComPadrao).toEqual([]);
+  });
+});
+
+// DESLOGAR TEM DE APAGAR O QUE ESTÁ NA TELA.
+//
+// O efeito que busca as detecções saía cedo quando `user` era nulo, e
+// ninguém limpava os padrões já desenhados: quem estava num plano com
+// acesso, deslogava, e continuava vendo as detecções até recarregar a
+// página. Conteúdo pago na tela de quem já não tem conta.
+describe('a tela limpa quando o acesso acaba', () => {
+  const fonte = readFileSync(
+    resolve(process.cwd(), 'src/pages/Grafico.jsx'), 'utf8');
+
+  it('sem conta, os padrões são zerados em vez de ignorados', () => {
+    const bloco = fonte.slice(fonte.indexOf('SAIR DA CONTA TEM DE APAGAR'));
+    expect(bloco.slice(0, 900)).toMatch(/if\(!user\)\{/);
+    for (const limpeza of [/setPadroes\(\[\]\)/, /setTemposComPadrao\(\[\]\)/,
+                           /setPlanoDetec\(null\)/, /setSelPat\(null\)/]) {
+      expect(bloco.slice(0, 900)).toMatch(limpeza);
+    }
+  });
+
+  // Lista vazia é RESPOSTA, não ausência de resposta: quem perdeu o
+  // acesso tem de ver a tela limpar.
+  it('lista vazia do servidor também limpa a seleção', () => {
+    expect(fonte).toMatch(/if\(!marcados\.padroes\?\.length\) setSelPat\(null\);/);
+  });
+
+  // O efeito tem de reagir a `user`, senão a troca de conta não refaz a
+  // busca e a tela fica com o resultado da conta anterior.
+  it('o efeito depende de user', () => {
+    expect(fonte).toMatch(/\},\[ticker, user, tf\.intervalo\]\);/);
   });
 });
