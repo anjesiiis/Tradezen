@@ -15,6 +15,8 @@ salvo é relativo ao recorte de candles daquele template — quem resolve pro
 índice do candle que o usuário está vendo agora é o frontend.
 """
 
+import time
+
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Header, Query, Request
@@ -170,6 +172,52 @@ def _formatar_nivel(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
+# AS COLUNAS QUE A ROTA REALMENTE USA — e `candles_contexto` NÃO é uma
+# delas. Ela fazia `select("*")`, e isso trazia o histórico inteiro de
+# cada template: medido, 3,5 MB para um ticker só.
+#
+# Com a bancada cheia são oito mesas pedindo isto ao mesmo tempo, ~10 MB
+# de JSON, e o navegador abre só umas seis conexões por servidor. As
+# primeiras chegavam, as outras ficavam na fila ou morriam no caminho — e
+# o sintoma era exatamente "só carrega em 2 gráficos".
+#
+# `candles` fica porque é com ele que o índice de cada ponto vira
+# timestamp (ver _ponto_ts). O resto é o que vai na resposta.
+COLUNAS_PADRAO = "candles,pontos,resultado,observacao,criado_em"
+COLUNAS_NIVEL = COLUNAS_PADRAO + ",tipo"
+
+# CACHE CURTO por (ticker, timeframe). Oito mesas do mesmo ativo em
+# tempos diferentes, um F5, duas abas abertas — tudo isso repetia as cinco
+# consultas. 60s é menos que o tempo de marcar um template, então ninguém
+# deixa de ver o que acabou de marcar.
+#
+# A chave NÃO leva o plano de propósito: o que é cacheado é a lista de
+# padrões do ticker, que é a mesma pra todo mundo. Quem não tem acesso nem
+# chega aqui — a rota corta antes, e é lá que o plano é decidido.
+_CACHE: Dict[str, Any] = {}
+_VALIDADE = 60.0
+
+
+def _do_cache(chave: str):
+    item = _CACHE.get(chave)
+    if not item:
+        return None
+    em, dados = item
+    if time.monotonic() - em > _VALIDADE:
+        _CACHE.pop(chave, None)
+        return None
+    return dados
+
+
+def _guardar(chave: str, dados):
+    # Teto pra não crescer sem fim: 283 ativos x 6 tempos daria 1.698
+    # entradas, e cada uma tem os candles do recorte. 200 cobre o uso real
+    # (ninguém olha 200 ativos em um minuto) e o resto expira sozinho.
+    if len(_CACHE) > 200:
+        _CACHE.clear()
+    _CACHE[chave] = (time.monotonic(), dados)
+
+
 @router.get("/padroes-marcados/{ticker}")
 @limiter.limit("60/minute")
 def padroes_marcados(
@@ -187,21 +235,27 @@ def padroes_marcados(
         return {"status": "ok", "padroes": [], "niveis": [], "plano": plano}
 
     ticker_norm = ticker.strip().upper()
+
+    chave = f"{ticker_norm}:{timeframe or '*'}"
+    guardado = _do_cache(chave)
+    if guardado is not None:
+        return {"status": "ok", "padroes": guardado, "niveis": [], "plano": plano, "cache": True}
+
     padroes: List[Dict[str, Any]] = []
 
-    q = supabase.table("templates_oco").select("*").eq("ticker", ticker_norm)
+    q = supabase.table("templates_oco").select(COLUNAS_PADRAO).eq("ticker", ticker_norm)
     if timeframe:
         q = q.eq("timeframe", timeframe)
     for row in q.execute().data:
         padroes.append(_formatar_oco(row))
 
-    q = supabase.table("templates_topo_duplo").select("*").eq("ticker", ticker_norm)
+    q = supabase.table("templates_topo_duplo").select(COLUNAS_PADRAO).eq("ticker", ticker_norm)
     if timeframe:
         q = q.eq("timeframe", timeframe)
     for row in q.execute().data:
         padroes.append(_formatar_topo_duplo(row))
 
-    q = supabase.table("templates_niveis").select("*").eq("ticker", ticker_norm)
+    q = supabase.table("templates_niveis").select(COLUNAS_NIVEL).eq("ticker", ticker_norm)
     if timeframe:
         q = q.eq("timeframe", timeframe)
     for row in q.execute().data:
@@ -218,7 +272,7 @@ def padroes_marcados(
     # ainda em lugar nenhum.
     for tabela, tipo in (("templates_bandeira_alta", "bandeira_alta"), ("templates_bandeira_baixa", "bandeira_baixa")):
         try:
-            q = supabase.table(tabela).select("*").eq("ticker", ticker_norm)
+            q = supabase.table(tabela).select(COLUNAS_PADRAO).eq("ticker", ticker_norm)
             if timeframe:
                 q = q.eq("timeframe", timeframe)
             for row in q.execute().data:
@@ -229,4 +283,5 @@ def padroes_marcados(
     # "niveis" fica sempre vazio agora — era o campo do detector automático
     # antigo (reta infinita); os níveis marcados manualmente já vão em
     # "padroes", como faixas limitadas no tempo.
+    _guardar(chave, padroes)
     return {"status": "ok", "padroes": padroes, "niveis": [], "plano": plano}
