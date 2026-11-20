@@ -47,8 +47,7 @@ describe("a trava nos três pontos", () => {
   it("há botão de apagar e marcar outra", () => {
     expect(tela).toMatch(/Apagar e marcar outra/);
     const bloco = tela.slice(tela.indexOf("A SEGUNDA SAÍDA"));
-    expect(bloco.slice(0, 700)).toMatch(/setToquesPorGrupo\(\(prev\) => \(\{ \.\.\.prev, \[GRUPO\]: \[\] \}\)\)/);
-    expect(bloco.slice(0, 700)).toMatch(/esquecerAjuste\(GRUPO\)/);
+    expect(bloco.slice(0, 700)).toMatch(/onClick=\{limparZona\}/);
   });
 
   // O aviso tem de DIZER que a trava é de propósito, senão a pessoa
@@ -125,15 +124,38 @@ describe("o reset depois de salvar", () => {
   // Era aqui o bug de "marcar o segundo S/R dá errado": sem limpar os
   // três estados, a zona seguinte nascia com o resto da anterior — e o
   // clique travado, porque o teto de 3 já estava cheio.
-  it("limpa pontos, faixa e o modal", () => {
-    const bloco = tela.slice(tela.indexOf("RESET COMPLETO"));
-    expect(bloco.slice(0, 500)).toMatch(/setToquesPorGrupo\(\(prev\) => \(\{ \.\.\.prev, \[GRUPO\]: \[\] \}\)\)/);
-    expect(bloco.slice(0, 500)).toMatch(/esquecerAjuste\(GRUPO\)/);
-    expect(bloco.slice(0, 500)).toMatch(/setEscolhendoTipo\(false\)/);
+  // Um lugar só pra limpar, chamado do salvamento E do botão de apagar.
+  // Duas cópias divergiriam, e o estado esquecido num dos caminhos é
+  // exatamente o que fazia a zona seguinte nascer travada.
+  it("limpa pontos, faixa, tipo e modal num lugar só", () => {
+    const bloco = tela.slice(tela.indexOf("function limparZona"));
+    for (const linha of [/setToques\(\[\]\)/, /setAjuste\(null\)/,
+                         /setEscolhendoTipo\(false\)/, /setTipoDaZona\(null\)/,
+                         /setLimpezas\(/]) {
+      expect(bloco.slice(0, 400)).toMatch(linha);
+    }
   });
 
-  it("uma zona por vez: um grupo só", () => {
-    expect(tela).toMatch(/const GRUPO = "zona";/);
-    expect(tela).toMatch(/grupoAtivo=\{GRUPO\}/);
+  it("o salvamento reusa o mesmo limparZona", () => {
+    const bloco = tela.slice(tela.indexOf("RESET COMPLETO"));
+    expect(bloco.slice(0, 400)).toMatch(/limparZona\(\);/);
+  });
+
+  // O modo de DOIS grupos desenha só os grupos que existem em `cores`.
+  // Reaproveitá-lo com um grupo próprio fazia os cliques entrarem sem
+  // nada aparecer na tela — era o relato "cliquei e não aparece nada".
+  it("não usa o modo de dois grupos", () => {
+    // O gráfico da MARCAÇÃO (o segundo no arquivo; o primeiro é o de
+    // editar/visualizar, que já era modo simples).
+    const inicio = tela.indexOf("Modo SIMPLES");
+    const bloco = tela.slice(inicio, inicio + 1400);
+    expect(bloco).not.toMatch(/^\s*dual\s*$/m);
+    expect(bloco).toMatch(/initialToques=\{toques\}/);
+  });
+
+  // Sem tipo escolhido, a zona é cinza: pintá-la de verde ou vermelho
+  // antes da escolha afirmaria o que ninguém disse.
+  it("a zona nasce cinza, sem tipo", () => {
+    expect(tela).toMatch(/cor=\{tipoDaZona \? corDoTipo\(tipoDaZona\) : "#787b86"\}/);
   });
 });

@@ -145,12 +145,21 @@ export default function AdminTemplatesNiveis() {
   // a cor da zona enquanto a pessoa marca (antes da escolha, cinza) e é
   // o que vai pro banco.
   const [tipo, setTipo] = useState("suporte");
-  // Os três pontos ficam num grupo só: o fluxo novo marca UMA zona por
-  // vez e escolhe o tipo no fim, então não há mais dois grupos abertos.
-  const GRUPO = "zona";
+  // UMA ZONA POR VEZ, sem grupos. O gráfico tem um modo de DOIS grupos
+  // (suporte e resistencia marcados juntos), e eu tentei reaproveitá-lo
+  // com um grupo chamado "zona" — não funciona: nesse modo o desenho
+  // percorre `Object.keys(cores)`, então um grupo fora dessa lista nunca
+  // é desenhado. Os cliques entravam e NADA aparecia na tela.
+  //
+  // Agora a tela usa o modo simples: uma lista de pontos, um ajuste, e o
+  // tipo decidido no fim.
   // Aberto depois do terceiro ponto. Enquanto está aberto, a zona está
   // marcada e esperando o tipo — e o clique no gráfico já está travado.
   const [escolhendoTipo, setEscolhendoTipo] = useState(false);
+  // O tipo da zona ATUAL, `null` até a escolha. Diferente de `tipo`, que
+  // é o que vai pro banco: aqui `null` significa "ninguém disse ainda", e
+  // é o que mantém a zona cinza enquanto está sendo marcada.
+  const [tipoDaZona, setTipoDaZona] = useState(null);
   // Padrões já marcados neste ativo (de qualquer tipo) — viram emoji
   // O sidebar abre com só o padrão desta tela ligado (filtroPadroes.js)
   const [padroesVisiveis, setPadroesVisiveis] = useState(() => filtroInicial("niveis"));
@@ -160,21 +169,21 @@ export default function AdminTemplatesNiveis() {
   // Faixa visível (zoom e posição) — guardada e devolvida na volta
   const faixaRef = useRef(estadoDoGrafico().faixa);
   const [carregando, setCarregando] = useState(false);
-  const [toquesPorGrupo, setToquesPorGrupo] = useState({ suporte: [], resistencia: [] });
-  // A faixa ajustada à mão, por tipo. Sem isto, arrastar a faixa e salvar
-  // guardaria só os toques — e ao reabrir a faixa voltaria a ser o
-  // intervalo deles, desfazendo o ajuste em silêncio.
-  const [ajustePorGrupo, setAjustePorGrupo] = useState({});
+  const [toques, setToques] = useState([]);
+  // A faixa ajustada à mão. Sem isto, arrastar a faixa e salvar guardaria
+  // só os toques — e ao reabrir a faixa voltaria a ser o intervalo deles,
+  // desfazendo o ajuste em silêncio.
+  const [ajuste, setAjuste] = useState(null);
 
-  // Apagar os toques apaga o ajuste do mesmo tipo: faixa ajustada sem
-  // toque nenhum não tem o que sustentá-la, e sobraria desenhada sobre o
-  // próximo nível que a pessoa começasse a marcar.
-  function esquecerAjuste(tipoAlvo) {
-    setAjustePorGrupo((prev) => {
-      if (!prev[tipoAlvo]) return prev;
-      const { [tipoAlvo]: _fora, ...resto } = prev;
-      return resto;
-    });
+  // Apagar os pontos apaga o ajuste: faixa sem ponto nenhum não tem o que
+  // a sustente, e sobraria desenhada sobre a próxima zona que a pessoa
+  // começasse a marcar.
+  function limparZona() {
+    setToques([]);
+    setAjuste(null);
+    setEscolhendoTipo(false);
+    setTipoDaZona(null);
+    setLimpezas((n) => n + 1);
   }
   const [resultado, setResultado] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -241,7 +250,7 @@ export default function AdminTemplatesNiveis() {
     carregarGrafico(novoTicker);
   }
 
-  const toquesAtivos = toquesPorGrupo[GRUPO] || [];
+  const toquesAtivos = toques;
   // TRÊS PONTOS, e os três importam: 1 é o preço e a borda esquerda, 2 é
   // o preço oposto, 3 é a borda direita. Com menos que isso a zona não
   // tem altura ou não tem largura.
@@ -278,8 +287,8 @@ export default function AdminTemplatesNiveis() {
         candles_contexto: candlesContexto,
         // `faixa` só entra quando foi ajustada: nível sem ajuste continua
         // guardando exatamente o que guardava antes, e reabre igual.
-        pontos: ajustePorGrupo[GRUPO]
-          ? { toques: toquesAjustados, faixa: ajustePorGrupo[GRUPO] }
+        pontos: ajuste
+          ? { toques: toquesAjustados, faixa: ajuste }
           : { toques: toquesAjustados },
         // Sem data_p1 o nível fica invisível no gráfico (ver janela.js)
         data_p1: dataDoPrimeiroPonto(candlesContexto, toquesAtivos),
@@ -295,9 +304,7 @@ export default function AdminTemplatesNiveis() {
       // S/R dá errado": sem limpar os três estados, a zona seguinte
       // nascia com o resto da anterior — pontos velhos, faixa velha, e o
       // clique travado porque o teto de 3 já estava cheio.
-      setToquesPorGrupo((prev) => ({ ...prev, [GRUPO]: [] }));
-      esquecerAjuste(GRUPO);
-      setEscolhendoTipo(false);
+      limparZona();
       setResultado("");
       setObservacao("");
       // O gráfico FICA: mesmo ativo, mesmo período, mesmo trecho na tela.
@@ -532,20 +539,28 @@ export default function AdminTemplatesNiveis() {
               <>
                 <div className="marcacao-area">
                   <div className="marcacao-grafico">
+                {/* Modo SIMPLES (sem `dual`): uma lista de pontos e um
+                    ajuste. No modo de dois grupos o desenho só percorre
+                    `Object.keys(cores)`, então um grupo fora dessa lista
+                    nunca era desenhado — os cliques entravam e nada
+                    aparecia na tela.
+
+                    A cor fica cinza enquanto o tipo não foi escolhido: a
+                    zona ainda não é suporte nem resistência, e pintá-la
+                    de uma das duas antes da escolha afirmaria o que
+                    ninguém disse. */}
                 <NivelMarkerChart
                   marcadoresExtras={marcadoresVisiveis}
                   faixaInicial={faixaRef.current}
                   aoMudarFaixa={(faixa) => { faixaRef.current = faixa; guardarGrafico({ faixa }); }}
                   key={marcacaoKey}
                   candles={candlesContexto}
-                  dual
-                  cores={CORES_NIVEL}
-                  toquesIniciais={toquesPorGrupo}
-                  grupoAtivo={GRUPO}
+                  cor={tipoDaZona ? corDoTipo(tipoDaZona) : "#787b86"}
+                  initialToques={toques}
                   limparEm={limpezas}
-                  onChange={setToquesPorGrupo}
-                  ajustesIniciais={ajustePorGrupo}
-                  aoAjustarFaixa={setAjustePorGrupo}
+                  onChange={setToques}
+                  ajustesIniciais={ajuste}
+                  aoAjustarFaixa={setAjuste}
                   maxToques={TOTAL_PONTOS}
                   aoCompletar={() => setEscolhendoTipo(true)}
                 />
@@ -608,11 +623,7 @@ export default function AdminTemplatesNiveis() {
                         cheia trava o clique, e os links de limpar são
                         pequenos e moram dentro do gráfico. */}
                     <button
-                      onClick={() => {
-                        setToquesPorGrupo((prev) => ({ ...prev, [GRUPO]: [] }));
-                        esquecerAjuste(GRUPO);
-                        setLimpezas((n) => n + 1);
-                      }}
+                      onClick={limparZona}
                       disabled={salvando}
                       className="admin-link-btn"
                     >
@@ -624,7 +635,7 @@ export default function AdminTemplatesNiveis() {
                 {escolhendoTipo && (
                   <ModalTipoDaZona
                     salvando={salvando}
-                    aoEscolher={(t) => { setTipo(t); salvarNovo(t); }}
+                    aoEscolher={(t) => { setTipo(t); setTipoDaZona(t); salvarNovo(t); }}
                     aoCancelar={() => setEscolhendoTipo(false)}
                   />
                 )}
