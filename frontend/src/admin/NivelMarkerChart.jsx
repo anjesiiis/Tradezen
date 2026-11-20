@@ -200,7 +200,17 @@ function GraficoDeNivel({
         // TRAVA NO TETO. Sem isto o quarto clique virava um toque solto,
         // e a zona passava a ter um ponto que não é nem borda nem preço —
         // era o bug relatado de "deixa continuar clicando".
-        if (maxToquesRef.current > 0 && atuais.length >= maxToquesRef.current) return prev;
+        //
+        // MAS O CLIQUE NÃO PODE MORRER EM SILÊNCIO. Quem fecha o modal
+        // sem escolher fica com a zona cheia e, ao clicar pra marcar
+        // outra, não acontecia NADA — nem ponto, nem aviso, nem o modal
+        // de volta. Parecia que a ferramenta tinha sumido. Agora o
+        // clique na zona cheia chama de novo quem abre o modal, que é a
+        // única coisa que falta fazer.
+        if (maxToquesRef.current > 0 && atuais.length >= maxToquesRef.current) {
+          setTimeout(() => aoCompletarRef.current?.(atuais), 0);
+          return prev;
+        }
         const proximos = [...atuais, novoToque];
         if (maxToquesRef.current > 0 && proximos.length === maxToquesRef.current) {
           // Depois do render, pra a tela já ter os três pontos quando

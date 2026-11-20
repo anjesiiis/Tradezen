@@ -367,6 +367,8 @@ html,body,#root{height:100%;width:100%;margin:0;max-width:none!important;border-
 
 /* O passo a passo da marcacao, logo abaixo do grafico. */
 .niv-passo{margin:0;font-size:12px;color:var(--text2);line-height:1.5}
+/* As duas saidas da zona fechada, lado a lado: salvar ou apagar. */
+.niv-saidas{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 
 /* MODELOS DE ML — tela minima por pedido: numeros legiveis, sem firula.
    O cuidado esta no que informa decisao: a comparacao com o modelo

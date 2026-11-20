@@ -26,8 +26,35 @@ describe("a trava nos três pontos", () => {
 
   // Sem a trava, o quarto clique virava um toque que não é nem borda nem
   // preço. Era o bug relatado de "deixa continuar clicando".
-  it("clique além do teto é ignorado, não acumulado", () => {
-    expect(grafico).toMatch(/if \(maxToquesRef\.current > 0 && atuais\.length >= maxToquesRef\.current\) return prev;/);
+  it("clique além do teto não acumula ponto", () => {
+    const bloco = grafico.slice(grafico.indexOf("TRAVA NO TETO"));
+    expect(bloco.slice(0, 1200))
+      .toMatch(/if \(maxToquesRef\.current > 0 && atuais\.length >= maxToquesRef\.current\) \{/);
+    expect(bloco.slice(0, 1200)).toMatch(/return prev;/);
+  });
+
+  // E NÃO PODE MORRER EM SILÊNCIO. Quem fechou o modal sem escolher
+  // ficava com a zona cheia e, ao clicar pra marcar outra, não acontecia
+  // NADA — nem ponto, nem aviso, nem o modal de volta. Parecia que a
+  // ferramenta tinha desaparecido, e foi exatamente esse o relato.
+  it("clique na zona cheia traz o modal de volta", () => {
+    const bloco = grafico.slice(grafico.indexOf("TRAVA NO TETO"));
+    expect(bloco.slice(0, 1200)).toMatch(/aoCompletarRef\.current\?\.\(atuais\)/);
+  });
+
+  // A outra saída: quem quer marcar OUTRA zona precisa de um jeito óbvio
+  // de apagar a atual. Os links dentro do gráfico são pequenos demais.
+  it("há botão de apagar e marcar outra", () => {
+    expect(tela).toMatch(/Apagar e marcar outra/);
+    const bloco = tela.slice(tela.indexOf("A SEGUNDA SAÍDA"));
+    expect(bloco.slice(0, 700)).toMatch(/setToquesPorGrupo\(\(prev\) => \(\{ \.\.\.prev, \[GRUPO\]: \[\] \}\)\)/);
+    expect(bloco.slice(0, 700)).toMatch(/esquecerAjuste\(GRUPO\)/);
+  });
+
+  // O aviso tem de DIZER que a trava é de propósito, senão a pessoa
+  // conclui que a ferramenta quebrou.
+  it("o guia explica que o clique está travado", () => {
+    expect(tela).toMatch(/clique no gráfico está travado de propósito/);
   });
 
   it("completar avisa a tela, que abre o modal", () => {

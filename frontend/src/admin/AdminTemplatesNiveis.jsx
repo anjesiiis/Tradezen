@@ -587,21 +587,38 @@ export default function AdminTemplatesNiveis() {
                   {toquesAtivos.length === 1 && "Clique 2: o preço oposto — é o que dá altura à zona."}
                   {toquesAtivos.length === 2 && "Clique 3: até onde a zona vai. Depois dá pra arrastar a faixa."}
                   {completo && (motivoParaNaoSalvar()
-                    || "Zona fechada. Arraste as bordas pra ajustar, e escolha o tipo.")}
+                    || "Zona fechada — o clique no gráfico está travado de propósito. "
+                       + "Arraste as bordas pra ajustar, escolha o tipo, ou apague pra marcar outra.")}
                 </p>
 
                 {/* Fechou a zona e o modal foi fechado sem escolher: o
                     botão traz a escolha de volta, em vez de obrigar a
                     apagar tudo e marcar de novo. */}
                 {completo && !escolhendoTipo && (
-                  <button
-                    onClick={() => setEscolhendoTipo(true)}
-                    disabled={salvando || !!motivoParaNaoSalvar()}
-                    className="admin-btn"
-                    style={{ alignSelf: "flex-start" }}
-                  >
-                    Escolher o tipo e salvar
-                  </button>
+                  <div className="niv-saidas">
+                    <button
+                      onClick={() => setEscolhendoTipo(true)}
+                      disabled={salvando || !!motivoParaNaoSalvar()}
+                      className="admin-btn"
+                    >
+                      Escolher o tipo e salvar
+                    </button>
+                    {/* A SEGUNDA SAÍDA, e ela faltava: quem fechou o modal
+                        e quis marcar OUTRA zona ficava preso — a zona
+                        cheia trava o clique, e os links de limpar são
+                        pequenos e moram dentro do gráfico. */}
+                    <button
+                      onClick={() => {
+                        setToquesPorGrupo((prev) => ({ ...prev, [GRUPO]: [] }));
+                        esquecerAjuste(GRUPO);
+                        setLimpezas((n) => n + 1);
+                      }}
+                      disabled={salvando}
+                      className="admin-link-btn"
+                    >
+                      Apagar e marcar outra
+                    </button>
+                  </div>
                 )}
 
                 {escolhendoTipo && (
