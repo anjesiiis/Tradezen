@@ -1,0 +1,75 @@
+<!-- TradeZen — Confirmação de cadastro (template de email do Supabase Auth)
+     ATENÇÃO: email não é página. Nada de <style>, classe, flex, grid ou
+     variável de CSS: Outlook e Gmail descartam a maior parte disso. Tudo
+     aqui é tabela e estilo inline, de propósito.
+     A marca vai em TEXTO, não em imagem: Gmail, Outlook e Apple Mail
+     bloqueiam imagem por padrão, e um logo bloqueado vira um quadrado
+     vazio no lugar mais importante do email.
+     {{ .ConfirmationURL }} é a variável do Supabase. Não renomear. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f1118;margin:0;padding:32px 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#131722;border:1px solid #1e222d;border-radius:12px;">
+        <tr>
+          <td style="padding:28px 28px 0 28px;">
+            <div style="font-size:19px;font-weight:700;color:#d1d4dc;letter-spacing:-0.3px;">
+              Trade<span style="color:#2962ff;">Zen</span>
+            </div>
+            <div style="font-size:11px;color:#787b86;padding-top:4px;">
+              Análise técnica com inteligência artificial
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 28px 0 28px;">
+            <h1 style="margin:0;font-size:20px;font-weight:600;color:#d1d4dc;line-height:1.35;">
+              Confirme seu cadastro no TradeZen
+            </h1>
+            <p style="margin:12px 0 0 0;font-size:14px;color:#d1d4dc;line-height:1.6;">
+              Falta um clique para sua conta ficar pronta. Confirmando o email,
+              você já entra na plataforma e pode abrir seus gráficos.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:24px 28px 4px 28px;">
+            <!-- O botão é um <a> com padding, não um <button>: botão de
+                 formulário não funciona em email. -->
+            <a href="{{ .ConfirmationURL }}"
+               style="display:inline-block;background-color:#2962ff;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:28px;">
+              Confirmar meu cadastro
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px 0 28px;">
+            <!-- O endereço em texto existe porque cliente de email as vezes
+                 quebra o link do botão, e porque link que ninguém consegue
+                 ler é link que ninguém confia. -->
+            <p style="margin:0;font-size:11px;color:#787b86;line-height:1.6;">
+              Se o botão não funcionar, copie e cole este endereço no navegador:
+            </p>
+            <p style="margin:6px 0 0 0;font-size:11px;color:#4d8bff;word-break:break-all;line-height:1.5;">
+              {{ .ConfirmationURL }}
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px 28px 28px;">
+            <div style="border-top:1px solid #1e222d;padding-top:16px;">
+              <p style="margin:0;font-size:11px;color:#787b86;line-height:1.6;">
+                Não foi você que se cadastrou? Ignore este email — sem o clique
+                acima, nenhuma conta é criada com o seu endereço.
+              </p>
+              <p style="margin:10px 0 0 0;font-size:11px;color:#787b86;line-height:1.6;">
+                TradeZen é uma plataforma <strong style="color:#d1d4dc;">educacional</strong>
+                de análise técnica. Não damos recomendação de investimento nem
+                sinal de compra ou venda.
+              </p>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

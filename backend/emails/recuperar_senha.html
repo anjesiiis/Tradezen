@@ -1,0 +1,63 @@
+<!-- TradeZen — Redefinição de senha (template de email do Supabase Auth)
+     Mesmas regras do confirmar_cadastro.html: tabela + estilo inline, marca
+     em texto. {{ .ConfirmationURL }} é a variável do Supabase, não renomear.
+     O prazo do link vem da configuração do projeto (Auth > Sessions), por
+     isso a frase não promete um número de minutos que pode não ser verdade. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f1118;margin:0;padding:32px 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#131722;border:1px solid #1e222d;border-radius:12px;">
+        <tr>
+          <td style="padding:28px 28px 0 28px;">
+            <div style="font-size:19px;font-weight:700;color:#d1d4dc;letter-spacing:-0.3px;">
+              Trade<span style="color:#2962ff;">Zen</span>
+            </div>
+            <div style="font-size:11px;color:#787b86;padding-top:4px;">
+              Análise técnica com inteligência artificial
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 28px 0 28px;">
+            <h1 style="margin:0;font-size:20px;font-weight:600;color:#d1d4dc;line-height:1.35;">
+              Redefinir sua senha do TradeZen
+            </h1>
+            <p style="margin:12px 0 0 0;font-size:14px;color:#d1d4dc;line-height:1.6;">
+              Recebemos um pedido para trocar a senha da sua conta. Clique abaixo
+              para escolher uma nova. O link vale por tempo limitado e só pode
+              ser usado uma vez.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:24px 28px 4px 28px;">
+            <a href="{{ .ConfirmationURL }}"
+               style="display:inline-block;background-color:#2962ff;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:28px;">
+              Criar nova senha
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px 0 28px;">
+            <p style="margin:0;font-size:11px;color:#787b86;line-height:1.6;">
+              Se o botão não funcionar, copie e cole este endereço no navegador:
+            </p>
+            <p style="margin:6px 0 0 0;font-size:11px;color:#4d8bff;word-break:break-all;line-height:1.5;">
+              {{ .ConfirmationURL }}
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px 28px 28px;">
+            <div style="border-top:1px solid #1e222d;padding-top:16px;">
+              <p style="margin:0;font-size:11px;color:#787b86;line-height:1.6;">
+                Não foi você que pediu? Ignore este email. Sua senha atual
+                continua valendo e nada muda na sua conta.
+              </p>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
