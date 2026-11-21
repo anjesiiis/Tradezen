@@ -62,10 +62,16 @@ describe('Retorno do link de acesso do admin', () => {
     window.location = local;
   });
 
-  it('link de troca de senha do usuário não é tratado como admin', async () => {
+  // Antes este teste exigia que a raiz continuasse mostrando a landing —
+  // ou seja, travava o bug: o token de recuperação chegava e morria ali.
+  // A intenção (não cair no painel admin) segue valendo; o destino é que
+  // mudou, e agora é o formulário de senha nova (ver auth/retornoAuth.js).
+  it('link de troca de senha do usuário vai pro formulário de senha, não pro admin', async () => {
     renderApp('/#access_token=tok123&type=recovery');
 
-    await waitFor(() => expect(document.querySelector('nav.nav, .abm')).not.toBeNull());
-    expect(screen.queryByText(/Pedir novo link/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(window.location.pathname).toBe('/redefinir-senha'));
+    expect(localStorage.getItem('admin_token')).not.toBe('tok123');
+    // a tela é lazy: espera o chunk, senão o que está no DOM é o skeleton
+    await waitFor(() => expect(document.querySelector('.auth-shell')).not.toBeNull());
   });
 });

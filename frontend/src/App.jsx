@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext.jsx";
 import RequireAuth from "./auth/RequireAuth.jsx";
+import { precisaResgatarRecuperacao } from "./auth/retornoAuth.js";
 import { SkeletonPagina } from "./components/Skeleton.jsx";
 
 // Code splitting: cada página é um chunk próprio, baixado só quando a rota
@@ -58,6 +59,22 @@ function Redirecionar({ to }){
   return null;
 }
 
+// Uma vez por carga de página basta: o token de recuperação é de uso
+// único. O desvio também não pode repetir — depois de trocar a senha o
+// usuário vai pro /mercados, e a marca `type=recovery` continua no
+// HASH_INICIAL (constante lida no carregamento do módulo). Sem este
+// ferrolho ele seria jogado de volta no formulário de senha, em laço.
+let recuperacaoResgatada = false;
+
+// Rede de segurança do link de "esqueci minha senha" que caiu na rota
+// errada (ver auth/retornoAuth.js). Leva pro formulário de senha nova
+// PRESERVANDO o fragmento: é lá que vem o token, e sem ele a tela de
+// destino não tem o que confirmar.
+function ResgateRecuperacao({ hash }){
+  useEffect(()=>{ recuperacaoResgatada = true; },[]);
+  return <Redirecionar to={`/redefinir-senha${hash}`}/>;
+}
+
 /**
  * Gestos de zoom que o CSS não cobre.
  *
@@ -98,6 +115,16 @@ function Router(){
   // vendas, por exemplo) abria a seguinte no meio dela.
   useEffect(()=>{ window.scrollTo(0,0); },[location.pathname]);
   const naAbertura = location.pathname === "/";
+
+  // Antes de tudo: link de recuperação de senha que não caiu em
+  // /redefinir-senha. Vem primeiro porque o token é de uso único — se a
+  // raiz renderizar a landing, ele se perde e o usuário acha que o link
+  // do email não funcionou.
+  const hashVivo = HASH_INICIAL || window.location.hash;
+  if (!recuperacaoResgatada
+      && precisaResgatarRecuperacao(location.pathname, hashVivo, QUERY_INICIAL || window.location.search)) {
+    return <ResgateRecuperacao hash={hashVivo}/>;
+  }
 
   // Magic link do admin pode cair em qualquer rota (ver pages/Admin.jsx)
   // startsWith("/admin"): cobre barra no fim (/admin/templates/) e rotas
