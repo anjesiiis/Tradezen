@@ -595,11 +595,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
         <div className="sep"/>
 
-        {/* Indicadores — modal central, montado no document.body por
-            portal: dentro da mesa ele pegava o z-index do .analysis, e
-            ancorado no botao ele caia fora da janela nas mesas de baixo.
-            Sem a setinha: ela promete "abre aqui embaixo", e nao e mais
-            isso que acontece. */}
+        {/* Indicadores — popover ancorado neste botao, montado no
+            document.body por portal: dentro da mesa ele pegava o
+            z-index do .analysis. Quem escolhe o lado e o
+            usePosicaoPopover, que vira pra cima quando nao cabe
+            embaixo — era esse o problema das mesas de baixo. */}
         <div className="ind-wrap">
           <button
             ref={indBtnRef}
@@ -1007,6 +1007,9 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
         <PainelIndicadores
           tools={tools}
           aoAlternar={toggleTool}
+          // A ancora: o painel se posiciona pelo botao DESTA mesa, e
+          // decide sozinho se abre pra baixo ou pra cima.
+          ancoraRef={indBtnRef}
           // Devolve o foco pro botao que abriu: sem isso o teclado volta
           // pro inicio da pagina depois de fechar.
           aoFechar={()=>{ setIndOpen(false); indBtnRef.current?.focus(); }}

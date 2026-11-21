@@ -786,13 +786,15 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 /* -- Painel de indicadores (abas + grade de chips) --
    480x360 no desktop. A altura e MAXIMA, nao fixa: com a aba Medias
    aberta o painel fica baixinho em vez de deixar meia tela vazia. */
-/* Modal CENTRAL, nao popover ancorado: o botao das mesas de baixo fica
-   perto do pe da tela, e 360px de painel a partir dele caem fora da
-   janela. Centralizado, a posicao nao depende de qual mesa abriu. */
-.pind-fundo{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:pindFundo .2s ease-out}
-@keyframes pindFundo{from{opacity:0}to{opacity:1}}
-.pind{display:flex;flex-direction:column;width:480px;max-width:100%;max-height:min(360px,100%);background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.7);animation:pindEntra .18s cubic-bezier(.25,.46,.45,.94);overflow:hidden}
-@keyframes pindEntra{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+/* POPOVER ancorado no botao da mesa, SEM fundo escurecido: o painel
+   altera o grafico que esta do lado dele, e escurecer a tela esconde
+   justamente o que a pessoa quer olhar enquanto liga um indicador.
+   Quem decide o lado (abaixo, ou acima quando nao cabe) e o
+   usePosicaoPopover; aqui so entram tamanho e aparencia.
+   O transform-origin vem inline, do lado que o hook escolheu: a
+   animacao cresce do canto encostado no botao. */
+.pind{display:flex;flex-direction:column;width:480px;max-width:calc(100vw - 24px);max-height:min(360px,calc(100vh - 24px));background:var(--card);border:1px solid var(--border);border-radius:12px;z-index:9999;box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04);animation:pindEntra .18s cubic-bezier(.16,1,.3,1);overflow:hidden}
+@keyframes pindEntra{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 .pind-titulo{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap}
 .pind-topo{display:flex;align-items:center;gap:8px;padding:10px 10px 8px;border-bottom:1px solid var(--border)}
 .pind-busca{flex:1;min-width:80px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;outline:none}
@@ -1562,10 +1564,17 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   /* O painel de indicadores vira bottom sheet junto com os outros:
      largura cheia, altura maior (no celular a grade cai pra 2 colunas) e
      alvos de 44px. */
-  /* No celular o modal encosta embaixo (bottom sheet): a mao alcanca o
-     rodape, e a grade de chips cai pra 2 colunas. */
-  .pind-fundo{align-items:flex-end;padding:0}
-  .pind{width:100%;max-width:100%;max-height:78vh;border-radius:16px 16px 0 0;border-bottom:none;animation:pindSobe .2s cubic-bezier(.25,.46,.45,.94)}
+  /* No celular NAO ha ancora que valha: a tela e estreita, o painel
+     ocupa quase tudo, e ancorar num botao de barra que rola faria ele
+     saltar. Vira bottom sheet, e os !important sobrescrevem o
+     top/left que o hook calculou (ele continua rodando, so nao manda
+     aqui). A mao alcanca o rodape e a grade cai pra 2 colunas. */
+  .pind{
+    top:auto!important;left:0!important;right:0!important;bottom:0!important;
+    width:100%;max-width:100%;max-height:78vh;
+    border-radius:16px 16px 0 0;border-bottom:none;
+    animation:pindSobe .2s cubic-bezier(.16,1,.3,1);
+  }
   @keyframes pindSobe{from{transform:translateY(100%)}to{transform:translateY(0)}}
   .pind-rodape{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
   .pind-grade{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}

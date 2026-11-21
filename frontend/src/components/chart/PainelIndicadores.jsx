@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { usePosicaoPopover } from "../../hooks/usePosicaoPopover.js";
 import { CATALOGO_INDICADORES, CATEGORIAS_INDICADOR } from "../../lib/grafico/config.js";
 
 // Nome da aba por id, pra busca: quem digita "medias" quer as medias
@@ -22,13 +23,21 @@ const ROTULO_CATEGORIA = Object.fromEntries(
  * chip apagado "em breve", nada de clicar e não acontecer nada. Quem
  * guarda isso é o teste de catálogo, que exige cada id em CandleChart.
  *
- * POR QUE MODAL CENTRAL, e não um popover ancorado no botão: o painel
- * já nascia num portal no document.body, então o grid do multichart
- * nunca o cortou. O que cortava era a JANELA. Ancorado, ele abria em
- * top = (base do botão), e o botão das mesas de baixo fica perto do pé
- * da tela — 360px de painel a partir dali caem fora do viewport, e no
- * celular com quatro mesas o painel da última abria quase todo invisível.
- * Centralizado, a posição não depende de onde está a mesa.
+ * POPOVER ANCORADO no botão da mesa que o abriu, e não modal central.
+ * Já foi central por um dia, e a razão era boa: ancorado no começo, o
+ * painel abria sempre em top = (base do botão), e nas mesas de baixo
+ * esse ponto está a poucos pixels do pé da tela — abria quase todo
+ * invisível. O que corrige isso não é centralizar, é MEDIR: o
+ * usePosicaoPopover tenta abaixo, vira pra cima quando não cabe e
+ * alinha pela direita quando passa da borda. Com a medida no lugar, o
+ * popover ganha do modal — fica ao lado do gráfico que ele altera, e
+ * não escurece a tela que a pessoa está tentando ler.
+ *
+ * UM POR VEZ: duas mesas com o painel aberto ao mesmo tempo seriam dois
+ * painéis parecidos em telas diferentes, e o segundo some atrás do
+ * primeiro. Quem abre avisa os outros por um evento de window, e eles
+ * se fecham. É menos encanação que subir esse estado até o Dashboard,
+ * que não precisa saber de painel nenhum.
  *
  * FAVORITOS ficam no navegador (localStorage), não no banco. É
  * preferência de quem está olhando, some junto com o navegador e não
@@ -82,11 +91,16 @@ export function filtrarIndicadores(lista, { categoria, busca, favoritos }) {
   });
 }
 
-export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
+const AVISO_ABRIU = "tradezen:painel-indicadores-abriu";
+
+export default function PainelIndicadores({ tools, aoAlternar, aoFechar, ancoraRef }) {
   const [categoria, setCategoria] = useState("todos");
   const [busca, setBusca] = useState("");
   const [favoritos, setFavoritos] = useState(lerFavoritos);
   const buscaRef = useRef(null);
+  const painelRef = useRef(null);
+  const eu = useId();
+  const pos = usePosicaoPopover(ancoraRef, painelRef, true);
 
   useEffect(() => {
     const tecla = (e) => {
@@ -99,14 +113,15 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
     return () => window.removeEventListener("keydown", tecla);
   }, [busca, aoFechar]);
 
-  // Trava a rolagem do body enquanto o modal está aberto: sem isso a
-  // roda do mouse sobre o fundo escurecido rola a página atrás, e no
-  // celular o gesto de rolar a grade de chips arrasta a tela inteira.
+  // UM PAINEL POR VEZ. Avisa quem já estava aberto, e escuta pra se
+  // fechar quando outra mesa abrir o dela. A rolagem do body NÃO é mais
+  // travada: popover acompanha a página, ao contrário do modal.
   useEffect(() => {
-    const antes = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = antes; };
-  }, []);
+    const aoAbrirOutro = (e) => { if (e.detail !== eu) aoFechar?.(); };
+    window.addEventListener(AVISO_ABRIU, aoAbrirOutro);
+    window.dispatchEvent(new CustomEvent(AVISO_ABRIU, { detail: eu }));
+    return () => window.removeEventListener(AVISO_ABRIU, aoAbrirOutro);
+  }, [eu, aoFechar]);
 
   const alternarFavorito = (id) => {
     setFavoritos((prev) => {
@@ -149,19 +164,23 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
 
   return (
     <div
-      className="pind-fundo"
-      // Fecha só no clique no PRÓPRIO fundo. Sem o teste de target, um
-      // clique que começa num chip e solta no fundo fecharia o painel.
-      onMouseDown={(e) => { if (e.target === e.currentTarget) aoFechar?.(); }}
-      role="presentation"
+      className="pind"
+      ref={painelRef}
+      style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        // `pronta` falsa é a primeira passada, antes de a altura ser
+        // conhecida: fica medindo, invisível, pra não piscar no canto
+        // errado. Invisível e não display:none — com display:none não
+        // haveria altura pra medir.
+        visibility: pos.pronta ? "visible" : "hidden",
+        transformOrigin: pos.origem,
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-label="Indicadores"
     >
-      <div
-        className="pind"
-        onMouseDown={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Indicadores"
-      >
       <div className="pind-topo">
         <span className="pind-titulo">Indicadores</span>
         <input
@@ -256,7 +275,6 @@ export default function PainelIndicadores({ tools, aoAlternar, aoFechar }) {
           Limpar todos
         </button>
         <button type="button" className="pind-ok" onClick={aoFechar}>Aplicar</button>
-      </div>
       </div>
     </div>
   );

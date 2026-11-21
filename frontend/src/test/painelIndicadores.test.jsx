@@ -19,6 +19,21 @@ import { CATALOGO_INDICADORES, INDICADORES, CATEGORIAS_INDICADOR } from "../lib/
 // abre CandleChart.jsx e exige o id lá dentro. Indicador listado sem
 // desenho derruba a suíte, e ninguém precisa lembrar de marcar nada.
 
+// O painel se mede contra um botao de verdade. Em jsdom todo retangulo e
+// zero, entao a ancora e um elemento com o rect fingido — sem isso o hook
+// nao tem o que medir e o painel fica invisivel, e os testes de conteudo
+// cairiam por um motivo que nao e o deles.
+function ancoraFalsa(caixa = { left: 40, top: 60 }) {
+  const el = document.createElement("button");
+  document.body.appendChild(el);
+  el.getBoundingClientRect = () => ({
+    left: caixa.left, top: caixa.top,
+    right: caixa.left + 100, bottom: caixa.top + 24,
+    width: 100, height: 24,
+  });
+  return { current: el };
+}
+
 function abrir(props = {}) {
   const aoAlternar = vi.fn();
   const aoFechar = vi.fn();
@@ -27,7 +42,7 @@ function abrir(props = {}) {
       tools={props.tools || new Set()}
       aoAlternar={aoAlternar}
       aoFechar={aoFechar}
-      posicao={{ top: 10, left: 10 }}
+      ancoraRef={props.ancoraRef || ancoraFalsa()}
     />,
   );
   return { ...utils, aoAlternar, aoFechar };
@@ -173,34 +188,40 @@ describe("rodapé", () => {
   });
 });
 
-// MODAL CENTRAL, NAO POPOVER ANCORADO
+// POPOVER ANCORADO, NAO MODAL CENTRAL
 // ===================================
 //
-// O painel sempre nasceu num portal no document.body, entao o grid do
-// multichart nunca o cortou. O que cortava era a JANELA: ancorado em
-// top = (base do botao), nas mesas de baixo ele abria 360px abaixo de um
-// botao que ja esta perto do pe da tela. Estes testes travam que nenhuma
-// posicao volta pro componente.
-describe("posicionamento", () => {
-  it("nao recebe nem aplica coordenada nenhuma", () => {
-    abrir();
+// Isto ja foi modal central por um dia. Voltou a ser ancorado porque o
+// problema que motivou o modal (nas mesas de baixo o painel caia fora da
+// janela) se resolve medindo, nao centralizando — quem mede e o
+// usePosicaoPopover, testado em posicaoPopover.test.jsx.
+//
+// Aqui o que se trava e a LIGACAO: o painel pega a posicao do hook, nao
+// escurece a tela e nao trava a rolagem.
+describe("ancoragem", () => {
+  it("se posiciona com a medida do hook, em fixed", () => {
+    abrir({ ancoraRef: ancoraFalsa({ left: 40, top: 60 }) });
     const caixa = document.querySelector(".pind");
-    expect(caixa.style.top).toBe("");
-    expect(caixa.style.left).toBe("");
-    expect(caixa.style.position).toBe("");
+    expect(caixa.style.position).toBe("fixed");
+    expect(caixa.style.top).toBe("92px");      // 60 + 24 do botao + 8 de folga
+    expect(caixa.style.left).toBe("40px");
+    expect(caixa.style.transformOrigin).toBe("top left");
   });
 
-  it("o fundo escurecido existe e e quem centraliza", () => {
+  it("NAO escurece a tela: o fundo do modal nao existe mais", () => {
     abrir();
-    const fundo = document.querySelector(".pind-fundo");
-    expect(fundo).toBeTruthy();
-    expect(fundo.contains(document.querySelector(".pind"))).toBe(true);
+    expect(document.querySelector(".pind-fundo")).toBeNull();
   });
 
-  it("clicar no fundo fecha", () => {
-    const { aoFechar } = abrir();
-    fireEvent.mouseDown(document.querySelector(".pind-fundo"));
-    expect(aoFechar).toHaveBeenCalled();
+  it("NAO trava a rolagem da pagina — popover acompanha, modal travava", () => {
+    abrir();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("nao se anuncia como modal, porque nao e", () => {
+    abrir();
+    const d = screen.getByRole("dialog", { name: "Indicadores" });
+    expect(d.getAttribute("aria-modal")).toBeNull();
   });
 
   it("clicar DENTRO do painel nao fecha", () => {
@@ -209,21 +230,33 @@ describe("posicionamento", () => {
     fireEvent.mouseDown(screen.getByTitle("RSI"));
     expect(aoFechar).not.toHaveBeenCalled();
   });
-
-  it("trava a rolagem do body enquanto esta aberto, e devolve ao fechar", () => {
-    const { unmount } = abrir();
-    expect(document.body.style.overflow).toBe("hidden");
-    unmount();
-    expect(document.body.style.overflow).toBe("");
-  });
-
-  it("tem titulo e e anunciado como dialogo", () => {
-    abrir();
-    expect(screen.getByText("Indicadores")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Indicadores" })).toBeTruthy();
-  });
 });
 
+// UM PAINEL POR VEZ.
+// Cada mesa tem seu proprio estado de aberto/fechado, entao sem isto
+// duas mesas podiam ficar com o painel aberto ao mesmo tempo — e o
+// segundo abre em cima do primeiro.
+describe("so um aberto por vez", () => {
+  it("abrir o painel de outra mesa fecha o desta", () => {
+    const { aoFechar } = abrir();
+    expect(aoFechar).not.toHaveBeenCalled();
+
+    render(
+      <PainelIndicadores
+        tools={new Set()}
+        aoAlternar={() => {}}
+        aoFechar={() => {}}
+        ancoraRef={ancoraFalsa({ left: 600, top: 60 })}
+      />,
+    );
+    expect(aoFechar).toHaveBeenCalled();
+  });
+
+  it("abrir o proprio painel nao fecha ele mesmo", () => {
+    const { aoFechar } = abrir();
+    expect(aoFechar).not.toHaveBeenCalled();
+  });
+});
 describe("Esc", () => {
   it("primeiro limpa a busca, depois fecha", () => {
     const { aoFechar } = abrir();
