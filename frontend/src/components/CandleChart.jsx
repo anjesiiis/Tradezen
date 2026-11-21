@@ -8,6 +8,7 @@ import { normalizarAparencia, opcoesDaSerieCandle, opcoesDaSerieLinha, paraLinha
 import { estiloNivel, nivelChave, normalizarTipo } from "../lib/grafico/padroes.js";
 import { calcularEMA } from "../lib/grafico/indicadoresAvancados.js";
 import { corDoPadrao, descricaoDoPadrao, ehInvertido, iconeDoPadrao } from "../lib/iconesPadroes.js";
+import BarraInstrucao from "./chart/BarraInstrucao.jsx";
 
 // ── Gráfico de Candlestick — Página de Análise ───────────────
 // Atraso antes de gravar a faixa visível. A faixa muda a cada pixel de
@@ -1593,23 +1594,14 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
           {dicaPadrao.texto}
         </div>
       )}
-      {ferramentaAtiva && FERRAMENTA_INFO[ferramentaAtiva] && (
-        <div style={{
-          position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",
-          background:"rgba(6,8,15,.85)",border:"1px solid rgba(41,98,255,.4)",color:"#2962ff",
-          fontSize:11,fontFamily:"var(--font-m)",padding:"6px 8px 6px 14px",borderRadius:20,zIndex:15,
-          // Quebrar em vez de "nowrap": numa tela de 375px a dica do canal
-          // saía pelos dois lados e o começo dela ficava fora do gráfico.
-          display:"flex",alignItems:"center",gap:8,maxWidth:"calc(100% - 16px)",textAlign:"center",
-        }}>
-          <span style={{pointerEvents:"none"}}>{FERRAMENTA_INFO[ferramentaAtiva].hints[pontosProgresso.length] || "Toque no gráfico..."}</span>
-          <button
-            onClick={()=>setFerramentaAtiva(null)}
-            title="Cancelar"
-            style={{background:"rgba(255,255,255,.08)",border:"none",color:"inherit",width:20,height:20,borderRadius:"50%",cursor:"pointer",fontSize:12,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
-          >✕</button>
-        </div>
-      )}
+      {/* A dica saiu daqui pra um componente com CSS de verdade: eram
+          dez propriedades inline, e o invólucro sem pointer-events:none
+          engolia o clique nos candles debaixo dela. */}
+      <BarraInstrucao
+        ferramenta={ferramentaAtiva}
+        pontosMarcados={pontosProgresso.length}
+        aoCancelar={()=>setFerramentaAtiva(null)}
+      />
       {menuCtx && createPortal(
         <div style={{position:"fixed",inset:0,zIndex:9999}} onMouseDown={()=>setMenuCtx(null)}>
           <div

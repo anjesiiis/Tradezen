@@ -783,6 +783,25 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    tema (quase branco no escuro) e vira escuro no tema claro sozinho. */
 .ind-label{font-size:11px;color:var(--text);flex:1}
 .ind-color{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* -- Dica da ferramenta armada (topo do grafico) --
+   pointer-events:none no INVOLUCRO e o conserto do bug: a barra e
+   desenhada em cima dos candles, e sem isso o clique que a pessoa dava
+   num candle debaixo dela morria na barra — a ferramenta ficava armada,
+   a dica seguia pedindo o ponto e nada acontecia. So o X volta a
+   receber ponteiro. O texto fica inerte de proposito: selecionar a dica
+   no meio de um desenho nao serve, e com ponteiro ligado nele o
+   problema voltava no texto.
+   No TOPO porque o centro e onde estao os candles que a pessoa precisa
+   ver pra escolher o ponto. */
+.barra-dica-wrap{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:15;pointer-events:none;max-width:calc(100% - 16px);animation:barraDica .18s ease-out}
+@keyframes barraDica{from{opacity:0;transform:translateX(-50%) translateY(-6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.barra-dica{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border-radius:20px;background:rgba(6,8,15,.85);border:1px solid rgba(41,98,255,.4);box-shadow:0 4px 16px rgba(0,0,0,.4);color:var(--accent);font-family:var(--font-m);font-size:11px;text-align:center}
+@supports (backdrop-filter:blur(8px)){.barra-dica{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}}
+/* Quebra em vez de nowrap: numa tela de 375px a dica do canal saia
+   pelos dois lados e o comeco dela ficava fora do grafico. */
+.barra-dica-texto{pointer-events:none}
+.barra-dica-x{pointer-events:auto;background:rgba(255,255,255,.08);border:none;color:inherit;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s}
+.barra-dica-x:hover{background:rgba(239,83,80,.18);color:var(--down)}
 /* -- Painel de indicadores (abas + grade de chips) --
    480x360 no desktop. A altura e MAXIMA, nao fixa: com a aba Medias
    aberta o painel fica baixinho em vez de deixar meia tela vazia. */
@@ -1544,6 +1563,10 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .atb{padding:0 10px;gap:6px;height:48px}
   .atick{font-size:17px}
   .ind-btn{padding:6px 9px;min-height:44px}
+  /* A dica encosta menos na borda e o X fica no piso de toque. A barra
+     NAO cresce: ela esta em cima dos candles, e maior cobre mais. */
+  .barra-dica{font-size:10px;padding:5px 6px 5px 12px}
+  .barra-dica-x{width:28px;height:28px}
   /* A setinha ▼ sugere "abre pra baixo", mas no mobile isso agora é um
      bottom sheet (sobe de baixo pra cima) — mantê-la ficaria incoerente. */
   .ind-btn .arr{display:none}
