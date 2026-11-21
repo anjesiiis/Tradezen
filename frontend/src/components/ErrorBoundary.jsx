@@ -65,8 +65,22 @@ function tentarRecarregar() {
   return true;
 }
 
+// Quanto tempo de app em pe conta como "a versao nova funciona".
+// A marca da recarga PRECISA ser apagada em algum momento: sem isso ela
+// sobrevive a sessao inteira, e o SEGUNDO deploy com a aba aberta cai na
+// tela de erro em vez de se recuperar sozinho — era o caso de quem deixa
+// o TradeZen aberto o dia todo, que e justamente o nosso usuario.
+const ESPERA_PRA_ESQUECER = 4000;
+
 export default class ErrorBoundary extends Component {
   state = { erro: null, recarregando: false };
+
+  // Vale pra tela de erro: se a marca esta posta, ja recarregamos uma vez
+  // e a recarga NAO resolveu. O texto e os botoes mudam por causa disso —
+  // oferecer "Recarregar" de novo seria oferecer o que acabou de falhar.
+  jaRecarregou = (() => {
+    try { return Boolean(sessionStorage.getItem(CHAVE_RECARGA)); } catch { return false; }
+  })();
 
   static getDerivedStateFromError(erro) {
     // `recarregando` em vez de voltar pro filho: devolver o filho faria
@@ -77,6 +91,22 @@ export default class ErrorBoundary extends Component {
     return { erro };
   }
 
+  componentDidMount() {
+    // Nada de erro depois de alguns segundos: a versao em pe e boa, e a
+    // marca pode sair pra deixar a proxima recarga automatica disponivel.
+    // So o caminho sem erro apaga — com a tela de erro na frente a marca
+    // tem que ficar, senao volta o laco de recarregar.
+    this.esquecer = setTimeout(() => {
+      if (this.state.erro || this.state.recarregando) return;
+      try { sessionStorage.removeItem(CHAVE_RECARGA); } catch { /* sem storage */ }
+      recargaEmAndamento = false;
+    }, ESPERA_PRA_ESQUECER);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.esquecer);
+  }
+
   componentDidCatch(erro, info) {
     // fica no console pra quem tiver um à mão (desktop, Web Inspector)
     console.error("[TradeZen] erro de render:", erro, info?.componentStack);
@@ -84,6 +114,33 @@ export default class ErrorBoundary extends Component {
   }
 
   tentarDeNovo = () => this.setState({ erro: null });
+
+  // Ultimo recurso, e so aparece quando a recarga simples JA falhou:
+  // apaga o que o navegador guardou deste site e busca tudo de novo.
+  // Leva embora tema, bancada de graficos e favoritos locais — por isso
+  // nao e o botao principal e o rotulo diz o que faz.
+  limparCacheERecarregar = () => {
+    const seguir = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("v", Date.now().toString(36));
+      window.location.replace(url.toString());
+    };
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch { /* storage bloqueado: segue, a recarga furando cache ainda ajuda */ }
+    // O Cache API e assincrono. Esperar ANTES de recarregar importa:
+    // recarregar no meio da limpeza deixa metade do cache velho de pe, e
+    // o erro volta. O catch cobre navegador sem caches (Safari antigo).
+    if (typeof caches !== "undefined" && caches?.keys) {
+      caches.keys()
+        .then((nomes) => Promise.all(nomes.map((n) => caches.delete(n))))
+        .catch(() => {})
+        .finally(seguir);
+      return;
+    }
+    seguir();
+  };
 
   copiar = () => {
     const texto = this.detalhe || String(this.state.erro?.message || this.state.erro);
@@ -118,17 +175,29 @@ export default class ErrorBoundary extends Component {
       );
     }
 
+    // Dois casos, dois textos. Chegar aqui com a marca posta significa
+    // que a recarga automática já rodou e não resolveu — repetir
+    // "Recarregar costuma resolver" seria falso.
+    const recargaFalhou = this.jaRecarregou && ehChunkQueFaltou(this.state.erro);
+
     return (
       <div className="erro-tela">
         <span className="erro-logo notranslate">TRADE<span>ZEN</span></span>
-        <h2>Algo quebrou ao abrir esta tela</h2>
+        <h2>{recargaFalhou ? "Saiu uma atualização do TradeZen" : "Algo quebrou ao abrir esta tela"}</h2>
         <p>
-          O erro está escrito aqui embaixo. Recarregar costuma resolver — se
-          voltar a acontecer, copie a mensagem e mande pro suporte.
+          {recargaFalhou
+            ? "Recarregar não bastou: seu navegador continua com arquivos da versão antiga guardados. Limpar e buscar de novo resolve."
+            : "O erro está escrito aqui embaixo. Recarregar costuma resolver — se voltar a acontecer, copie a mensagem e mande pro suporte."}
         </p>
         <pre className="erro-detalhe">{String(this.state.erro?.message || this.state.erro)}</pre>
         <div className="erro-acoes">
-          <button className="erro-btn" onClick={() => window.location.reload()}>Recarregar</button>
+          {recargaFalhou ? (
+            <button className="erro-btn" onClick={this.limparCacheERecarregar}>
+              Limpar e recarregar
+            </button>
+          ) : (
+            <button className="erro-btn" onClick={() => window.location.reload()}>Recarregar</button>
+          )}
           <button className="erro-btn secundario" onClick={this.copiar}>Copiar o erro</button>
           <a className="erro-btn secundario" href="/">Ir pra tela inicial</a>
         </div>

@@ -104,7 +104,81 @@ describe('ErrorBoundary — versão velha no cache', () => {
     await montarComChunkQuebrado({ jaTentouAntes: true });
 
     expect(replace).not.toHaveBeenCalled();
+    // Texto PRÓPRIO desse caso: a recarga automática já rodou e não
+    // resolveu, então "recarregar costuma resolver" seria mentira.
+    expect(screen.getByText(/Saiu uma atualização do TradeZen/)).toBeInTheDocument();
+    expect(screen.queryByText('Recarregar')).not.toBeInTheDocument();
+    expect(screen.getByText('Limpar e recarregar')).toBeInTheDocument();
+  });
+
+  // ERRO COMUM (nao de chunk) com a marca posta: a marca ficou de uma
+  // recarga anterior e nao diz nada sobre ESTE erro. O texto tem que ser
+  // o generico, e o botao, o de recarregar.
+  it('erro comum não vira "saiu uma atualização" só porque houve recarga antes', async () => {
+    sessionStorage.setItem('tradezen_recarregou_por_chunk', '1');
+    vi.resetModules();
+    const { default: Boundary } = await import('../components/ErrorBoundary.jsx');
+    render(<Boundary><Quebra/></Boundary>);
+
     expect(screen.getByText(/Algo quebrou ao abrir esta tela/)).toBeInTheDocument();
+    expect(screen.getByText('Recarregar')).toBeInTheDocument();
+  });
+
+  // A MARCA TEM QUE SER ESQUECIDA.
+  // Ela sobrevivia a sessao inteira: quem deixa o TradeZen aberto o dia
+  // todo (o nosso usuario) pegava o SEGUNDO deploy sem recuperacao
+  // automatica, direto na tela de erro.
+  it('depois de alguns segundos em pé, esquece a recarga e volta a poder se recuperar', async () => {
+    vi.useFakeTimers();
+    try {
+      sessionStorage.setItem('tradezen_recarregou_por_chunk', '1');
+      vi.resetModules();
+      const { default: Boundary } = await import('../components/ErrorBoundary.jsx');
+      render(<Boundary><p>app de pé</p></Boundary>);
+
+      expect(sessionStorage.getItem('tradezen_recarregou_por_chunk')).toBe('1');
+      vi.advanceTimersByTime(4000);
+      expect(sessionStorage.getItem('tradezen_recarregou_por_chunk')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('com a tela de erro na frente, a marca NÃO é esquecida — senão volta o laço', async () => {
+    vi.useFakeTimers();
+    try {
+      await montarComChunkQuebrado({ jaTentouAntes: true });
+      vi.advanceTimersByTime(10000);
+      expect(sessionStorage.getItem('tradezen_recarregou_por_chunk')).toBe('1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('"Limpar e recarregar" apaga o storage e espera o Cache API antes de ir', async () => {
+    const apagados = [];
+    let resolverKeys;
+    globalThis.caches = {
+      keys: () => new Promise((r) => { resolverKeys = r; }),
+      delete: (n) => { apagados.push(n); return Promise.resolve(true); },
+    };
+    localStorage.setItem('tradezen-tema', 'light');
+
+    await montarComChunkQuebrado({ jaTentouAntes: true });
+    fireEvent.click(screen.getByText('Limpar e recarregar'));
+
+    expect(localStorage.getItem('tradezen-tema')).toBeNull();
+    // Nao recarregou ainda: recarregar no meio da limpeza deixaria metade
+    // do cache velho de pe e o erro voltaria.
+    expect(replace).not.toHaveBeenCalled();
+
+    resolverKeys(['tradezen-v1', 'tradezen-v2']);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(apagados).toEqual(['tradezen-v1', 'tradezen-v2']);
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0]).toMatch(/\?v=/);
+    delete globalThis.caches;
   });
 
   it.each(MENSAGENS_DE_CHUNK)('reconhece: %s', async (mensagem) => {
