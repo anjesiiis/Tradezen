@@ -48,6 +48,10 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
   const [padroes,setPadroes]  = useState([]);
+  // Os padrões como o backend mandou, antes de virar índice de candle.
+  // Separado de `padroes` de propósito: é o que permite esperar os
+  // candles em vez de jogar fora o que chegou antes deles.
+  const [padroesBrutos,setPadroesBrutos] = useState([]);
   const [niveis,setNiveis]    = useState([]);
   // plano que o backend informou na resposta das detecções ("free" quando
   // veio vazio por causa do gate). null = ainda não respondeu.
@@ -235,6 +239,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     setTooltipAberto(false);
     setCandles([]);
     temMaisRef.current = true;   // ativo/timeframe novo: há passado de novo
+    setPadroesBrutos([]);
     setPadroes([]);
     setNiveis([]);
     // A ferramenta armada NÃO é zerada aqui: quem está desenhando linha de
@@ -249,15 +254,21 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // uma linha do tempo nova, sem carregar ações de outro gráfico.
     setUndoStack([]);
     setRedoStack([]);
-    // Candles e padrões marcados disparam juntos, mas não esperam um pelo
-    // outro pra aparecer — antes um Promise.all travava o gráfico até os
-    // dois voltarem, e padrões-marcados (consulta ao Supabase) sozinho já
-    // leva mais de 1s. Candles aparece assim que chega; padrões (as
-    // lâmpadas) entram por cima logo depois, sem segurar o resto da tela.
-    // As detecções são do plano premium, e quem decide é o backend: o
-    // token vai no fetch e a resposta volta vazia pra quem é free.
-    const padroesPromise = (user ? tokenDaSessao() : Promise.resolve(null))
-      .then(token => fetchPadroesMarcados(ativo.ticker, tf.intervalo, token));
+    // OS PADRÕES NÃO SÃO BUSCADOS AQUI.
+    //
+    // Eram: este efeito disparava um fetch de padrões em paralelo com os
+    // candles. Mas as deps dele não incluem `user`, então numa carga
+    // fria ele saía ANTES da sessão do Supabase resolver — sem token, o
+    // backend devolve plano "free" e lista vazia, e essa lista vazia era
+    // gravada na tela. Depois o efeito de baixo refazia com token, e era
+    // ele que tinha de consertar — mas ele descartava o resultado quando
+    // os candles ainda não tinham chegado. Com 8 mesas, as de baixo
+    // esperam candle por segundos (o backend serializa o Yahoo), então
+    // eram justamente elas que ficavam limpas.
+    //
+    // Agora quem busca padrão é um dono só, o efeito abaixo, que depende
+    // de `user`. De brinde, cai pela metade o número de requisições: era
+    // uma por mesa aqui mais uma lá, 16 com 8 mesas.
     // RESPOSTA DE ERRO NÃO PODE VIRAR GRÁFICO VAZIO.
     //
     // Isto fazia `.then(r=>r.json())` direto: um 429, 404 ou 500 vinha
@@ -294,12 +305,6 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           setSel(prev=>({...prev, ...d.info, ticker}));
         }
         setLoading(false);
-        padroesPromise.then(marcados=>{
-          if(cancelado) return;
-          setPlanoDetec(marcados.plano);
-          setTemposComPadrao(marcados.timeframesComPadrao || []);
-          setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRecebidos));
-        });
       } catch(erro) {
         if(cancelado) return;
         setLoading(false);
@@ -330,6 +335,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     // devolve vazio pra quem não tem acesso, mas o vazio só chega depois
     // da ida ao servidor — e até lá a tela mostraria o antigo.
     if(!user){
+      setPadroesBrutos([]);
       setPadroes([]);
       setTemposComPadrao([]);
       setPlanoDetec(null);
@@ -340,17 +346,38 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     tokenDaSessao()
       .then(token => fetchPadroesMarcados(ticker, tf.intervalo, token))
       .then(marcados=>{
-        if(cancelado || !candlesRef.current.length) return;
+        if(cancelado) return;
         setPlanoDetec(marcados.plano);
         setTemposComPadrao(marcados.timeframesComPadrao || []);
-        // Lista vazia TAMBÉM é resposta: quem perdeu o acesso (plano
-        // vencido, conta trocada) tem de ver a tela limpar, não o
-        // desenho antigo sobrevivendo porque "não veio nada novo".
-        setPadroes(resolverPadroesPorTimestamp(marcados.padroes, candlesRef.current));
+        // GUARDA O CRU, NÃO O RESOLVIDO. Aqui estava o bug das mesas
+        // limpas: a linha era
+        //     if(cancelado || !candlesRef.current.length) return;
+        // e os padrões que chegassem ANTES dos candles iam pro lixo, sem
+        // nova tentativa nunca. Padrão é leve e vem de cache no backend;
+        // candle é pesado e, com várias mesas, chega segundos depois —
+        // ou seja, o caso descartado não era a exceção, era a regra nas
+        // mesas de baixo. Agora o cru fica guardado e quem casa com os
+        // candles é o efeito seguinte, que roda de novo quando eles
+        // chegam.
+        setPadroesBrutos(marcados.padroes || []);
         if(!marcados.padroes?.length) setSelPat(null);
       });
     return ()=>{ cancelado = true; };
   },[ticker, user, tf.intervalo]);
+
+  // Casa padrão cru com candle. Roda quando QUALQUER um dos dois muda,
+  // então a ordem de chegada deixou de importar: quem chegar primeiro
+  // espera o outro em vez de ser descartado.
+  useEffect(()=>{
+    if(!candles.length){
+      // Sem candle não há índice pra onde desenhar. Não é descarte: o
+      // cru continua guardado e este efeito roda de novo quando os
+      // candles entrarem.
+      setPadroes([]);
+      return;
+    }
+    setPadroes(resolverPadroesPorTimestamp(padroesBrutos, candles));
+  },[padroesBrutos, candles]);
 
   // Restaura indicadores/desenhos salvos — em effect próprio (não junto do
   // fetch acima) porque precisa reagir a `user` também: numa montagem via
