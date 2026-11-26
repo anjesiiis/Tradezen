@@ -15,6 +15,7 @@ import PainelIndicadores from "../components/chart/PainelIndicadores.jsx";
 import { buscarPaginaAnterior, temHistoricoSobDemanda } from "../lib/grafico/historico.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp, tokenDaSessao } from "../lib/grafico/padroes.js";
 import { fmtP } from "../lib/mercado.js";
+import { precoDosCandles } from "../lib/grafico/cotacao.js";
 
 // Um gráfico de análise completo e independente: ativo, candles, padrões
 // marcados, indicadores ativos e o padrão selecionado são todos estado
@@ -551,6 +552,12 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
   if(!selAtivo) return null;
 
+  // O PREÇO DO CABEÇALHO SAI DOS CANDLES, e não do resumo de /mercado.
+  // Sem useMemo de propósito: é uma leitura de duas posições de array, e
+  // um memo com dependência errada aqui seria exatamente o jeito de o
+  // cabeçalho voltar a mostrar número velho (ver precoDosCandles).
+  const cotacao = precoDosCandles(candles);
+
   return (
     <div className="analysis" style={ocultoMobile ? {display:"none"} : undefined}>
       <div className="atb">
@@ -567,9 +574,16 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           <span style={{fontSize:11}}>▾</span>
         </span>
 
-        {selAtivo.preco>0&&<>
-          <span className="apr">{fmtP(selAtivo.preco)}</span>
-          <span className={`achg ${selAtivo.alta?"bup":"bdn"}`}>{selAtivo.alta?"▲":"▼"}{Math.abs(selAtivo.variacao_pct||0).toFixed(2)}%</span>
+        {cotacao.preco !== null && <>
+          <span className="apr">{fmtP(cotacao.preco)}</span>
+          {/* Variação só quando existe candle anterior pra comparar. Com
+              um candle só, mostrar "▲0,00%" afirmaria estabilidade onde a
+              verdade é que não há com o que comparar. */}
+          {cotacao.variacaoPct !== null && (
+            <span className={`achg ${cotacao.alta?"bup":"bdn"}`}>
+              {cotacao.alta?"▲":"▼"}{Math.abs(cotacao.variacaoPct).toFixed(2)}%
+            </span>
+          )}
         </>}
 
         {/* A lupa fica colada no ativo porque é isso que ela faz: trocar de
