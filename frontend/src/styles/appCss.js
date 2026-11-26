@@ -143,6 +143,23 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .search-mercado{display:none}
 }
 .sbox{flex:1;max-width:440px;position:relative}
+/* ── TROCA DE ATIVO DO GRAFICO (o 🔍 do cabecalho do painel) ──
+   Usa o MESMO SearchBar da home, com categorias e mais volateis. Antes
+   aqui vivia uma busca propria, plana, sem categoria: duas buscas
+   diferentes pro mesmo trabalho, e a pior delas no lugar onde mais se
+   troca de ativo.
+   A caixa nao tem fundo nem borda de proposito: o .search e o .search-dd
+   do proprio SearchBar ja trazem os seus, e empilhar os dois deixava uma
+   moldura dentro da outra.
+   No celular NAO viramos folha de baixo: o .search-dd abre PARA BAIXO,
+   ancorado no campo, e colar a caixa no rodape jogaria a lista inteira
+   fora da tela. Topo, com a lista em 70vh (ver o media query do
+   .search-dd acima), e o certo pra este componente. */
+.troca-ativo-fundo{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:100px 12px 12px}
+.troca-ativo-caixa{position:relative;width:min(440px,100%)}
+@media (max-width:640px){
+  .troca-ativo-fundo{padding:64px 10px 10px}
+}
 .sw{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;transition:border-color .2s}
 .sw:focus-within{border-color:var(--accent)}
 .sw input{background:none;border:none;outline:none;color:var(--text);font-family:var(--font-m);font-size:12px;flex:1;min-width:0}

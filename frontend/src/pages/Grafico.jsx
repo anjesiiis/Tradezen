@@ -14,6 +14,7 @@ import { INDICADORES, LEGENDA_ITENS, PAINEL_PADROES_ATIVO, TFS, TF_PADRAO, TOOLS
 import PainelIndicadores from "../components/chart/PainelIndicadores.jsx";
 import { buscarPaginaAnterior, temHistoricoSobDemanda } from "../lib/grafico/historico.js";
 import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp, tokenDaSessao } from "../lib/grafico/padroes.js";
+import { SearchBar } from "../components/SearchBar.jsx";
 import { fmtP } from "../lib/mercado.js";
 import { precoDosCandles } from "../lib/grafico/cotacao.js";
 
@@ -1060,12 +1061,18 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
       {/* ── POPOVER DE TROCA DE ATIVO DESTA TELA ── */}
       {switcherAberto && createPortal(
-        <div
-          style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100}}
-          onMouseDown={()=>setSwitcherAberto(false)}
-        >
-          <div className="ind-drop" style={{position:"relative",top:0,left:0,width:340,padding:0}} onMouseDown={e=>e.stopPropagation()}>
-            <AssetSwitcher mercado={mercado} onSelect={a=>{ onTickerChange(a.ticker); setSwitcherAberto(false); }}/>
+        <div className="troca-ativo-fundo" onMouseDown={()=>setSwitcherAberto(false)}>
+          <div className="troca-ativo-caixa" onMouseDown={e=>e.stopPropagation()}>
+            {/* O MESMO SearchBar da home: categorias, apelidos ("dolar",
+                "bitcoin"), mais volateis do dia e navegacao por teclado.
+                Antes havia uma busca propria aqui, plana e sem categoria —
+                e era justamente neste lugar, onde mais se troca de ativo,
+                que estava a pior das duas. */}
+            <SearchBar
+              autoFoco
+              mercado={mercado}
+              onSelect={a=>{ onTickerChange(a.ticker); setSwitcherAberto(false); }}
+            />
           </div>
         </div>,
         document.body
@@ -1074,81 +1081,14 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   );
 }
 
-// Dropdown de busca pra trocar de ativo
-/**
- * A troca de ativo DENTRO da mesa.
- *
- * Ela recebia `mercado`, que é a resposta de /mercado — o resumo da tela
- * inicial, com os ativos marcados `resumo: True` no catálogo. São 69 dos
- * 283. Ou seja: a busca de dentro do gráfico enxergava menos de um quarto
- * do que existe, e ativos com padrão já marcado simplesmente não
- * apareciam. A busca do topo nunca teve esse problema porque usa /ativos.
- *
- * Agora o catálogo inteiro é buscado na primeira abertura e fica
- * guardado. `mercado` continua entrando como rede de segurança (e é dele
- * que vem a variação do dia, que /ativos não traz).
- */
-function AssetSwitcher({mercado, onSelect}){
-  const [q,setQ] = useState("");
-  const [catalogo,setCatalogo] = useState([]);
-
-  useEffect(()=>{
-    let vivo = true;
-    fetch(`${API}/ativos`)
-      .then(r=>r.json())
-      .then(d=>{ if(vivo) setCatalogo(d.ativos||[]); })
-      .catch(()=>{ /* fica com `mercado`: menos ativos, mas a tela funciona */ });
-    return ()=>{ vivo = false; };
-  },[]);
-
-  // Os dois juntos, sem repetir: o catálogo manda (tem todos) e o resumo
-  // completa com preço e variação de quem está nele.
-  const lista = useMemo(()=>{
-    const porTicker = new Map();
-    for(const a of catalogo) porTicker.set(a.ticker, a);
-    for(const m of mercado){
-      const base = porTicker.get(m.ticker);
-      porTicker.set(m.ticker, base ? { ...base, ...m } : m);
-    }
-    return [...porTicker.values()];
-  },[catalogo, mercado]);
-
-  const filtered = lista.filter(a=>{
-    if(!q) return true;
-    const lower = q.toLowerCase();
-    return a.simbolo?.toLowerCase().includes(lower) || a.nome?.toLowerCase().includes(lower) || a.ticker?.toLowerCase().includes(lower);
-  });
-  return (
-    <div>
-      <input
-        autoFocus
-        type="text"
-        placeholder="Buscar ativo..."
-        value={q}
-        onChange={e=>setQ(e.target.value)}
-        style={{width:"100%",padding:"10px 12px",background:"var(--s2)",border:"none",borderBottom:"1px solid var(--border)",color:"var(--text)",fontSize:12,fontFamily:"var(--font-b)",outline:"none"}}
-      />
-      <div style={{maxHeight:340,overflowY:"auto"}}>
-        {filtered.length===0&&<div style={{padding:16,fontSize:11,color:"var(--text2)",textAlign:"center"}}>Nenhum ativo</div>}
-        {filtered.map(a=>(
-          <div key={a.ticker} className="dd-item" onClick={()=>onSelect(a)}>
-            <span style={{display:"flex",flexDirection:"column",gap:2}}>
-              <span style={{fontWeight:600,color:"var(--text)"}}>{a.simbolo}</span>
-              <span style={{fontSize:10,color:"var(--text2)"}}>{a.nome} · {a.mercado}</span>
-            </span>
-            {/* Variação só pra quem veio do resumo. Mostrar "▼0.00%" num
-                ativo sem cotação carregada seria afirmar que ele não se
-                mexeu hoje, o que é diferente de não termos o número. */}
-            {Number.isFinite(a.variacao_pct) && (
-              <span className={a.alta?"bup":"bdn"} style={{fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>
-                {a.alta?"▲":"▼"}{Math.abs(a.variacao_pct).toFixed(2)}%
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// A busca de ativo DESTE painel é o SearchBar de components/SearchBar.jsx,
+// o mesmo do topo do site — ver o portal da troca de ativo acima.
+//
+// Aqui existia um AssetSwitcher próprio. Ele já havia sido consertado uma
+// vez (buscava /mercado, 69 dos 283 ativos, e por isso ativo com padrão
+// marcado não aparecia na lista) — mas continuava sem CATEGORIA, enquanto
+// o SearchBar tinha categorias, apelidos ("dolar", "bitcoin") e os mais
+// voláteis do dia desde sempre. Duas buscas para o mesmo trabalho, e a
+// pior delas no lugar onde mais se troca de ativo. Ficou uma.
 
 export default ChartPane;
