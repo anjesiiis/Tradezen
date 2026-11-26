@@ -30,9 +30,15 @@ export default function AdminLogin() {
       setCooldown(COOLDOWN_SEGUNDOS);
     } catch (err) {
       setStatus("error");
-      if (err.status === 403) {
-        setErro("Este email não tem acesso ao painel admin.");
-      } else if (err.status === 429) {
+      // Não existe mais ramo de 403 aqui, e a ausência é intencional: o
+      // backend passou a responder "link enviado" tanto pra email de
+      // admin quanto pra email qualquer. Dizer "este email não tem
+      // acesso ao painel" era um oráculo — chutando endereços e lendo a
+      // resposta, dava pra descobrir quem são os admins do TradeZen (ver
+      // solicitar_magic_link em backend/admin_auth.py). Admin que errar o
+      // próprio email vê "enviado" e não recebe: a recusa fica no log do
+      // servidor, com email e IP, pra quem investiga.
+      if (err.status === 429) {
         setErro(err.data?.detail || "Muitos links pedidos em pouco tempo. Aguarde e tente de novo.");
         setCooldown(COOLDOWN_SEGUNDOS);
       } else if (err.data?.detail) {

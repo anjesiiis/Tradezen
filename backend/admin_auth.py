@@ -53,12 +53,30 @@ def _url_callback(origem: Optional[str]) -> str:
 def solicitar_magic_link(request: Request, payload: MagicLinkRequest):
     email = payload.email.strip().lower()
 
+    # RESPOSTA IDÊNTICA PARA EMAIL ADMIN E NÃO-ADMIN, E ISSO É DE PROPÓSITO.
+    #
+    # Antes, email fora da lista levava 403 "Email não autorizado" e email
+    # de admin levava 200 "link enviado". A diferença transformava esta
+    # rota num ORÁCULO: bastava chutar endereços e ler o código de status
+    # pra descobrir QUEM são os administradores do TradeZen. Combinado com
+    # o domínio ainda sem SPF/DMARC (qualquer um consegue mandar email se
+    # passando por @tradezen.com.br), isso é a primeira metade de um
+    # phishing direcionado — o atacante descobre o alvo aqui e se passa
+    # pelo próprio TradeZen na mensagem.
+    #
+    # O preço é conhecido e aceito: admin que errar o próprio email vê
+    # "link enviado" e não recebe nada. É a mesma troca que a tela de
+    # recuperação de senha já faz ("Se esse email tiver uma conta..."),
+    # e o log abaixo continua registrando a recusa com email e IP — quem
+    # investiga enxerga tudo; quem está sondando não enxerga nada.
+    RESPOSTA = {"status": "ok", "mensagem": "Link de acesso enviado para o email."}
+
     if email not in ADMIN_EMAILS:
         # Registrado: é alguém pedindo acesso ao painel com um email que
         # não é admin. Uma vez é engano; repetido, do mesmo IP, é sondagem.
         seguranca.warning(
             "magic-link NEGADO email=%s ip=%s", email, ip_do_pedido(request))
-        raise HTTPException(status_code=403, detail="Email não autorizado.")
+        return RESPOSTA
 
     try:
         supabase.auth.sign_in_with_otp({
@@ -73,7 +91,7 @@ def solicitar_magic_link(request: Request, payload: MagicLinkRequest):
             )
         raise HTTPException(status_code=502, detail="Não foi possível enviar o link agora. Tente novamente.")
 
-    return {"status": "ok", "mensagem": "Link de acesso enviado para o email."}
+    return RESPOSTA
 
 
 # ── CACHE DE TOKENS JÁ VALIDADOS ──────────────────────────────
