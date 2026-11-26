@@ -195,7 +195,7 @@ describe('Busca livre — global, não por categoria', () => {
 
 /**
  * O defeito que isto guarda: `fetch` não tem timeout. Com o servidor
- * lento ou mudo, a busca ficava em "Medindo o pregão…" PARA SEMPRE —
+ * lento ou mudo, a busca ficava em "Carregando empresas mais voláteis do dia…" PARA SEMPRE —
  * medido em produção, 70 segundos sem resposta e o aviso ainda na tela.
  *
  * Esperar é aceitável; esperar sem fim não é. E enquanto se espera, a
@@ -225,10 +225,10 @@ describe('Busca — quando o ranking não vem', () => {
     const { input } = montar();
     await user.click(input);
 
-    expect(await screen.findByText('Medindo o pregão…')).toBeInTheDocument();
+    expect(await screen.findByText('Carregando empresas mais voláteis do dia…')).toBeInTheDocument();
 
     await vi.advanceTimersByTimeAsync(ESPERA_MAX_MS + 500);
-    await waitFor(() => expect(screen.queryByText('Medindo o pregão…')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Carregando empresas mais voláteis do dia…')).not.toBeInTheDocument());
     vi.useRealTimers();
   });
 

@@ -93,7 +93,7 @@ export async function buscarTopVolateis(grupo, limite = 5) {
 
   // Timeout na marra: `fetch` não tem um. Sem isto, um servidor que
   // demora a responder (ou que não responde) deixava a busca em
-  // "Medindo o pregão…" PARA SEMPRE — medido em produção, 70 segundos
+  // "Carregando empresas mais voláteis do dia…" PARA SEMPRE — medido em produção, 70 segundos
   // sem resposta e o aviso ainda na tela. Esperar é aceitável; esperar
   // sem fim não é.
   const freio = new AbortController();

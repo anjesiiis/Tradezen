@@ -303,7 +303,7 @@ export function SearchBar({ onSelect, mercado = [], autoFoco = false }) {
           )}
 
           {!buscando && estadoVolateis[categoria] === "carregando" && !rankingDaCategoria && (
-            <div className="search-vazio">Medindo o pregão…</div>
+            <div className="search-vazio">Carregando empresas mais voláteis do dia…</div>
           )}
 
           {/* Aviso curto, EM CIMA da lista de destaques que já está na

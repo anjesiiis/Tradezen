@@ -41,7 +41,7 @@ export default function TopVolateis({ grupo, aoAbrirAtivo, limite = 5 }) {
         {fechado && <span className="tv-selo" title={`Último pregão: ${pregao.slice(0, 10)}`}>Mercado fechado</span>}
       </div>
 
-      {fase === "carregando" && <p className="globo-popup-vazio">Medindo o pregão…</p>}
+      {fase === "carregando" && <p className="globo-popup-vazio">Carregando empresas mais voláteis do dia…</p>}
       {fase === "erro" && <p className="globo-popup-vazio">Não foi possível carregar agora.</p>}
       {fase === "pronto" && top.length === 0 && (
         <p className="globo-popup-vazio">Nenhum ativo de {nomeDoGrupo(grupo).toLowerCase()} respondeu agora.</p>
