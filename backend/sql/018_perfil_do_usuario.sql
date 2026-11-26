@@ -67,6 +67,13 @@ create trigger ao_editar_perfil
 
 -- ── 2) SÓ DEPOIS a porta: o que o usuário PODE mudar ──
 drop policy if exists "usuario edita o proprio perfil" on profiles;
+-- E TAMBEM a que a 002 criou, com outro nome. Policies permissivas se
+-- SOMAM com OR no Postgres: deixar as duas de pe nao e "duas travas", e
+-- a trava mais FROUXA valendo. Como a desta migration confia no gatilho
+-- pra defender a coluna plano, e a da 002 tentava defender pelo
+-- with_check, manter as duas significaria pensar que a defesa e do
+-- with_check quando na verdade e do gatilho. Uma dona por tabela.
+drop policy if exists "usuario edita o proprio perfil, menos o plano" on profiles;
 create policy "usuario edita o proprio perfil"
   on profiles for update
   using (auth.uid() = id)

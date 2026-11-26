@@ -112,6 +112,7 @@ criam `visto_em`. A **027** conserta isso num Run só.
 | 030 | `030_modelos_treinados.sql` | Modelo treinado guardado no banco (`modelo_b64`), porque o disco do Render morre a cada deploy |
 | 031 | `031_testes_modelo.sql` | Cache do resultado de rodar um modelo sobre o acervo. Depende da 030 |
 | 032 | `032_logs_auditoria.sql` | Trilha de auditoria das ações de consequência. **`on delete set null` na FK é obrigatório**: sem ele, a primeira exclusão de conta (`/eu/conta`) passa a falhar por chave estrangeira |
+| 033 | `033_rls_fechar_tudo.sql` | **Fecha o furo medido:** `templates_oco` era legível por qualquer anônimo com a chave publicável. Liga RLS em toda tabela de `public` e derruba toda policy `using (true)` / `with check (true)`. Genérica de propósito — varre o catálogo do Postgres, porque há objeto criado à mão no painel que não está em nenhum arquivo. **Não cria policy de admin**: o painel fala com o backend, que usa a chave secreta e ignora RLS |
 
 ## Sobre a 025 — três coisas que não se podem mudar nela
 
