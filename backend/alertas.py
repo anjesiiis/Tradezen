@@ -13,6 +13,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
+from ativos import por_ticker
 from rate_limit import limiter
 from supabase_client import supabase
 
@@ -43,6 +44,14 @@ def require_user(authorization: str = Header(None)) -> str:
     return user.id
 
 
+# Teto de alertas por pessoa. Nao e para conter ataque — e para conter
+# acidente e teimosia: sem teto, a lista de um usuario cresce sem fim e a
+# rota de listagem (que devolve todas) passa a montar resposta grande a
+# cada abertura de tela. 60 ativos monitorados e mais do que qualquer
+# pessoa acompanha de verdade, e o catalogo inteiro tem 282.
+MAX_ALERTAS_POR_USUARIO = 60
+
+
 class AlertaCreate(BaseModel):
     ticker: str
     padroes: List[str]
@@ -56,6 +65,11 @@ def listar_alertas(request: Request, usuario_id: str = Depends(require_user)):
         .select("*")
         .eq("usuario_id", usuario_id)
         .order("criado_em", desc=True)
+        # Teto explicito mesmo com MAX_ALERTAS_POR_USUARIO ja limitando a
+        # criacao: linha gravada antes deste teto existir, ou pelo backend
+        # com a chave secreta, nao passou por aquela checagem. Consulta sem
+        # limite e uma promessa que depende de outra parte do codigo.
+        .limit(MAX_ALERTAS_POR_USUARIO)
         .execute()
     )
     return {"status": "ok", "alertas": resp.data}
@@ -68,6 +82,40 @@ def criar_ou_atualizar_alerta(request: Request, payload: AlertaCreate, usuario_i
     if not padroes:
         raise HTTPException(status_code=400, detail="Escolha ao menos um padrão pra monitorar.")
     ticker = payload.ticker.strip().upper()
+
+    # O TICKER TEM QUE EXISTIR NO CATALOGO (backend/ativos.py).
+    # Antes, qualquer texto era aceito: `padroes` sempre passou por
+    # whitelist, mas o ticker nao. Isso deixava o usuario gravar linha
+    # para ativo inexistente — monitoramento que nunca dispara (ele acha
+    # que esta avisado e nao esta) e, de quebra, uma via para encher a
+    # tabela com uma linha nova por string inventada, ja que o upsert
+    # deduplica por (usuario_id, ticker).
+    if not por_ticker(ticker):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ativo {ticker} nao esta na lista monitorada pelo TradeZen.",
+        )
+
+    # Teto por pessoa. Conferido ANTES do upsert, e so quando o alerta e
+    # novo: reconfigurar um alerta que ja existe nao pode bater no teto.
+    existentes = (
+        supabase.table("alertas")
+        .select("ticker")
+        .eq("usuario_id", usuario_id)
+        .limit(MAX_ALERTAS_POR_USUARIO + 1)
+        .execute()
+    ).data or []
+    if len(existentes) >= MAX_ALERTAS_POR_USUARIO and ticker not in {
+        linha.get("ticker") for linha in existentes
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Voce chegou ao limite de {MAX_ALERTAS_POR_USUARIO} ativos monitorados. "
+                "Apague um alerta para criar outro."
+            ),
+        )
+
     body = {"usuario_id": usuario_id, "ticker": ticker, "padroes": padroes}
     resp = supabase.table("alertas").upsert(body, on_conflict="usuario_id,ticker").execute()
     return {"status": "ok", "alerta": resp.data[0]}
