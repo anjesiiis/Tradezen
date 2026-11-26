@@ -17,6 +17,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from admin_auth import require_admin
+from auditoria import ACOES, registrar
 from rate_limit import limiter
 
 # IMPORT PREGUIÇOSO DO ML, e isto não é estilo: é o conserto de uma queda.
@@ -114,7 +115,8 @@ def listar(request: Request, padrao: str) -> Dict[str, Any]:
 
 @router.post("/treinar/{padrao}")
 @limiter.limit("6/minute")
-def treinar(request: Request, padrao: str) -> Dict[str, Any]:
+def treinar(request: Request, padrao: str,
+            admin: str = Depends(require_admin)) -> Dict[str, Any]:
     """Treina e registra. 409 quando o acervo não dá — e não 500: acervo
     insuficiente não é defeito, é o estado do trabalho, e a mensagem diz
     quantos faltam."""
@@ -128,6 +130,18 @@ def treinar(request: Request, padrao: str) -> Dict[str, Any]:
     if not saida.get("treinou"):
         raise HTTPException(status_code=409, detail=saida.get("motivo"),
                             headers={"X-Tradezen-Motivo": "acervo-insuficiente"})
+
+    # Qual modelo esta no ar decide o que o usuario pago ve. Guardar quem
+    # treinou, quando e com que acervo e o que permite, meses depois,
+    # explicar por que a deteccao mudou de comportamento num dia.
+    registrar(
+        ACOES["MODELO_TREINADO"],
+        usuario_email=admin,
+        recurso="modelo",
+        recurso_id=str(saida.get("modelo_id") or ""),
+        detalhes={"padrao": padrao, "metricas": saida.get("metricas")},
+        request=request,
+    )
     return saida
 
 
@@ -177,10 +191,19 @@ def testar(request: Request, padrao: str,
 
 @router.post("/{modelo_id}/ativar")
 @limiter.limit("20/minute")
-def ativar(request: Request, modelo_id: str) -> Dict[str, Any]:
+def ativar(request: Request, modelo_id: str,
+           admin: str = Depends(require_admin)) -> Dict[str, Any]:
     storage, _ = _ml()
     try:
-        return {"modelo": storage.ativar(modelo_id)}
+        modelo = storage.ativar(modelo_id)
+        registrar(
+            ACOES["MODELO_ATIVADO"],
+            usuario_email=admin,
+            recurso="modelo",
+            recurso_id=modelo_id,
+            request=request,
+        )
+        return {"modelo": modelo}
     except LookupError:
         raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     except Exception as erro:

@@ -5,6 +5,17 @@ backend/**/__pycache__/
 
 .env
 .env.local
+.env.production
+.env.*.local
+
+# Chave privada e certificado: nada disto entra no repositorio. Nunca
+# entrou (conferido com git log --all --full-history), e estas linhas
+# existem pra que um arquivo desses nao passe por um `git add .` distraido.
+*.key
+*.pem
+
+# Credencial e cache do deploy local da Vercel
+.vercel/
 
 frontend/node_modules/
 frontend/dist/

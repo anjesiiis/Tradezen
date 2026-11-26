@@ -80,6 +80,7 @@ function Landing(){
           pública que todo visitante vê. */}
       <footer className="priv-rodape">
         <a href="/privacidade">Política de Privacidade</a>
+        <a href="/termos">Termos de Uso</a>
       </footer>
     </>
   );

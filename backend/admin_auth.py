@@ -7,6 +7,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from supabase_auth.errors import AuthApiError
 
+from auditoria import ACOES, registrar
 from config import ADMIN_EMAILS, FRONTEND_URL
 from logs import ip_do_pedido, seguranca
 from rate_limit import limiter
@@ -156,6 +157,18 @@ def require_admin(request: Request, authorization: str = Header(None)) -> str:
         seguranca.warning(
             "403 NAO-ADMIN email=%s rota=%s ip=%s",
             email, request.url.path, ip_do_pedido(request))
+        # O unico 403 que vai pra trilha permanente: quem chega aqui tem
+        # conta Supabase VALIDA e esta pedindo o painel de admin. E a
+        # diferenca entre um visitante perdido e uma tentativa de escalada
+        # de privilegio — e isso precisa durar mais que o log do Render.
+        registrar(
+            ACOES["ACESSO_ADMIN_NEGADO"],
+            usuario_id=str(user.id) if getattr(user, "id", None) else None,
+            usuario_email=email,
+            recurso="rota_admin",
+            recurso_id=request.url.path,
+            request=request,
+        )
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
     # Só no acerto que passou pelo Supabase (o cache sai antes daqui), pra

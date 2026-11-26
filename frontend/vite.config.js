@@ -14,6 +14,14 @@ export default defineConfig(({ command }) => ({
   server: {
     allowedHosts: [".trycloudflare.com"],
   },
+  // Source map NUNCA em produção. Já era o padrão do Vite (medido: o
+  // bundle no ar não tem sourceMappingURL), mas estava implícito — e um
+  // `sourcemap: true` posto por engano publicaria o código original junto
+  // do bundle, nomes de variável, comentários e tudo. Escrito aqui, a
+  // escolha é deliberada e um teste a trava (test/viteConfig.test.js).
+  build: {
+    sourcemap: false,
+  },
   // Testes (Vitest): jsdom simula o navegador; setup.js carrega os
   // matchers do jest-dom e os mocks globais (API, Supabase, gráficos).
   test: {

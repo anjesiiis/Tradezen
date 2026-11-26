@@ -107,6 +107,11 @@ criam `visto_em`. A **027** conserta isso num Run só.
 | 025 | `025_status_revisao.sql` | Status de revisão nas **21** tabelas de marcação |
 | 026 | `026_qualidade_da_marcacao.sql` | Qualidade da forma, 0–4. Eixo **separado** do `resultado` |
 | 027 | `027_consertar_status_revisao.sql` | **Conserto.** Desfaz resquício de versão errada da 025: renomeia `visto_em`→`status_em` preservando as datas, derruba trava CHECK sem `'aberto'` e converte `revisto_por` de uuid pra text. Idempotente; não toca na 026 |
+| 028 | `028_consentimento_marketing.sql` | Consentimento de marketing, separado do aceite de uso (LGPD: consentimento tem que ser específico) |
+| 029 | `029_meia_estrela.sql` | Qualidade da marcação em meia estrela |
+| 030 | `030_modelos_treinados.sql` | Modelo treinado guardado no banco (`modelo_b64`), porque o disco do Render morre a cada deploy |
+| 031 | `031_testes_modelo.sql` | Cache do resultado de rodar um modelo sobre o acervo. Depende da 030 |
+| 032 | `032_logs_auditoria.sql` | Trilha de auditoria das ações de consequência. **`on delete set null` na FK é obrigatório**: sem ele, a primeira exclusão de conta (`/eu/conta`) passa a falhar por chave estrangeira |
 
 ## Sobre a 025 — três coisas que não se podem mudar nela
 

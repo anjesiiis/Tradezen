@@ -8,7 +8,8 @@ describe('Convite pra criar conta — onde e quando', () => {
   // nessas telas o convite seria redundante ou atrapalharia trabalho
   it('não entra nas telas de conta nem no admin', () => {
     for (const rota of ['/cadastro', '/login', '/admin', '/admin/templates/bandeira-alta',
-                        '/recuperar-senha', '/redefinir-senha']) {
+                        '/recuperar-senha', '/redefinir-senha',
+                        '/privacidade', '/termos']) {
       expect(podeAparecer(rota)).toBe(false);
     }
   });

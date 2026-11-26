@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from admin_auth import require_admin
+from auditoria import ACOES, registrar
 from planos import APELIDOS, FREE, PREMIUM
 from rate_limit import limiter
 from supabase_client import supabase
@@ -94,7 +95,14 @@ def listar(request: Request):
 
 @router.patch("/{user_id}/plano")
 @limiter.limit("30/minute")
-def mudar_plano(request: Request, user_id: str, payload: PlanoUpdate):
+def mudar_plano(request: Request, user_id: str, payload: PlanoUpdate,
+                admin: str = Depends(require_admin)):
+    # `admin` repete a dependencia que ja esta no router de proposito: o
+    # FastAPI resolve cada dependencia UMA vez por requisicao (cache), e e
+    # assim que o email de quem mudou o plano chega aqui pra auditoria.
+    # Sem ele, a trilha diria "o plano mudou" sem dizer por quem.
+    plano_antes = (_perfis_por_id().get(user_id) or {}).get("plano")
+
     # upsert em vez de update: usuário cadastrado antes da sql/017 pode não
     # ter linha em profiles, e nesse caso um update não acharia nada e o
     # admin veria "usuário não encontrado" por um motivo que não é esse.
@@ -110,6 +118,17 @@ def mudar_plano(request: Request, user_id: str, payload: PlanoUpdate):
 
     if not resp.data:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    # Liberar ou tirar o plano pago de alguem e a acao de admin com mais
+    # consequencia que existe aqui: mexe no que a pessoa pagou pra ver.
+    registrar(
+        ACOES["PLANO_ALTERADO"],
+        usuario_email=admin,
+        recurso="usuario",
+        recurso_id=user_id,
+        detalhes={"plano_antes": plano_antes, "plano_depois": payload.plano},
+        request=request,
+    )
     return {"status": "ok", "usuario": resp.data[0]}
 
 

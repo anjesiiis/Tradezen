@@ -23,7 +23,8 @@ export const CHAVE_VISTO = "tradezen_popup_cadastro_visto";
 
 // Onde ele não entra: nas telas que já são sobre conta (seria redundante)
 // e no admin (que é ferramenta de trabalho, não vitrine).
-const ROTAS_SEM_POPUP = [/^\/cadastro/, /^\/login/, /^\/admin/, /^\/recuperar-senha/, /^\/redefinir-senha/];
+const ROTAS_SEM_POPUP = [/^\/cadastro/, /^\/login/, /^\/admin/, /^\/recuperar-senha/, /^\/redefinir-senha/,
+                          /^\/privacidade/, /^\/termos/];
 
 export function podeAparecer(pathname, agora = Date.now(), ler = lerVisto) {
   if (ROTAS_SEM_POPUP.some((r) => r.test(pathname))) return false;

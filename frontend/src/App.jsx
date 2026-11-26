@@ -16,6 +16,7 @@ const Cadastro = lazy(() => import("./pages/Cadastro.jsx"));
 const PaginaDeVendas = lazy(() => import("./pages/PaginaDeVendas.jsx"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes.jsx"));
 const Privacidade = lazy(() => import("./pages/Privacidade.jsx"));
+const Termos = lazy(() => import("./pages/Termos.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const RecuperarSenha = lazy(() => import("./auth/RecuperarSenha.jsx"));
@@ -140,6 +141,9 @@ function Router(){
   // quem ainda não tem conta — é justamente antes de criar a conta que a
   // pessoa precisa poder ler o que será coletado.
   if (location.pathname === "/privacidade") return <Privacidade/>;
+  // Termos de Uso: pública pelo mesmo motivo da Política — é antes de
+  // criar a conta que a pessoa precisa poder ler o que está aceitando.
+  if (location.pathname === "/termos") return <Termos/>;
   // /configuracoes e as sub-abas (segurança, plano, notificações)
   if (location.pathname.startsWith("/configuracoes")) return <Configuracoes/>;
   if (location.pathname === "/recuperar-senha") return <RecuperarSenha/>;

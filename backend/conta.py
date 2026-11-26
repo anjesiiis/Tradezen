@@ -27,6 +27,7 @@ estética — e a função é a mesma, com o mesmo contrato.
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alertas import require_user
+from auditoria import ACOES, anonimizar_usuario, registrar
 from logs import ip_do_pedido, seguranca
 from rate_limit import limiter
 from supabase_client import supabase
@@ -51,6 +52,18 @@ def excluir_conta(request: Request, usuario_id: str = Depends(require_user)):
     # existir e não haveria mais de quem falar no log.
     seguranca.info("exclusao de conta PEDIDA usuario=%s ip=%s",
                    usuario_id, ip_do_pedido(request))
+
+    # A trilha de auditoria fica, a conta vai. Registrado ANTES de apagar:
+    # depois o `on delete set null` da chave estrangeira zera o usuario_id,
+    # e nao haveria mais como achar as linhas dessa pessoa pra anonimizar.
+    registrar(
+        ACOES["CONTA_EXCLUIDA"],
+        usuario_id=usuario_id,
+        recurso="conta",
+        recurso_id=usuario_id,
+        request=request,
+    )
+    anonimizar_usuario(usuario_id)
 
     try:
         supabase.auth.admin.delete_user(usuario_id)
