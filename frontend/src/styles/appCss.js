@@ -157,6 +157,16 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
    .search-dd acima), e o certo pra este componente. */
 .troca-ativo-fundo{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:100px 12px 12px}
 .troca-ativo-caixa{position:relative;width:min(440px,100%)}
+/* De onde vem o preco, e se ele atrasa. Pequeno e cinza: e rodape de
+   informacao, nao alerta — mas tem que estar visivel ao lado do numero,
+   que e onde a duvida nasce ao comparar com outra plataforma. */
+.afonte{font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--text3);white-space:nowrap;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.04);cursor:help}
+.afonte.aovivo{color:var(--verde,#26a69a);background:rgba(38,166,154,.12)}
+@media (max-width:640px){
+  /* No celular o cabecalho e estreito e o preco e a variacao vem primeiro:
+     a procedencia fica no title, acessivel no toque longo. */
+  .afonte{display:none}
+}
 @media (max-width:640px){
   .troca-ativo-fundo{padding:64px 10px 10px}
 }

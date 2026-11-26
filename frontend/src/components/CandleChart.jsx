@@ -16,7 +16,7 @@ import BarraInstrucao from "./chart/BarraInstrucao.jsx";
 // gravações. Depois do dedo parar, e antes de qualquer F5 humano.
 const ESPERA_FAIXA = 900;
 
-export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia, faixaSalva=null, aoMudarFaixa, redimensionarEm=0}){
+export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, setSelPat, showVolume=true, onLampPos, tema="dark", ferramentaAtiva=null, setFerramentaAtiva, desenhos=[], setDesenhos, registrarHistorico, aoChegarNoComeco, estiloDe, aparencia, faixaSalva=null, aoMudarFaixa, redimensionarEm=0, candleAoVivo=null}){
   const isMobile = useIsMobile();
   // Sobe de 1 a cada vez que o gráfico é CRIADO. Os efeitos que alimentam
   // o gráfico (candles, indicadores, níveis) dependem dele: sem isso, um
@@ -119,6 +119,44 @@ export function CandleChart({candles, padroes, niveis=[], activeTools, selPat, s
   // array vazio da montagem e o canal nunca acharia o pico da paralela.
   const candlesRef = useRef(candles);
   useEffect(()=>{ candlesRef.current = candles; },[candles]);
+
+  // ── PREÇO AO VIVO: O CAMINHO LEVE ─────────────────────────────
+  // `series.update()` reescreve UMA vela. É pra isso que a Lightweight
+  // Charts tem esse método, e é o que torna o tempo real viável aqui.
+  //
+  // O caminho normal (`setData` com o array inteiro, mais abaixo) depende
+  // de `candles` e arrasta TODOS os indicadores com ele: SMA, EMA, Bollinger,
+  // VWAP, RSI, Estocástico, ATR. Rodar isso a cada tique, com oito mesas
+  // abertas, seria recalcular médias sobre milhares de candles oito vezes
+  // por segundo — no celular, que é a prioridade do projeto, viraria
+  // travamento. Por isso o candle ao vivo NÃO entra em `candles`: ele
+  // chega por este prop e toca só a vela e o volume.
+  //
+  // A consequência, assumida: um indicador fica até o próximo fetch
+  // atrasado em relação à última vela. Numa média de 20 períodos, o
+  // último tique move a linha por uma fração de pixel — e o preço, que é
+  // o que a pessoa está comparando com o TradingView, está certo.
+  useEffect(()=>{
+    if(!candleAoVivo || !candleRef.current) return;
+    const t = Math.floor(candleAoVivo.timestamp/1000);
+    const { abertura:o, maxima:h, minima:l, fechamento:c } = candleAoVivo;
+    if(![t,o,h,l,c].every(Number.isFinite)) return;
+    try {
+      candleRef.current.update({ time:t, open:o, high:h, low:l, close:c });
+      linhaRef.current?.update({ time:t, value:c });
+      if(volRef.current && Number.isFinite(candleAoVivo.volume)){
+        volRef.current.update({
+          time:t, value:candleAoVivo.volume,
+          color: c >= o ? "rgba(0,214,143,.5)" : "rgba(255,69,96,.5)",
+        });
+      }
+    } catch {
+      // update() recusa tempo ANTERIOR ao último dado da série. Acontece
+      // na troca de ativo ou de timeframe, quando um tique do stream
+      // antigo chega depois de a série nova já estar no lugar. Ignorar é
+      // o certo: o fetch novo já trouxe a verdade.
+    }
+  },[candleAoVivo]);
   const ferramentaAtivaRef = useRef(ferramentaAtiva);
   useEffect(()=>{ ferramentaAtivaRef.current = ferramentaAtiva; },[ferramentaAtiva]);
   // Régua — medição rápida (estilo TradingView): fica em state próprio, fora

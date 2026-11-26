@@ -33,9 +33,18 @@ import { toLWCandles } from "./indicadores.js";
  * num 60m é a da última hora. É o que o gráfico mostra — e é por isso que
  * bate com ele. Antes era sempre a do dia, mesmo num gráfico de 5m.
  */
-export function precoDosCandles(candles) {
+/**
+ * `aoVivo` é o candle em formação que chega do stream da Binance (ver
+ * lib/grafico/tempoReal.js). Ele entra AQUI, e não num estado separado do
+ * cabeçalho, de propósito: o cabeçalho e a série do gráfico leem o mesmo
+ * candle ao vivo, então continuam concordando tique a tique. Guardar um
+ * "preço ao vivo" só pro cabeçalho recriaria a divergência que esta
+ * função existe pra impedir — o número piscando em cima e a vela parada
+ * embaixo.
+ */
+export function precoDosCandles(candles, aoVivo = null) {
   // A MESMA transformação que alimenta a série do gráfico.
-  const lw = toLWCandles(Array.isArray(candles) ? candles : []);
+  const lw = toLWCandles(aplicarAoVivo(Array.isArray(candles) ? candles : [], aoVivo));
 
   const ultimo = lw.length ? lw[lw.length - 1] : null;
   const anterior = lw.length > 1 ? lw[lw.length - 2] : null;
@@ -55,4 +64,26 @@ export function precoDosCandles(candles) {
     // null, e não false: "sem dado" não é "caiu".
     alta: variacaoPct === null ? null : variacaoPct >= 0,
   };
+}
+
+/**
+ * Encaixa o candle ao vivo na série.
+ *
+ * Mesmo timestamp do último = a vela em formação, e ele SUBSTITUI. Mais
+ * novo = a hora virou e ele é uma vela nova, então ENTRA no fim. Mais
+ * antigo é tique atrasado de um stream que ainda não sabe que trocamos de
+ * timeframe, e é descartado: aceitar reescreveria história já fechada.
+ */
+export function aplicarAoVivo(candles, aoVivo) {
+  if (!aoVivo || !Number.isFinite(aoVivo.timestamp) || !Number.isFinite(aoVivo.fechamento)) {
+    return candles;
+  }
+  if (!candles.length) return [aoVivo];
+
+  const ultimo = candles[candles.length - 1];
+  if (aoVivo.timestamp === ultimo.timestamp) {
+    return [...candles.slice(0, -1), { ...ultimo, ...aoVivo }];
+  }
+  if (aoVivo.timestamp > ultimo.timestamp) return [...candles, aoVivo];
+  return candles;
 }

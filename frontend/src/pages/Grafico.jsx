@@ -17,12 +17,38 @@ import { fetchPadroesMarcados, normalizarTipo, resolverPadroesPorTimestamp, toke
 import { SearchBar } from "../components/SearchBar.jsx";
 import { fmtP } from "../lib/mercado.js";
 import { precoDosCandles } from "../lib/grafico/cotacao.js";
+import { ligarTempoReal } from "../lib/grafico/tempoReal.js";
 
 // Um gráfico de análise completo e independente: ativo, candles, padrões
 // marcados, indicadores ativos e o padrão selecionado são todos estado
 // local desta instância — é isso que permite abrir duas telas lado a lado
 // (multitelas) sem uma pisar no estado da outra. `onAddSplit` só é passado
 // pra tela principal (mostra o "+"); `onClose` só pra tela extra (mostra o "✕").
+/**
+ * O selo de procedência que fica ao lado do preço.
+ *
+ * Três situações, e cada uma merece uma frase diferente:
+ *  • cripto com stream ligado → ao vivo de verdade, igual TradingView;
+ *  • B3 → atraso de ~15 min, que é da licença da bolsa e não nosso;
+ *  • o resto do Yahoo → dizer "sem atraso" seria afirmar o que não
+ *    medimos, então o selo diz a fonte e o título avisa que pode atrasar.
+ */
+function selo(ativo, estadoAoVivo){
+  const fonte = ativo?.fonte;
+  if(fonte === "binance"){
+    return estadoAoVivo === "ligado"
+      ? { texto:"Binance · ao vivo", titulo:"Preço em tempo real, direto da Binance." }
+      : { texto:"Binance", titulo:"Cotação da Binance. O tempo real está reconectando." };
+  }
+  if(ativo?.mercado === "B3"){
+    return { texto:"Yahoo · ~15 min", titulo:"Dados da B3 pelo Yahoo Finance, com atraso de cerca de 15 minutos — é a regra de licenciamento da bolsa." };
+  }
+  if(fonte === "yahoo"){
+    return { texto:"Yahoo", titulo:"Dados do Yahoo Finance, que podem ter atraso." };
+  }
+  return { texto:"", titulo:"" };
+}
+
 // Quais ids que passam por `toggleTool` são FILTRO DE PADRÃO e não
 // indicador técnico. TOOLS é exatamente essa lista.
 const IDS_DE_PADRAO = new Set(TOOLS.map(t=>t.id));
@@ -49,6 +75,11 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
 
   const [selAtivo,setSel]     = useState(null);
   const [candles,setCandles]  = useState([]);
+  // O candle em formacao que chega do stream da Binance. Fica FORA de
+  // `candles` de proposito: entrar la arrastaria o recalculo de todos
+  // os indicadores a cada tique (ver o comentario em CandleChart.jsx).
+  const [candleAoVivo,setCandleAoVivo] = useState(null);
+  const [estadoAoVivo,setEstadoAoVivo] = useState("desligado");
   const [padroes,setPadroes]  = useState([]);
   // Os padrões como o backend mandou, antes de virar índice de candle.
   // Separado de `padroes` de propósito: é o que permite esperar os
@@ -319,6 +350,34 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
     return () => { cancelado = true; };
   },[ticker, tf.intervalo, tentativaCandles]);
 
+  // ── PREÇO AO VIVO (cripto) ────────────────────────────────────
+  //
+  // Medido antes disto existir: o gráfico buscava uma vez e CONGELAVA.
+  // Numa amostragem de um minuto com BTC, o TradeZen ficou parado em
+  // 60486,98 enquanto a Binance andava entre 60533 e 60558 — US$ 46 a 72
+  // de diferença, crescendo enquanto a aba ficasse aberta. O dado nunca
+  // esteve errado; estava velho.
+  //
+  // O stream é aberto DIRETO do navegador contra a Binance (ver
+  // lib/grafico/tempoReal.js). Só cripto tem isso: B3, forex e commodity
+  // vêm do Yahoo, que não publica stream — e no caso da B3 o atraso de
+  // ~15 min é da licença da bolsa, não nosso.
+  //
+  // `simbolo_binance` vem do backend, no `info` da resposta dos candles.
+  // O mapa de símbolos fica só lá (data/fetcher.py), pelo catálogo único:
+  // uma segunda lista aqui erraria no primeiro par novo.
+  const simboloBinance = selAtivo?.simbolo_binance || null;
+  useEffect(()=>{
+    // Troca de ativo ou de timeframe: o candle ao vivo do anterior tem de
+    // sair JÁ. Sem isto, o cabeçalho mostraria por um instante o preço do
+    // BTC no gráfico da PETR4 — e o `update()` da série recusaria um
+    // tempo anterior, deixando a vela errada parada na tela.
+    setCandleAoVivo(null);
+    setEstadoAoVivo("desligado");
+    if(!simboloBinance) return;
+    return ligarTempoReal(simboloBinance, tf.intervalo, setCandleAoVivo, setEstadoAoVivo);
+  },[simboloBinance, tf.intervalo]);
+
   // As detecções entram em effect próprio por causa do token: num reload
   // direto na URL do ativo, o fetch de cima já saiu antes do Supabase
   // devolver a sessão, então foi como visitante e voltou vazio. Quando
@@ -557,7 +616,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
   // Sem useMemo de propósito: é uma leitura de duas posições de array, e
   // um memo com dependência errada aqui seria exatamente o jeito de o
   // cabeçalho voltar a mostrar número velho (ver precoDosCandles).
-  const cotacao = precoDosCandles(candles);
+  const cotacao = precoDosCandles(candles, candleAoVivo);
 
   return (
     <div className="analysis" style={ocultoMobile ? {display:"none"} : undefined}>
@@ -585,6 +644,15 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
               {cotacao.alta?"▲":"▼"}{Math.abs(cotacao.variacaoPct).toFixed(2)}%
             </span>
           )}
+          {/* DE ONDE VEM O NÚMERO, E SE ELE ESTÁ ATRASADO.
+              Quem compara com o TradingView merece saber por que difere,
+              em vez de concluir que o nosso preço está errado. Na B3 o
+              atraso é de licença da bolsa e não temos como encurtar; na
+              cripto, com o stream ligado, é ao vivo de verdade. */}
+          <span className={`afonte ${estadoAoVivo === "ligado" ? "aovivo" : ""}`}
+                title={selo(selAtivo, estadoAoVivo).titulo}>
+            {selo(selAtivo, estadoAoVivo).texto}
+          </span>
         </>}
 
         {/* A lupa fica colada no ativo porque é isso que ela faz: trocar de
@@ -834,6 +902,7 @@ function ChartPane({ mercado, ticker, onTickerChange, onAddSplit, onClose, ocult
           )}
           {!loading&&candles.length>0&&(
             <CandleChart
+              candleAoVivo={candleAoVivo}
               candles={candles}
               padroes={padroes}
               niveis={niveis}

@@ -440,6 +440,20 @@ def buscar_ativo_info(ticker):
         return {
             "nome": do_catalogo["nome"], "simbolo": do_catalogo["simbolo"],
             "mercado": do_catalogo["mercado"], "moeda": do_catalogo["moeda"],
+            # DE ONDE O DADO VEIO, e o simbolo de la.
+            #
+            # O frontend precisa dos dois pra ligar o tempo real: com o
+            # simbolo da Binance ele abre o websocket de klines direto do
+            # navegador (wss://stream.binance.com), sem passar por aqui —
+            # e so entao o preco anda igual ao do TradingView em vez de
+            # congelar no ultimo fetch.
+            #
+            # O mapa BINANCE_SYMBOLS fica SO aqui, como manda o catalogo
+            # unico do CLAUDE.md. Duplicar essa lista no frontend daria,
+            # no primeiro par novo, uma tela tentando abrir stream de um
+            # simbolo que a Binance nao conhece.
+            "fonte": "binance" if _eh_cripto(ticker) else "yahoo",
+            "simbolo_binance": BINANCE_SYMBOLS.get(ticker.upper()),
         }
 
     # Cache pra info de ativos fora da lista principal (evita yf.Ticker.info que é caro)
