@@ -17,9 +17,22 @@ O token sai de https://supabase.com/dashboard/account/tokens e e PESSOAL:
 da acesso a todos os projetos da conta. Ele nunca e impresso por este
 script, nunca entra em arquivo e nao deve ser colado em conversa nenhuma.
 
-SO MEXE NOS TEMPLATES. Remetente (smtp_sender_name / smtp_admin_email) nao
-entra aqui de proposito: esses campos so valem com SMTP proprio
-configurado, e configurar SMTP e decisao de quem paga a conta do provedor.
+DOIS MODOS
+----------
+    python backend/emails/aplicar.py              # templates (assunto + corpo)
+    python backend/emails/aplicar.py --smtp       # SMTP proprio + remetente
+
+O --smtp e o que faz o email CHEGAR em quem nao e do time do projeto. Sem
+ele, o servico padrao do Supabase so entrega pra endereco do time e no
+maximo 2 por hora — ou seja, usuario de verdade nao recebe nada. Ele le
+estas variaveis:
+
+    SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
+    SMTP_REMETENTE_NOME, SMTP_REMETENTE_EMAIL
+
+SMTP_PASS nunca e impressa, nunca entra em arquivo e nao deve ser colada
+em conversa nenhuma. No Gmail ela e uma SENHA DE APP de 16 letras, nao a
+senha da conta.
 """
 
 # O python do sistema pode ser mais velho que o 3.11 do projeto, e
@@ -114,14 +127,105 @@ def conferir() -> None:
     print(f"  smtp_sender_name  : {atual.get('smtp_sender_name') or '(vazio)'}")
     print(f"  smtp_admin_email  : {atual.get('smtp_admin_email') or '(vazio)'}")
     print(f"  SMTP proprio ligado: {bool(atual.get('smtp_host'))}")
+    limite = atual.get("rate_limit_email_sent")
+    if limite is not None:
+        print(f"  limite de envio   : {limite} emails por hora")
     if not atual.get("smtp_host"):
         print("  -> Sem SMTP proprio, o nome do remetente continua sendo o do Supabase,")
         print("     por mais que o assunto e o corpo estejam em portugues.")
+        print("  -> E pior: o servico padrao SO entrega pra endereco do time do projeto.")
+        print("     Usuario de verdade nao recebe o email de confirmacao. Rode --smtp.")
+    else:
+        print(f"  -> SMTP proprio de pe em {atual.get('smtp_host')}.")
+
+
+# Campos de SMTP na Management API. SMTP_PASS fica de fora desta lista de
+# exibicao de proposito — ver `montar_smtp`.
+VARIAVEIS_SMTP = {
+    "SMTP_HOST": "smtp_host",
+    "SMTP_PORT": "smtp_port",
+    "SMTP_USER": "smtp_user",
+    "SMTP_PASS": "smtp_pass",
+    "SMTP_REMETENTE_NOME": "smtp_sender_name",
+    "SMTP_REMETENTE_EMAIL": "smtp_admin_email",
+}
+
+
+def montar_smtp() -> dict:
+    """Le as variaveis de ambiente e monta o corpo. Valida antes de mandar."""
+    faltando = [v for v in VARIAVEIS_SMTP if not os.environ.get(v, "").strip()]
+    if faltando:
+        sys.exit(
+            "Faltam variaveis de ambiente: " + ", ".join(faltando) + "\n"
+            "  Exemplo com Gmail:\n"
+            '    export SMTP_HOST="smtp.gmail.com"\n'
+            '    export SMTP_PORT="465"\n'
+            '    export SMTP_USER="voce@gmail.com"\n'
+            '    export SMTP_PASS="senha-de-app-16-letras"   # NAO a senha da conta\n'
+            '    export SMTP_REMETENTE_NOME="TradeZen"\n'
+            '    export SMTP_REMETENTE_EMAIL="voce@gmail.com"'
+        )
+
+    corpo = {campo: os.environ[var].strip() for var, campo in VARIAVEIS_SMTP.items()}
+
+    try:
+        porta = int(corpo["smtp_port"])
+    except ValueError:
+        sys.exit(f"SMTP_PORT precisa ser numero, veio {corpo['smtp_port']!r}.")
+    corpo["smtp_port"] = porta
+
+    # ── A PEGADINHA DO GMAIL ──
+    # O Gmail NAO deixa mandar email com um "From" que nao seja a conta
+    # autenticada (ou um alias verificado dentro dela). Se smtp_admin_email
+    # for diferente de smtp_user, ele recusa o envio ou reescreve o
+    # remetente — e o sintoma e o pior possivel: cadastro parece funcionar
+    # e o email simplesmente nao chega, sem erro em lugar nenhum.
+    #
+    # Verificar um alias como nao-responda@tradezen.com.br exige RECEBER um
+    # email de confirmacao naquele endereco, e pra isso o dominio precisa de
+    # registro MX — que hoje nao existe (conferido com dig).
+    if "gmail.com" in corpo["smtp_host"] and corpo["smtp_admin_email"].lower() != corpo["smtp_user"].lower():
+        sys.exit(
+            "Com o Gmail, SMTP_REMETENTE_EMAIL tem de ser o MESMO que SMTP_USER.\n"
+            f"  SMTP_USER             = {corpo['smtp_user']}\n"
+            f"  SMTP_REMETENTE_EMAIL  = {corpo['smtp_admin_email']}\n"
+            "  O Gmail recusa remetente que nao seja a conta autenticada, e o\n"
+            "  sintoma e o email nao chegar sem dar erro. Use o proprio endereco\n"
+            "  do Gmail, ou troque pra um provedor que aceite o seu dominio\n"
+            "  (Resend, Brevo) depois de por os registros de DNS."
+        )
+
+    if "@" not in corpo["smtp_admin_email"]:
+        sys.exit(f"SMTP_REMETENTE_EMAIL nao parece um email: {corpo['smtp_admin_email']!r}")
+
+    return corpo
+
+
+def aplicar_smtp() -> None:
+    corpo = montar_smtp()
+    # Mostra o que vai ser gravado SEM a senha. Conferir antes de mandar
+    # importa: errar o host aqui derruba o email de todo mundo em silencio.
+    print("Vou gravar isto no Supabase Auth:")
+    for campo, valor in corpo.items():
+        if campo == "smtp_pass":
+            print(f"  {campo:18} : (oculta, {len(str(valor))} caracteres)")
+        else:
+            print(f"  {campo:18} : {valor}")
+    print()
+    chamar("PATCH", corpo)
+    print("SMTP aplicado. Conferindo o que ficou no ar:\n")
+    conferir()
+    print("\nAGORA TESTE DE VERDADE: cadastre um email que NAO seja do time do")
+    print("projeto (o de um amigo, ou um @gmail seu que nao esteja no Supabase).")
+    print("Se chegar, a troca funcionou. Era isso que nao acontecia antes.")
 
 
 def main() -> None:
     if "--conferir" in sys.argv:
         conferir()
+        return
+    if "--smtp" in sys.argv:
+        aplicar_smtp()
         return
     corpo = montar()
     chamar("PATCH", corpo)
