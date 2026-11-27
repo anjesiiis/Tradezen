@@ -53,7 +53,17 @@ export default function Cadastro() {
       email: email.trim().toLowerCase(),
       password: senha,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // O link de confirmação do email agora cai em /email-confirmado,
+        // que diz com palavras que deu certo e oferece o botão de entrar.
+        // Antes caía em /auth/callback, que é uma tela de passagem: ela
+        // mostrava "Confirmando seu acesso..." e empurrava pro dashboard.
+        // Funcionava, mas quem acabou de se cadastrar nunca via confirmação
+        // de que o cadastro foi concluído.
+        //
+        // O /auth/callback CONTINUA existindo e continua sendo rota: é o
+        // destino de quem já tinha link antigo no email, e ele sabe
+        // processar o token do mesmo jeito.
+        emailRedirectTo: `${window.location.origin}/email-confirmado`,
         // Vai pro raw_user_meta_data do auth.users; o trigger
         // criar_usuario_no_cadastro() (backend/sql/003_criar_usuarios.sql)
         // copia daqui pra usuarios.nome quando a conta é criada.

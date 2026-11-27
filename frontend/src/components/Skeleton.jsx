@@ -358,7 +358,11 @@ function LandingCorpo({ mobile }){
 // desktop e a página "pulava" quando a tela de verdade entrava.
 const TELA_TODA = { position:"fixed", inset:0, overflow:"hidden", background:"var(--sk-fundo)" };
 
-const CAMPOS_AUTH = { "/login":2, "/cadastro":3, "/recuperar-senha":1, "/redefinir-senha":2, "/auth/callback":1 };
+// /email-confirmado e /auth/callback entram com 0 e 1 campo: não têm
+// formulário, mas são telas de auth — sem isto o carregamento delas
+// usaria o skeleton de página inteira e a tela "pularia" de formato
+// quando o cartão centralizado entrasse.
+const CAMPOS_AUTH = { "/login":2, "/cadastro":3, "/recuperar-senha":1, "/redefinir-senha":2, "/auth/callback":1, "/email-confirmado":0 };
 
 // Fallback de página inteira (troca de rota): escolhe o formato pela URL.
 export function SkeletonPagina(){

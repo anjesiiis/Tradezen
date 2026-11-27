@@ -17,6 +17,7 @@ const PaginaDeVendas = lazy(() => import("./pages/PaginaDeVendas.jsx"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes.jsx"));
 const Privacidade = lazy(() => import("./pages/Privacidade.jsx"));
 const Termos = lazy(() => import("./pages/Termos.jsx"));
+const EmailConfirmado = lazy(() => import("./pages/EmailConfirmado.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const RecuperarSenha = lazy(() => import("./auth/RecuperarSenha.jsx"));
@@ -46,6 +47,12 @@ function paramAuth(nome){
 // landing caladinhos, e o usuário achava que o painel tinha sumido.
 function retornoDeAuthAdmin(pathname){
   if (pathname.startsWith("/auth/")) return false;     // callback do usuário comum
+  // Confirmação de cadastro tem página própria, e ela PRECISA ganhar do
+  // reconhecedor daqui. Motivo: o retorno do Supabase pode vir no formato
+  // "?code=...", e a última linha desta função trata qualquer ?code= como
+  // retorno de admin. Sem esta linha, o usuário que confirma o email cai
+  // no painel administrativo em vez da página de boas-vindas.
+  if (pathname === "/email-confirmado") return false;
   if (paramAuth("type") === "recovery") return false;  // troca de senha do usuário
   if (paramAuth("access_token")) return paramAuth("type") === "magiclink";
   return Boolean(paramAuth("error") || paramAuth("error_code") || paramAuth("error_description") || paramAuth("code"));
@@ -144,6 +151,9 @@ function Router(){
   // Termos de Uso: pública pelo mesmo motivo da Política — é antes de
   // criar a conta que a pessoa precisa poder ler o que está aceitando.
   if (location.pathname === "/termos") return <Termos/>;
+  // Onde o link de confirmação do cadastro cai. Pública de propósito:
+  // quem clica nele ainda não entrou na conta nenhuma vez.
+  if (location.pathname === "/email-confirmado") return <EmailConfirmado/>;
   // /configuracoes e as sub-abas (segurança, plano, notificações)
   if (location.pathname.startsWith("/configuracoes")) return <Configuracoes/>;
   if (location.pathname === "/recuperar-senha") return <RecuperarSenha/>;
